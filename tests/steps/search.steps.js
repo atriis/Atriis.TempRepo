@@ -92,6 +92,22 @@ Given("I have added a random guest traveler as the primary traveller clicking {s
   this.selectedTravelerCount = result.selectedTravelerCount;
 });
 
+// Same "Select traveller" placeholder route as the step above, but for a slot that already exists
+// because a search form's traveller count was raised. Deliberately NOT "I have added a random guest
+// traveler with name": that one clicks the round add-traveler button, which would append a THIRD
+// slot and leave the empty one unfilled. No primary assertion either -- the booker still holds the
+// primary slot here, so the guest filling the second one is not expected to carry the star.
+Given("I have added a random guest traveler with name {string} {string} in the empty traveler slot", async function (firstName, lastName) {
+  logger.info("Adding guest traveler into the existing empty traveler slot", { firstName, lastName });
+  const result = await Search.addRandomGuestViaSelectTravelerSlot(this.page, "Select traveller", null, {
+    firstName,
+    lastName,
+  });
+  expect(result.added, `Guest traveler "${firstName} ${lastName}" should be added`).toBe(true);
+  this.guestTravelerCount = (this.guestTravelerCount ?? 0) + 1;
+  this.selectedTravelerCount = result.selectedTravelerCount;
+});
+
 // ===== WHEN STEPS =====
 
 When("I add an empty traveler slot", async function () {

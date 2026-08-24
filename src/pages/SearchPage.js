@@ -9,6 +9,10 @@ const { normalizeText } = require("@utils/text");
  * Contains only UI-level interactions.
  */
 
+// Every el-select on this page teleports its own dropdown to <body>, so an option is always read
+// from the one dropdown currently open rather than from inside the field that opened it.
+const VISIBLE_SELECT_OPTION = ".el-select-dropdown:visible .el-select-dropdown__item";
+
 const SELECTORS = {
   // Traveler interaction
   ADD_TRAVELER_BUTTON: ".btn.btn--default.btn--size-default.btn--round.add-btn",
@@ -68,7 +72,7 @@ const SELECTORS = {
     "[placeholder='[City code]-[3 numbers prefix]-[4 digits]']",
   ],
   PHONE_TYPE_DROPDOWN: ".contact-info-container [name='phone-type'] .el-select__wrapper",
-  PHONE_TYPE_OPTION: ".el-select-dropdown:visible .el-select-dropdown__item",
+  PHONE_TYPE_OPTION: VISIBLE_SELECT_OPTION,
 
   // Guest form — passenger (traveler) type select. app-select renders name on the section wrapper;
   // options render in the shared app-select popper. Option labels carry age ranges
@@ -204,6 +208,37 @@ const SELECTORS = {
   // BenerailSearchPage scopes its rail date fields: other mounted-but-hidden product forms carry
   // date inputs too. Round trip renders one per segment — index 0 is departure, 1 is the return.
   AMTRAK_DATE_INPUT: ".amtrak-search-inputs .rail-date-picker input",
+
+  // Amtrak (amtrak-search-inputs.vue) TIME field. <app-timepicker class="rail-time-picker"> puts
+  // that class on its root <section>, and eu-rail uses the same class, so scope it to the Amtrak
+  // form. Round trip renders one per segment — index 0 is departure, 1 is the return. The input is
+  // readonly, so the value can only be set through the popper.
+  AMTRAK_TIME_INPUT: ".amtrak-search-inputs .rail-time-picker input.app-timepicker-input",
+  // app-timepicker teleports its el-dropdown to <body> with this popper class (same component as
+  // CarSearchPage/BenerailSearchPage — see their copies of this trigger/option set).
+  AMTRAK_TIME_POPPER: ".time-selector-popper:visible",
+  AMTRAK_TIME_HOURS_TRIGGER: "[name='hours'] .el-select__wrapper",
+  AMTRAK_TIME_MINUTES_TRIGGER: "[name='minutes'] .el-select__wrapper",
+  AMTRAK_TIME_AMPM_BUTTON: ".section-ampm .time-part",
+  // The hours/minutes el-selects teleport their own dropdowns to <body> as well, so their options
+  // are read globally rather than from inside AMTRAK_TIME_POPPER.
+  AMTRAK_TIME_OPTION: VISIBLE_SELECT_OPTION,
+
+  // Travelers-amount dropdown in the Amtrak form. `.rail-inputs-travellers` is NOT unique — the
+  // loyalty-card select carries it too — so key on the enclosing `.columns.space-between` row.
+  AMTRAK_TRAVELERS_COUNT_TRIGGER: ".amtrak-search-inputs .space-between .rail-inputs-travellers .el-select__wrapper",
+  AMTRAK_TRAVELERS_COUNT_OPTION: VISIBLE_SELECT_OPTION,
+
+  // Promo code (el-input class="promocode-input is-search", maxlength 4). Its validation message is
+  // the sibling form-validation-msg inside the same .column-stack control.
+  AMTRAK_PROMO_CODE_INPUT: ".amtrak-search-inputs .promocode-input input",
+  AMTRAK_PROMO_CODE_VALIDATION: ".amtrak-search-inputs .column-stack .help",
+
+  // "Travelers details" section (section.rows) — one loyalty-card select per passenger, plus a
+  // membership-id input that only renders for cards whose MembershipRequired is true.
+  AMTRAK_LOYALTY_SELECT_TRIGGER: ".amtrak-search-inputs .rows .loyalty-select .el-select__wrapper",
+  AMTRAK_LOYALTY_OPTION: VISIBLE_SELECT_OPTION,
+  AMTRAK_MEMBERSHIP_INPUT: ".amtrak-search-inputs .rows .membership-input input",
 
   // Traveler slot validation state (.is-danger applied when search is attempted with an empty slot)
   TRAVELER_SLOT_DANGER: '.trip-traveler-tag.is-danger',
@@ -435,6 +470,28 @@ class SearchPage {
 
     await slot.click();
     await this.assertEditTravelerDialogVisible();
+  }
+
+  /**
+   * Waits for at least one empty ("Select traveller") slot to be visible in the trip header. Used
+   * after raising a search form's traveller count, which is what makes the extra slot appear.
+   * @param {number} timeout - Max wait time in ms (default: 15000)
+   * @returns {Promise<boolean>}
+   */
+  async waitForEmptyTravelerSlotVisible({ timeout = 15000 } = {}) {
+    try {
+      await this.page
+        .locator(`${SELECTORS.SELECT_TRAVELER_SLOT}:visible`)
+        .first()
+        .waitFor({ state: 'visible', timeout });
+      return true;
+    } catch (err) {
+      throw new Error(
+        `[SearchPage.waitForEmptyTravelerSlotVisible] No empty traveler slot became visible ` +
+        `(${SELECTORS.SELECT_TRAVELER_SLOT}). The traveller count may not have been raised, or ` +
+        `every slot is already filled. Original: ${err.message}`
+      );
+    }
   }
 
   // Waits until the UI is ready to confirm traveler identity
@@ -2118,6 +2175,260 @@ class SearchPage {
       throw new Error(
         `[SearchPage.getRequestAssistanceTravelersTitle] Travelers section title not visible ` +
         `(${SELECTORS.REQUEST_ASSISTANCE_TRAVELERS_TITLE}). The request-assistance page may not have loaded. Original: ${err.message}`
+      );
+    }
+  }
+
+  // ===== AMTRAK SEARCH FORM (amtrak-search-inputs.vue) =====
+
+  /**
+   * Opens one Amtrak time-picker's popper and returns the visible popper locator. A just-closed
+   * popper can still be transitioning out while a new one opens, so target the LAST visible one
+   * (same component and reasoning as BenerailSearchPage._openDepartureTimePopper). Retries the
+   * open once in case the click's popper closes mid-transition.
+   * @param {number} index - 0 = departure segment, 1 = return segment
+   * @param {string} triggerSelector - a control expected inside the open popper
+   * @returns {Promise<import('playwright').Locator>}
+   */
+  async _openAmtrakTimePopper(index, triggerSelector) {
+    const input = this.page.locator(SELECTORS.AMTRAK_TIME_INPUT).nth(index);
+    for (let attempt = 1; attempt <= 2; attempt++) {
+      await input.click({ timeout: 10000 });
+      await this.page.waitForTimeout(400);
+      const popper = this.page.locator(SELECTORS.AMTRAK_TIME_POPPER).last();
+      try {
+        await popper.waitFor({ state: "visible", timeout: 5000 });
+        await popper.locator(triggerSelector).waitFor({ state: "visible", timeout: 5000 });
+        return popper;
+      } catch (openErr) {
+        if (attempt === 2) throw openErr;
+        await this.page.waitForTimeout(400);
+      }
+    }
+  }
+
+  /**
+   * Sets one Amtrak time field to an explicit hour:minute through its popper. The input is
+   * readonly, so the two el-select dropdowns are the only way in.
+   *
+   * Detects 12h/AM-PM mode by whether the AM/PM toggle renders at all (the Amtrak form passes
+   * `:isAmPm="!isUserUnitsMetric"`, so it never does for a metric user). When present, the
+   * meridiem is set first and the 12h-labelled hour is clicked instead of the 24h one.
+   *
+   * @param {number} index - 0 = departure segment, 1 = return segment
+   * @param {string} hour - hour option text, zero-padded 24h (e.g. "01", "14")
+   * @param {string} minute - minute option text, zero-padded (e.g. "00", "45")
+   * @throws {Error} If the popper or its hours/minutes el-select is unavailable, or the value
+   *   does not commit to the input
+   */
+  async setAmtrakTimeFieldTo(index, hour, minute) {
+    const hourNum = parseInt(hour, 10);
+    const meridiem = hourNum >= 12 ? "PM" : "AM";
+    const hour12 = String(hourNum === 0 ? 12 : hourNum > 12 ? hourNum - 12 : hourNum).padStart(2, "0");
+
+    try {
+      const input = this.page.locator(SELECTORS.AMTRAK_TIME_INPUT).nth(index);
+
+      // --- Hour ---
+      let popper = await this._openAmtrakTimePopper(index, SELECTORS.AMTRAK_TIME_HOURS_TRIGGER);
+
+      const isAmPmMode = (await popper.locator(SELECTORS.AMTRAK_TIME_AMPM_BUTTON).count()) > 0;
+      if (isAmPmMode) {
+        const meridiemButton = popper
+          .locator(SELECTORS.AMTRAK_TIME_AMPM_BUTTON, { hasText: new RegExp(`^\\s*${meridiem}\\s*$`) })
+          .first();
+        const isAlreadyActive = ((await meridiemButton.getAttribute("class")) || "").includes("active");
+        if (!isAlreadyActive) {
+          await meridiemButton.click({ timeout: 5000 });
+          await this.page.waitForTimeout(300);
+          popper = this.page.locator(SELECTORS.AMTRAK_TIME_POPPER).last();
+          const stillOpen = await popper
+            .locator(SELECTORS.AMTRAK_TIME_HOURS_TRIGGER)
+            .isVisible()
+            .catch(() => false);
+          if (!stillOpen) {
+            popper = await this._openAmtrakTimePopper(index, SELECTORS.AMTRAK_TIME_HOURS_TRIGGER);
+          }
+        }
+      }
+
+      await popper.locator(SELECTORS.AMTRAK_TIME_HOURS_TRIGGER).click({ timeout: 5000 });
+      const targetHourText = isAmPmMode ? hour12 : hour;
+      await this.page
+        .locator(SELECTORS.AMTRAK_TIME_OPTION, { hasText: new RegExp(`^\\s*${targetHourText}\\s*$`) })
+        .first()
+        .click({ timeout: 5000 });
+      await this.page.waitForTimeout(400);
+
+      // --- Minute --- (the popper may have auto-closed on the hour pick; reopen if needed)
+      popper = this.page.locator(SELECTORS.AMTRAK_TIME_POPPER).last();
+      const minutesOpen = await popper
+        .locator(SELECTORS.AMTRAK_TIME_MINUTES_TRIGGER)
+        .isVisible()
+        .catch(() => false);
+      if (!minutesOpen) {
+        popper = await this._openAmtrakTimePopper(index, SELECTORS.AMTRAK_TIME_MINUTES_TRIGGER);
+      }
+      await popper.locator(SELECTORS.AMTRAK_TIME_MINUTES_TRIGGER).click({ timeout: 5000 });
+      await this.page
+        .locator(SELECTORS.AMTRAK_TIME_OPTION, { hasText: new RegExp(`^\\s*${minute}\\s*$`) })
+        .first()
+        .click({ timeout: 5000 });
+      await this.page.waitForTimeout(300);
+
+      // --- Commit --- metric (24h) users auto-close on the minute pick; if a popper is still open
+      // (12h/AM-PM users), click a neutral corner to blur and commit.
+      if ((await this.page.locator(SELECTORS.AMTRAK_TIME_POPPER).count()) > 0) {
+        await this.page.mouse.click(2, 2);
+        await this.page.waitForTimeout(300);
+      }
+
+      const value = (await input.inputValue()).trim();
+      const matches24h = value.includes(hour);
+      const matches12h = value.includes(hour12) && new RegExp(meridiem, "i").test(value);
+      if (!value || (!matches24h && !matches12h)) {
+        throw new Error(`the time input reads "${value}" after selecting ${hour}:${minute}`);
+      }
+    } catch (err) {
+      throw new Error(
+        `[SearchPage.setAmtrakTimeFieldTo] Could not set Amtrak time field #${index} to ${hour}:${minute}. ` +
+        `The time picker popper (${SELECTORS.AMTRAK_TIME_POPPER}) or its hours/minutes el-select was ` +
+        `not available. Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Reads the committed value of one Amtrak time input.
+   * @param {number} index - 0 = departure segment, 1 = return segment
+   * @returns {Promise<string>}
+   */
+  async getAmtrakTimeValue(index) {
+    return (await this.page.locator(SELECTORS.AMTRAK_TIME_INPUT).nth(index).inputValue()).trim();
+  }
+
+  /**
+   * Selects a passenger count in the Amtrak search form's travellers dropdown. Option labels are
+   * `${count} Traveller`, so the count is matched as the leading token rather than on the full
+   * label, which is localised.
+   * @param {number} count
+   * @throws {Error} If the dropdown or the option for `count` is unavailable
+   */
+  async selectAmtrakTravelersCount(count) {
+    try {
+      await this.page.locator(SELECTORS.AMTRAK_TRAVELERS_COUNT_TRIGGER).click({ timeout: 15000 });
+      const option = this.page
+        .locator(SELECTORS.AMTRAK_TRAVELERS_COUNT_OPTION, { hasText: new RegExp(`^\\s*${count}\\b`) })
+        .first();
+      await option.click({ timeout: 10000 });
+      // Gate on the dropdown closing rather than a fixed pause — changeTravelersCount dispatches to
+      // the store on select, and the caller reads the traveller slots it re-renders.
+      await option.waitFor({ state: "hidden", timeout: 10000 });
+    } catch (err) {
+      throw new Error(
+        `[SearchPage.selectAmtrakTravelersCount] Could not select ${count} traveller(s) in the Amtrak ` +
+        `travellers dropdown (${SELECTORS.AMTRAK_TRAVELERS_COUNT_TRIGGER}). The Amtrak search form may ` +
+        `not be open, or the logged-in user may lack the permission to book for others (the dropdown ` +
+        `then offers only the current passenger count). Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Types a promo code into the Amtrak search form.
+   *
+   * Clears first — the field is capped at maxlength 4, so typing over an existing code would
+   * silently truncate — then types key by key and blurs. Both matter: amtrak-search-inputs.vue
+   * hangs the length check off the field's native change handler (`:onchange="isPromoCodeValid"`),
+   * which fires only when an edited field loses focus, so a plain fill() leaves `promoValid` stale
+   * and the validation message never renders.
+   *
+   * @param {string} code
+   * @throws {Error} If the promo code input is unavailable
+   */
+  async fillAmtrakPromoCode(code) {
+    try {
+      const input = this.page.locator(SELECTORS.AMTRAK_PROMO_CODE_INPUT);
+      await input.waitFor({ state: "visible", timeout: 15000 });
+      await input.click();
+      await input.fill("");
+      await input.pressSequentially(code, { delay: 50 });
+      await input.blur();
+      // No element to gate on: a valid code renders nothing, so this is the settle window for the
+      // change handler's re-render before a caller reads (or asserts the absence of) the message.
+      await this.page.waitForTimeout(500);
+    } catch (err) {
+      throw new Error(
+        `[SearchPage.fillAmtrakPromoCode] Could not type "${code}" into the Amtrak promo code field ` +
+        `(${SELECTORS.AMTRAK_PROMO_CODE_INPUT}). The Amtrak search form may not be open. ` +
+        `Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Waits for the Amtrak promo code validation message and returns its text.
+   * @returns {Promise<string>}
+   * @throws {Error} If no validation message becomes visible
+   */
+  async getAmtrakPromoCodeValidationText() {
+    try {
+      const message = this.page.locator(SELECTORS.AMTRAK_PROMO_CODE_VALIDATION).first();
+      await message.waitFor({ state: "visible", timeout: 15000 });
+      return (await message.innerText()).trim();
+    } catch (err) {
+      throw new Error(
+        `[SearchPage.getAmtrakPromoCodeValidationText] No promo code validation message became visible ` +
+        `(${SELECTORS.AMTRAK_PROMO_CODE_VALIDATION}). The entered code may be a valid length ` +
+        `(0 or 4 characters), which hides the message. Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Opens the first traveller's loyalty-card dropdown in the Amtrak "Travelers details" section and
+   * selects the first available card.
+   *
+   * Cards whose MembershipRequired is true reveal a membership-id input that blocks the search
+   * until it matches the card's pattern, so the input is filled from the pattern's own digit count
+   * (NARP `^\d{6}$`, AGR `^\d{10}$`) when it appears.
+   *
+   * @returns {Promise<{card: string, membershipId: string|null}>}
+   * @throws {Error} If the section or its loyalty dropdown is unavailable
+   */
+  async selectFirstAmtrakLoyaltyCard() {
+    try {
+      const trigger = this.page.locator(SELECTORS.AMTRAK_LOYALTY_SELECT_TRIGGER).first();
+      await trigger.waitFor({ state: "visible", timeout: 20000 });
+      await trigger.click({ timeout: 10000 });
+
+      const option = this.page.locator(SELECTORS.AMTRAK_LOYALTY_OPTION).first();
+      await option.waitFor({ state: "visible", timeout: 10000 });
+      const card = (await option.innerText()).trim();
+      await option.click({ timeout: 10000 });
+      await option.waitFor({ state: "hidden", timeout: 10000 });
+
+      // Membership id only renders for cards that require one, so its absence is a valid outcome —
+      // there is nothing to wait for, only a settle window for the re-render that may add it.
+      await this.page.waitForTimeout(500);
+      let membershipId = null;
+      const membershipInput = this.page.locator(SELECTORS.AMTRAK_MEMBERSHIP_INPUT).first();
+      if (await membershipInput.isVisible().catch(() => false)) {
+        const pattern = (await membershipInput.getAttribute("pattern")) || "";
+        const digits = pattern.match(/\{(\d+)\}/);
+        membershipId = "1".repeat(digits ? parseInt(digits[1], 10) : 6);
+        await membershipInput.fill(membershipId);
+        // Commit on blur: like the promo code, the membership check runs off the field's own change
+        // handler (`:onchange="isMembershipIdValid(...)"`), not on input.
+        await membershipInput.blur();
+      }
+
+      return { card, membershipId };
+    } catch (err) {
+      throw new Error(
+        `[SearchPage.selectFirstAmtrakLoyaltyCard] Could not select a loyalty card in the Amtrak ` +
+        `"Travelers details" section (${SELECTORS.AMTRAK_LOYALTY_SELECT_TRIGGER}). The section only ` +
+        `renders once the trip has at least one passenger. Original: ${err.message}`
       );
     }
   }

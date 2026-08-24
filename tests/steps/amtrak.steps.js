@@ -1,6 +1,7 @@
 require("module-alias/register");
 
 const { When, Then, setDefaultTimeout } = require("@cucumber/cucumber");
+const { expect } = require("@playwright/test");
 const { AmtrakSearch, Cart } = require("../../src/dsl");
 const logger = require("@utils/logger").child("AmtrakSearch");
 
@@ -18,30 +19,58 @@ When("I search for a round trip Amtrak train from {string}", async function (rou
   await AmtrakSearch.searchAmtrakRoundTrip(this.page, routeKey);
 });
 
+// Fills the round-trip form but leaves it on screen, so the scenario can go on validating the
+// search inputs (time pickers, traveller count, promo code) before submitting.
+When("I search for a round trip Amtrak train from {string} without clicking search button", async function (routeKey) {
+  logger.info("Filling round trip Amtrak search without clicking search", { routeKey });
+  await AmtrakSearch.searchAmtrakRoundTrip(this.page, routeKey, { clickSearch: false });
+});
+
+// ===== AMTRAK SEARCH FORM VALIDATIONS (test 60539) =====
+
+When("I validate the departure time selector in Amtrak search by changing the hour", async function () {
+  logger.info("Setting the Amtrak departure time to 01:00");
+  const { time } = await AmtrakSearch.setDepartureTime(this.page, "01", "00");
+  // Asserts the full HH:MM, not just the hour: the page object's own commit check only guards the
+  // hour, so a minute that silently failed to select would otherwise go unnoticed.
+  expect(time, `Departure time input should read 01:00, got "${time}"`).toContain("01:00");
+});
+
+When("I validate the return time selector in Amtrak search by changing the hour", async function () {
+  logger.info("Setting the Amtrak return time to 02:00");
+  const { time } = await AmtrakSearch.setReturnTime(this.page, "02", "00");
+  expect(time, `Return time input should read 02:00, got "${time}"`).toContain("02:00");
+});
+
+When("I add a second traveler through the Amtrak search form", async function () {
+  logger.info("Raising the Amtrak traveller count to 2");
+  const { emptySlotVisible } = await AmtrakSearch.setTravelersCount(this.page, 2);
+  expect(emptySlotVisible, "An empty traveler slot should appear after selecting 2 travellers").toBe(true);
+});
+
+When("I type {string} in promo code field", async function (code) {
+  logger.info("Entering an Amtrak promo code", { code });
+  await AmtrakSearch.enterPromoCode(this.page, code);
+});
+
+Then("the promo code minimum length validation {string} should be displayed", async function (expectedMessage) {
+  logger.info("Verifying the Amtrak promo code length validation", { expectedMessage });
+  const { message } = await AmtrakSearch.getPromoCodeValidationMessage(this.page);
+  expect(message, `Promo code validation should read "${expectedMessage}"`).toBe(expectedMessage);
+});
+
+// "Travelers details" is the loyalty-card section the Amtrak form renders once the trip has
+// passengers; expanding it means opening a traveller's loyalty dropdown and picking a card.
+When("I expand the traveler detail section in Amtrak search", async function () {
+  logger.info("Selecting a loyalty card in the Amtrak Travelers details section");
+  const { card } = await AmtrakSearch.selectTravelerLoyaltyCard(this.page);
+  expect(card, "A loyalty card should have been selected").toBeTruthy();
+});
+
 // ===== TODO STUBS — converted from Testim (need DSL/Page implementation) =====
 
 When("I fill in Amtrak contact information and proceed to checkout", async function () {
   throw new Error("TODO: Implement filling contact info (phone country '1', area '310', number '3338888'), save, accept T&C, and proceed to checkout. See AmtrakSearch DSL / CartPage.");
-});
-
-When("I validate the departure time selector in Amtrak search", async function () {
-  throw new Error("TODO: Implement opening From time picker and selecting hour=01, minute=00 in Amtrak search form.");
-});
-
-When("I validate the return time selector in Amtrak search", async function () {
-  throw new Error("TODO: Implement opening To time picker and selecting hour=02, minute=00 in Amtrak search form.");
-});
-
-When("I add a second traveler through the Amtrak search form", async function () {
-  throw new Error("TODO: Implement clicking add-traveler icon in Amtrak search and selecting from dropdown.");
-});
-
-When("I expand the traveler detail section in Amtrak search", async function () {
-  throw new Error("TODO: Implement clicking the traveler detail edit icon and option in Amtrak search form.");
-});
-
-When("I enter a valid Amtrak promo code", async function () {
-  throw new Error("TODO: Implement entering a valid 4-character promo code ('1234') into the promo code field.");
 });
 
 When("I expand the Amtrak extras section in cart", async function () {
@@ -60,10 +89,6 @@ Then("the fare rules should be accessible in the trip overview after booking", a
 
 Then("the copy trip should indicate the Amtrak booking cannot be copied", async function () {
   throw new Error("TODO: Implement hovering expand dropdown, clicking Copy Trip, verifying 'This item can not be copied' badge, closing dialog. See Not_eligible_for_copy_trip() in Testim source.");
-});
-
-Then("the promo code minimum length validation should be displayed", async function () {
-  throw new Error("TODO: Implement entering '123' in promo code field and verifying 'Promo Code must be 4 characters' error.");
 });
 
 Then("the Amtrak search results should be displayed", async function () {

@@ -277,15 +277,20 @@ const Search = {
    * decides which content the guest is entitled to see, so entitlement tests must set it --
    * a guest with no user group inherits the booker's own (fully entitled) content instead.
    *
-   * Note there is no primary-traveler checkbox to handle here: filling the only empty slot
-   * makes the guest the trip's primary traveler by construction.
+   * Note there is no primary-traveler checkbox to handle here: filling the ONLY empty slot makes
+   * the guest the trip's primary traveler by construction. That does not hold when the slot was
+   * opened by raising a search form's traveller count -- the booker still holds the primary slot --
+   * so callers in that shape must read `isPrimary` rather than assume it.
    *
    * @param {Object} page - Playwright page instance
    * @param {string} [label='Select traveller'] - The placeholder's visible label.
    * @param {string|null} [userGroupName=null] - User group to copy settings from, e.g. "evolvi".
+   * @param {Object} [nameOverrides={}] - Fixes the guest's name; anything omitted stays random.
+   * @param {string} [nameOverrides.firstName]
+   * @param {string} [nameOverrides.lastName]
    * @returns {Promise<Object>} added / starIconVisible / isPrimary / selectedTravelerCount / guestData
    */
-  async addRandomGuestViaSelectTravelerSlot(page, label = 'Select traveller', userGroupName = null) {
+  async addRandomGuestViaSelectTravelerSlot(page, label = 'Select traveller', userGroupName = null, nameOverrides = {}) {
     if (!page) {
       throw new Error('page is required');
     }
@@ -299,7 +304,10 @@ const Search = {
     logger.debug(`[Search.addRandomGuestViaSelectTravelerSlot] Adding guest via the "${label}" slot`, { userGroupName });
 
     const searchPage = getPageObject(page, SearchPage);
-    const { firstName, lastName, dateOfBirth, email, phone } = generateRandomGuestData();
+    const random = generateRandomGuestData();
+    const firstName = nameOverrides.firstName || random.firstName;
+    const lastName = nameOverrides.lastName || random.lastName;
+    const { dateOfBirth, email, phone } = random;
 
     try {
       await searchPage.clickSelectTravelerSlot(label);
