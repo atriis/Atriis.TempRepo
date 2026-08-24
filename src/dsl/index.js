@@ -17,6 +17,7 @@ module.exports = {
   Cart: require("./Cart"),
   CartPayment: require("./CartPayment"),
   Checkout: require("./Checkout"),
+  DbRail: require("./DbRail"),
   DynamicAndReferenceFields: require("./DynamicAndReferenceFields"),
   EvolviResults: require("./EvolviResults"),
   EvolviSearch: require("./EvolviSearch"),
