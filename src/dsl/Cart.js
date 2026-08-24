@@ -10904,6 +10904,36 @@ const Cart = {
   },
 
   /**
+   * Verifies the Amtrak quote line in the trip-overview sidebar shows both its destination title
+   * and the train product icon. Both halves are read from the same quote line, so a pass means the
+   * icon belongs to the quote whose title was matched.
+   * @param {import('playwright').Page} page
+   * @param {string} expectedTitle - Full expected title, e.g. "Amtrak Rail to Boston, MA - South Station (BOS)"
+   */
+  async verifyAmtrakDestinationTitleAndIconInTripOverview(page, expectedTitle) {
+    if (!page) throw new Error('page is required');
+    if (typeof expectedTitle !== 'string') {
+      throw new Error('expectedTitle must be a string, got: ' + typeof expectedTitle);
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+
+    const titleText = await cartPage.getAmtrakQuoteSummaryTitleText();
+    expect(
+      titleText,
+      `Expected the Amtrak quote title in the trip overview to read "${expectedTitle}", got "${titleText}"`,
+    ).toBe(expectedTitle);
+
+    const iconVisible = await cartPage.isAmtrakTrainIconVisibleInTripOverview();
+    expect(
+      iconVisible,
+      'Expected the train icon to be displayed next to the Amtrak quote title in the trip overview',
+    ).toBe(true);
+
+    logger.info('Amtrak destination title and train icon are displayed in the trip overview', { titleText });
+  },
+
+  /**
    * Verifies the Amtrak Contact Information extras row is rendered as mandatory — the heading reads
    * "Contact Information" and carries the red asterisk amtrak-contact-information.vue prefixes it
    * with. Expands the outer extras accordion first, since the row is only reachable inside it.

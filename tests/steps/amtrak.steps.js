@@ -125,10 +125,6 @@ Then("the mandatory information validation error should be displayed", async fun
   throw new Error("TODO: Implement verifying '.form-payment-err' shows '*In order to proceed, please add all required information'.");
 });
 
-Then("the Amtrak destination title and train icon should be displayed in the trip overview", async function () {
-  throw new Error("TODO: Implement verifying train icon '.el-tabs .icon-img' is visible and span contains 'Amtrak Rail to Boston , Massachusetts (BOS)'. See Destinatio_title_is_displayed_in_trip_overview() in Testim source.");
-});
-
 Then("the Amtrak GetTrip API should return clean data for trip {int} and agency {int}", async function (tripId, agencyId) {
   throw new Error(`TODO: Implement API test calling GetTrip for TripId=${tripId}, AgencyId=${agencyId} and asserting no missing fields.`);
 });

@@ -3221,6 +3221,15 @@ Then("the hotel icon should be visible in the quote summary", async function () 
   await Cart.verifyHotelIconVisibleInQuoteSummary(this.page);
 });
 
+// The destination is spelled out in the feature rather than derived from the search route: the app
+// prints the supplier's own station name, and it is only the FINAL stop on a direct journey — on a
+// connecting one (e.g. WAS→PHL→BOS) the trip overview titles the quote after the connection city.
+// So the route the scenario searches has to stay one whose first result runs direct.
+Then("the Amtrak destination title {string} and train icon should be displayed in the trip overview", async function (expectedTitle) {
+  logger.info("Verifying the Amtrak destination title and train icon in the trip overview", { expectedTitle });
+  await Cart.verifyAmtrakDestinationTitleAndIconInTripOverview(this.page, expectedTitle);
+});
+
 // ========================================
 // PASSENGER INITIALS
 // ========================================

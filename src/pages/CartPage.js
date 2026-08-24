@@ -1353,6 +1353,18 @@ const SELECTORS = {
   AMTRAK_CONTACT_INFO_ERROR_BORDER: '.amtrak-contact-information .error-border',
   AMTRAK_CONTACT_INFO_TITLE_TEXT: 'Contact Information',
 
+  // The Amtrak quote's line in the cart trip-summary sidebar (amtrak-quote-summary.vue, mounted by
+  // general-quote-summary.vue). Anchored on its own product icon rather than a position, so it
+  // still resolves in a cart holding other products — app-product-icon.vue stamps the product name
+  // onto `.icon-img` itself ([product] binding).
+  // This sidebar — NOT the quote card header — is what test 67751 checks: amtrak-quote-summary.ts
+  // builds its title from `quote.destination` (the journey's final stop), while the card header's
+  // title comes from utilService.getAmtrakProductTitle → `journeySegments[0].arrivalStationFullName`,
+  // which on a connecting WAS→BOS train reads "Philadelphia", not "Boston".
+  AMTRAK_QUOTE_SUMMARY_ITEM: '.quote-summary-list .quote-item:has(.icon-img.amtrak)',
+  AMTRAK_QUOTE_SUMMARY_TRAIN_ICON: '.quote-summary-list .quote-item .icon-img.amtrak',
+  AMTRAK_QUOTE_SUMMARY_TITLE: '.quote-summary-list .quote-item:has(.icon-img.amtrak) .summary-title',
+
   // Extras sections visibility (generic — used to verify which sections are rendered)
   EXTRAS_SECTION_CARD_TITLE: '.extras-collapse-container .card-title',
   EXTRAS_SECTION_ITEM: '.extras-collapse-container .extras-layout',
@@ -4865,6 +4877,32 @@ class CartPage {
   async isAmtrakContactInfoMarkedAsRequired(timeout = 15000) {
     const asterisk = this.page.locator(SELECTORS.AMTRAK_CONTACT_INFO_REQUIRED_ASTERISK).first();
     return asterisk.isVisible({ timeout }).catch(() => false);
+  }
+
+  /**
+   * Checks whether the train icon is visible on the Amtrak line of the trip-summary sidebar.
+   * @param {number} timeout
+   * @returns {Promise<boolean>}
+   */
+  async isAmtrakTrainIconVisibleInTripOverview(timeout = 15000) {
+    const icon = this.page.locator(SELECTORS.AMTRAK_QUOTE_SUMMARY_TRAIN_ICON).first();
+    try {
+      await icon.waitFor({ state: 'visible', timeout });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Reads the Amtrak destination title from the trip-summary sidebar, with whitespace collapsed.
+   * @param {number} timeout
+   * @returns {Promise<string>}
+   */
+  async getAmtrakQuoteSummaryTitleText(timeout = 15000) {
+    const title = this.page.locator(SELECTORS.AMTRAK_QUOTE_SUMMARY_TITLE).first();
+    await title.waitFor({ state: 'visible', timeout });
+    return (await title.innerText()).replace(/\s+/g, ' ').trim();
   }
 
   /**
