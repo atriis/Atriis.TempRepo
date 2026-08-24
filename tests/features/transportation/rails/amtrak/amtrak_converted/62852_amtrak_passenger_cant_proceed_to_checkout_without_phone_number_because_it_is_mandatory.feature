@@ -5,7 +5,7 @@
 # Owner: Bruna Santos
 # Created: 2025-05-30T03:17:39Z
 # Updated: 2025-12-23T04:01:02Z
-@wip @transportation @rails @amtrak @regression
+@transportation @rails @amtrak @regression
 Feature: 62852 Amtrak - Mandatory phone number prevents checkout
   As a corporate traveler
   I want to be prevented from proceeding to checkout when my phone number is missing
