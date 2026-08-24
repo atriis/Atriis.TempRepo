@@ -743,6 +743,30 @@ const SELECTORS = {
   // Leading Traveller telephone (`common.telephone`, el-input type="number"). It is the only
   // number input in the panel — every other field is an app-select or a plain text el-input.
   UK_RAIL_SEATS_TELEPHONE_INPUT: '.uk-rail-seats:visible .extras-card input[type="number"]',
+  // The chosen option's label of one Specific Seat app-select. Element Plus prints it in
+  // `.el-select__placeholder` whether or not the field has ever been touched, so this is how the
+  // supplier's DEFAULT value (Seat = "Any", Coach = "A") is read without clicking the dropdown
+  // open — clicking it would commit a different option.
+  UK_RAIL_SEATS_FIELD_SELECT_VALUE: (label) =>
+    `.uk-rail-seats:visible .extras-card .app-column:has(label.label:text-is("${label}")) .el-select .el-select__placeholder`,
+  // The first labelled dropdown of whichever per-seat-type form the panel is rendering. Each seat
+  // TYPE renders its own field set (Seat -> Direction/Location/Position, Specific Seat ->
+  // Coach/Seat/Direction), so the field the default value can be read from depends on the checked
+  // radio — this is the type-agnostic read the Testim recording used for "seat option = Any".
+  UK_RAIL_SEATS_PREFERENCE_COLUMN:
+    '.uk-rail-seats:visible .extras-card .segment-container .app-column:has(.el-select)',
+  // One per journey leg. Holds the supplier-built seat string (`seat.seatDetail`, rendered with
+  // `v-html`) that names the seat and coach actually reserved — same shape as the More details
+  // drawer's `seatsString`, so it has no element or class of its own and has to be read as text.
+  UK_RAIL_SEATS_SEGMENT: '.uk-rail-seats:visible .extras-card .segment-container',
+  // Save, scoped to this panel. Mirrors RAIL_SEATING_SAVE_BUTTON above: app-btn renders
+  // `type="primary" class="no-border"` for it, and the panel's other button is Cancel.
+  // Scoping matters here — several extras panels can be expanded at once, and the generic
+  // `clickSaveButton()` would pick whichever Save it finds first.
+  UK_RAIL_SEATS_SAVE_BUTTON: '.uk-rail-seats:visible .extras-card .btns .no-border',
+  // uk-rail-seats.ts sets `errorMsg` from a rejected saveSeats response and re-renders it here
+  // instead of closing the panel — the only place a refused save states its reason.
+  UK_RAIL_SEATS_ERROR_MSG: '.uk-rail-seats:visible .extras-card .error-msg',
 
   // Timed quote badge — appears on quotes with a limited time window
   // (flight-timed-quote.vue / app-timed-quote.vue both render `.timed-quote-badge`)
@@ -9995,6 +10019,192 @@ class CartPage {
     }
 
     return (await drawer.innerText()).replace(/\s+/g, ' ').trim();
+  }
+
+  /**
+   * Reads the label of the currently selected seat-type radio in the UK Rail seat panel.
+   *
+   * Element Plus marks the chosen radio with `is-checked` on the `.el-radio` root, so the selected
+   * type is read off the class rather than an input value. Returns null when nothing is checked,
+   * which is a real state while the panel is still initialising `selectedSeatTypeByLeg`.
+   *
+   * @returns {Promise<string|null>} The checked radio's label, whitespace collapsed
+   */
+  async getSelectedUkRailSeatOptionLabel() {
+    const radios = this.page.locator(SELECTORS.UK_RAIL_SEATS_TYPE_RADIO);
+    const count = await radios.count();
+
+    for (let index = 0; index < count; index += 1) {
+      const radio = radios.nth(index);
+      const classes = (await radio.getAttribute('class')) || '';
+      if (classes.includes('is-checked')) {
+        return (await radio.innerText()).replace(/\s+/g, ' ').trim();
+      }
+    }
+
+    return null;
+  }
+
+  /**
+   * Reads one Specific Seat app-select's currently chosen option label WITHOUT opening it.
+   *
+   * Deliberately not selectFirstUkRailSeatFieldOption: that one commits a value. This is the read
+   * side — what the supplier offered by default (Seat "Any", Coach "A") and what a previous save
+   * restored.
+   *
+   * @param {string} fieldLabel - The field's rendered label, e.g. "Seat" or "Coach"
+   * @param {number} [timeout=15000]
+   * @returns {Promise<string>} The chosen option's label, whitespace collapsed
+   */
+  async getUkRailSeatFieldValue(fieldLabel, timeout = 15000) {
+    const value = this.page.locator(SELECTORS.UK_RAIL_SEATS_FIELD_SELECT_VALUE(fieldLabel)).first();
+
+    try {
+      await value.waitFor({ state: 'visible', timeout });
+    } catch (error) {
+      throw new Error(
+        `[CartPage.getUkRailSeatFieldValue] The "${fieldLabel}" dropdown's selected value is not ` +
+        `visible in the UK Rail seat panel within ${timeout}ms. The Coach/Seat/Direction fields only ` +
+        `render while the Specific Seat radio is the selected seat type, so that radio was probably ` +
+        `never clicked. Original: ${error.message}`,
+      );
+    }
+
+    return (await value.innerText()).replace(/\s+/g, ' ').trim();
+  }
+
+  /**
+   * Reads the first labelled dropdown of whichever per-seat-type form the open panel is rendering,
+   * WITHOUT opening it.
+   *
+   * The panel renders a different field set per checked seat-type radio (Seat ->
+   * Direction/Location/Position, Specific Seat -> Coach/Seat/Direction), so on a fresh open —
+   * where uk-rail-seats.ts always checks the plain "Seat" type (initSeatsToSelect) — there is no
+   * "Seat"-labelled dropdown at all. The supplier's default preference ("Any") is therefore read
+   * off the first field that IS rendered, which is the exact element the Testim recording of test
+   * 54559 asserted.
+   *
+   * @param {number} [timeout=15000]
+   * @returns {Promise<{label: string, value: string}>} The field's label and chosen option
+   */
+  async getUkRailFirstSeatPreferenceField(timeout = 15000) {
+    const column = this.page.locator(SELECTORS.UK_RAIL_SEATS_PREFERENCE_COLUMN).first();
+
+    try {
+      await column.waitFor({ state: 'visible', timeout });
+    } catch (error) {
+      throw new Error(
+        `[CartPage.getUkRailFirstSeatPreferenceField] No seat-preference dropdown is rendered in ` +
+        `the UK Rail seat panel within ${timeout}ms (selector: ` +
+        `${SELECTORS.UK_RAIL_SEATS_PREFERENCE_COLUMN}). Every seat type except "No Seat" renders ` +
+        `at least one, so the panel is probably not open. Original: ${error.message}`,
+      );
+    }
+
+    const label = (await column.locator('label.label').innerText()).replace(/\s+/g, ' ').trim();
+    const value = (
+      await column.locator('.el-select .el-select__placeholder').first().innerText()
+    ).replace(/\s+/g, ' ').trim();
+
+    return { label, value };
+  }
+
+  /**
+   * Reads every journey leg of the open UK Rail seat panel as one whitespace-collapsed string.
+   *
+   * The reserved seat and coach arrive inside the supplier-built `seat.seatDetail`, which the
+   * template renders with `v-html` — no element, class or testid of its own — so the only way to
+   * assert on it is to read the leg's text and match. Same constraint as
+   * getUkRailMoreDetailsText above.
+   *
+   * @param {number} [timeout=15000]
+   * @returns {Promise<string>}
+   */
+  async getUkRailSeatsSegmentText(timeout = 15000) {
+    const segments = this.page.locator(SELECTORS.UK_RAIL_SEATS_SEGMENT);
+
+    try {
+      await segments.first().waitFor({ state: 'visible', timeout });
+    } catch (error) {
+      throw new Error(
+        `[CartPage.getUkRailSeatsSegmentText] No journey leg is rendered in the UK Rail seat panel ` +
+        `within ${timeout}ms, so the reserved seat details cannot be read. Expected ` +
+        `"I open the UK Rail seat reservation in the cart extras" to have opened it first. ` +
+        `Original: ${error.message}`,
+      );
+    }
+
+    const texts = await segments.allInnerTexts();
+    return texts.join(' ').replace(/\s+/g, ' ').trim();
+  }
+
+  /**
+   * Clicks the UK Rail seat panel's own Save button.
+   * @param {number} [timeout=15000]
+   * @returns {Promise<void>}
+   */
+  async clickUkRailSeatsSaveButton(timeout = 15000) {
+    const saveButton = this.page.locator(SELECTORS.UK_RAIL_SEATS_SAVE_BUTTON).first();
+
+    try {
+      await saveButton.waitFor({ state: 'visible', timeout });
+    } catch (error) {
+      throw new Error(
+        `[CartPage.clickUkRailSeatsSaveButton] The UK Rail seat panel's Save button is not visible ` +
+        `within ${timeout}ms (selector: ${SELECTORS.UK_RAIL_SEATS_SAVE_BUTTON}) — the panel is ` +
+        `closed. Original: ${error.message}`,
+      );
+    }
+
+    await saveButton.scrollIntoViewIfNeeded();
+    await saveButton.click();
+  }
+
+  /**
+   * Reads the error the panel renders when saveSeats was refused, or null when there is none.
+   * `errorMsg` is set with v-html, so the text is read rather than matched on an attribute.
+   * @returns {Promise<string|null>}
+   */
+  async getUkRailSeatsErrorText() {
+    const error = this.page.locator(SELECTORS.UK_RAIL_SEATS_ERROR_MSG).first();
+
+    if (!(await error.isVisible().catch(() => false))) {
+      return null;
+    }
+
+    return (await error.innerText()).replace(/\s+/g, ' ').trim();
+  }
+
+  /**
+   * Arms a wait for the seat-map reload (`GET /EvolviSeats?quoteId=...`) that uk-rail-seats.ts
+   * fires right after a successful save (changeValue -> close() + loadData()). Arm it BEFORE
+   * clicking Save. The panel renders a deep-cloned snapshot of the store on every open, so a
+   * reopen that races this reload shows the PRE-save seatDetail — with no reservation in it —
+   * and never re-renders. The Testim recording of test 54559 papered over the same race with a
+   * hard 5s sleep between save and reopen.
+   *
+   * @param {number} [timeout=45000]
+   * @returns {Promise<import('playwright').Response>}
+   */
+  armUkRailSeatsReloadWait(timeout = EVOLVI_EXTRAS_SAVE_TIMEOUT_MS) {
+    return this.page.waitForResponse(
+      (response) =>
+        response.url().includes(UK_RAIL_SEATS_API_PATH) && response.request().method() === 'GET',
+      { timeout },
+    );
+  }
+
+  /**
+   * Waits for the UK Rail seat panel to collapse. uk-rail-seats.ts calls close() only on a
+   * successful saveSeats, so the panel disappearing IS the proof the reservation persisted.
+   * @param {number} [timeout=45000]
+   * @returns {Promise<void>}
+   */
+  async waitForUkRailSeatsExtrasCardClosed(timeout = 45000) {
+    await this.page
+      .locator(SELECTORS.UK_RAIL_SEATS_EXTRAS_CARD)
+      .first()
+      .waitFor({ state: 'hidden', timeout });
   }
 
   /**

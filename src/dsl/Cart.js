@@ -16,7 +16,7 @@ const BookingErrorHandler = require("@utils/bookingErrorHandler");
 const { selectDateOfBirthWithYearArrows } = require("@utils/calendar.helper");
 const { expectNumbersToBeEqualWithTolerance } = require("../assertions/numberAssertions");
 const { parseAmountText } = require("@utils/dom");
-const { normalizeText, extractDateTokens } = require("@utils/text");
+const { normalizeText, extractDateTokens, escapeRegex } = require("@utils/text");
 const logger = require("@utils/logger").child("Cart-DSL");
 
 // Journey legs of a round-trip rail quote, in the order eu-rail-seats.vue renders them: the API
@@ -4123,6 +4123,276 @@ const Cart = {
 
     logger.info('UK Rail seat reservation telephone filled', { phoneNumber });
     return { phoneNumber };
+  },
+
+  /**
+   * Asserts one value in the open UK Rail seat panel, routing to the control the value belongs to.
+   *
+   * The feature asserts two different things through the single phrase "the UK Rail seat option
+   * should be X", so the control is chosen from the seat-TYPE labels the panel is actually
+   * rendering rather than guessed:
+   *   - X is one of those labels (e.g. "Specific Seat") -> the `is-checked` el-radio is compared.
+   *     On a reopened panel that is the only proof the previous save's seat type came back, since
+   *     uk-rail-seats.ts rebuilds `selectedSeatTypeByLeg` from the reloaded seat-map response on
+   *     every open (initSeatsToSelect).
+   *   - X is anything else (e.g. "Any") -> the first dropdown of whichever per-type form the
+   *     panel is rendering is compared. On a fresh open initSeatsToSelect always checks the plain
+   *     "Seat" type, whose form has no "Seat"-labelled field (Direction/Location/Position only),
+   *     so the default preference has to be read type-agnostically — the Testim recording of test
+   *     54559 asserted exactly this first field.
+   * Routing this way keeps each call landing on exactly one control, so nothing passes because some
+   * unrelated part of the panel happened to contain the string.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} expectedValue - e.g. "Specific Seat" (a seat type) or "Any" (a preference)
+   * @returns {Promise<{source: string, actual: string}>}
+   */
+  async verifyUkRailSeatOption(page, expectedValue) {
+    if (!page) throw new Error('[Cart.verifyUkRailSeatOption] "page" is required.');
+    if (!expectedValue || typeof expectedValue !== 'string') {
+      throw new Error(
+        `[Cart.verifyUkRailSeatOption] "expectedValue" must be a non-empty string, got: ${JSON.stringify(expectedValue)}`,
+      );
+    }
+
+    logger.debug('Reading the UK Rail seat option', { expectedValue });
+    const cartPage = getPageObject(page, CartPage);
+    const offeredTypes = await cartPage.getUkRailSeatOptionLabels();
+
+    if (offeredTypes.includes(expectedValue)) {
+      const actual = await cartPage.getSelectedUkRailSeatOptionLabel();
+
+      if (actual !== expectedValue) {
+        throw new Error(
+          `[Cart.verifyUkRailSeatOption] Expected the UK Rail seat panel's selected seat type to be ` +
+          `"${expectedValue}", but it is ${actual === null ? 'nothing' : `"${actual}"`}. ` +
+          `Offered: ${offeredTypes.map((label) => `"${label}"`).join(', ')}. uk-rail-seats.ts rebuilds ` +
+          `the radio selection from the reloaded seat-map response on every open (initSeatsToSelect), ` +
+          `so a reservation whose seat type did not come back means the saved selection was not ` +
+          `restored.`,
+        );
+      }
+
+      logger.info('UK Rail seat type verified', { actual });
+      return { source: 'seat-type-radio', actual };
+    }
+
+    const { label, value: actual } = await cartPage.getUkRailFirstSeatPreferenceField();
+
+    if (actual !== expectedValue) {
+      throw new Error(
+        `[Cart.verifyUkRailSeatOption] Expected the UK Rail seat form's first preference dropdown ` +
+        `("${label}") to read "${expectedValue}", but it reads "${actual}". "${expectedValue}" is not ` +
+        `one of the seat types the panel offers ` +
+        `(${offeredTypes.map((typeLabel) => `"${typeLabel}"`).join(', ')}), so it was read as a ` +
+        `preference value. Those options come from the seat-map response's dropdowns, so a different ` +
+        `value means either the supplier offered a different default or a previous save committed a ` +
+        `preference.`,
+      );
+    }
+
+    logger.info('UK Rail seat preference verified', { label, actual });
+    return { source: `preference-dropdown:${label}`, actual };
+  },
+
+  /**
+   * Reads the seat number currently offered in the open Specific Seat form so a later step can
+   * compare it with the seat the panel reports as reserved.
+   *
+   * @param {import('playwright').Page} page
+   * @returns {Promise<{seat: string}>}
+   */
+  async extractUkRailOfferedSeatNumber(page) {
+    if (!page) throw new Error('[Cart.extractUkRailOfferedSeatNumber] "page" is required.');
+
+    const cartPage = getPageObject(page, CartPage);
+    const seat = await cartPage.getUkRailSeatFieldValue('Seat');
+
+    logger.info('Read the offered UK Rail seat number', { seat });
+    return { seat };
+  },
+
+  /**
+   * Reads the coach currently offered in the open Specific Seat form.
+   *
+   * Only ever compared against what the panel itself reports as reserved — what the app SENDS is
+   * asserted from the save request instead, because coachOptions labels every option with the coach
+   * letter regardless of the value it binds (test 62143).
+   *
+   * @param {import('playwright').Page} page
+   * @returns {Promise<{coach: string}>}
+   */
+  async extractUkRailOfferedCoach(page) {
+    if (!page) throw new Error('[Cart.extractUkRailOfferedCoach] "page" is required.');
+
+    const cartPage = getPageObject(page, CartPage);
+    const coach = await cartPage.getUkRailSeatFieldValue('Coach');
+
+    logger.info('Read the offered UK Rail coach', { coach });
+    return { coach };
+  },
+
+  /**
+   * Asserts the open UK Rail seat panel's per-leg seat summary contains a given text.
+   *
+   * That summary is the supplier-built `seat.seatDetail` string, rendered with `v-html` — it has no
+   * element of its own, so the leg's text is read and matched. This is also why the label being
+   * looked for ("Reserved Seat:") cannot be found by grepping the Vue templates.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} expectedText - e.g. "Reserved Seat:"
+   * @returns {Promise<{summaryText: string}>}
+   */
+  async verifyUkRailSeatSummaryContainsText(page, expectedText) {
+    if (!page) throw new Error('[Cart.verifyUkRailSeatSummaryContainsText] "page" is required.');
+    if (!expectedText || typeof expectedText !== 'string') {
+      throw new Error(
+        `[Cart.verifyUkRailSeatSummaryContainsText] "expectedText" must be a non-empty string, got: ` +
+        `${JSON.stringify(expectedText)}`,
+      );
+    }
+
+    logger.debug('Reading the UK Rail seat panel summary', { expectedText });
+    const cartPage = getPageObject(page, CartPage);
+    const summaryText = await cartPage.getUkRailSeatsSegmentText();
+
+    if (!summaryText.includes(expectedText)) {
+      throw new Error(
+        `[Cart.verifyUkRailSeatSummaryContainsText] Expected the UK Rail seat panel's seat summary to ` +
+        `contain "${expectedText}", but it reads "${summaryText}". The summary is the supplier's own ` +
+        `seatDetail string from the seat-map response, so the label is missing when nothing is ` +
+        `reserved on this leg yet.`,
+      );
+    }
+
+    logger.info('UK Rail seat summary contains the expected text', { expectedText });
+    return { summaryText };
+  },
+
+  /**
+   * Asserts the seat the open panel reports as reserved is the one that was offered.
+   *
+   * The reserved seat lives in the same `v-html` seatDetail string, so it is pulled out by matching
+   * the seat number as a whole token — a bare `includes` would let seat "4" pass against a reserved
+   * "45".
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} expectedSeat - The seat number read earlier by extractUkRailOfferedSeatNumber
+   * @returns {Promise<{summaryText: string, expectedSeat: string}>}
+   */
+  async verifyUkRailSeatSummaryMatchesSeat(page, expectedSeat) {
+    if (!page) throw new Error('[Cart.verifyUkRailSeatSummaryMatchesSeat] "page" is required.');
+    if (!expectedSeat || typeof expectedSeat !== 'string') {
+      throw new Error(
+        `[Cart.verifyUkRailSeatSummaryMatchesSeat] "expectedSeat" must be a non-empty string, got: ` +
+        `${JSON.stringify(expectedSeat)}. It is stored by "I extract the offered seat number from the ` +
+        `UK Rail seat reservation", so that step has to run first in the same scenario.`,
+      );
+    }
+
+    logger.debug('Comparing the reserved UK Rail seat with the offered one', { expectedSeat });
+    const cartPage = getPageObject(page, CartPage);
+    const summaryText = await cartPage.getUkRailSeatsSegmentText();
+
+    const seatPattern = new RegExp(`Seat:?\\s*${escapeRegex(expectedSeat)}(?![\\w-])`, 'i');
+    if (!seatPattern.test(summaryText)) {
+      throw new Error(
+        `[Cart.verifyUkRailSeatSummaryMatchesSeat] The UK Rail seat panel does not report seat ` +
+        `"${expectedSeat}" as reserved. Its seat summary reads "${summaryText}". The offered seat ` +
+        `comes from the Seat dropdown and the reserved seat from the supplier's seatDetail string, so ` +
+        `a mismatch means the reservation held a different seat from the one the panel offered.`,
+      );
+    }
+
+    logger.info('The reserved UK Rail seat matches the offered seat', { expectedSeat });
+    return { summaryText, expectedSeat };
+  },
+
+  /**
+   * Asserts the coach the open panel reports as reserved is the one that was offered. Matched as a
+   * whole token for the same reason as the seat above.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} expectedCoach - The coach read earlier by extractUkRailOfferedCoach
+   * @returns {Promise<{summaryText: string, expectedCoach: string}>}
+   */
+  async verifyUkRailSeatSummaryMatchesCoach(page, expectedCoach) {
+    if (!page) throw new Error('[Cart.verifyUkRailSeatSummaryMatchesCoach] "page" is required.');
+    if (!expectedCoach || typeof expectedCoach !== 'string') {
+      throw new Error(
+        `[Cart.verifyUkRailSeatSummaryMatchesCoach] "expectedCoach" must be a non-empty string, got: ` +
+        `${JSON.stringify(expectedCoach)}. It is stored by "I extract the offered coach from the UK ` +
+        `Rail seat reservation", so that step has to run first in the same scenario.`,
+      );
+    }
+
+    logger.debug('Comparing the reserved UK Rail coach with the offered one', { expectedCoach });
+    const cartPage = getPageObject(page, CartPage);
+    const summaryText = await cartPage.getUkRailSeatsSegmentText();
+
+    const coachPattern = new RegExp(`Coach:?\\s*${escapeRegex(expectedCoach)}(?![\\w-])`, 'i');
+    if (!coachPattern.test(summaryText)) {
+      throw new Error(
+        `[Cart.verifyUkRailSeatSummaryMatchesCoach] The UK Rail seat panel does not report coach ` +
+        `"${expectedCoach}" as reserved. Its seat summary reads "${summaryText}". Note the coach the ` +
+        `panel OFFERS is a preference — the supplier can allocate a different one, which is what the ` +
+        `booked quote's More details drawer shows (test 62143).`,
+      );
+    }
+
+    logger.info('The reserved UK Rail coach matches the offered coach', { expectedCoach });
+    return { summaryText, expectedCoach };
+  },
+
+  /**
+   * Saves the open UK Rail seat reservation and proves it persisted.
+   *
+   * uk-rail-seats.ts closes the panel ONLY on a successful saveSeats and otherwise leaves it open
+   * with `errorMsg` rendered (or, when vuelidate rejects the Leading Traveller, with nothing but
+   * `markFields` set). So the panel collapsing is the assertion: a save that was refused would
+   * otherwise sail through here and fail much later at the booked quote's seat details.
+   *
+   * @param {import('playwright').Page} page
+   * @returns {Promise<{saved: true}>}
+   */
+  async saveUkRailSeatReservation(page) {
+    if (!page) throw new Error('[Cart.saveUkRailSeatReservation] "page" is required.');
+
+    logger.debug('Saving the UK Rail seat reservation');
+    const cartPage = getPageObject(page, CartPage);
+    // Armed before the click: a successful save closes the panel and then re-fetches the seat map
+    // (changeValue -> close() + loadData()). The panel renders a snapshot of the store on every
+    // open, so returning before that reload lands would let the next open read the PRE-save
+    // seatDetail — one with no reservation in it.
+    const reloadWait = cartPage.armUkRailSeatsReloadWait().catch((error) => error);
+    await cartPage.clickUkRailSeatsSaveButton();
+
+    try {
+      await cartPage.waitForUkRailSeatsExtrasCardClosed();
+    } catch (error) {
+      const errorText = await cartPage.getUkRailSeatsErrorText();
+      await reloadWait;
+      throw new Error(
+        `[Cart.saveUkRailSeatReservation] The UK Rail seat panel is still open after clicking Save, so ` +
+        `the reservation was not saved. ` +
+        `${errorText ? `The panel reports: "${errorText}".` : 'The panel reports no error, which is how ' +
+          'uk-rail-seats.ts rejects an invalid Leading Traveller — changeValue() returns early and only ' +
+          'marks the fields.'} Original: ${error.message}`,
+      );
+    }
+
+    const reloadResult = await reloadWait;
+    if (reloadResult instanceof Error) {
+      throw new Error(
+        `[Cart.saveUkRailSeatReservation] The seat panel collapsed (the save persisted) but the ` +
+        `seat-map reload (GET /EvolviSeats) uk-rail-seats.ts fires after every successful save never ` +
+        `completed, so a reopened panel would still show the pre-save seat details. Original: ` +
+        `${reloadResult.message}`,
+      );
+    }
+
+    logger.info('UK Rail seat reservation saved, the panel collapsed and the seat map reloaded');
+    return { saved: true };
   },
 
   /**

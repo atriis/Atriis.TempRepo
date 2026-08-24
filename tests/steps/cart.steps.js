@@ -3714,6 +3714,79 @@ When("I select the {string} UK Rail seat option", async function (optionLabel) {
   await Cart.selectUkRailSeatOption(this.page, optionLabel);
 });
 
+// One phrase, two controls — deliberately, because the feature asserts both through it:
+// a seat TYPE ("Specific Seat", one of the el-radio labels) and the default seat PREFERENCE the
+// supplier is offering ("Any", the first dropdown of whichever per-type form the panel renders).
+// Which one is meant is decided from the seat-type labels the panel is actually rendering, so each
+// call still lands on exactly one control and says which in its failure message.
+Then("the UK Rail seat option should be {string}", async function (expectedValue) {
+  logger.info("Verifying the UK Rail seat option", { expectedValue });
+  const result = await Cart.verifyUkRailSeatOption(this.page, expectedValue);
+  logger.info("UK Rail seat option verified", result);
+});
+
+When("I extract the offered seat number from the UK Rail seat reservation", async function () {
+  const { seat } = await Cart.extractUkRailOfferedSeatNumber(this.page);
+  this.ukRailOfferedSeatNumber = seat;
+  logger.info("Stored the offered UK Rail seat number", { seat });
+});
+
+When("I extract the offered coach from the UK Rail seat reservation", async function () {
+  const { coach } = await Cart.extractUkRailOfferedCoach(this.page);
+  this.ukRailOfferedCoach = coach;
+  logger.info("Stored the offered UK Rail coach", { coach });
+});
+
+// "quote summary" here is the seat panel's own per-leg summary: the supplier-built seatDetail
+// string the panel renders with v-html. The label being looked for ("Reserved Seat:") is server
+// text, so it is not in any Vue template and cannot be found by grepping the app source.
+Then("the UK Rail quote summary should show {string}", async function (expectedText) {
+  logger.info("Verifying the UK Rail seat summary shows the expected label", { expectedText });
+  const result = await Cart.verifyUkRailSeatSummaryContainsText(this.page, expectedText);
+  logger.info("UK Rail seat summary shows the expected label", result);
+});
+
+Then("the seat number reserved seat in the UK Rail seating extra should match the extracted seat number", async function () {
+  if (!this.ukRailOfferedSeatNumber) {
+    throw new Error(
+      "[cart.steps] No offered UK Rail seat number is stored — 'I extract the offered seat number " +
+      "from the UK Rail seat reservation' stores it, so this assertion has to sit downstream of that " +
+      "step in the same scenario.",
+    );
+  }
+
+  logger.info("Comparing the reserved UK Rail seat with the offered one", {
+    expectedSeat: this.ukRailOfferedSeatNumber,
+  });
+  const result = await Cart.verifyUkRailSeatSummaryMatchesSeat(this.page, this.ukRailOfferedSeatNumber);
+  logger.info("The reserved UK Rail seat matches the offered seat", result);
+});
+
+Then("the UK Rail seating extra summary should show the extracted coach", async function () {
+  if (!this.ukRailOfferedCoach) {
+    throw new Error(
+      "[cart.steps] No offered UK Rail coach is stored — 'I extract the offered coach from the UK " +
+      "Rail seat reservation' stores it, so this assertion has to sit downstream of that step in the " +
+      "same scenario.",
+    );
+  }
+
+  logger.info("Comparing the reserved UK Rail coach with the offered one", {
+    expectedCoach: this.ukRailOfferedCoach,
+  });
+  const result = await Cart.verifyUkRailSeatSummaryMatchesCoach(this.page, this.ukRailOfferedCoach);
+  logger.info("The reserved UK Rail coach matches the offered coach", result);
+});
+
+// Scoped to this panel rather than the generic "I click the save button": scenarios that set the
+// seat reservation up by hand can have several extras panels expanded at once. Saving reserves the
+// seat with the supplier, so it gets the checkout-sized budget.
+When("I save the UK Rail seat reservation", { timeout: CHECKOUT_STEP_TIMEOUT_MS }, async function () {
+  logger.info("Saving the UK Rail seat reservation");
+  const result = await Cart.saveUkRailSeatReservation(this.page);
+  logger.info("UK Rail seat reservation saved", result);
+});
+
 When("I select the first available UK Rail coach", async function () {
   const result = await Cart.selectFirstUkRailSeatCoach(this.page);
   logger.info("UK Rail coach selected for the specific seat reservation", result);
