@@ -6456,6 +6456,42 @@ const Cart = {
   },
 
   /**
+   * Opens a rail Fare Rules dialog (results, cart, or trip overview — the button/dialog markup is
+   * shared across all three) and leaves it open. Use with closeRailFareRulesDialog when the scenario
+   * asserts something inside the dialog that verifyRailFareRulesDialogContainsText below does not
+   * cover, such as the Amtrak supplier terms link (test 60542).
+   *
+   * @param {import('playwright').Page} page
+   * @param {number} [index=0] - Zero-based index of the Fare Rules button
+   * @returns {Promise<{opened: boolean, index: number}>}
+   */
+  async openRailFareRulesDialog(page, index = 0) {
+    if (!page) throw new Error('[Cart.openRailFareRulesDialog] "page" is required.');
+    if (!Number.isInteger(index) || index < 0) {
+      throw new Error(`[Cart.openRailFareRulesDialog] "index" must be a non-negative integer, got: ${index}`);
+    }
+
+    logger.debug('[Cart.openRailFareRulesDialog] Opening the rail Fare Rules dialog', { index });
+
+    const cartPage = getPageObject(page, CartPage);
+    await cartPage.clickRailFareRulesButton(index);
+    return { opened: true, index };
+  },
+
+  /**
+   * Closes the open rail Fare Rules dialog and confirms it really left the screen.
+   * @param {import('playwright').Page} page
+   * @returns {Promise<{closed: boolean}>}
+   */
+  async closeRailFareRulesDialog(page) {
+    if (!page) throw new Error('[Cart.closeRailFareRulesDialog] "page" is required.');
+
+    const cartPage = getPageObject(page, CartPage);
+    await cartPage.closeRailFareRulesDialog();
+    return { closed: true };
+  },
+
+  /**
    * Opens a rail Fare Rules dialog (results, cart, or trip overview — the button/dialog markup
    * is shared across all three) and verifies its body contains the expected text, then closes it.
    * See test 29414.

@@ -16,14 +16,10 @@ Feature: 60544 Amtrak - Cart page share and validations
     And I have added myself as the traveler
     When I search for a round trip Amtrak train from "nypToWas"
     And I click proceed on the reference fields popup
-    # TODO: create step "And I expand the first Amtrak result details" in amtrak_results.steps.js
-    # covers: page.click(".amtrak-list > :nth-child(1) [hassabreresults='true']")
-    And I expand the first Amtrak result details
-    # TODO: create step "Then the available classes and fares should be displayed" in amtrak_results.steps.js
-    # covers: waitForText(".classes-card .mb-4", 'Available Classes And Fares')
+    And I click more details for the first Amtrak result
     Then the available classes and fares should be displayed
-    When I click more details for the first Amtrak result
-    When I add the first result to trip
+    When I select the first Amtrak result from the more details drawer
+    When I add an Amtrak one way to the trip
     # TODO: create step "Then the Amtrak trip timer badge should be visible in cart" in amtrak.steps.js
     # covers: isVisible(".app-columns .material-symbols-outlined") + hover on ".timed-quote-badge" — counter()
     Then the Amtrak trip timer badge should be visible in cart
