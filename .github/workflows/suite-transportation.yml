@@ -1,6 +1,6 @@
 name: Suite - Transportation
 
-# LAST in the chain (Cars + Rails). Started by the previous domain's
+# LAST in the chain (Cars + Rails + Parking). Started by the previous domain's
 # `chain-next` job (Shell dispatches this ~2 min after it finishes), and also
 # manually dispatchable on its own. Being last, it has no `chain-next` job — the
 # chain ends here.
@@ -60,10 +60,15 @@ jobs:
       # as a glob char-class. Parentheses in 37290/46290 are matched literally.
       # Re-verify with a --dry-run after ANY rename here: a glob that silently
       # matches nothing reports success with 0 scenarios.
+      #
+      # Parking joins as one suite of 5 scenarios. parking_converted/ was
+      # flattened into the parking/ root, which now holds no subfolder at all —
+      # so this one passes the FOLDER rather than globbing *.feature, with
+      # nothing to recurse into.
       expected-suites: >-
         cars-amadeus cars-galileo cars-general
         cars-sabre cars-sunny-cars rails-benerail rails-evolvi
-        rails-deutsche-bahn rails-distribusion
+        rails-deutsche-bahn rails-distribusion parking
       matrix: |
         {
           "include": [
@@ -75,6 +80,7 @@ jobs:
             { "suite_id": "rails-benerail",  "suite_name": "Rails Benerail",  "test_path": "tests/features/transportation/rails/benerail/*.feature",                                                  "parallel": 3, "retry": 3, "job_timeout_minutes": 180, "step_timeout_minutes": 175 },
             { "suite_id": "rails-evolvi",    "suite_name": "Rails Evolvi",    "test_path": "tests/features/transportation/rails/evolvi/*.feature",                                                    "parallel": 2, "retry": 3, "job_timeout_minutes": 180, "step_timeout_minutes": 175 },
             { "suite_id": "rails-deutsche-bahn", "suite_name": "Rails Deutsche Bahn", "test_path": "tests/features/transportation/rails/deutsche_bahn/*.feature",                                     "parallel": 2, "retry": 3, "job_timeout_minutes": 45,  "step_timeout_minutes": 40 },
-            { "suite_id": "rails-distribusion",  "suite_name": "Rails Distribusion",  "test_path": "tests/features/transportation/rails/distribusion/*.feature",                                      "parallel": 1, "retry": 3, "job_timeout_minutes": 45,  "step_timeout_minutes": 40 }
+            { "suite_id": "rails-distribusion",  "suite_name": "Rails Distribusion",  "test_path": "tests/features/transportation/rails/distribusion/*.feature",                                      "parallel": 1, "retry": 3, "job_timeout_minutes": 45,  "step_timeout_minutes": 40 },
+            { "suite_id": "parking",         "suite_name": "Parking",         "test_path": "tests/features/transportation/parking/",                                                                  "parallel": 2, "retry": 3, "job_timeout_minutes": 45,  "step_timeout_minutes": 40 }
           ]
         }
