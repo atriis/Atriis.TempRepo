@@ -1,16 +1,16 @@
-# Test Name: Amadeus NDC + Edifact - Both quotes confirmed when booking CPH-FRA round trip as separate tickets
+# Test Name: [#78464] Amadeus NDC + Edifact - Both quotes confirmed when booking a round trip as separate tickets
 # Status: Active
 # Labels: Amadeus,NDC,Edifact,separate tickets,complete trip,Flights,Regression,Full Purchase
 # Owner: Noam Miller
 # Created: 2026-06-02
 
 @regression @flights @amadeus @ndc @edifact @separate-tickets @full-purchase
-Feature: Amadeus NDC + Edifact - Both quotes confirmed for CPH-FRA separate ticket booking
+Feature: 78464 Amadeus NDC + Edifact - Both quotes confirmed for a separate ticket booking
   As a corporate traveler
-  I want to book a CPH-FRA round trip where one quote is NDC and the other is Edifact
+  I want to book a round trip where one quote is NDC and the other is Edifact
   So that both quotes are confirmed and displayed correctly after finalization
 
-  Scenario: Both NDC and Edifact quotes are confirmed for CPH-FRA separate ticket booking
+  Scenario: Both NDC and Edifact quotes are confirmed for a separate ticket booking
     Given I am logged in as "mix@NdcEdifact.ams" booking a new trip
     And I have added myself as the traveler
     When I search for a round trip flight from "CPH" to "FRA"
@@ -28,7 +28,7 @@ Feature: Amadeus NDC + Edifact - Both quotes confirmed for CPH-FRA separate tick
     Then "Flight to Frankfurt" should be displayed in the checkout page
     And "Flight to Copenhagen" should be displayed in the checkout page
     When I complete the booking
-    Then the booking status should be "Finalizing"
+    Then the booking status should be "Finalising"
     And the first quote destination should contain "Frankfurt"
     And the last quote destination should contain "Copenhagen"
-    When I attempt to cancel the trip safely
+    And I attempt to cancel the trip safely
