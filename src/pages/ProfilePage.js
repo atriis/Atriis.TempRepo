@@ -85,6 +85,22 @@ const SELECTORS = {
   // match here breaks on whichever of the two English locales the corporation is configured for.
   SAVE_BUTTON: '.frequent-programs-form-content > .btns-container button',
 
+  // BahnCard (Deutsche Bahn) loyalty rows — the last block of the "Other programs" section in
+  // frequent-programs-form.vue. Car, rail and BahnCard rows all carry the same
+  // `.frequent-flyer-inputs` class, so the BahnCard row is anchored on the two controls only it
+  // renders: `.db-rail-program-number-input` and `.valid-until-date-picker`.
+  // The add button is matched on "BahnCard" rather than its full label because en.json says
+  // "programme" and en-US.json "program" (same trap as SAVE_BUTTON above) — "BahnCard" is stable
+  // across both and appears in none of the other five `.add-loyalty-btn` labels.
+  BAHNCARD_ADD_BUTTON: '.frequent-programs-form .add-loyalty-btn:has-text("BahnCard")',
+  BAHNCARD_ROW: '.frequent-flyer-inputs:has(.db-rail-program-number-input)',
+  BAHNCARD_TYPE_SELECT: '.app-select',
+  BAHNCARD_NUMBER_INPUT: '.db-rail-program-number-input input',
+  BAHNCARD_VALID_UNTIL_INPUT: '.valid-until-date-picker input',
+
+  // Rendered only while a field is invalid AND the form has been submitted once (markFields).
+  FREQUENT_PROGRAMS_VALIDATION_MSG: '.frequent-programs-form .validation-msg',
+
   // Form of Payment tab
   FORM_OF_PAYMENT_TAB: "[id='tab-formOfPayment'] p",
   FOP_SECTION: '.profile-form-of-payment',
@@ -331,6 +347,167 @@ class ProfilePage {
         `The form may not be in a valid state or the button is disabled. Original: ${err.message}`
       );
     }
+  }
+
+  // --- BahnCard (DB rail) programs ---
+
+  _lastBahnCardRow() {
+    return this.page.locator(SELECTORS.BAHNCARD_ROW).last();
+  }
+
+  async getBahnCardRowCount() {
+    return this.page.locator(SELECTORS.BAHNCARD_ROW).count();
+  }
+
+  async clickAddBahnCardProgram() {
+    try {
+      const before = await this.getBahnCardRowCount();
+      await this.page.locator(SELECTORS.BAHNCARD_ADD_BUTTON).click({ timeout: 10000 });
+      // The row is pushed into formData synchronously, but Vue renders it on the next tick —
+      // wait for the row count to grow so the callers' `.last()` lookups hit the new row.
+      await expect
+        .poll(async () => this.getBahnCardRowCount(), { timeout: 10000 })
+        .toBeGreaterThan(before);
+    } catch (err) {
+      throw new Error(
+        `[ProfilePage.clickAddBahnCardProgram] Could not add a BahnCard loyalty row (selector: ${SELECTORS.BAHNCARD_ADD_BUTTON}). ` +
+        `The Frequent Programs form may not be loaded, or the corporation is not configured for Deutsche Bahn. Original: ${err.message}`
+      );
+    }
+  }
+
+  async selectBahnCardType(cardType) {
+    try {
+      const row = this._lastBahnCardRow();
+      await row.locator(SELECTORS.BAHNCARD_TYPE_SELECT).click({ timeout: 10000 });
+
+      // Scope to the open popper: every closed el-select keeps its dropdown in the DOM.
+      const option = this.page
+        .locator(`.el-select-dropdown:visible ${SELECTORS.DROPDOWN_OPTION}`)
+        .filter({ hasText: cardType })
+        .first();
+      await option.waitFor({ state: 'visible', timeout: 10000 });
+      await option.click({ timeout: 10000 });
+    } catch (err) {
+      throw new Error(
+        `[ProfilePage.selectBahnCardType] Could not select BahnCard type "${cardType}". ` +
+        `The dropdown may not have opened or the option is not one of the DbRailCardTypes. Original: ${err.message}`
+      );
+    }
+  }
+
+  async getBahnCardTypeText() {
+    const row = this._lastBahnCardRow();
+    return (await row.locator(SELECTORS.BAHNCARD_TYPE_SELECT).innerText()).trim();
+  }
+
+  async fillBahnCardNumber(programNumber) {
+    try {
+      const input = this._lastBahnCardRow().locator(SELECTORS.BAHNCARD_NUMBER_INPUT);
+      await input.waitFor({ state: 'visible', timeout: 10000 });
+      await input.fill(programNumber, { timeout: 10000 });
+    } catch (err) {
+      throw new Error(
+        `[ProfilePage.fillBahnCardNumber] Could not fill BahnCard number "${programNumber}" ` +
+        `(selector: ${SELECTORS.BAHNCARD_NUMBER_INPUT}). Original: ${err.message}`
+      );
+    }
+  }
+
+  async getBahnCardNumberValue() {
+    return this._lastBahnCardRow().locator(SELECTORS.BAHNCARD_NUMBER_INPUT).inputValue();
+  }
+
+  async getBahnCardValidUntilValue() {
+    return this._lastBahnCardRow().locator(SELECTORS.BAHNCARD_VALID_UNTIL_INPUT).inputValue();
+  }
+
+  /**
+   * Types into the "Valid until" picker (app-datepicker is rendered with `editable`).
+   *
+   * The typed text is committed by BLURRING, never by pressing Enter: every `.add-loyalty-btn`
+   * in frequent-programs-form.vue is an app-btn, which renders a plain `<button>` inside the
+   * form, so Enter in any input triggers implicit form submission and activates the FIRST such
+   * button — "Add Frequent Flyer". That silently appends an empty Frequent Flyer row whose
+   * `required` number then makes vuelidate reject the whole form, and handleSubmit returns
+   * without ever sending the save request.
+   *
+   * Does NOT assert the value took — the picker only accepts text in its own display format,
+   * which localizePickerDateFormat() rewrites to "MMM DD, YYYY" under the en-US locale.
+   * Callers must read the value back and fall back to the calendar when it did not parse.
+   */
+  async typeBahnCardValidUntil(dateText) {
+    try {
+      const input = this._lastBahnCardRow().locator(SELECTORS.BAHNCARD_VALID_UNTIL_INPUT);
+      await input.waitFor({ state: 'visible', timeout: 10000 });
+      await input.click({ timeout: 10000 });
+      await input.fill(dateText, { timeout: 10000 });
+      await input.evaluate((el) => el.blur());
+      await this.closeDatePickerPanel();
+    } catch (err) {
+      throw new Error(
+        `[ProfilePage.typeBahnCardValidUntil] Could not type "${dateText}" into the BahnCard "Valid until" picker ` +
+        `(selector: ${SELECTORS.BAHNCARD_VALID_UNTIL_INPUT}). Original: ${err.message}`
+      );
+    }
+  }
+
+  async openBahnCardValidUntilPicker() {
+    try {
+      const input = this._lastBahnCardRow().locator(SELECTORS.BAHNCARD_VALID_UNTIL_INPUT);
+      await input.waitFor({ state: 'visible', timeout: 10000 });
+      await input.click({ timeout: 10000 });
+      await this.page.locator(SELECTORS.DATE_PICKER_PANEL).last().waitFor({ state: 'visible', timeout: 10000 });
+    } catch (err) {
+      throw new Error(
+        `[ProfilePage.openBahnCardValidUntilPicker] Could not open the BahnCard "Valid until" date picker. ` +
+        `The BahnCard row may not have been added. Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Dismisses an open picker popper so it stops overlaying the form's Save button.
+   */
+  async closeDatePickerPanel() {
+    const panel = this.page.locator(SELECTORS.DATE_PICKER_PANEL);
+    if (await panel.count() === 0) {
+      return;
+    }
+    await this.page.keyboard.press('Escape');
+    await panel.last().waitFor({ state: 'hidden', timeout: 5000 }).catch(() => {});
+  }
+
+  async clickRemoveOnBahnCardRow() {
+    try {
+      await this._lastBahnCardRow().locator(SELECTORS.REMOVE_ENTRY_BUTTON).click({ timeout: 10000 });
+    } catch (err) {
+      throw new Error(
+        `[ProfilePage.clickRemoveOnBahnCardRow] Could not click the delete icon on the BahnCard row ` +
+        `(selector: ${SELECTORS.BAHNCARD_ROW} ${SELECTORS.REMOVE_ENTRY_BUTTON}). Original: ${err.message}`
+      );
+    }
+  }
+
+  async waitForBahnCardRowCount(expectedCount, timeout = 15000) {
+    try {
+      await expect.poll(async () => this.getBahnCardRowCount(), { timeout }).toBe(expectedCount);
+    } catch (err) {
+      throw new Error(
+        `[ProfilePage.waitForBahnCardRowCount] Expected ${expectedCount} BahnCard row(s) but the count never settled there. ` +
+        `The add/remove operation may not have completed. Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Validation messages currently rendered anywhere in the Frequent Programs form.
+   * The form's handleSubmit() bails out silently when vuelidate reports the form invalid, so
+   * these are the only on-screen explanation for a Save that produced no request.
+   */
+  async getFrequentProgramsValidationMessages() {
+    const messages = this.page.locator(SELECTORS.FREQUENT_PROGRAMS_VALIDATION_MSG);
+    return (await messages.allTextContents()).map((text) => text.trim()).filter(Boolean);
   }
 
   async getAllLoyaltyInputValues() {

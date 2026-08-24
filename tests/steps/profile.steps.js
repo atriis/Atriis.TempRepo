@@ -35,6 +35,40 @@ When("I add a new FQTV entry with number {string} using the first available airl
   await Profile.addFqtvEntry(this.page, fqtvNumber);
 });
 
+// --- BahnCard (Deutsche Bahn rail) frequent programs steps ---
+
+// "DB BahnCard 50" is a DbRailCardTypes option label in the app — it must match the dropdown
+// entry exactly, so it is spelled once here rather than parsed out of the step phrase.
+const DB_BAHNCARD_50 = "DB BahnCard 50";
+
+When(
+  "I add DB BahnCard 50 with number {string} and expiration date {string}",
+  async function (programNumber, expirationDate) {
+    logger.info("Adding DB BahnCard 50", { programNumber, expirationDate });
+    // Kept for the verification step, which re-reads the row after a reload.
+    this.lastBahnCardNumber = programNumber;
+    await Profile.addBahnCardProgram(this.page, {
+      cardType: DB_BAHNCARD_50,
+      programNumber,
+      validUntil: expirationDate,
+    });
+  }
+);
+
+Then("the DB BahnCard 50 expiration date {string} should be saved", async function (expirationDate) {
+  logger.info("Verifying DB BahnCard 50 expiration date persisted", { expirationDate });
+  await Profile.verifyBahnCardProgramSaved(this.page, {
+    cardType: DB_BAHNCARD_50,
+    programNumber: this.lastBahnCardNumber,
+    validUntil: expirationDate,
+  });
+});
+
+When("I successfully remove the DB BahnCard frequent program entry", async function () {
+  logger.info("Removing DB BahnCard frequent program entry");
+  await Profile.removeBahnCardProgram(this.page);
+});
+
 // --- Contact Information steps ---
 
 When("I open the contact information tab in my profile", async function () {

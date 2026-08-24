@@ -2,6 +2,15 @@ const { getPageObject } = require("@utils/pageObjectCache");
 const ProfilePage = require("@pages/ProfilePage");
 const LoginPage = require("@pages/LoginPage");
 const logger = require("@utils/logger").child("Profile");
+const {
+  parseDateValue,
+  datesMatch,
+  advanceSinglePickerCalendarUntilMonthVisible,
+  clickDayInVisibleMonth,
+} = require("@utils/calendar.helper");
+
+// PUT target of the Frequent Programs form's Save button (user.service.ts saveFrequentProgramInfo).
+const FREQUENT_PROGRAMS_SAVE_ENDPOINT = "/userProfileFrequentProgramInfo";
 
 /**
  * Profile DSL
@@ -188,6 +197,207 @@ const Profile = {
         `[Profile.addFqtvEntry] Failed to save after adding FQTV entry "${fqtvNumber}": ${err.message}`
       );
     }
+  },
+
+  /**
+   * Adds a BahnCard (Deutsche Bahn rail) loyalty program and saves the Frequent Programs form.
+   * Assumes the Frequent Programs tab is already open.
+   *
+   * @param {Object} page
+   * @param {Object} opts
+   * @param {string} opts.cardType - a DbRailCardTypes label, e.g. "DB BahnCard 50"
+   * @param {string} opts.programNumber - 16 digits starting with 7081 (app-side validation)
+   * @param {string} opts.validUntil - expiration date, e.g. "20 Dec 2029"
+   */
+  async addBahnCardProgram(page, { cardType, programNumber, validUntil } = {}) {
+    if (!page) throw new Error('[Profile.addBahnCardProgram] "page" is required.');
+    for (const [name, value] of Object.entries({ cardType, programNumber, validUntil })) {
+      if (!value || typeof value !== "string") {
+        throw new Error(
+          `[Profile.addBahnCardProgram] "${name}" must be a non-empty string, got: ${typeof value} (${JSON.stringify(value)})`
+        );
+      }
+    }
+
+    logger.debug(`[Profile.addBahnCardProgram] Adding "${cardType}" ${programNumber} valid until ${validUntil}`);
+
+    const profilePage = getPageObject(page, ProfilePage);
+
+    await profilePage.clickAddBahnCardProgram();
+    await profilePage.selectBahnCardType(cardType);
+    await profilePage.fillBahnCardNumber(programNumber);
+    await this.setBahnCardValidUntil(page, validUntil);
+
+    // The form's handleSubmit() returns silently when vuelidate marks the form invalid — no
+    // request, no toast, no thrown click error. Gate on the PUT so a rejected form fails here,
+    // with the on-screen validation text, instead of 30s later on the success-toast step.
+    const savePut = page
+      .waitForResponse(
+        (response) =>
+          response.url().includes(FREQUENT_PROGRAMS_SAVE_ENDPOINT) && response.request().method() === "PUT",
+        { timeout: 20000 }
+      )
+      .catch(() => null);
+
+    try {
+      await profilePage.clickSaveFrequentPrograms();
+    } catch (err) {
+      throw new Error(
+        `[Profile.addBahnCardProgram] Failed to save after adding BahnCard "${cardType}" (${programNumber}): ${err.message}`
+      );
+    }
+
+    const saveResponse = await savePut;
+
+    if (!saveResponse) {
+      const validationMessages = await profilePage.getFrequentProgramsValidationMessages();
+      throw new Error(
+        `[Profile.addBahnCardProgram] Save was clicked but no PUT ${FREQUENT_PROGRAMS_SAVE_ENDPOINT} request was sent — ` +
+        `the form rejected the BahnCard row before submitting. ` +
+        (validationMessages.length
+          ? `On-screen validation: ${validationMessages.map((m) => `"${m}"`).join(", ")}.`
+          : `No validation message is displayed — check that the card type, number and "Valid until" reached the Vue model.`)
+      );
+    }
+
+    if (!saveResponse.ok()) {
+      throw new Error(
+        `[Profile.addBahnCardProgram] Saving BahnCard "${cardType}" (${programNumber}) returned HTTP ${saveResponse.status()} ` +
+        `from ${FREQUENT_PROGRAMS_SAVE_ENDPOINT}.`
+      );
+    }
+
+    logger.info(`[Profile.addBahnCardProgram] Saved BahnCard "${cardType}" (${programNumber}) valid until ${validUntil}`);
+  },
+
+  /**
+   * Sets the BahnCard "Valid until" date.
+   *
+   * The picker is `editable`, so typing is tried first — but app-datepicker runs its format
+   * through localizePickerDateFormat(), which rewrites "DD MMM YYYY" to "MMM DD, YYYY" under the
+   * en-US locale. A typed "20 Dec 2029" is then rejected, so the value is read back and the
+   * calendar is driven instead when the typed text did not commit.
+   */
+  async setBahnCardValidUntil(page, validUntil) {
+    const profilePage = getPageObject(page, ProfilePage);
+    const targetDate = parseDateValue(validUntil);
+
+    await profilePage.typeBahnCardValidUntil(validUntil);
+
+    let committed = "";
+    try {
+      committed = await profilePage.getBahnCardValidUntilValue();
+    } catch {
+      committed = "";
+    }
+
+    if (committed && datesMatch(committed, targetDate)) {
+      logger.debug(`[Profile.setBahnCardValidUntil] "${validUntil}" accepted as typed (field shows "${committed}")`);
+      return;
+    }
+
+    logger.info(
+      `[Profile.setBahnCardValidUntil] Typed date did not commit (field shows "${committed}") — falling back to the calendar`
+    );
+
+    try {
+      await profilePage.openBahnCardValidUntilPicker();
+      const monthTableIndex = await advanceSinglePickerCalendarUntilMonthVisible(page, targetDate);
+      await clickDayInVisibleMonth(page, targetDate, monthTableIndex);
+      await profilePage.closeDatePickerPanel();
+    } catch (err) {
+      throw new Error(
+        `[Profile.setBahnCardValidUntil] Could not set "Valid until" to "${validUntil}" by typing or via the calendar: ${err.message}`
+      );
+    }
+
+    const afterCalendar = await profilePage.getBahnCardValidUntilValue();
+    if (!datesMatch(afterCalendar, targetDate)) {
+      throw new Error(
+        `[Profile.setBahnCardValidUntil] "Valid until" reads "${afterCalendar}" after selecting ${validUntil} from the calendar. ` +
+        `The picker may have rejected the date (check disablePastDates / the corporation's date format).`
+      );
+    }
+  },
+
+  /**
+   * Verifies a BahnCard program persisted: reloads the profile, reopens the Frequent Programs
+   * tab and reads the row back from the server-rendered form. Re-reading the un-reloaded form
+   * would only echo the values this test typed, which proves nothing about the save.
+   */
+  async verifyBahnCardProgramSaved(page, { cardType, programNumber, validUntil } = {}) {
+    if (!page) throw new Error('[Profile.verifyBahnCardProgramSaved] "page" is required.');
+
+    logger.debug(`[Profile.verifyBahnCardProgramSaved] Reloading the profile to re-read "${cardType}"`);
+
+    await page.reload({ waitUntil: "domcontentloaded", timeout: 30000 });
+    await this.openFrequentProgramsTab(page);
+
+    const profilePage = getPageObject(page, ProfilePage);
+
+    if (await profilePage.getBahnCardRowCount() === 0) {
+      throw new Error(
+        `[Profile.verifyBahnCardProgramSaved] No BahnCard row is present after reloading the profile — ` +
+        `"${cardType}" (${programNumber}) was not persisted.`
+      );
+    }
+
+    const savedType = await profilePage.getBahnCardTypeText();
+    const savedNumber = await profilePage.getBahnCardNumberValue();
+    const savedValidUntil = await profilePage.getBahnCardValidUntilValue();
+
+    if (!savedType.includes(cardType)) {
+      throw new Error(
+        `[Profile.verifyBahnCardProgramSaved] Saved BahnCard type reads "${savedType}", expected "${cardType}".`
+      );
+    }
+
+    if (savedNumber !== programNumber) {
+      throw new Error(
+        `[Profile.verifyBahnCardProgramSaved] Saved BahnCard number reads "${savedNumber}", expected "${programNumber}".`
+      );
+    }
+
+    // Compared as dates, not strings: the profile's language decides whether the picker renders
+    // "20 Dec 2029" or "Dec 20, 2029".
+    if (!datesMatch(savedValidUntil, parseDateValue(validUntil))) {
+      throw new Error(
+        `[Profile.verifyBahnCardProgramSaved] Saved BahnCard expiration date reads "${savedValidUntil}", expected "${validUntil}".`
+      );
+    }
+
+    logger.info(
+      `[Profile.verifyBahnCardProgramSaved] "${cardType}" (${programNumber}) persisted with expiration date "${savedValidUntil}"`
+    );
+  },
+
+  /**
+   * Removes the BahnCard program row, confirms the delete dialog and verifies the row is gone.
+   */
+  async removeBahnCardProgram(page) {
+    if (!page) throw new Error('[Profile.removeBahnCardProgram] "page" is required.');
+
+    const profilePage = getPageObject(page, ProfilePage);
+
+    const rowsBefore = await profilePage.getBahnCardRowCount();
+    if (rowsBefore === 0) {
+      throw new Error(
+        '[Profile.removeBahnCardProgram] No BahnCard row to remove — the program may never have been saved.'
+      );
+    }
+
+    logger.debug(`[Profile.removeBahnCardProgram] Removing the BahnCard row (${rowsBefore} present)`);
+
+    try {
+      await profilePage.clickRemoveOnBahnCardRow();
+      await profilePage.confirmDeleteDialog();
+    } catch (err) {
+      throw new Error(`[Profile.removeBahnCardProgram] Failed to remove the BahnCard program: ${err.message}`);
+    }
+
+    await profilePage.waitForBahnCardRowCount(rowsBefore - 1);
+
+    logger.info('[Profile.removeBahnCardProgram] BahnCard program removed');
   },
 
   /**

@@ -92,6 +92,23 @@ function parseDateValue(dateValue) {
   throw new Error(`Unsupported date value format: "${dateValue}"`);
 }
 
+/**
+ * Compares a date as rendered by a picker against a target Date, ignoring the display format —
+ * the app localises picker formats per language ("20 Dec 2029" vs "Dec 20, 2029").
+ * Returns false for anything unparseable (empty field, placeholder text).
+ *
+ * @param {string} renderedValue - the value read out of a date input
+ * @param {Date} targetDate
+ * @returns {boolean}
+ */
+function datesMatch(renderedValue, targetDate) {
+  try {
+    return parseDateValue(renderedValue).getTime() === targetDate.getTime();
+  } catch {
+    return false;
+  }
+}
+
 function parseMonthHeaderLabel(monthHeaderLabel) {
   const normalizedMonthHeaderLabel = monthHeaderLabel.replace(/,/g, " ").replace(/\s+/g, " ").trim();
 
@@ -842,6 +859,7 @@ async function selectDateAfterAdvancingMonths(
 
 module.exports = {
   parseDateValue,
+  datesMatch,
   selectDatesByNthAvailable,
   selectDatesByNthAvailableFromNextVisibleMonth,
   selectDatesByInputValues,
