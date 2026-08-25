@@ -2,7 +2,7 @@ require("module-alias/register");
 
 const { When, Then, setDefaultTimeout } = require("@cucumber/cucumber");
 const { expect } = require("@playwright/test");
-const { GroundTransportSearch, Cart } = require("../../src/dsl");
+const { GroundTransportSearch, GroundTransportResults, Cart } = require("../../src/dsl");
 const logger = require("@utils/logger").child("GroundTransport");
 
 setDefaultTimeout(120000);
@@ -63,7 +63,7 @@ When("I extract the date and pickup time from ground transport search", async fu
 
 When("I search for ground transport from airport {string} to specific address {string} changing the pickup time", async function (from, to) {
   logger.info("Searching for ground transport from airport to specific address with changed pickup time", { from, to });
-  notImplemented("I search for ground transport from airport {string} to specific address {string} changing the pickup time");
+  await GroundTransportSearch.searchAirportToSpecificAddressWithChangedPickupTime(this.page, from, to);
 });
 
 When("I click search button from {string}", async function (suggestionTitle) {
@@ -158,7 +158,7 @@ When("I extract the ground transport results price and VAT", async function () {
 
 Then("ground transport results should be displayed", async function () {
   logger.info("Verifying ground transport results are displayed");
-  await this.page.locator(".ground-transport-list .btn--primary, .show-count p").first().waitFor({ state: "visible", timeout: 15000 });
+  await GroundTransportResults.expectResultsDisplayed(this.page);
 });
 
 Then("I should see that pickup contains {string}", async function (expectedPickup) {
@@ -241,9 +241,9 @@ Then("the ground transport pickup date and time should be displayed correctly in
   await Cart.verifyGroundTransportPickupDateTime(this.page, this.groundTransportSearchedPickup);
 });
 
-Then("the ground transport price section content should be displayed", async function () {
-  logger.info("Verifying ground transport price section content");
-  notImplemented("the ground transport price section content should be displayed");
+Then("the ground transport price, type of payment, date and time and add to trip button are displayed", async function () {
+  logger.info("Verifying ground transport price section layout");
+  await GroundTransportResults.expectPriceSectionLayout(this.page);
 });
 
 Then("the transfer booking code should be displayed on the trip", async function () {

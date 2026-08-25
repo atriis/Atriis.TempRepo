@@ -133,6 +133,27 @@ const GroundTransportSearch = {
   },
 
   /**
+   * Searches airport-to-specific-address with a pick-up time that differs from the form's own
+   * default, and submits it.
+   *
+   * The manual test case searches with a non-default pick-up time
+   * (SEARCH_DEFAULTS.GROUND_TRANSPORT.PICKUP_TIME, 14:30, against the 10:00 that
+   * ground-transport.store.ts seeds); what the caller asserts afterwards does not depend on it.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} from - Pick-up airport
+   * @param {string} to - Drop-off address
+   * @returns {Promise<{from: string, to: string, pickupTime: string}>}
+   */
+  async searchAirportToSpecificAddressWithChangedPickupTime(page, from, to) {
+    const pickupTime = SEARCH_DEFAULTS.GROUND_TRANSPORT.PICKUP_TIME;
+
+    await this.searchGroundTransportFromAirportToSpecificAddress(page, { from, to }, { pickupTime });
+
+    return { from, to, pickupTime };
+  },
+
+  /**
    * Reads the pick-up date and time currently committed in the ground transport search form.
    *
    * Used by tests that have to prove the searched values survive into the cart, so it is called
@@ -183,6 +204,8 @@ const GroundTransportSearch = {
    * @param {string} options.vehicleType - Vehicle type filter
    * @param {number} options.travellerNumber - Number of travellers (>= 1)
    * @param {number} options.pickupIndex - Calendar index for pickup date (>= 0)
+   * @param {string|null} options.pickupTime - "HH:mm" to change the pick-up time away from the
+   *   form's own default; null leaves that default in place
    * @throws {Error} If travellerNumber < 1 or pickupIndex < 0
    */
   async searchGroundTransportFromAirportToSpecificAddress(
@@ -192,6 +215,7 @@ const GroundTransportSearch = {
       vehicleType = groundTransportRoutes.vehicleTypes.all,
       travellerNumber = 1,
       pickupIndex = SEARCH_DEFAULTS.GROUND_TRANSPORT.PICKUP_INDEX,
+      pickupTime = null,
     } = {},
   ) {
     const { from, to } = resolveRoute(
@@ -208,6 +232,7 @@ const GroundTransportSearch = {
       vehicleType,
       travellerNumber,
       pickupIndex,
+      pickupTime,
     });
   },
 

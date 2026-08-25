@@ -26,6 +26,7 @@ module.exports = {
   FlightResults: require("./FlightResults"),
   FlightSearch: require("./FlightSearch"),
   GenesysChat: require("./GenesysChat"),
+  GroundTransportResults: require("./GroundTransportResults"),
   GroundTransportSearch: require("./GroundTransportSearch"),
   Homepage: require("./Homepage"),
   HotelLevelResults: require("./HotelLevelResults"),

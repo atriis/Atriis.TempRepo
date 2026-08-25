@@ -17,5 +17,5 @@ Feature: 62890 Transferz - Price section elements are displayed in the expected 
     Given I am logged in as "betoribeiro@transferz.com" booking a new trip
     And I have added myself as the traveler
     When I search for ground transport from airport "LHR" to specific address "Emirates Stadium, Hornsey Road, London, UK" changing the pickup time
-    Then ground transport results should be displayed
-    And the ground transport price section content should be displayed
+    And I wait for add to trip text to be visible
+    Then the ground transport price, type of payment, date and time and add to trip button are displayed
