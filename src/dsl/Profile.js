@@ -1511,6 +1511,173 @@ const Profile = {
   },
 
   /**
+   * Opens a traveller's profile by clicking the LAST traveller name tag on the trip/search page.
+   *
+   * Sibling of openTravelerProfileFromName (which targets the FIRST tag — normally the logged-in
+   * booker): a scenario that adds a second traveller and then opens THAT traveller's profile must
+   * click the last tag. Identifying the tag by position rather than by name is deliberate — the tag
+   * renders "FirstName LastName" while feature files identify travellers by email, so there is no
+   * name string to match on.
+   *
+   * The profile is NOT a dialog: trip-traveler-tag.vue window.open()s the /user/:userId route, so
+   * this returns the new tab's page handle. Falls back to the same tab, which is what
+   * utilService.openNewWindow does on mobile viewports.
+   *
+   * @param {import('playwright').Page} page - The trip/search page holding the traveller tags.
+   * @returns {Promise<import('playwright').Page>} The page showing the traveller profile.
+   */
+  async openTravelerProfileFromLastTravelerTag(page) {
+    if (!page) {
+      throw new Error('[Profile.openTravelerProfileFromLastTravelerTag] "page" is required.');
+    }
+
+    const profilePage = getPageObject(page, ProfilePage);
+
+    logger.debug('[Profile.openTravelerProfileFromLastTravelerTag] Opening the last viewable traveller tag');
+
+    const context = page.context();
+    const newPagePromise = context.waitForEvent('page', { timeout: 15000 }).catch(() => null);
+
+    try {
+      await profilePage.clickLastTravelerNameLink();
+    } catch (err) {
+      // Read the tag names only now: clickLastTravelerNameLink has already spent its own wait, so
+      // this reflects the state at failure time. Reading them up-front would race the render and
+      // report "none" for a traveller that simply had not painted yet.
+      const tagNames = await profilePage.getFilledTravelerNameLinkTexts();
+      throw new Error(
+        `[Profile.openTravelerProfileFromLastTravelerTag] Failed to click the last traveller name tag. ` +
+        `Viewable filled tags present at failure: ${tagNames.length ? JSON.stringify(tagNames) : 'none'}. ` +
+        `With none, the traveller was never added to the trip (only empty "Select Traveller" slots), or ` +
+        `the booker lacks the privilege to view that profile. Original: ${err.message}`
+      );
+    }
+
+    const newTab = await newPagePromise;
+    const targetPage = newTab || page;
+
+    if (newTab) {
+      await newTab.waitForLoadState('domcontentloaded', { timeout: 30000 });
+    } else {
+      // No new tab is only legitimate on the mobile branch of utilService.openNewWindow, which
+      // router-pushes to /user/:userId in place. Any other URL means the click never navigated at
+      // all — say so rather than blaming the profile load further down.
+      await page.waitForLoadState('domcontentloaded', { timeout: 30000 });
+      const currentUrl = page.url();
+
+      if (!currentUrl.includes('/user/')) {
+        throw new Error(
+          `[Profile.openTravelerProfileFromLastTravelerTag] Clicking the traveller name did not navigate: ` +
+          `no new tab opened and the current tab is still on ${currentUrl}. The click landed on something ` +
+          `other than a viewable traveller name, or trip-traveler-tag.vue#goToUserApp returned early ` +
+          `because the traveller has no corporateUserId.`
+        );
+      }
+
+      logger.info(
+        '[Profile.openTravelerProfileFromLastTravelerTag] No new tab opened — profile rendered in the same tab'
+      );
+    }
+
+    const targetProfilePage = getPageObject(targetPage, ProfilePage);
+
+    try {
+      await targetProfilePage.waitForUserProfilePage();
+    } catch (err) {
+      throw new Error(
+        `[Profile.openTravelerProfileFromLastTravelerTag] The traveller name was clicked but the profile ` +
+        `page never rendered (opened in ${newTab ? 'a new tab' : 'the same tab'}, url: ${targetPage.url()}). ` +
+        `The booker may lack permission to load that user, or the profile request may have failed. ` +
+        `Original: ${err.message}`
+      );
+    }
+
+    logger.info(
+      `[Profile.openTravelerProfileFromLastTravelerTag] Traveller profile opened in ${newTab ? 'a new tab' : 'the same tab'}`
+    );
+    return targetPage;
+  },
+
+  /**
+   * Asserts the standalone traveller profile page is open. The page counterpart of
+   * verifyUserProfilePopupOpen — clicking a traveller name routes to /user/:userId instead of
+   * raising the mandate-fields dialog, so there is no dialog title to key on.
+   */
+  async verifyTravelerProfilePageOpen(page) {
+    if (!page) {
+      throw new Error('[Profile.verifyTravelerProfilePageOpen] "page" is required.');
+    }
+
+    const profilePage = getPageObject(page, ProfilePage);
+    await profilePage.waitForUserProfilePage();
+    logger.info('[Profile.verifyTravelerProfilePageOpen] Standalone traveller profile page is open');
+  },
+
+  /**
+   * Asserts the open traveller profile page is read-only — the outcome for a booker who may VIEW
+   * another traveller's profile but not edit it. Checks two INDEPENDENT sources, deliberately:
+   *
+   *  1. Permission-driven: the `read-only-profile` class user-profile.vue adds from
+   *     isUserCantEditProfile (route userId + permissions). user-profile.scss makes that class hide
+   *     every button and set `pointer-events: none` on the forms, so the missing Save button and the
+   *     inert Birth Date field below are consequences of this same class, not separate evidence.
+   *  2. API-driven: the forms' own `disableEdit`, bound to `!userProfile.editDiabled` from the
+   *     profile response — the only signal that does NOT come from the class. This is what makes the
+   *     enabled-input count worth checking at all.
+   *
+   * Both are asserted because they can disagree: a profile the API reports as editable while the
+   * permission class is applied would leave real, typeable fields behind a read-only-looking page.
+   *
+   * Birth Date is singled out rather than ignored: personal-details-form.vue omits the
+   * :disabled="disableEdit" binding on its birth-date app-datepicker, so the input renders enabled
+   * while remaining inert — the read-only .personal-details-form section swallows pointer events, so
+   * the field cannot be clicked. Discounting it by name keeps every OTHER enabled control a hard
+   * failure, and probing its interactivity turns "it is inert" from an assumption into an assertion.
+   */
+  async verifyTravelerProfilePageNotEditable(page) {
+    if (!page) {
+      throw new Error('[Profile.verifyTravelerProfilePageNotEditable] "page" is required.');
+    }
+
+    const profilePage = getPageObject(page, ProfilePage);
+    const { readOnlyClass, saveButtons, editableInputs, editableBirthDateInputs } =
+      await profilePage.getUserProfilePageEditability();
+    const unexpectedEditableInputs = editableInputs - editableBirthDateInputs;
+
+    if (!readOnlyClass || saveButtons > 0 || unexpectedEditableInputs > 0) {
+      // Only named here: identifying the controls costs a round-trip per attribute, and the
+      // information is worthless unless the assertion is already failing.
+      const editableInputDetails = await profilePage.describeEditableInputs();
+      throw new Error(
+        `[Profile.verifyTravelerProfilePageNotEditable] The traveller profile page is editable ` +
+        `(read-only class: ${readOnlyClass}, visible Save buttons: ${saveButtons}, enabled inputs: ${editableInputs} ` +
+        `of which ${editableBirthDateInputs} are the known-inert Birth Date field), but this privilege ` +
+        `combination only permits VIEWING another traveller's profile. A booker holding just ` +
+        `"Can view profile of other users" must not be able to change someone else's details — verify the ` +
+        `privilege set on the booker and that the opened profile is not their own. ` +
+        `Enabled inputs: ${editableInputDetails.length ? editableInputDetails.join(' | ') : 'none'}.`
+      );
+    }
+
+    logger.debug(
+      '[Profile.verifyTravelerProfilePageNotEditable] Structural signals are read-only; proving the Birth Date field is inert'
+    );
+
+    if (await profilePage.isDateOfBirthInputInteractive()) {
+      throw new Error(
+        '[Profile.verifyTravelerProfilePageNotEditable] The Birth Date field can receive clicks on a ' +
+        'read-only profile. It renders without a `disabled` attribute (personal-details-form.vue omits ' +
+        'the :disabled="disableEdit" binding its sibling fields have) and is relied on to be inert ' +
+        'because the read-only form swallows pointer events — an interactive field means a booker ' +
+        'holding only "Can view profile of other users" can open the picker and change another ' +
+        "traveller's date of birth."
+      );
+    }
+
+    logger.info('[Profile.verifyTravelerProfilePageNotEditable] Traveller profile page is read-only, as expected');
+  },
+
+  /**
    * Navigates to the Travel Preferences tab on the traveler profile page.
    */
   async openTravelPreferencesTab(page) {
@@ -2225,6 +2392,224 @@ const Profile = {
     }
 
     logger.info(`[Profile.enterMobileInPopup] Mobile entered and saved in popup: ${countryCode}-${areaCode}-${number}`);
+  },
+  /**
+   * Waits for the editable "User profile" dialog — raised when the selected traveller has
+   * missing mandate fields that the logged-in user is allowed to fill in.
+   */
+  async verifyUserProfilePopupOpen(page) {
+    if (!page) {
+      throw new Error("[Profile.verifyUserProfilePopupOpen] \"page\" is required.");
+    }
+
+    const profilePage = getPageObject(page, ProfilePage);
+    await profilePage.waitForDialogByTitle("User profile");
+    logger.info("[Profile.verifyUserProfilePopupOpen] Editable \"User profile\" popup is open");
+  },
+
+  /**
+   * Asserts the editable "User profile" dialog stays closed — the expected outcome whenever the
+   * privilege combination sends the user to the warning popup instead.
+   */
+  async verifyUserProfilePopupNotOpen(page) {
+    if (!page) {
+      throw new Error("[Profile.verifyUserProfilePopupNotOpen] \"page\" is required.");
+    }
+
+    const profilePage = getPageObject(page, ProfilePage);
+
+    try {
+      await profilePage.waitForDialogByTitleHidden("User profile");
+    } catch (err) {
+      throw new Error(
+        "[Profile.verifyUserProfilePopupNotOpen] The editable \"User profile\" popup is open, but this privilege " +
+        "combination must send the user to the \"Mandatory Details Are Missing\" warning instead — the traveller " +
+        `must not become editable. Original: ${err.message}`,
+      );
+    }
+
+    logger.info("[Profile.verifyUserProfilePopupNotOpen] Editable \"User profile\" popup did not open, as expected");
+  },
+
+  /**
+   * Waits for the read-only "Mandatory Details Are Missing" warning dialog.
+   */
+  async verifyMandatoryDetailsWarningOpen(page) {
+    if (!page) {
+      throw new Error("[Profile.verifyMandatoryDetailsWarningOpen] \"page\" is required.");
+    }
+
+    const profilePage = getPageObject(page, ProfilePage);
+    await profilePage.waitForDialogByTitle("Mandatory Details Are Missing");
+    logger.info("[Profile.verifyMandatoryDetailsWarningOpen] \"Mandatory Details Are Missing\" popup is open");
+  },
+
+  async verifyMandatoryDetailsWarningNotOpen(page) {
+    if (!page) {
+      throw new Error("[Profile.verifyMandatoryDetailsWarningNotOpen] \"page\" is required.");
+    }
+
+    const profilePage = getPageObject(page, ProfilePage);
+
+    try {
+      await profilePage.waitForDialogByTitleHidden("Mandatory Details Are Missing");
+    } catch (err) {
+      throw new Error(
+        "[Profile.verifyMandatoryDetailsWarningNotOpen] The \"Mandatory Details Are Missing\" popup is open, but " +
+        "this privilege combination must open the editable profile popup instead — the traveller is being " +
+        `blocked when they should be fillable. Original: ${err.message}`,
+      );
+    }
+
+    logger.info("[Profile.verifyMandatoryDetailsWarningNotOpen] Warning popup did not open, as expected");
+  },
+
+  /**
+   * Asserts the warning dialog body contains the given sentence.
+   */
+  async verifyMandatoryDetailsWarningText(page, expectedText) {
+    if (!page) {
+      throw new Error("[Profile.verifyMandatoryDetailsWarningText] \"page\" is required.");
+    }
+    if (!expectedText || typeof expectedText !== "string") {
+      throw new Error(
+        `[Profile.verifyMandatoryDetailsWarningText] "expectedText" must be a non-empty string, got: ${typeof expectedText} (${JSON.stringify(expectedText)})`,
+      );
+    }
+
+    const profilePage = getPageObject(page, ProfilePage);
+    const actual = await profilePage.getDialogBodyText("Mandatory Details Are Missing");
+    const normalise = (value) => value.replace(/\s+/g, " ").trim().toLowerCase();
+
+    if (!normalise(actual).includes(normalise(expectedText))) {
+      throw new Error(
+        `[Profile.verifyMandatoryDetailsWarningText] The warning popup does not mention "${expectedText}". ` +
+        `Actual popup text: "${actual}"`,
+      );
+    }
+
+    logger.info(`[Profile.verifyMandatoryDetailsWarningText] Warning popup mentions "${expectedText}"`);
+  },
+
+  /**
+   * Asserts the profile popup opened on the expected tab. user-profile.ts sends the popup to the
+   * tab holding the first missing mandate field, so the tab it lands on is the observable proof
+   * that the mandate-field configuration was read and applied.
+   */
+  async verifyUserProfilePopupActiveTab(page, expectedTab) {
+    if (!page) {
+      throw new Error("[Profile.verifyUserProfilePopupActiveTab] \"page\" is required.");
+    }
+    if (!expectedTab || typeof expectedTab !== "string") {
+      throw new Error(
+        `[Profile.verifyUserProfilePopupActiveTab] "expectedTab" must be a non-empty string, got: ${typeof expectedTab} (${JSON.stringify(expectedTab)})`,
+      );
+    }
+
+    const profilePage = getPageObject(page, ProfilePage);
+    const actualTab = await profilePage.getActiveDialogTabName("User profile");
+
+    if (actualTab !== expectedTab) {
+      throw new Error(
+        `[Profile.verifyUserProfilePopupActiveTab] The "User profile" popup opened on tab "${actualTab}" but ` +
+        `"${expectedTab}" was expected. The popup is supposed to land on the tab holding the first missing ` +
+        "mandate field — a different tab means the mandate-field configuration was not applied, or the field " +
+        "that is actually missing lives on another tab.",
+      );
+    }
+
+    logger.info(`[Profile.verifyUserProfilePopupActiveTab] Popup opened on the "${expectedTab}" tab, as expected`);
+  },
+
+  /**
+   * Asserts the Date of Birth label carries the red star. Only this label is bound to the mandate
+   * configuration — personal-details-form.vue stars firstName/lastName/email/language/currency
+   * unconditionally — so it is the one that proves the mandate-field rule reached the UI.
+   */
+  async verifyDateOfBirthMarkedAsMandatory(page) {
+    if (!page) {
+      throw new Error("[Profile.verifyDateOfBirthMarkedAsMandatory] \"page\" is required.");
+    }
+
+    const profilePage = getPageObject(page, ProfilePage);
+    const isMandatory = await profilePage.isDobFieldMarkedMandatory("User profile");
+
+    if (!isMandatory) {
+      throw new Error(
+        "[Profile.verifyDateOfBirthMarkedAsMandatory] The \"Date of Birth\" label in the open \"User profile\" " +
+        "popup is not marked with a red star (CSS class \"mandatory\"). Date of Birth must be configured as a " +
+        "mandate field in Corporate Administration > Users > Mandate Fields for this test, and the popup must " +
+        "reflect it.",
+      );
+    }
+
+    logger.info("[Profile.verifyDateOfBirthMarkedAsMandatory] \"Date of Birth\" is marked with a red star");
+  },
+
+  /**
+   * Asserts the open profile popup is editable: the profile forms only render Save when the
+   * form is not read-only, and a read-only profile disables every input.
+   *
+   * The Save-button and enabled-input counts both follow from the same read-only styling, so a
+   * third check proves the form is genuinely usable: the mandate field the popup exists to collect
+   * must actually accept a click. user-profile.scss sets `pointer-events: none` on read-only forms,
+   * so an interactive Date of Birth is the one signal that cannot be satisfied by styling alone.
+   */
+  async verifyUserProfilePopupEditable(page) {
+    if (!page) {
+      throw new Error("[Profile.verifyUserProfilePopupEditable] \"page\" is required.");
+    }
+
+    const profilePage = getPageObject(page, ProfilePage);
+    const { saveButtons, editableInputs } = await profilePage.getDialogEditability("User profile");
+
+    if (saveButtons < 1 || editableInputs < 1) {
+      throw new Error(
+        "[Profile.verifyUserProfilePopupEditable] The \"User profile\" popup is read-only " +
+        `(visible Save buttons: ${saveButtons}, editable inputs: ${editableInputs}). ` +
+        "A user who may edit this profile must be able to fill in and save the missing mandate fields, " +
+        "otherwise they are stuck and cannot book.",
+      );
+    }
+
+    if (!(await profilePage.isDateOfBirthInputInteractive())) {
+      throw new Error(
+        "[Profile.verifyUserProfilePopupEditable] The \"User profile\" popup renders a Save button and " +
+        `${editableInputs} enabled input(s), but its Date of Birth field cannot receive a click — the form is ` +
+        "blocking pointer events. The user cannot fill in the missing mandate field, so they are stuck and " +
+        "cannot book, even though the popup looks editable.",
+      );
+    }
+
+    logger.info(
+      `[Profile.verifyUserProfilePopupEditable] Popup is editable (Save buttons: ${saveButtons}, editable inputs: ${editableInputs}, Date of Birth interactive)`,
+    );
+  },
+  /**
+   * Closes the editable "User profile" popup without saving, so the next traveller can be
+   * selected. Deliberately does not save — the test asserts the field can be filled, not stored.
+   */
+  async closeUserProfilePopup(page) {
+    if (!page) {
+      throw new Error("[Profile.closeUserProfilePopup] \"page\" is required.");
+    }
+
+    const profilePage = getPageObject(page, ProfilePage);
+    await profilePage.closeDialogByTitle("User profile");
+    logger.info("[Profile.closeUserProfilePopup] Closed the \"User profile\" popup without saving");
+  },
+
+  /**
+   * Dismisses the read-only "Mandatory Details Are Missing" warning so the flow can continue.
+   */
+  async closeMandatoryDetailsWarning(page) {
+    if (!page) {
+      throw new Error("[Profile.closeMandatoryDetailsWarning] \"page\" is required.");
+    }
+
+    const profilePage = getPageObject(page, ProfilePage);
+    await profilePage.closeDialogByTitle("Mandatory Details Are Missing");
+    logger.info("[Profile.closeMandatoryDetailsWarning] Closed the \"Mandatory Details Are Missing\" popup");
   },
 };
 

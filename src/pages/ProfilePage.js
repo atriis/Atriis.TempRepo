@@ -48,6 +48,14 @@ const SELECTORS = {
 
   // Traveler profile from trip page
   TRAVELER_NAME_LINK: '.trip-traveler-tag .traveler-name.is-clickable',
+  // Same tag, restricted to a FILLED traveller. trip-traveler-tag.vue gives both of its branches
+  // `traveler-name` + `is-clickable`, so TRAVELER_NAME_LINK above also matches the empty
+  // "Select Traveller" placeholder — clicking that opens the Add-traveller dialog instead of the
+  // profile. `black` is on the v-if="!empty" branch only, which is what separates the two; keying
+  // on it rather than on the placeholder's `select-traveler` class because staging does not ship
+  // that class yet (see SearchPage.SELECT_TRAVELER_SLOT). Callers that identify the tag by
+  // position, rather than by name, must use this selector.
+  FILLED_TRAVELER_NAME_LINK: '.trip-traveler-tag .traveler-name.black.is-clickable',
   PERSONAL_DETAILS_FORM: '.personal-details-form-content',
   DOB_INPUT: '.personal-details-form-content .birth-date-date-picker input',
   SAVE_PERSONAL_DETAILS_BUTTON: '.personal-details-form-content button:has-text("Save")',
@@ -165,6 +173,61 @@ const SELECTORS = {
   PHONE_INPUT_POPOVER_OPTION: '.app-phone-input-popover:visible .app-phone-input__option',
   // Save button inside the popup contact info form
   PROFILE_POPUP_SAVE_BTN: '.user-profile-dialog button:has-text("Save")',
+  // --- Mandate-fields dialogs (ADO US 60526) ---
+  // trip-app.vue renders BOTH the editable profile dialog and the read-only
+  // "Mandatory Details Are Missing" warning with the same class
+  // (.app-dialog.user-profile-dialog) — only the el-dialog title tells them apart, so every
+  // check below is title-scoped. Which one opens is decided by the profile response:
+  // showWarningPopup -> warning dialog, otherwise mandateFields.length -> editable profile.
+  DIALOG_TITLE: ".el-dialog__title",
+  USER_PROFILE_DIALOG_TITLE_TEXT: "User profile",
+  MANDATORY_DETAILS_DIALOG_TITLE_TEXT: "Mandatory Details Are Missing",
+  // Body of whichever user-profile dialog is open
+  USER_PROFILE_DIALOG_BODY: ".el-dialog__body",
+  // Active tab inside the open dialog. user-profile.ts#setActiveTabWithFirstMandateField sends
+  // the popup to the tab holding the first missing mandate field, so the active tab is itself
+  // an assertion target — its el-tab-pane name is exposed as the `tab-<name>` element id.
+  DIALOG_ACTIVE_TAB: ".el-tabs__item.is-active",
+  // el-dialog's own header close button — used to leave one traveller's popup before selecting
+  // the next traveller, deliberately WITHOUT saving.
+  DIALOG_CLOSE_BTN: ".el-dialog__headerbtn",
+  // The red star is the `mandatory` class on a field's label. personal-details-form.vue hardcodes
+  // `class="label mandatory"` on firstName/lastName/email/language/currency, so counting
+  // `label.mandatory` passes even when nothing is configured as a mandate field. Only the
+  // Date of Birth label is bound to the mandate config
+  // (:class="{ mandatory: checkIsMandateField(mandateFieldTypes.DateOfBirth) }"), so it is the
+  // one label that actually proves the mandate-field rule is being applied.
+  PROFILE_DIALOG_DOB_FIELD_LABEL: ".personal-details-form-content .field:has(.birth-date-date-picker) label",
+  PROFILE_DIALOG_MANDATORY_CLASS: "mandatory",
+  // The profile forms only render Save when editable (v-if="!disableEdit" in
+  // contact-info-form.vue), so its absence is how a read-only profile popup is detected.
+  PROFILE_DIALOG_SAVE_BTN: "button:has-text(\"Save\")",
+  // Read-only profile forms disable every input, so an editable input is the second
+  // editability signal alongside the Save button
+  PROFILE_DIALOG_ANY_INPUT: "input:visible",
+  PROFILE_DIALOG_EDITABLE_INPUT: "input:visible:not([disabled])",
+
+  // --- Standalone traveler profile PAGE (not the dialog) ---
+  // Clicking a traveller's name on the trip/search page does NOT open a dialog: trip-traveler-tag.vue
+  // #goToUserApp calls utilService.openNewWindow(false, ...), which on desktop window.open()s the
+  // /user/:userId route. That route renders user-profile.vue standalone (user-app.vue), so the
+  // .app-dialog.user-profile-dialog wrapper every USER_PROFILE_DIALOG selector above relies on is
+  // absent here. user-profile.vue puts `blend-into-modal` on its section ONLY when embedded in a
+  // dialog, so :not(.blend-into-modal) is what separates the standalone page from the popup.
+  USER_PROFILE_PAGE: "section.user-profile:not(.blend-into-modal)",
+  // Same section gains `read-only-profile` when user-profile.ts#isUserCantEditProfile is true
+  // (another user's profile without CanEditAndViewProfile), so this class is the app's own
+  // read-only signal — asserted alongside the Save-button/editable-input counts.
+  USER_PROFILE_PAGE_READ_ONLY: "section.user-profile.read-only-profile:not(.blend-into-modal)",
+  // The tabbed forms mount inside the section; used to wait out the profile load before counting
+  // editability signals, mirroring PROFILE_DIALOG_ANY_INPUT's role for the dialog.
+  USER_PROFILE_PAGE_TABS: "section.user-profile:not(.blend-into-modal) .tabs-container",
+  // Birth Date is the one Personal Details control that renders WITHOUT `disabled` on a read-only
+  // profile — personal-details-form.vue passes :disabled="disableEdit" to every other field but not
+  // to its birth-date app-datepicker. The field is inert anyway (the picker does not open), so the
+  // read-only check counts it separately instead of treating it as a privilege leak, and proves the
+  // inertness by clicking it. If the binding is ever added, this simply counts zero.
+  BIRTH_DATE_EDITABLE_INPUT: ".personal-details-form-content .birth-date-date-picker input:visible:not([disabled])",
 };
 
 class ProfilePage {
@@ -966,6 +1029,165 @@ class ProfilePage {
         `[ProfilePage.clickFirstTravelerNameLink] Could not click first traveler name link (selector: ${SELECTORS.TRAVELER_NAME_LINK}). ` +
         `No traveler may have been added to the trip. Original: ${err.message}`
       );
+    }
+  }
+
+  /**
+   * Clicks the LAST filled, viewable traveler name on the trip/search page.
+   *
+   * Deliberately a sibling of clickFirstTravelerNameLink rather than a parameter on it: the first
+   * tag is the primary traveller (usually the logged-in booker), so a scenario that adds a second
+   * traveller and then opens THAT traveller's profile has to target the last tag. Uses
+   * FILLED_TRAVELER_NAME_LINK, not TRAVELER_NAME_LINK — a leftover empty "Select Traveller" slot
+   * renders after the filled tags and would otherwise win `.last()`. Only travellers the logged-in
+   * user may view carry `is-clickable` (trip-traveler-tag.vue binds it to isUserCanViewProfile),
+   * so the locator also excludes tags that cannot be opened at all.
+   */
+  async clickLastTravelerNameLink() {
+    try {
+      const link = this.page.locator(SELECTORS.FILLED_TRAVELER_NAME_LINK).last();
+      await link.waitFor({ state: 'visible', timeout: 15000 });
+      await link.click({ timeout: 10000 });
+    } catch (err) {
+      throw new Error(
+        `[ProfilePage.clickLastTravelerNameLink] Could not click the last filled traveler name link ` +
+        `(selector: ${SELECTORS.FILLED_TRAVELER_NAME_LINK}). Either no traveller is on the trip (only ` +
+        `empty "Select Traveller" slots), or the logged-in user lacks the privilege to view that ` +
+        `traveller's profile — without it trip-traveler-tag.vue omits the is-clickable class this ` +
+        `selector requires. Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Names currently rendered as filled, viewable traveler tags. Lets the DSL name the tags it could
+   * choose from in a failure message instead of leaving a bare timeout.
+   * @returns {Promise<string[]>}
+   */
+  async getFilledTravelerNameLinkTexts() {
+    const texts = await this.page.locator(SELECTORS.FILLED_TRAVELER_NAME_LINK).allTextContents();
+    return texts.map((text) => text.trim()).filter(Boolean);
+  }
+
+  /**
+   * Waits for the standalone traveler profile page (the /user/:userId route) to finish rendering.
+   * The dialog counterpart is waitForDialogByTitle — kept separate because this page has no
+   * .app-dialog wrapper at all.
+   * @param {number} [timeoutMs=25000]
+   */
+  async waitForUserProfilePage(timeoutMs = 25000) {
+    try {
+      await this.page.locator(SELECTORS.USER_PROFILE_PAGE).first().waitFor({ state: 'visible', timeout: timeoutMs });
+      await this.page.locator(SELECTORS.USER_PROFILE_PAGE_TABS).first().waitFor({ state: 'visible', timeout: timeoutMs });
+    } catch (err) {
+      throw new Error(
+        `[ProfilePage.waitForUserProfilePage] The standalone traveler profile page did not render within ` +
+        `${timeoutMs}ms (selectors: "${SELECTORS.USER_PROFILE_PAGE}", "${SELECTORS.USER_PROFILE_PAGE_TABS}"). ` +
+        `The new tab may still be loading, the /user/:userId route may have redirected, or the profile ` +
+        `request may have failed. Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Editability signals for the standalone profile page: whether the app's own read-only class is
+   * present, plus the visible-Save and enabled-input counts. Page Objects never assert — the DSL
+   * decides what the combination means.
+   *
+   * `editableBirthDateInputs` is reported separately so the DSL can discount the known-inert Birth
+   * Date field (see BIRTH_DATE_EDITABLE_INPUT) without discounting any other enabled control. Use
+   * describeEditableInputs() to name the offending controls when the assertion fails.
+   * @param {number} [timeoutMs=20000]
+   * @returns {Promise<{ readOnlyClass: boolean, saveButtons: number, editableInputs: number, editableBirthDateInputs: number }>}
+   */
+  async getUserProfilePageEditability(timeoutMs = 20000) {
+    const profileSection = this.page.locator(SELECTORS.USER_PROFILE_PAGE).first();
+    await profileSection.waitFor({ state: 'visible', timeout: timeoutMs });
+    // Same race as getDialogEditability: wait for a form input to mount, otherwise both counts
+    // below read zero and a perfectly editable profile looks read-only.
+    try {
+      await profileSection.locator(SELECTORS.PROFILE_DIALOG_ANY_INPUT).first().waitFor({ state: 'visible', timeout: timeoutMs });
+    } catch {
+      // Deliberately swallowed: the counts returned below describe the failure to the DSL.
+    }
+
+    const readOnlyClass = (await this.page.locator(SELECTORS.USER_PROFILE_PAGE_READ_ONLY).count()) > 0;
+    const saveButtons = await profileSection.locator(SELECTORS.PROFILE_DIALOG_SAVE_BTN + ':visible').count();
+    const editableInputs = await profileSection.locator(SELECTORS.PROFILE_DIALOG_EDITABLE_INPUT).count();
+    const editableBirthDateInputs = await profileSection.locator(SELECTORS.BIRTH_DATE_EDITABLE_INPUT).count();
+
+    return { readOnlyClass, saveButtons, editableInputs, editableBirthDateInputs };
+  }
+
+  /**
+   * Identifies the enabled inputs on the open profile page (type/name/placeholder/class, first 5).
+   * Kept out of getUserProfilePageEditability on purpose: these attribute reads only matter when a
+   * read-only assertion is about to fail, so the passing path should not pay for them.
+   * @param {number} [maxInputs=5]
+   * @returns {Promise<string[]>}
+   */
+  async describeEditableInputs(maxInputs = 5) {
+    if (typeof maxInputs !== 'number' || maxInputs < 1) {
+      throw new Error(
+        `[ProfilePage.describeEditableInputs] "maxInputs" must be a number >= 1, got: ${typeof maxInputs} (${maxInputs}).`
+      );
+    }
+
+    const editableInputLocator = this.page
+      .locator(SELECTORS.USER_PROFILE_PAGE)
+      .first()
+      .locator(SELECTORS.PROFILE_DIALOG_EDITABLE_INPUT);
+    const count = Math.min(await editableInputLocator.count(), maxInputs);
+    const details = [];
+
+    for (let index = 0; index < count; index++) {
+      const input = editableInputLocator.nth(index);
+      const [type, name, placeholder, className] = await Promise.all([
+        input.getAttribute('type'),
+        input.getAttribute('name'),
+        input.getAttribute('placeholder'),
+        input.getAttribute('class'),
+      ]);
+      details.push(
+        `type=${type ?? 'none'} name=${name ?? 'none'} placeholder=${placeholder ?? 'none'} class=${className ?? 'none'}`
+      );
+    }
+
+    return details;
+  }
+
+  /**
+   * Whether the Birth Date input can actually receive a click. Uses a trial click, so Playwright
+   * runs every actionability check (visible, stable, enabled, receives pointer events) WITHOUT
+   * interacting — the field is left untouched either way.
+   *
+   * On a read-only profile the .personal-details-form section swallows pointer events, so the
+   * undisabled Birth Date input reports as non-interactive. Page Objects report state; the DSL
+   * decides what it means.
+   * @param {number} [timeoutMs=3000] - Short on purpose: the caller expects the check to fail.
+   * @returns {Promise<boolean>}
+   */
+  async isDateOfBirthInputInteractive(timeoutMs = 3000) {
+    const input = this.page.locator(SELECTORS.DOB_INPUT).first();
+
+    try {
+      await input.waitFor({ state: 'visible', timeout: 10000 });
+    } catch (err) {
+      throw new Error(
+        `[ProfilePage.isDateOfBirthInputInteractive] The Birth Date input never rendered (selector: ${SELECTORS.DOB_INPUT}). ` +
+        `Personal Details may not be the active tab, or the profile may still be loading — without the field ` +
+        `present, its interactivity cannot be judged either way. Original: ${err.message}`
+      );
+    }
+
+    try {
+      await input.click({ trial: true, timeout: timeoutMs });
+      return true;
+    } catch {
+      // Deliberately swallowed: a failed trial click IS the answer (the field cannot receive
+      // clicks). The field's visibility was already asserted above, so this cannot mask a
+      // missing-element problem; the DSL asserts on the boolean.
+      return false;
     }
   }
 
@@ -1778,6 +2000,150 @@ class ProfilePage {
     }
   }
 
+  /**
+   * Both mandate-fields dialogs share `.app-dialog.user-profile-dialog`, so the el-dialog
+   * title is the only reliable discriminator. Returns the dialog locator for one title.
+   */
+  dialogByTitle(title) {
+    return this.page
+      .locator(SELECTORS.USER_PROFILE_DIALOG)
+      .filter({ has: this.page.locator(SELECTORS.DIALOG_TITLE, { hasText: title }) });
+  }
+
+  /**
+   * Titles of every user-profile dialog currently visible. Used to build a useful failure
+   * message when the wrong one of the two opened.
+   */
+  async getOpenUserProfileDialogTitles() {
+    const titles = await this.page
+      .locator(SELECTORS.USER_PROFILE_DIALOG + ":visible " + SELECTORS.DIALOG_TITLE)
+      .allTextContents();
+    return titles.map((t) => t.trim()).filter(Boolean);
+  }
+
+  async waitForDialogByTitle(title, timeoutMs = 25000) {
+    try {
+      await this.dialogByTitle(title).first().waitFor({ state: "visible", timeout: timeoutMs });
+    } catch (err) {
+      const open = await this.getOpenUserProfileDialogTitles();
+      throw new Error(
+        `[ProfilePage.waitForDialogByTitle] No user profile dialog titled "${title}" appeared within ` +
+        `${timeoutMs}ms. Dialogs open instead: ${open.length ? open.map((t) => `"${t}"`).join(", ") : "none"}. ` +
+        "Which dialog opens is driven by the traveller's profile privileges and their missing " +
+        `mandate fields — verify both before treating this as a locator problem. Original: ${err.message}`,
+      );
+    }
+  }
+
+  /**
+   * Resolves once no dialog with this title is showing. A missing dialog counts as hidden, so
+   * this returns immediately in the normal case instead of burning the timeout. The assertion
+   * itself belongs to the DSL — Page Objects never assert.
+   *
+   * Settles first: because "hidden" is satisfied by an element that was never rendered, calling
+   * this the instant after a traveller is selected would pass before either dialog had a chance to
+   * mount — a zero-wait snapshot, not a check. Waiting for ANY user-profile dialog to appear (the
+   * two are mutually exclusive, so one of them will) gives the render a bounded chance to happen,
+   * and a timeout here is not an error: some flows legitimately raise no dialog at all.
+   * @param {string} title
+   * @param {number} [timeoutMs=10000]
+   * @param {number} [settleMs=3000]
+   */
+  async waitForDialogByTitleHidden(title, timeoutMs = 10000, settleMs = 3000) {
+    await this.page
+      .locator(SELECTORS.USER_PROFILE_DIALOG)
+      .first()
+      .waitFor({ state: "visible", timeout: settleMs })
+      .catch(() => {});
+
+    await this.dialogByTitle(title).first().waitFor({ state: "hidden", timeout: timeoutMs });
+  }
+
+  async getDialogBodyText(title) {
+    const body = this.dialogByTitle(title).first().locator(SELECTORS.USER_PROFILE_DIALOG_BODY);
+    try {
+      await body.waitFor({ state: "visible", timeout: 15000 });
+      return (await body.innerText()).trim();
+    } catch (err) {
+      throw new Error(
+        `[ProfilePage.getDialogBodyText] Could not read the body of the dialog titled "${title}" ` +
+        `(selector: ${SELECTORS.USER_PROFILE_DIALOG_BODY}). Original: ${err.message}`,
+      );
+    }
+  }
+
+  /**
+   * el-tab-pane name of the tab the dialog is currently showing (e.g. "personalDetails").
+   * Element Plus renders each tab header with id="tab-<name>", so the name is recovered from
+   * the id of the header carrying .is-active.
+   */
+  async getActiveDialogTabName(title, timeoutMs = 20000) {
+    const dialog = this.dialogByTitle(title).first();
+    await dialog.waitFor({ state: "visible", timeout: 15000 });
+    const activeTab = dialog.locator(SELECTORS.DIALOG_ACTIVE_TAB).first();
+    // el-dialog paints its header as soon as it opens, but the tab strip is only rendered once
+    // the profile has loaded (v-if="userProfile") — reading straight away finds no active tab.
+    try {
+      await activeTab.waitFor({ state: "visible", timeout: timeoutMs });
+    } catch {
+      // Deliberately swallowed: the caller turns a null tab name into a descriptive failure.
+    }
+    const id = await activeTab.getAttribute("id").catch(() => null);
+    return id ? id.replace(/^tab-/, "") : null;
+  }
+
+  /**
+   * True when the Date of Birth label carries the `mandatory` class, i.e. the red star is painted
+   * because Date of Birth is configured as a mandate field.
+   */
+  async isDobFieldMarkedMandatory(title, timeoutMs = 20000) {
+    const dialog = this.dialogByTitle(title).first();
+    await dialog.waitFor({ state: "visible", timeout: 15000 });
+    const label = dialog.locator(SELECTORS.PROFILE_DIALOG_DOB_FIELD_LABEL).first();
+    try {
+      await label.waitFor({ state: "visible", timeout: timeoutMs });
+    } catch {
+      // Deliberately swallowed: the caller reports the missing label as the failure.
+    }
+    const classAttr = (await label.getAttribute("class").catch(() => "")) || "";
+    return classAttr.split(/\s+/).includes(SELECTORS.PROFILE_DIALOG_MANDATORY_CLASS);
+  }
+
+  /**
+   * Closes one of the two user-profile dialogs via its header button and waits for it to go.
+   * Used to leave a traveller's popup without saving, so the next traveller can be selected.
+   */
+  async closeDialogByTitle(title, timeoutMs = 15000) {
+    const dialog = this.dialogByTitle(title).first();
+    try {
+      await dialog.locator(SELECTORS.DIALOG_CLOSE_BTN).first().click({ timeout: timeoutMs });
+      await dialog.waitFor({ state: "hidden", timeout: timeoutMs });
+    } catch (err) {
+      throw new Error(
+        `[ProfilePage.closeDialogByTitle] Could not close the dialog titled "${title}" via its header ` +
+        `button (selector: ${SELECTORS.DIALOG_CLOSE_BTN}). Original: ${err.message}`,
+      );
+    }
+  }
+
+  /**
+   * Editability signals for an open profile dialog: the Save button only renders when the
+   * form is not read-only, and read-only forms disable every input.
+   */
+  async getDialogEditability(title, timeoutMs = 20000) {
+    const dialog = this.dialogByTitle(title).first();
+    await dialog.waitFor({ state: "visible", timeout: 15000 });
+    // Same race as countVisibleMandatoryLabels: wait for the form to mount inside the dialog,
+    // otherwise both counts below read zero and a perfectly editable popup looks read-only.
+    try {
+      await dialog.locator(SELECTORS.PROFILE_DIALOG_ANY_INPUT).first().waitFor({ state: "visible", timeout: timeoutMs });
+    } catch {
+      // Deliberately swallowed: the counts below describe the failure.
+    }
+    const saveButtons = await dialog.locator(SELECTORS.PROFILE_DIALOG_SAVE_BTN + ":visible").count();
+    const editableInputs = await dialog.locator(SELECTORS.PROFILE_DIALOG_EDITABLE_INPUT).count();
+    return { saveButtons, editableInputs };
+  }
 }
 
 module.exports = ProfilePage;

@@ -398,3 +398,87 @@ When("I enter a mobile number in the profile popup with country code {string} ar
   logger.info("Entering mobile number in profile popup", { countryCode, areaCode, number });
   await Profile.enterMobileInPopup(this.page, { countryCode, areaCode, number });
 });
+
+// --- Mandate fields per profile privilege (ADO US 60526) ---
+// The editable profile dialog and the "Mandatory Details Are Missing" warning are the two
+// mutually exclusive outcomes of selecting a traveller with missing mandate fields. Which one
+// appears depends on the booker's profile privileges and on whether the traveller is themself,
+// so every scenario asserts the expected popup AND the absence of the other one.
+
+Then("the user profile popup is displayed", async function () {
+  logger.info("Verifying the editable User profile popup opened");
+  await Profile.verifyUserProfilePopupOpen(this.page);
+});
+
+Then("the user profile popup is not displayed", async function () {
+  logger.info("Verifying the editable User profile popup did not open");
+  await Profile.verifyUserProfilePopupNotOpen(this.page);
+});
+
+Then("the mandatory details are missing popup is displayed", async function () {
+  logger.info("Verifying the Mandatory Details Are Missing popup opened");
+  await Profile.verifyMandatoryDetailsWarningOpen(this.page);
+});
+
+Then("the mandatory details are missing popup is not displayed", async function () {
+  logger.info("Verifying the Mandatory Details Are Missing popup did not open");
+  await Profile.verifyMandatoryDetailsWarningNotOpen(this.page);
+});
+
+Then("the mandatory details are missing popup states {string}", async function (expectedText) {
+  logger.info("Verifying the warning popup wording", { expectedText });
+  await Profile.verifyMandatoryDetailsWarningText(this.page, expectedText);
+});
+
+Then("the {string} field is marked with a red star", async function (fieldName) {
+  logger.info("Verifying the mandate field is starred in the profile popup", { fieldName });
+  if (fieldName !== "Date of Birth") {
+    throw new Error(
+      `[profile.steps] Only "Date of Birth" is supported by this step, got "${fieldName}". ` +
+      "personal-details-form.vue stars most labels unconditionally; Date of Birth is the one label " +
+      "bound to the mandate-field configuration, so it is the only meaningful assertion target. " +
+      "Add a dedicated page/DSL helper before extending this step to another field.",
+    );
+  }
+  await Profile.verifyDateOfBirthMarkedAsMandatory(this.page);
+});
+
+Then("the user profile popup opens on the {string} tab", async function (tabName) {
+  logger.info("Verifying which tab the profile popup opened on", { tabName });
+  await Profile.verifyUserProfilePopupActiveTab(this.page, tabName);
+});
+
+Then("the user profile popup is editable", async function () {
+  logger.info("Verifying the profile popup can be edited and saved");
+  await Profile.verifyUserProfilePopupEditable(this.page);
+});
+When("I close the user profile popup", async function () {
+  logger.info("Closing the User profile popup without saving");
+  await Profile.closeUserProfilePopup(this.page);
+});
+
+When("I close the mandatory details are missing popup", async function () {
+  logger.info("Closing the Mandatory Details Are Missing popup");
+  await Profile.closeMandatoryDetailsWarning(this.page);
+});
+
+// Clicking a traveller's name is NOT the same interaction as the mandate-fields popup above:
+// trip-traveler-tag.vue routes to /user/:userId in a new tab instead of opening a dialog, so the
+// three steps below are page-scoped while the "user profile popup" steps stay dialog-scoped.
+// this.page is repointed at the new tab (same convention as "I open the traveler profile from the
+// traveler name") so the remaining assertions — and the After hook's failure screenshot — target
+// the profile that was just opened.
+When("I click the traveler name on the search page", async function () {
+  logger.info("Opening the last added traveller's profile from their name tag on the search page");
+  this.page = await Profile.openTravelerProfileFromLastTravelerTag(this.page);
+});
+
+Then("the traveler profile page is displayed", async function () {
+  logger.info("Verifying the standalone traveller profile page opened");
+  await Profile.verifyTravelerProfilePageOpen(this.page);
+});
+
+Then("the traveler profile page is not editable", async function () {
+  logger.info("Verifying the traveller profile page is read-only");
+  await Profile.verifyTravelerProfilePageNotEditable(this.page);
+});
