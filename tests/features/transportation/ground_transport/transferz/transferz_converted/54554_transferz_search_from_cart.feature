@@ -5,7 +5,6 @@
 # Owner: Bruna Santos
 # Created: 2024-11-21T08:40:31Z
 # Updated: 2025-10-28T03:00:20Z
-# TODO: add USER_ALANA_TRANSFERZ for alana@transferzandflight.com before running this scenario.
 
 @regression @transportation @ground_transport @provider:transferz @cart
 Feature: 54554 Transferz - Search from cart returns results with airport pickup
@@ -15,9 +14,13 @@ Feature: 54554 Transferz - Search from cart returns results with airport pickup
   So that I can find transfer results directly from the cart
 
   Scenario: Transferz search from cart returns results after adding a round trip flight
-    Given I am logged in as "alana@transferz.com" booking a new trip
+    Given I am logged in as "betoribeiro@transferz.com" booking a new trip
     And I have added myself as the traveler
     When I search for a round trip flight from "BRU" to "BUH"
     And I add the first flight to cart
     Then the booking status should be "Pending booking"
-    When I search transferz from cart and validate results are displayed
+    When I click search button from "Add ground transporation from Bucharest, Romania - Otopeni International (OTP)"
+    Then I should see that pickup contains "Bucharest, Romania - Otopeni International (OTP)"
+    And carrier is populated by text
+    When I set drop off location to be "Radisson Blu, Calea Victoriei, Bucharest, Romania", vehicle type to be "All Vehicle Types", traveller to be 1 and click search button
+    Then I wait for add to trip text to be visible

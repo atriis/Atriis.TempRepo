@@ -3,6 +3,7 @@ const { waitForText } = require("@utils/wait");
 const { parseAmountText, extractHtmlLinks } = require("@utils/dom");
 const { getNetworkInterceptor } = require("@utils/networkInterceptor");
 const config = require("@config/config");
+const { normalizeText } = require("@utils/text");
 const { SELECTORS: SEARCH_SELECTORS } = require("@pages/SearchPage");
 
 /**
@@ -17,6 +18,23 @@ const CANCELLATION_CONFIRMED_TEXT = "Cancellation confirmed!";
 // How long a mandatory UK Rail (Evolvi) extras row may take to persist — see
 // fillAllMandatoryEvolviExtras. Sized for the slowest row, the seat reservation.
 const EVOLVI_EXTRAS_SAVE_TIMEOUT_MS = 45000;
+
+/**
+ * Collapses a cross-sell suggestion sentence to a comparable form — see
+ * clickCrossSellSuggestionByTitle.
+ *
+ * Atriis.App has corrected `trip.suggestedItems.groundServiceSuggestionText` from
+ * "Add ground transporation from" to "Add ground transport from", while staging can still serve
+ * the old spelling that the manual tests were written against. Folding that one typo keeps a
+ * caller pointed at the same card on either build; every other word still has to match, so a
+ * genuinely different suggestion will not be picked up by mistake.
+ *
+ * @param {string} text
+ * @returns {string}
+ */
+function normalizeSuggestionTitle(text) {
+  return normalizeText(String(text).replace(/transporation/gi, "transport")).toLowerCase();
+}
 
 // UK Rail (Evolvi) seat reservation save endpoint (uk-rail.service.ts POSTs the whole
 // IUkRailSeatsSaveReq here). The request body is the only place the coach actually sent to the
@@ -942,6 +960,9 @@ const SELECTORS = {
   // Its title reads "Add car rental in <city>" and the desktop action opens the edit-search drawer
   // pre-filled with the flight's arrival city.
   CROSS_SELL_CAR_SUGGESTION: 'section.cross-sell-suggestions .suggestion-container:has(.material-symbols-outlined.car)',
+  // Any suggestion card, for the products whose icon class is not a reliable discriminator — those
+  // are picked by the card's rendered title instead (see clickCrossSellSuggestionByTitle).
+  CROSS_SELL_SUGGESTION: 'section.cross-sell-suggestions .suggestion-container',
   CROSS_SELL_SUGGESTION_TITLE: '.suggestion-title',
   // Older builds rendered the action as `.action span`; current builds use an app-btn `.search-btn`.
   // Match either so the click works against both the deployed staging and the latest source.
@@ -6387,6 +6408,55 @@ class CartPage {
     return this.getCarCrossSellSuggestion()
       .locator(SELECTORS.CROSS_SELL_SUGGESTION_TITLE)
       .first();
+  }
+
+  /**
+   * Clicks the action of the cross-sell suggestion whose title matches, opening that product's
+   * pre-filled edit-search drawer.
+   *
+   * Used for the products the car card's icon-scoped selector cannot reach; the card is picked by
+   * its rendered sentence, so the caller does not depend on suggestion ordering.
+   *
+   * @param {string} title - The suggestion sentence, e.g. "Add ground transport from Bucharest, Romania - Otopeni International (OTP)"
+   * @param {number} [timeout=30000] - How long to wait for the suggestions block to render
+   * @throws {Error} If no suggestion card carries that title
+   */
+  async clickCrossSellSuggestionByTitle(title, timeout = 30000) {
+    if (!title || typeof title !== 'string') {
+      throw new Error(`title must be a non-empty string, got: ${typeof title}`);
+    }
+
+    const cards = this.page.locator(SELECTORS.CROSS_SELL_SUGGESTION);
+    await cards.first().waitFor({ state: 'visible', timeout });
+
+    const expected = normalizeSuggestionTitle(title);
+    const rendered = [];
+    const count = await cards.count();
+
+    for (let index = 0; index < count; index += 1) {
+      const card = cards.nth(index);
+      const cardTitle = await card
+        .locator(SELECTORS.CROSS_SELL_SUGGESTION_TITLE)
+        .first()
+        .innerText();
+
+      rendered.push(normalizeText(cardTitle));
+
+      if (normalizeSuggestionTitle(cardTitle) === expected) {
+        const action = card.locator(SELECTORS.CROSS_SELL_SUGGESTION_ACTION).first();
+
+        await action.scrollIntoViewIfNeeded();
+        await action.waitFor({ state: 'visible', timeout: 15000 });
+        await action.click();
+        return;
+      }
+    }
+
+    throw new Error(
+      `[CartPage.clickCrossSellSuggestionByTitle] No cross-sell suggestion is titled "${title}". `
+      + `The trip overview rendered ${count} suggestion(s): `
+      + `${rendered.map((text) => `"${text}"`).join(', ') || '(none)'}.`
+    );
   }
 
   /**

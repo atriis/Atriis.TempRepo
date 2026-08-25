@@ -1,6 +1,7 @@
 require("module-alias/register");
 
 const { When, Then, setDefaultTimeout } = require("@cucumber/cucumber");
+const { expect } = require("@playwright/test");
 const { GroundTransportSearch } = require("../../src/dsl");
 const logger = require("@utils/logger").child("GroundTransport");
 
@@ -52,9 +53,22 @@ When("I search for ground transport from airport {string} to specific address {s
   notImplemented("I search for ground transport from airport {string} to specific address {string} changing the pickup time");
 });
 
-When("I search transferz from cart and validate results are displayed", async function () {
-  logger.info("Searching Transferz from cart and validating results");
-  notImplemented("I search transferz from cart and validate results are displayed");
+When("I click search button from {string}", async function (suggestionTitle) {
+  logger.info("Opening ground transport search from a cart suggestion", { suggestionTitle });
+  await GroundTransportSearch.searchFromCartSuggestion(this.page, suggestionTitle);
+});
+
+When("I set drop off location to be {string}, vehicle type to be {string}, traveller to be {int} and click search button", async function (dropOffLocation, vehicleType, travellerNumber) {
+  logger.info("Completing the prefilled ground transport search drawer", {
+    dropOffLocation,
+    vehicleType,
+    travellerNumber,
+  });
+  await GroundTransportSearch.completeSearchDrawerAndSearch(this.page, {
+    dropOffLocation,
+    vehicleType,
+    travellerNumber,
+  });
 });
 
 When("I expand vehicle filters if available", async function () {
@@ -132,6 +146,35 @@ When("I extract the ground transport results price and VAT", async function () {
 Then("ground transport results should be displayed", async function () {
   logger.info("Verifying ground transport results are displayed");
   await this.page.locator(".ground-transport-list .btn--primary, .show-count p").first().waitFor({ state: "visible", timeout: 15000 });
+});
+
+Then("I should see that pickup contains {string}", async function (expectedPickup) {
+  logger.info("Verifying the prefilled ground transport pick-up location", { expectedPickup });
+  // The drawer's pick-up field is filled in from the booked flight after the drawer renders, so
+  // this polls the value instead of reading it once.
+  await expect
+    .poll(async () => GroundTransportSearch.readSearchDrawerPickupLocation(this.page), {
+      timeout: 30000,
+    })
+    .toContain(expectedPickup);
+});
+
+Then("carrier is populated by text", async function () {
+  logger.info("Verifying the ground transport carrier is prefilled");
+  await expect
+    .poll(async () => GroundTransportSearch.readSearchDrawerAirline(this.page), { timeout: 30000 })
+    .not.toBe("");
+
+  // Guard against reading the untouched field: Element Plus prints the placeholder in the same
+  // node it later prints the chosen carrier in.
+  const carrier = await GroundTransportSearch.readSearchDrawerAirline(this.page);
+
+  if (/^select airline$/i.test(carrier.trim())) {
+    throw new Error(
+      "Expected the ground transport Airline field to be prefilled from the booked flight, but it "
+      + `is still showing its "${carrier.trim()}" placeholder.`,
+    );
+  }
 });
 
 Then("the ground transport vehicle filter should be displayed", async function () {

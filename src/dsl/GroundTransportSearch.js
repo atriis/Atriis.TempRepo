@@ -4,6 +4,8 @@ const { SearchPage } = require("@pages/SearchPage");
 const { selectDatesByNthAvailable } = require("@utils/calendar.helper");
 const { resolveRoute } = require("@utils/route.helper");
 const { SEARCH_DEFAULTS } = require("@utils/search.constants");
+const { CartPage } = require("@pages/CartPage");
+const logger = require("@utils/logger").child("GroundTransportSearch-DSL");
 const groundTransportRoutes = require("@data/groundtransport.json");
 
 /**
@@ -126,6 +128,110 @@ const GroundTransportSearch = {
       travellerNumber,
       pickupIndex,
     });
+  },
+
+  /**
+   * Opens the ground transport search drawer from a cart cross-sell suggestion.
+   *
+   * The cart offers a transfer for the destination of an already-booked product; taking that
+   * offer opens the edit-search drawer with the pick-up airport and the flight's carrier already
+   * filled in from the booked flight.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} suggestionTitle - The suggestion card's sentence
+   */
+  async searchFromCartSuggestion(page, suggestionTitle) {
+    if (!page) {
+      throw new Error("page is required");
+    }
+
+    if (!suggestionTitle || typeof suggestionTitle !== "string") {
+      throw new Error(`suggestionTitle must be a non-empty string, got: ${typeof suggestionTitle}`);
+    }
+
+    logger.info("Opening the ground transport search drawer from a cart suggestion", { suggestionTitle });
+
+    const cartPage = getPageObject(page, CartPage);
+    const groundTransportSearchPage = getPageObject(page, GroundTransportSearchPage);
+
+    await cartPage.clickCrossSellSuggestionByTitle(suggestionTitle);
+    await groundTransportSearchPage.waitForEditSearchDrawerReady();
+
+    return { opened: true, suggestionTitle };
+  },
+
+  /**
+   * Reads the pick-up location prefilled in the search drawer.
+   *
+   * @param {import('playwright').Page} page
+   * @returns {Promise<string>}
+   */
+  async readSearchDrawerPickupLocation(page) {
+    if (!page) {
+      throw new Error("page is required");
+    }
+
+    return getPageObject(page, GroundTransportSearchPage).getEditSearchPickupValue();
+  },
+
+  /**
+   * Reads the carrier prefilled in the search drawer's Airline field.
+   *
+   * @param {import('playwright').Page} page
+   * @returns {Promise<string>} The carrier name, or "" while the field is still empty
+   */
+  async readSearchDrawerAirline(page) {
+    if (!page) {
+      throw new Error("page is required");
+    }
+
+    return getPageObject(page, GroundTransportSearchPage).getEditSearchAirlineValue();
+  },
+
+  /**
+   * Completes the prefilled search drawer and submits it.
+   *
+   * Vehicle type is set before the traveller count on purpose: the traveller options are built
+   * from the selected vehicle's capacity, so the traveller dropdown is empty until a vehicle
+   * type has been chosen.
+   *
+   * @param {import('playwright').Page} page
+   * @param {Object} options
+   * @param {string} options.dropOffLocation - Drop-off address to search for
+   * @param {string} options.vehicleType - Vehicle type option label
+   * @param {number} options.travellerNumber - Number of travellers (>= 1)
+   */
+  async completeSearchDrawerAndSearch(page, { dropOffLocation, vehicleType, travellerNumber } = {}) {
+    if (!page) {
+      throw new Error("page is required");
+    }
+
+    if (!dropOffLocation || typeof dropOffLocation !== "string") {
+      throw new Error(`dropOffLocation must be a non-empty string, got: ${typeof dropOffLocation}`);
+    }
+
+    if (!vehicleType || typeof vehicleType !== "string") {
+      throw new Error(`vehicleType must be a non-empty string, got: ${typeof vehicleType}`);
+    }
+
+    if (!Number.isInteger(travellerNumber) || travellerNumber < 1) {
+      throw new Error(`travellerNumber must be an integer >= 1, got: ${travellerNumber}`);
+    }
+
+    logger.info("Completing the prefilled ground transport search drawer", {
+      dropOffLocation,
+      vehicleType,
+      travellerNumber,
+    });
+
+    const groundTransportSearchPage = getPageObject(page, GroundTransportSearchPage);
+
+    await groundTransportSearchPage.fillEditSearchDropOffField(dropOffLocation);
+    await groundTransportSearchPage.selectEditSearchVehicleType(vehicleType);
+    await groundTransportSearchPage.selectEditSearchTravellerNumber(travellerNumber);
+    await groundTransportSearchPage.clickEditSearchSubmitButton();
+
+    return { searched: true, dropOffLocation, vehicleType, travellerNumber };
   },
 };
 
