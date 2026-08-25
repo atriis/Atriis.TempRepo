@@ -2504,6 +2504,53 @@ const Profile = {
   },
 
   /**
+   * Asserts the open "User profile" popup is the one belonging to the given traveller, by reading
+   * the Email field the popup loaded into its Personal Details tab.
+   *
+   * verifyUserProfilePopupOpen only proves *a* profile popup opened. For a booker who may edit
+   * other profiles that is not enough: the failure this guards against is the popup opening on the
+   * booker's OWN profile after another traveller was selected, which would satisfy every other
+   * assertion in the scenario — editable, starred, no warning — while testing nothing about the
+   * traveller. Comparing the loaded email is what ties the popup to the traveller who was picked.
+   *
+   * @param {import("@playwright/test").Page} page
+   * @param {string} expectedEmail traveller the popup is expected to have loaded
+   */
+  async verifyUserProfilePopupBelongsTo(page, expectedEmail) {
+    if (!page) {
+      throw new Error("[Profile.verifyUserProfilePopupBelongsTo] \"page\" is required.");
+    }
+    if (!expectedEmail || typeof expectedEmail !== "string") {
+      throw new Error(
+        `[Profile.verifyUserProfilePopupBelongsTo] "expectedEmail" must be a non-empty string, got: ${typeof expectedEmail} (${JSON.stringify(expectedEmail)})`,
+      );
+    }
+
+    const profilePage = getPageObject(page, ProfilePage);
+    await profilePage.waitForDialogByTitle("User profile");
+    const actualEmail = await profilePage.getDialogEmailValue("User profile");
+
+    if (!actualEmail) {
+      throw new Error(
+        "[Profile.verifyUserProfilePopupBelongsTo] The \"User profile\" popup is open but its Email field on the " +
+        `Personal Details tab is empty or absent, so the popup cannot be confirmed as "${expectedEmail}"'s. ` +
+        "Check that the popup opened on the Personal Details tab and that the traveller's profile actually loaded.",
+      );
+    }
+
+    if (actualEmail.toLowerCase() !== expectedEmail.toLowerCase()) {
+      throw new Error(
+        `[Profile.verifyUserProfilePopupBelongsTo] The "User profile" popup loaded "${actualEmail}" but ` +
+        `"${expectedEmail}" was expected. Selecting a traveller must open THAT traveller's profile — a popup ` +
+        "showing anyone else (typically the booker's own profile) means the traveller selection did not reach " +
+        "the profile popup, and every later assertion in this scenario would be checking the wrong profile.",
+      );
+    }
+
+    logger.info(`[Profile.verifyUserProfilePopupBelongsTo] Popup belongs to "${expectedEmail}", as expected`);
+  },
+
+  /**
    * Asserts the profile popup opened on the expected tab. user-profile.ts sends the popup to the
    * tab holding the first missing mandate field, so the tab it lands on is the observable proof
    * that the mandate-field configuration was read and applied.

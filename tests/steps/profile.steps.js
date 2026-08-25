@@ -410,6 +410,15 @@ Then("the user profile popup is displayed", async function () {
   await Profile.verifyUserProfilePopupOpen(this.page);
 });
 
+// Identity-scoped variant of the step above. Kept separate rather than folded into it with an
+// optional parameter, because the two assert different things: the plain step is used where the
+// popup can only be the booker's own, this one where a traveller was selected and opening the
+// booker's own profile instead is the regression being guarded against.
+Then("the user profile popup is displayed for {string}", async function (travelerEmail) {
+  logger.info("Verifying the editable User profile popup opened for the selected traveller", { travelerEmail });
+  await Profile.verifyUserProfilePopupBelongsTo(this.page, travelerEmail);
+});
+
 Then("the user profile popup is not displayed", async function () {
   logger.info("Verifying the editable User profile popup did not open");
   await Profile.verifyUserProfilePopupNotOpen(this.page);

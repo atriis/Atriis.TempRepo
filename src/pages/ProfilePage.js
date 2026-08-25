@@ -199,6 +199,13 @@ const SELECTORS = {
   // one label that actually proves the mandate-field rule is being applied.
   PROFILE_DIALOG_DOB_FIELD_LABEL: ".personal-details-form-content .field:has(.birth-date-date-picker) label",
   PROFILE_DIALOG_MANDATORY_CLASS: "mandatory",
+  // The Email input on the popup's Personal Details tab is the traveller's identity as the popup
+  // itself sees it: personal-details-form.vue binds it to the loaded profile's `formData.email`.
+  // Asserting it is what proves the popup that opened belongs to the traveller who was selected,
+  // rather than staying on the booker's own profile. The header <h1> is not usable for this — it
+  // renders firstName + lastName, which the test only knows as an email address. Matched by exact
+  // label text so the sibling "CC Email" field in the same form cannot satisfy it.
+  PROFILE_DIALOG_EMAIL_INPUT: ".personal-details-form-content .field:has(> label:text-is(\"Email\")) input",
   // The profile forms only render Save when editable (v-if="!disableEdit" in
   // contact-info-form.vue), so its absence is how a read-only profile popup is detected.
   PROFILE_DIALOG_SAVE_BTN: "button:has-text(\"Save\")",
@@ -2124,6 +2131,32 @@ class ProfilePage {
         `button (selector: ${SELECTORS.DIALOG_CLOSE_BTN}). Original: ${err.message}`,
       );
     }
+  }
+
+  /**
+   * Reads the Email value from the Personal Details tab of an open profile dialog — the popup's
+   * own record of whose profile it loaded. Returns the raw value; the comparison belongs to the
+   * DSL, since Page Objects never assert.
+   *
+   * The Personal Details tab is waited for rather than assumed: the popup lands on the tab holding
+   * the first missing mandate field, so on a profile missing a contact-information field the email
+   * input would not be mounted yet at the moment this is called.
+   * @param {string} title
+   * @param {number} [timeoutMs=20000]
+   * @returns {Promise<string>} the trimmed email, or "" when the input never appeared
+   */
+  async getDialogEmailValue(title, timeoutMs = 20000) {
+    const dialog = this.dialogByTitle(title).first();
+    await dialog.waitFor({ state: "visible", timeout: 15000 });
+    const emailInput = dialog.locator(SELECTORS.PROFILE_DIALOG_EMAIL_INPUT).first();
+    try {
+      await emailInput.waitFor({ state: "visible", timeout: timeoutMs });
+    } catch {
+      // Deliberately swallowed: the DSL reports the empty value as the failure, with the
+      // traveller it expected, which is a far more useful message than a locator timeout.
+      return "";
+    }
+    return ((await emailInput.inputValue().catch(() => "")) || "").trim();
   }
 
   /**
