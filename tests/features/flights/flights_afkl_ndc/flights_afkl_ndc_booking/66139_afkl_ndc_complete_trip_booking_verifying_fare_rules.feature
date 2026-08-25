@@ -3,14 +3,14 @@
 # Labels: Regression,Flights,AFKL,NDC,Fare Rules,Hold,Full Purchase
 # Owner: Bruna Santos
 
-@regression @flights @afkl @ndc @fare-rules @hold
+@regression @flights @afkl @ndc @fare-rules @hold @full-purchase
 Feature: 66139 AFKL NDC - Complete trip booking with fare rules verification
   As a corporate traveler
   I want to verify fare rules across results, pricing options, flight details, cart and price breakdown
   So that the strictest terms note is consistently displayed before and after holding the trip
 
   Scenario: Verify fare rules in every entry point and hold the AFKL NDC trip
-    Given I am logged in as "brunafranclub@tmcclubcorp.com" booking a new trip
+    Given I am logged in as "bsafkl@bsafkl.com" booking a new trip
     And I have added myself as the traveler
     When I search for a one way flight from "PAR" to "AMS"
     And flight results should be available
