@@ -462,6 +462,27 @@ When("I close the mandatory details are missing popup", async function () {
   await Profile.closeMandatoryDetailsWarning(this.page);
 });
 
+// ADO 83279 compares the warning wording between my own incomplete profile and another
+// traveller's. The two popups only exist one at a time, so the first one's wording is carried on
+// the World until the second opens.
+When("I remember the mandatory details are missing popup wording", async function () {
+  this.storedMandatoryDetailsWarningText = await Profile.captureMandatoryDetailsWarningText(this.page);
+  logger.info("Stored the warning popup wording", { wording: this.storedMandatoryDetailsWarningText });
+});
+
+Then("the mandatory details are missing popup wording is identical to the one remembered earlier", async function () {
+  if (!this.storedMandatoryDetailsWarningText) {
+    throw new Error(
+      "No warning popup wording was remembered — run \"I remember the mandatory details are missing popup wording\" " +
+      "on the first popup before comparing against it.",
+    );
+  }
+  logger.info("Comparing the warning popup wording against the remembered one", {
+    remembered: this.storedMandatoryDetailsWarningText,
+  });
+  await Profile.verifyMandatoryDetailsWarningTextMatches(this.page, this.storedMandatoryDetailsWarningText);
+});
+
 // Clicking a traveller's name is NOT the same interaction as the mandate-fields popup above:
 // trip-traveler-tag.vue routes to /user/:userId in a new tab instead of opening a dialog, so the
 // three steps below are page-scoped while the "user profile popup" steps stay dialog-scoped.

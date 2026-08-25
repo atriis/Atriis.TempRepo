@@ -117,6 +117,9 @@ const SELECTORS = {
     "[placeholder='Search by name, user group, username or email']",
   FIRST_TRAVELER_OPTION: "[id*='item-0']",
   TRIP_TRAVELER_TAG: ".trip-traveler-tag",
+  // Root of trip-travelers-list.vue — always rendered on the search page, unlike the traveller
+  // tags inside it, so it is the one safe anchor for "the list loaded but holds no traveller".
+  TRAVELERS_LIST: '.travelers-list',
   SELECTED_TRAVELER_NAME: '.trip-traveler-tag .traveler-name.black',
   // trip-traveler-tag.vue renders this star ONLY under v-if="primary", so its presence inside a
   // specific traveller's tag is the one reliable proof that THAT traveller is the primary one.
@@ -603,6 +606,45 @@ class SearchPage {
       current = await selectedTravelerNames.count();
     }
     return current;
+  }
+
+  /**
+   * Waits up to `timeout` for a traveller chip to appear, and reports whether one did.
+   *
+   * getSelectedTravelerCount above waits for a filled chip first, so it cannot express "none was
+   * added" — it just burns its timeout. This helper inverts that: it grants the app a window to
+   * render a chip, so a caller asserting "nobody was added" fails when one shows up late rather
+   * than sampling once and missing it. A single instantaneous count would let a regression that
+   * adds the traveller after a network round-trip pass unnoticed.
+   *
+   * The container is awaited first, NOT a tag: trip-travelers-list.vue wraps the whole tag list in
+   * `v-if="!isSingleEmptyTraveler"`, so a trip with nobody added and a single empty slot renders
+   * no tag at all — just the "Add me" / "Add traveler" buttons. Without the container check,
+   * "no chip appeared" would also be true of a page that never loaded.
+   *
+   * Matched with `:visible` because the app renders hidden responsive-duplicate chips (see
+   * waitForTravelerNamesDisplayed) — a zero-match `:visible` locator never attaches, so a hidden
+   * duplicate can neither satisfy nor block the wait.
+   *
+   * @param {{ timeout?: number }} [options] grace period granted for a chip to appear
+   * @returns {Promise<boolean>} true if a visible traveller chip appeared within the window
+   */
+  async waitForAnyTravelerChip({ timeout = 4000 } = {}) {
+    await this.page
+      .locator(SELECTORS.TRAVELERS_LIST)
+      .first()
+      .waitFor({ state: 'visible', timeout: 20000 });
+
+    try {
+      await this.page
+        .locator(`${SELECTORS.SELECTED_TRAVELER_NAME}:visible`)
+        .first()
+        .waitFor({ state: 'attached', timeout });
+      return true;
+    } catch {
+      // Nothing attached inside the window — no traveller made it onto the trip.
+      return false;
+    }
   }
 
   // Searches and selects an existing traveler

@@ -1453,6 +1453,36 @@ const Search = {
     const searchPage = getPageObject(page, SearchPage);
     return searchPage.clickSearchFormCollapseSection(sectionTitle);
   },
+
+  /**
+   * Asserts no traveller made it onto the trip, which is what blocks the search.
+   *
+   * The search button itself is not disabled by an empty travellers list — trip-search-control.vue
+   * only disables it for pre-trip approval and non-adult passengers. What actually stops the
+   * booking is upstream: trip-travelers-list.ts returns before dispatching `tripStore/addTraveler`
+   * when the traveller's profile is incomplete and the booker may not fix it, so the slot is never
+   * filled and there is no passenger to search for. Asserting the empty slot therefore tests the
+   * real mechanism rather than a button state the app does not set.
+   */
+  async verifyNoTravelerAddedSoSearchIsBlocked(page) {
+    if (!page) {
+      throw new Error('[Search.verifyNoTravelerAddedSoSearchIsBlocked] "page" is required.');
+    }
+
+    const searchPage = getPageObject(page, SearchPage);
+    const travelerAppeared = await searchPage.waitForAnyTravelerChip();
+
+    if (travelerAppeared) {
+      throw new Error(
+        '[Search.verifyNoTravelerAddedSoSearchIsBlocked] A traveller was added to the trip, but a traveller with ' +
+        'missing mandate fields must never be added by a booker who may not complete their profile — the search ' +
+        'has to stay blocked. The warning popup showing is not enough on its own: this is the check that proves ' +
+        'the traveller was actually rejected rather than merely warned about.'
+      );
+    }
+
+    logger.info('[Search.verifyNoTravelerAddedSoSearchIsBlocked] No traveller reached the trip — search is blocked');
+  },
 };
 
 module.exports = Search;

@@ -50,6 +50,11 @@ Then("the traveler {string} should not be available to add", async function (tra
   ).toBe(false);
 });
 
+Then("the search is blocked because no traveler was added to the trip", async function () {
+  logger.info("Verifying no traveler was added, so the search is blocked");
+  await Search.verifyNoTravelerAddedSoSearchIsBlocked(this.page);
+});
+
 Given("I have added traveler by name {string}", async function (travelerName) {
   logger.info("Adding traveler by name", { travelerName });
   const result = await Search.addTravelerByName(this.page, travelerName);

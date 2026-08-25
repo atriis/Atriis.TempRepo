@@ -12,6 +12,18 @@ const {
 // PUT target of the Frequent Programs form's Save button (user.service.ts saveFrequentProgramInfo).
 const FREQUENT_PROGRAMS_SAVE_ENDPOINT = "/userProfileFrequentProgramInfo";
 
+const MANDATORY_DETAILS_DIALOG_TITLE = "Mandatory Details Are Missing";
+
+/**
+ * Flattens a mandate-fields warning popup's text for comparison. The dialog stacks its message
+ * across several divs, so the raw innerText carries line breaks and padding that vary with the
+ * viewport — normalising keeps a wording comparison from failing on layout alone.
+ *
+ * @param {string} value
+ * @returns {string}
+ */
+const normaliseWarningText = (value) => String(value ?? "").replace(/\s+/g, " ").trim();
+
 /**
  * Profile DSL
  *
@@ -2610,6 +2622,67 @@ const Profile = {
     const profilePage = getPageObject(page, ProfilePage);
     await profilePage.closeDialogByTitle("Mandatory Details Are Missing");
     logger.info("[Profile.closeMandatoryDetailsWarning] Closed the \"Mandatory Details Are Missing\" popup");
+  },
+
+  /**
+   * Reads the warning popup's wording so a later step can compare it against another traveller's.
+   * The two popups can only be compared inside one scenario, so the caller holds the text.
+   *
+   * @returns {Promise<string>} the popup body text, whitespace-normalised
+   */
+  async captureMandatoryDetailsWarningText(page) {
+    if (!page) {
+      throw new Error("[Profile.captureMandatoryDetailsWarningText] \"page\" is required.");
+    }
+
+    const profilePage = getPageObject(page, ProfilePage);
+    const text = normaliseWarningText(await profilePage.getDialogBodyText(MANDATORY_DETAILS_DIALOG_TITLE));
+
+    if (!text) {
+      throw new Error(
+        "[Profile.captureMandatoryDetailsWarningText] The \"Mandatory Details Are Missing\" popup body is empty, so " +
+        "there is no wording to compare against. The dialog frame paints before its content mounts — if this " +
+        "fires, the popup was read too early.",
+      );
+    }
+
+    logger.info(`[Profile.captureMandatoryDetailsWarningText] Captured warning wording: "${text}"`);
+    return text;
+  },
+
+  /**
+   * Asserts the currently open warning popup reads exactly like a previously captured one.
+   *
+   * ADO 83279 requires the wording to be identical whether the incomplete profile is the booker's
+   * own or another traveller's — a booker holding "Prevent updating others and own profile" must
+   * not be able to tell the two cases apart, since they can act on neither.
+   */
+  async verifyMandatoryDetailsWarningTextMatches(page, expectedText) {
+    if (!page) {
+      throw new Error("[Profile.verifyMandatoryDetailsWarningTextMatches] \"page\" is required.");
+    }
+    if (!expectedText || typeof expectedText !== "string") {
+      throw new Error(
+        "[Profile.verifyMandatoryDetailsWarningTextMatches] \"expectedText\" must be a non-empty string, got: " +
+        `${typeof expectedText} (${JSON.stringify(expectedText)}). Capture the first popup's wording before ` +
+        "comparing against it.",
+      );
+    }
+
+    const profilePage = getPageObject(page, ProfilePage);
+    const actual = normaliseWarningText(await profilePage.getDialogBodyText(MANDATORY_DETAILS_DIALOG_TITLE));
+    const expected = normaliseWarningText(expectedText);
+
+    if (actual !== expected) {
+      throw new Error(
+        "[Profile.verifyMandatoryDetailsWarningTextMatches] The warning popup wording differs between my own " +
+        "profile and another traveller, but a user who may update neither must see the same message for both.\n" +
+        `  Remembered: "${expected}"\n` +
+        `  Now shown:  "${actual}"`,
+      );
+    }
+
+    logger.info("[Profile.verifyMandatoryDetailsWarningTextMatches] Warning wording is identical for both travellers");
   },
 };
 
