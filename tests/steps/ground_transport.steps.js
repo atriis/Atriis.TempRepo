@@ -18,6 +18,22 @@ When("I search for ground transport from {string}", async function (routeKey) {
   await GroundTransportSearch.searchGroundTransportFromAirportToSpecificAddress(this.page, routeKey);
 });
 
+// Records the traveller and luggage counts the next ground transport search should carry, instead
+// of driving the form here: every "I search for ground transport ..." step fills the whole form
+// from scratch and ends by selecting the vehicle type and traveller count, so anything typed into
+// the form before it would be overwritten. The search step below applies whatever this recorded.
+When("I change number of traveler to {string} and luggage to {string} in Transferz search", async function (travellerNumber, luggage) {
+  logger.info("Recording the traveller and luggage counts for the next ground transport search", {
+    travellerNumber,
+    luggage,
+  });
+
+  // Only the string-to-number conversion happens here — searchGroundTransport validates both
+  // ranges, so repeating the checks would duplicate them across two layers.
+  this.groundTransportTravellerNumber = Number(travellerNumber);
+  this.groundTransportLuggage = Number(luggage);
+});
+
 When("I search for ground transport from airport {string} to specific address {string}", async function (from, to) {
   logger.info("Searching for ground transport from airport to specific address", { from, to });
   await GroundTransportSearch.searchGroundTransport(this.page, {
@@ -25,6 +41,12 @@ When("I search for ground transport from airport {string} to specific address {s
     toMode: "specificAddress",
     from,
     to,
+    ...(this.groundTransportTravellerNumber !== undefined
+      ? { travellerNumber: this.groundTransportTravellerNumber }
+      : {}),
+    ...(this.groundTransportLuggage !== undefined
+      ? { luggage: this.groundTransportLuggage }
+      : {}),
   });
 });
 
@@ -137,11 +159,6 @@ When("I hover and validate the ground transport expiry counter", async function 
 When("I open the current ground transport trip", async function () {
   logger.info("Opening current ground transport trip");
   notImplemented("I open the current ground transport trip");
-});
-
-When("I set the Transferz luggage selection", async function () {
-  logger.info("Setting Transferz luggage selection");
-  notImplemented("I set the Transferz luggage selection");
 });
 
 When("I edit the groundscope search from the results page", async function () {

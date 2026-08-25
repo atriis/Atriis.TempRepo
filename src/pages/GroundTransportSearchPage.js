@@ -22,6 +22,12 @@ const SELECTORS = {
   TRAVELLER_DROPDOWN: ".ground-transport-search .el-select__wrapper:has-text(\"Traveller\")",
   TRAVELLER_DROPDOWN_OPTION:
     (travellerNumbers) => `li.el-select-dropdown__item span:text("${travellerNumbers}")`,
+  // The luggage select is keyed on its own app-select prefix icon, not on the "0 Luggage"
+  // placeholder: the placeholder is translated AND is swapped for the chosen number once a value
+  // has been picked, while the material-symbol name printed inside .select-icon is neither. Scoped
+  // to .ground-transport-search for the same reason as TRAVELLER_DROPDOWN above.
+  LUGGAGE_DROPDOWN:
+    ".ground-transport-search .app-select:has(.select-icon:text-is('luggage')) .el-select__wrapper",
 
   // ---- Pick-up date / time on the ground transport search form ----
   // groundService-search-inputs.vue renders exactly one app-datepicker and one app-timepicker
@@ -168,6 +174,21 @@ class GroundTransportSearchPage {
     await this.page
       .getByRole("option", { name: String(travellerNumbers), exact: true })
       .click();
+  }
+
+  /**
+   * Selects the checked-luggage count on the search form.
+   *
+   * The options run 0–20 (numOfLuggage in groundService-search-inputs.ts), so they overlap the
+   * traveller options this dropdown is opened right after — hence the popper-scoped read in
+   * #selectOptionFromField rather than a page-wide getByRole("option"), which would find the
+   * still-mounted traveller dropdown's identical label.
+   *
+   * @param {number|string} luggageNumber
+   */
+  async selectLuggageNumber(luggageNumber) {
+    const field = this.page.locator(SELECTORS.LUGGAGE_DROPDOWN).first();
+    await this.#selectOptionFromField(field, String(luggageNumber), "luggage");
   }
 
   /**
@@ -523,6 +544,18 @@ class GroundTransportSearchPage {
       .locator(`${wrapperSelector} ${SELECTORS.SELECT_WRAPPER}`)
       .first();
 
+    await this.#selectOptionFromField(field, optionLabel, `drawer's ${fieldName}`);
+  }
+
+  /**
+   * Opens one el-select and picks an option by its exact label, reading the options from that
+   * select's own popper.
+   *
+   * @param {import('@playwright/test').Locator} field - The select's .el-select__wrapper
+   * @param {string} optionLabel - Exact option label to select
+   * @param {string} fieldName - Field name used in the error message
+   */
+  async #selectOptionFromField(field, optionLabel, fieldName) {
     await field.waitFor({ state: "visible", timeout: 15000 });
     await field.click();
 
@@ -547,7 +580,7 @@ class GroundTransportSearchPage {
     } catch (error) {
       const rendered = (await options.allInnerTexts()).map((text) => `"${text.trim()}"`);
       throw new Error(
-        `[GroundTransportSearchPage] The drawer's ${fieldName} dropdown never offered the option `
+        `[GroundTransportSearchPage] The ${fieldName} dropdown never offered the option `
         + `"${optionLabel}". Available: ${rendered.join(", ") || "(none)"}. `
         + `Original: ${error.message}`,
       );

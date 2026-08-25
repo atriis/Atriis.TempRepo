@@ -24,6 +24,10 @@ const GroundTransportSearch = {
       to,
       vehicleType = groundTransportRoutes.vehicleTypes.all,
       travellerNumber = 1,
+      // Checked-luggage count to send with the search. null leaves the form's own default in
+      // place (2, seeded by ground-transport.store.ts) — only pass a number when the scenario
+      // cares which value reaches CheckedLuggageCount in the quote request.
+      luggage = null,
       pickupIndex = SEARCH_DEFAULTS.GROUND_TRANSPORT.PICKUP_INDEX,
       // "HH:mm" to change the pick-up time away from the form's own default (10:00, seeded by
       // ground-transport.store.ts); null leaves that default in place.
@@ -45,12 +49,19 @@ const GroundTransportSearch = {
       throw new Error('to must be a non-empty string');
     }
 
-    if (travellerNumber < 1) {
-      throw new Error(`travellerNumber must be >= 1, got ${travellerNumber}`);
+    // Number.isInteger rather than a bare "< 1": a Gherkin {string} that is not a number at all
+    // converts to NaN, and every comparison against NaN is false, so a plain range check waves it
+    // through and the traveller dropdown then fails on the unfindable option "NaN".
+    if (!Number.isInteger(travellerNumber) || travellerNumber < 1) {
+      throw new Error(`travellerNumber must be an integer >= 1, got ${travellerNumber}`);
     }
 
     if (pickupIndex < 0) {
       throw new Error(`pickupIndex must be >= 0, got ${pickupIndex}`);
+    }
+
+    if (luggage !== null && (!Number.isInteger(luggage) || luggage < 0)) {
+      throw new Error(`luggage must be an integer >= 0 or null, got ${luggage}`);
     }
 
     if (pickupTime !== null && !/^\d{2}:\d{2}$/.test(String(pickupTime))) {
@@ -98,6 +109,14 @@ const GroundTransportSearch = {
 
     await groundTransportSearchPage.selectVehicleType(vehicleType);
     await groundTransportSearchPage.selectTravellerNumber(travellerNumber);
+
+    // Luggage last: the traveller options are rebuilt from the chosen vehicle's capacity, so
+    // touching the vehicle/traveller pair after the luggage count would be the only ordering
+    // that could reset it.
+    if (luggage !== null) {
+      logger.debug("Setting the ground transport checked-luggage count", { luggage });
+      await groundTransportSearchPage.selectLuggageNumber(luggage);
+    }
 
     if (clickSearch) {
       await searchPage.clickSearchButton();
