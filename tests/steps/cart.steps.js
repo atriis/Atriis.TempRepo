@@ -3683,6 +3683,12 @@ Then("I confirm the trip cancellation successfully", async function () {
   ).toBe(true);
 });
 
+Then("the trip approval bar should show {string} with {string} and {string} buttons", async function (expectedTitle, declineLabel, approveLabel) {
+  logger.info("Verifying the trip approval bar is displayed", { expectedTitle, declineLabel, approveLabel });
+  // Read this.page at call time: opening a trip may have moved the scenario to a new tab.
+  await Cart.verifyTripApprovalBarDisplayed(this.page, expectedTitle, declineLabel, approveLabel);
+});
+
 // ===== EVOLVI MANDATORY CART FIELDS =====
 
 When("I fill mandatory Evolvi fields in cart", async function () {

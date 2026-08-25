@@ -830,6 +830,18 @@ const SELECTORS = {
   // single `div.status-desc` holding trip.approvals.noPendingItems.
   APPROVALS_DIALOG_STATUS_DESC: '.approvals-dialog .status-desc',
 
+  // Approvals bar (approvals-bar.vue) — the inline banner shown on a trip that is awaiting the
+  // current user's approval decision. Distinct from the approvals DIALOG above: this is a
+  // `<section class="approvals-bar">` rendered in the page, not an el-dialog. Everything is
+  // scoped under `.approvals-bar` on purpose, so neither the body-appended decline-reason
+  // el-dialog nor the cart's own `.btn-container` (PROCEED_TO_CHECKOUT_BUTTON) can ever match.
+  APPROVALS_BAR: '.approvals-bar',
+  APPROVALS_BAR_TITLE: '.approvals-bar h4.approvals-bar-title',
+  // Both the Decline and Approve app-btns render a native `<button class="btn">` inside
+  // `.btn-container`, and each label is preceded by a material-symbols icon span
+  // ('close_small' / 'check_small') — so callers must filter by SUBSTRING, never exact text.
+  APPROVALS_BAR_ACTION_BUTTON: '.approvals-bar .btn-container button.btn',
+
   // ===== Additional items section (trip-cart.vue) =====
   // The cart's "Additional items" section is where on-demand products (Stay Safe, the
   // Climate Contribution tile) are offered before they become real quotes. It is gated by
@@ -12156,6 +12168,57 @@ class CartPage {
         `(selector: ${SELECTORS.APPROVALS_DIALOG_CLOSE_BUTTON}). Original: ${err.message}`
       );
     }
+  }
+
+  /**
+   * Gets the approvals-bar title locator (e.g. "Trip awaiting your approval").
+   *
+   * @returns {import('@playwright/test').Locator}
+   */
+  getApprovalsBarTitle() {
+    return this.page.locator(SELECTORS.APPROVALS_BAR_TITLE).first();
+  }
+
+  /**
+   * Gets an approvals-bar action button by its visible label ("Decline" / "Approve").
+   *
+   * Substring match on purpose: each button renders a material-symbols icon span
+   * ('close_small' / 'check_small') BEFORE the label text, so the button's full text reads
+   * "close_smallDecline" — an exact-text match would never hit.
+   *
+   * @param {string} label - Visible button label, e.g. "Decline" or "Approve"
+   * @returns {import('@playwright/test').Locator}
+   */
+  getApprovalsBarButton(label) {
+    if (!label || typeof label !== 'string') {
+      throw new Error(
+        `[CartPage.getApprovalsBarButton] "label" must be a non-empty string, got: ${typeof label} (${label})`
+      );
+    }
+    return this.page
+      .locator(SELECTORS.APPROVALS_BAR_ACTION_BUTTON)
+      .filter({ hasText: label })
+      .first();
+  }
+
+  /**
+   * Waits for the trip approvals bar to become visible and returns its locator.
+   *
+   * @param {{ timeout?: number }} [options]
+   * @param {number} [options.timeout=30000] - Max wait for the bar to render (ms)
+   * @returns {Promise<import('@playwright/test').Locator>}
+   */
+  async waitForApprovalsBar({ timeout = 30000 } = {}) {
+    const bar = this.page.locator(SELECTORS.APPROVALS_BAR).first();
+    try {
+      await bar.waitFor({ state: 'visible', timeout });
+    } catch (err) {
+      throw new Error(
+        `[CartPage.waitForApprovalsBar] The trip approvals bar (${SELECTORS.APPROVALS_BAR}) did not become visible within ${timeout}ms. ` +
+        `The opened trip may not be awaiting this user's approval decision, or the decision was already made. Original: ${err.message}`
+      );
+    }
+    return bar;
   }
 
   /**

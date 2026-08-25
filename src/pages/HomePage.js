@@ -308,11 +308,24 @@ class HomePage {
    * @returns {Promise<boolean>} true if the tab was present and selected
    */
   async selectUpcomingTripsTab(timeout = 15000) {
-    const tab = this.page.locator(SELECTORS.UPCOMING_TRIPS_TAB).first();
+    return this._selectTripMonitorTab(SELECTORS.UPCOMING_TRIPS_TAB, "My upcoming trips", timeout);
+  }
+
+  /**
+   * Shared trip-monitor tab select. Each tab is only rendered when its list has trips, so an absent
+   * tab is reported as false and the caller decides whether that is an empty state or a failure.
+   * @private
+   * @param {string} tabSelector - the tab header selector, e.g. SELECTORS.UPCOMING_TRIPS_TAB
+   * @param {string} label - human-readable tab name, used only in the error message
+   * @param {number} timeout
+   * @returns {Promise<boolean>} true if the tab was present and selected
+   */
+  async _selectTripMonitorTab(tabSelector, label, timeout) {
+    const tab = this.page.locator(tabSelector).first();
     try {
       await tab.waitFor({ state: "visible", timeout });
     } catch {
-      // Tab not rendered — the account has no upcoming trips. Let the caller treat this as empty.
+      // Tab not rendered — that list is empty for this account. Let the caller treat it as such.
       return false;
     }
     try {
@@ -320,9 +333,28 @@ class HomePage {
       return true;
     } catch (err) {
       throw new Error(
-        `[HomePage.selectUpcomingTripsTab] Found the "My upcoming trips" tab but could not click it ` +
-          `(${SELECTORS.UPCOMING_TRIPS_TAB}). Original: ${err.message}`
+        `[HomePage._selectTripMonitorTab] Found the "${label}" tab but could not click it ` +
+          `(${tabSelector}). Original: ${err.message}`
       );
+    }
+  }
+
+  /**
+   * Shared el-tabs "is this tab the selected one" probe. Never throws — a missing or inactive tab is
+   * reported as false, so the calling step owns the assertion and its message.
+   * @private
+   * @param {string} tabSelector - the tab header selector, e.g. `#tab-flight`
+   * @param {number} timeout
+   * @returns {Promise<boolean>}
+   */
+  async _isTabActiveBySelector(tabSelector, timeout) {
+    // The el-tabs item gains .is-active when it is the selected tab.
+    const tab = this.page.locator(`${tabSelector}.is-active`).first();
+    try {
+      await tab.waitFor({ state: "visible", timeout });
+      return true;
+    } catch {
+      return false;
     }
   }
 
@@ -353,14 +385,8 @@ class HomePage {
    */
   async isProductTabActive(tabId, timeout = 15000) {
     // The el-tabs item carries id `tab-<product>` and gains .is-active when selected.
-    const tab = this.page.locator(`#${tabId}.is-active`).first();
-    try {
-      await tab.waitFor({ state: "visible", timeout });
-      return true;
-    } catch {
-      return false;
-    }
+    return this._isTabActiveBySelector(`#${tabId}`, timeout);
   }
 }
 
-module.exports = HomePage;
+module.exports = { HomePage, SELECTORS };

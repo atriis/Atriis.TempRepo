@@ -412,6 +412,73 @@ const Cart = {
   },
 
   /**
+   * Verifies the trip approvals bar is displayed with the expected title and action buttons.
+   *
+   * ASSERT ONLY — deliberately never clicks Decline/Approve: those mutate real staging approval
+   * state one-way and would break every subsequent run of this scenario.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} expectedTitle - Expected approvals-bar title, e.g. "Trip awaiting your approval"
+   * @param {string} declineLabel - Expected decline button label, e.g. "Decline"
+   * @param {string} approveLabel - Expected approve button label, e.g. "Approve"
+   * @returns {Promise<{displayed: true, expectedTitle: string, declineLabel: string, approveLabel: string}>}
+   */
+  async verifyTripApprovalBarDisplayed(page, expectedTitle, declineLabel, approveLabel) {
+    if (!page) throw new Error('[Cart.verifyTripApprovalBarDisplayed] "page" is required.');
+    if (typeof expectedTitle !== 'string' || expectedTitle.length === 0) {
+      throw new Error(
+        `[Cart.verifyTripApprovalBarDisplayed] "expectedTitle" must be a non-empty string, got: ${typeof expectedTitle} (${expectedTitle})`
+      );
+    }
+    if (typeof declineLabel !== 'string' || declineLabel.length === 0) {
+      throw new Error(
+        `[Cart.verifyTripApprovalBarDisplayed] "declineLabel" must be a non-empty string, got: ${typeof declineLabel} (${declineLabel})`
+      );
+    }
+    if (typeof approveLabel !== 'string' || approveLabel.length === 0) {
+      throw new Error(
+        `[Cart.verifyTripApprovalBarDisplayed] "approveLabel" must be a non-empty string, got: ${typeof approveLabel} (${approveLabel})`
+      );
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+
+    logger.info('Verifying the trip approvals bar is displayed', { expectedTitle, declineLabel, approveLabel });
+
+    try {
+      await cartPage.waitForApprovalsBar();
+
+      const title = cartPage.getApprovalsBarTitle();
+      await expect(
+        title,
+        `[Cart.verifyTripApprovalBarDisplayed] Expected the trip approvals bar title to be visible, but it was not rendered.`
+      ).toBeVisible({ timeout: 10000 });
+      await expect(
+        title,
+        `[Cart.verifyTripApprovalBarDisplayed] Expected the trip approvals bar title to contain "${expectedTitle}".`
+      ).toContainText(expectedTitle, { timeout: 10000 });
+
+      await expect(
+        cartPage.getApprovalsBarButton(declineLabel),
+        `[Cart.verifyTripApprovalBarDisplayed] Expected a "${declineLabel}" button to be visible on the trip approvals bar.`
+      ).toBeVisible({ timeout: 10000 });
+      await expect(
+        cartPage.getApprovalsBarButton(approveLabel),
+        `[Cart.verifyTripApprovalBarDisplayed] Expected an "${approveLabel}" button to be visible on the trip approvals bar.`
+      ).toBeVisible({ timeout: 10000 });
+
+      return { displayed: true, expectedTitle, declineLabel, approveLabel };
+    } catch (err) {
+      if (err.matcherResult !== undefined) throw err;
+      throw new Error(
+        `[Cart.verifyTripApprovalBarDisplayed] Failed to verify the trip approvals bar (expected title "${expectedTitle}" ` +
+        `with "${declineLabel}" and "${approveLabel}" buttons). The opened trip may not be awaiting this user's ` +
+        `approval decision. Original: ${err.message}`
+      );
+    }
+  },
+
+  /**
    * STRICT cancel flow with an explicit pre-cancellation wait.
    *
    * @param {import('playwright').Page} page

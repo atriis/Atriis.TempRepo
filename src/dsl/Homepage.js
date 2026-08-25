@@ -1,6 +1,6 @@
 const { getPageObject } = require("@utils/pageObjectCache");
 const LoginPage = require("@pages/LoginPage");
-const HomePage = require("@pages/HomePage");
+const { HomePage } = require("@pages/HomePage");
 const QuickLinksPage = require("@pages/QuickLinksPage");
 const logger = require("@utils/logger").child("Homepage");
 
