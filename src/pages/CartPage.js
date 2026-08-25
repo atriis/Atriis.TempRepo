@@ -343,6 +343,13 @@ const SELECTORS = {
   TOOLTIP_PICKUP_ADDRESS: ".car-location-details-tooltip .pickup-details .location-address-plain",
   TOOLTIP_DROPOFF_ADDRESS: ".car-location-details-tooltip .dropoff-details .location-address-plain",
   LOCATION_TYPE_LABEL: ".location-type-label",
+  // Ground transport quote card's pick-up line. ground-transport-quote-card.vue mounts
+  // car-pickupdropoff-details.vue, which prints "{date} · {time}" in the pick-up row's own <p>
+  // (e.g. "25 Aug 2026 · 14:30"). Scoping to the ground transport card keeps this off a car
+  // quote's identical markup, and ":visible" off the copy inside the card's own (closed) More
+  // Details drawer.
+  GROUND_TRANSPORT_PICKUP_DATETIME:
+    ".ground-transport-quote-card .pickupdropoff-detailed:visible .pickup-details > p",
 
   // Trip Overview selectors
   TRIP_OVERVIEW_TITLE: ".payments-title",
@@ -12406,6 +12413,27 @@ class CartPage {
       );
     }
     return this.page.locator(selector).first();
+  }
+
+  /**
+   * Reads the ground transport quote's pick-up "{date} · {time}" line from the cart.
+   *
+   * @returns {Promise<string>} e.g. "25 Aug 2026 · 14:30"
+   */
+  async getGroundTransportPickupDateTimeText() {
+    const pickupLine = this.page.locator(SELECTORS.GROUND_TRANSPORT_PICKUP_DATETIME).first();
+
+    try {
+      await pickupLine.waitFor({ state: "visible", timeout: 30000 });
+      return (await pickupLine.innerText()).trim();
+    } catch (error) {
+      throw new Error(
+        "[CartPage.getGroundTransportPickupDateTimeText] The ground transport quote's pick-up "
+        + `date/time line never rendered (selector: ${SELECTORS.GROUND_TRANSPORT_PICKUP_DATETIME}). `
+        + "The cart probably holds no ground transport quote, or the quote card is still loading. "
+        + `Original: ${error.message}`,
+      );
+    }
   }
 
 }

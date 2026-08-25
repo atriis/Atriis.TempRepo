@@ -13,7 +13,7 @@ const ProfilePage = require("@pages/ProfilePage");
 const tripStatus = require("@data/tripStatus.json");
 const config = require("@config/config");
 const BookingErrorHandler = require("@utils/bookingErrorHandler");
-const { selectDateOfBirthWithYearArrows } = require("@utils/calendar.helper");
+const { selectDateOfBirthWithYearArrows, parseDateValue, parseTimeToMinutes } = require("@utils/calendar.helper");
 const { expectNumbersToBeEqualWithTolerance } = require("../assertions/numberAssertions");
 const { parseAmountText } = require("@utils/dom");
 const { normalizeText, extractDateTokens, escapeRegex } = require("@utils/text");
@@ -13760,6 +13760,99 @@ const Cart = {
     await page.waitForLoadState('networkidle').catch(() => {});
 
     return { cancelled: true, messageVisible };
+  },
+
+  /**
+   * Verifies the cart's ground transport quote shows the pick-up date and time that were searched.
+   *
+   * The comparison is made on PARSED values, never on strings: the search form and the cart print
+   * the same instant differently (the form's app-datepicker uses 'ddd, DD MMM' and the card
+   * toLocaleDateString's 'DD MMM YYYY', and either screen switches to 12h AM/PM for an imperial
+   * user), so a text comparison would fail on formatting alone.
+   *
+   * The year is deliberately excluded: the search form's date carries no year at all, so any year
+   * assertion would be against a guess. Day + month + time-of-day is unambiguous within the
+   * booking window the search uses.
+   *
+   * @param {import('playwright').Page} page
+   * @param {Object} searchedPickup - The values read off the search form before searching
+   * @param {string} searchedPickup.date - Pick-up date as the search form rendered it
+   * @param {string} searchedPickup.time - Pick-up time as the search form rendered it
+   * @returns {Promise<{verified: boolean, pickupLineText: string}>}
+   * @throws {Error} If the cart's pick-up line is unreadable or does not match
+   */
+  async verifyGroundTransportPickupDateTime(page, { date, time } = {}) {
+    if (!page) {
+      throw new Error('[Cart.verifyGroundTransportPickupDateTime] "page" is required.');
+    }
+
+    if (!date || typeof date !== 'string') {
+      throw new Error(`[Cart.verifyGroundTransportPickupDateTime] "date" must be a non-empty string, got: ${typeof date} (${date})`);
+    }
+
+    if (!time || typeof time !== 'string') {
+      throw new Error(`[Cart.verifyGroundTransportPickupDateTime] "time" must be a non-empty string, got: ${typeof time} (${time})`);
+    }
+
+    logger.debug('[Cart.verifyGroundTransportPickupDateTime] Reading the cart pick-up line', {
+      searchedDate: date,
+      searchedTime: time,
+    });
+
+    const cartPage = getPageObject(page, CartPage);
+    const pickupLineText = await cartPage.getGroundTransportPickupDateTimeText();
+    const [cartDateText, cartTimeText] = pickupLineText.split(/\s*·\s*/);
+
+    if (!cartDateText || !cartTimeText) {
+      throw new Error(
+        `[Cart.verifyGroundTransportPickupDateTime] The cart's ground transport pick-up line reads ` +
+        `"${pickupLineText}", which does not hold a "{date} · {time}" pair. The quote card may have ` +
+        `rendered without a pick-up date/time.`
+      );
+    }
+
+    let searchedDate;
+    let cartDate;
+    let searchedMinutes;
+    let cartMinutes;
+
+    try {
+      searchedDate = parseDateValue(date);
+      cartDate = parseDateValue(cartDateText);
+      searchedMinutes = parseTimeToMinutes(time);
+      cartMinutes = parseTimeToMinutes(cartTimeText);
+    } catch (err) {
+      throw new Error(
+        `[Cart.verifyGroundTransportPickupDateTime] Could not compare the searched pick-up ` +
+        `("${date}" / "${time}") with the cart's ("${cartDateText}" / "${cartTimeText}"): one of the ` +
+        `values is not in a format the app is known to render. Original: ${err.message}`
+      );
+    }
+
+    if (cartDate.getDate() !== searchedDate.getDate() || cartDate.getMonth() !== searchedDate.getMonth()) {
+      throw new Error(
+        `[Cart.verifyGroundTransportPickupDateTime] The cart shows pick-up date "${cartDateText}" but the ` +
+        `search was made for "${date}". The searched date was not carried into the quote. ` +
+        `Full cart pick-up line: "${pickupLineText}".`
+      );
+    }
+
+    if (cartMinutes !== searchedMinutes) {
+      throw new Error(
+        `[Cart.verifyGroundTransportPickupDateTime] The cart shows pick-up time "${cartTimeText}" ` +
+        `(${cartMinutes} minutes past midnight) but the search was made for "${time}" ` +
+        `(${searchedMinutes} minutes). The searched time was not carried into the quote. ` +
+        `Full cart pick-up line: "${pickupLineText}".`
+      );
+    }
+
+    logger.info('[Cart.verifyGroundTransportPickupDateTime] Cart pick-up date and time match the search', {
+      pickupLineText,
+      searchedDate: date,
+      searchedTime: time,
+    });
+
+    return { verified: true, pickupLineText };
   },
 
 };

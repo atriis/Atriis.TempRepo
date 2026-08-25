@@ -25,6 +25,12 @@ const GroundTransportSearch = {
       vehicleType = groundTransportRoutes.vehicleTypes.all,
       travellerNumber = 1,
       pickupIndex = SEARCH_DEFAULTS.GROUND_TRANSPORT.PICKUP_INDEX,
+      // "HH:mm" to change the pick-up time away from the form's own default (10:00, seeded by
+      // ground-transport.store.ts); null leaves that default in place.
+      pickupTime = null,
+      // false fills the form but stops short of submitting it, so a test can read the values it
+      // just entered before the search navigates away.
+      clickSearch = true,
     } = {},
   ) {
     if (!page) {
@@ -45,6 +51,10 @@ const GroundTransportSearch = {
 
     if (pickupIndex < 0) {
       throw new Error(`pickupIndex must be >= 0, got ${pickupIndex}`);
+    }
+
+    if (pickupTime !== null && !/^\d{2}:\d{2}$/.test(String(pickupTime))) {
+      throw new Error(`pickupTime must be a zero-padded "HH:mm" string or null, got: ${pickupTime}`);
     }
 
     const groundTransportSearchPage = getPageObject(page, GroundTransportSearchPage);
@@ -78,9 +88,80 @@ const GroundTransportSearch = {
       endIndex: null,
     });
 
+    // The time is set straight after the date so both pick-up fields are committed before the
+    // vehicle/traveller row steals focus.
+    if (pickupTime) {
+      const [pickupHour, pickupMinute] = String(pickupTime).split(":");
+      logger.debug("Changing the ground transport pick-up time", { pickupTime });
+      await groundTransportSearchPage.setPickupTime(pickupHour, pickupMinute);
+    }
+
     await groundTransportSearchPage.selectVehicleType(vehicleType);
     await groundTransportSearchPage.selectTravellerNumber(travellerNumber);
-    await searchPage.clickSearchButton();
+
+    if (clickSearch) {
+      await searchPage.clickSearchButton();
+    }
+  },
+
+  /**
+   * Fills an airport-to-airport ground transport search with a pick-up time that differs from the
+   * form's own default, and stops before submitting it.
+   *
+   * Leaving the form filled but unsubmitted is the point: the entered pick-up date and time have
+   * to be read off the screen (readSearchPickupDateAndTime) before the search navigates away, so
+   * they can later be compared with what the cart shows.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} from - Pick-up airport
+   * @param {string} to - Drop-off airport
+   * @returns {Promise<{filled: boolean, from: string, to: string, pickupTime: string}>}
+   */
+  async fillAirportToAirportSearchWithChangedPickupTime(page, from, to) {
+    const pickupTime = SEARCH_DEFAULTS.GROUND_TRANSPORT.PICKUP_TIME;
+
+    await this.searchGroundTransport(page, {
+      fromMode: "airport",
+      toMode: "airport",
+      from,
+      to,
+      pickupTime,
+      clickSearch: false,
+    });
+
+    return { filled: true, from, to, pickupTime };
+  },
+
+  /**
+   * Reads the pick-up date and time currently committed in the ground transport search form.
+   *
+   * Used by tests that have to prove the searched values survive into the cart, so it is called
+   * while the filled form is still on screen (before the search is submitted).
+   *
+   * @param {import('playwright').Page} page
+   * @returns {Promise<{date: string, time: string}>} Both as the form renders them — the date
+   *   carries no year (app-datepicker's 'ddd, DD MMM' format)
+   */
+  async readSearchPickupDateAndTime(page) {
+    if (!page) {
+      throw new Error("page is required");
+    }
+
+    const groundTransportSearchPage = getPageObject(page, GroundTransportSearchPage);
+    const date = await groundTransportSearchPage.getPickupDateValue();
+    const time = await groundTransportSearchPage.getPickupTimeValue();
+
+    if (!date || !time) {
+      throw new Error(
+        "[GroundTransportSearch.readSearchPickupDateAndTime] The ground transport search form's "
+        + `pick-up date/time is still empty (date: "${date}", time: "${time}"). The date was `
+        + "probably never picked from the calendar, so there is nothing to compare the cart with.",
+      );
+    }
+
+    logger.info("Read the ground transport pick-up date and time from the search form", { date, time });
+
+    return { date, time };
   },
 
   /**

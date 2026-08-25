@@ -68,6 +68,11 @@ const SEARCH_DEFAULTS = {
 
   GROUND_TRANSPORT: {
     PICKUP_INDEX: 2,     // Selects the 3rd available date
+    // Pick-up time used whenever a test has to CHANGE the time rather than accept the form's
+    // default. ground-transport.store.ts seeds pickupTime as "10:00", so a value that differs from
+    // it is what proves the chosen time was carried through; the minute is a multiple of 15
+    // because app-timepicker is mounted with steps="00:15".
+    PICKUP_TIME: "14:30",
   },
 
   /**

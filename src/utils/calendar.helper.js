@@ -109,6 +109,58 @@ function datesMatch(renderedValue, targetDate) {
   }
 }
 
+/**
+ * Parses a time as the application renders it into minutes since midnight, so the same instant
+ * can be compared across two screens that print it differently.
+ *
+ * The app resolves its time pattern per user preference (utilService.getUserTimeFormat) and the
+ * pickers additionally switch to 12h when the user's units are imperial (app-timepicker
+ * `isAmPm`), so a search form reading "02:30 PM" and a cart reading "14:30" are the same time.
+ * Accepts "HH:mm", "HH:mm:ss" and "h:mm AM/PM" (any casing, with or without a separating space).
+ *
+ * @param {string} timeValue - The time as read out of the UI
+ * @returns {number} Minutes since midnight (0-1439)
+ * @throws {Error} If the value is not one of the supported formats
+ */
+function parseTimeToMinutes(timeValue) {
+  if (!timeValue || typeof timeValue !== "string") {
+    throw new Error(
+      `[calendar.helper.parseTimeToMinutes] "timeValue" must be a non-empty string, got: ${typeof timeValue}`,
+    );
+  }
+
+  const trimmedTimeValue = timeValue.trim();
+  const timeMatch = trimmedTimeValue.match(/^(\d{1,2}):(\d{2})(?::\d{2})?(?:\s*([AaPp])\.?[Mm]\.?)?$/);
+
+  if (!timeMatch) {
+    throw new Error(
+      `[calendar.helper.parseTimeToMinutes] Unsupported time value format: "${timeValue}". `
+      + "Expected \"HH:mm\", \"HH:mm:ss\" or \"h:mm AM/PM\" — the field was probably still empty "
+      + "or still showing its placeholder.",
+    );
+  }
+
+  const [, hourToken, minuteToken, meridiemToken] = timeMatch;
+  const minute = Number(minuteToken);
+  let hour = Number(hourToken);
+
+  if (minute > 59) {
+    throw new Error(`[calendar.helper.parseTimeToMinutes] "${timeValue}" has an out-of-range minute: ${minute}`);
+  }
+
+  if (meridiemToken) {
+    if (hour < 1 || hour > 12) {
+      throw new Error(`[calendar.helper.parseTimeToMinutes] "${timeValue}" has an out-of-range 12h hour: ${hour}`);
+    }
+
+    hour = (hour % 12) + (/p/i.test(meridiemToken) ? 12 : 0);
+  } else if (hour > 23) {
+    throw new Error(`[calendar.helper.parseTimeToMinutes] "${timeValue}" has an out-of-range 24h hour: ${hour}`);
+  }
+
+  return (hour * 60) + minute;
+}
+
 function parseMonthHeaderLabel(monthHeaderLabel) {
   const normalizedMonthHeaderLabel = monthHeaderLabel.replace(/,/g, " ").replace(/\s+/g, " ").trim();
 
@@ -860,6 +912,7 @@ async function selectDateAfterAdvancingMonths(
 module.exports = {
   parseDateValue,
   datesMatch,
+  parseTimeToMinutes,
   selectDatesByNthAvailable,
   selectDatesByNthAvailableFromNextVisibleMonth,
   selectDatesByInputValues,

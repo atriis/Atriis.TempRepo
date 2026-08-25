@@ -2,7 +2,7 @@ require("module-alias/register");
 
 const { When, Then, setDefaultTimeout } = require("@cucumber/cucumber");
 const { expect } = require("@playwright/test");
-const { GroundTransportSearch } = require("../../src/dsl");
+const { GroundTransportSearch, Cart } = require("../../src/dsl");
 const logger = require("@utils/logger").child("GroundTransport");
 
 setDefaultTimeout(120000);
@@ -46,6 +46,19 @@ When("I search for ground transport from cart validating prepopulated pickup tim
 When("I search for ground transport from airport {string} to airport {string} changing the pickup time", async function (from, to) {
   logger.info("Searching for ground transport from airport to airport with changed pickup time", { from, to });
   notImplemented("I search for ground transport from airport {string} to airport {string} changing the pickup time");
+});
+
+// Stops short of submitting the search so the date and time just entered can still be read off
+// the form (see "I extract the date and pickup time from ground transport search"); the scenario
+// submits it afterwards with the generic "I click the search button".
+When("I search for ground transport from airport {string} to airport {string} changing the pickup time without clicking search button", async function (from, to) {
+  logger.info("Filling a ground transport airport-to-airport search with a changed pickup time, without submitting it", { from, to });
+  await GroundTransportSearch.fillAirportToAirportSearchWithChangedPickupTime(this.page, from, to);
+});
+
+When("I extract the date and pickup time from ground transport search", async function () {
+  logger.info("Extracting the pickup date and time from the ground transport search form");
+  this.groundTransportSearchedPickup = await GroundTransportSearch.readSearchPickupDateAndTime(this.page);
 });
 
 When("I search for ground transport from airport {string} to specific address {string} changing the pickup time", async function (from, to) {
@@ -213,8 +226,19 @@ Then("the transfer terms and conditions link should remain visible", async funct
 });
 
 Then("the ground transport pickup date and time should be displayed correctly in cart", async function () {
-  logger.info("Verifying ground transport pickup date and time in cart");
-  notImplemented("the ground transport pickup date and time should be displayed correctly in cart");
+  logger.info("Verifying ground transport pickup date and time in cart", {
+    searchedPickup: this.groundTransportSearchedPickup,
+  });
+
+  if (!this.groundTransportSearchedPickup) {
+    throw new Error(
+      "[ground_transport.steps] No searched pickup date/time was recorded, so there is nothing to "
+      + "compare the cart against. The scenario has to run \"I extract the date and pickup time "
+      + "from ground transport search\" while the filled search form is still on screen.",
+    );
+  }
+
+  await Cart.verifyGroundTransportPickupDateTime(this.page, this.groundTransportSearchedPickup);
 });
 
 Then("the ground transport price section content should be displayed", async function () {

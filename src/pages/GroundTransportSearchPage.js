@@ -16,9 +16,31 @@ const SELECTORS = {
   TO_AIRPORT_TEXT: "To airport",
   VEHICLE_TYPE_FIELD:  ".el-select__selection:has(.el-select__placeholder span:has-text(\"Vehicle Type\")) input[role=\"combobox\"]",
   VEHICLE_TYPE_DROPDOWN_OPTION: (vehicleType) => `li.el-select-dropdown__item span:text("${vehicleType}")`,
-  TRAVELLER_DROPDOWN: ".el-select__wrapper:has-text(\"Traveller\")",
+  // Scoped to the Ground Transport tab's own form: el-tabs keeps the other product panes mounted,
+  // and the flight tab's traveller select reads "1 Traveller" too as soon as a traveller has been
+  // added — an unscoped lookup matches both and fails Playwright's strict mode.
+  TRAVELLER_DROPDOWN: ".ground-transport-search .el-select__wrapper:has-text(\"Traveller\")",
   TRAVELLER_DROPDOWN_OPTION:
     (travellerNumbers) => `li.el-select-dropdown__item span:text("${travellerNumbers}")`,
+
+  // ---- Pick-up date / time on the ground transport search form ----
+  // groundService-search-inputs.vue renders exactly one app-datepicker and one app-timepicker
+  // inside its .details-container. Both are scoped to the tab's own .ground-transport-search root
+  // because the "Pick-up Date" placeholder is shared with the car search form, so an unscoped
+  // lookup can resolve to another product's field.
+  PICKUP_DATE_INPUT: ".ground-transport-search .details-container .app-datepicker input",
+  PICKUP_TIME_INPUT: ".ground-transport-search .details-container input.app-timepicker-input",
+  // app-timepicker teleports its el-dropdown to <body> with this popper class.
+  TIME_SELECTOR_POPPER: ".time-selector-popper:visible",
+  // Hours/minutes el-selects inside the popper (time-selection-box.vue, which names them) — both
+  // display modes render them; the AM/PM toggle only exists in 12h mode (`isAmPm`, driven by the
+  // user's units system).
+  TIME_HOURS_TRIGGER: "[name='hours'] .el-select__wrapper",
+  TIME_MINUTES_TRIGGER: "[name='minutes'] .el-select__wrapper",
+  TIME_AMPM_BUTTON: ".section-ampm .time-part",
+  // Element Plus teleports every select dropdown to <body>, so the hour/minute options are read
+  // globally rather than from inside the popper; ":visible" filters to the open one.
+  VISIBLE_TIME_OPTION: ".el-select-dropdown__item:visible",
 
   // ---- Ground transport edit-search drawer ----
   // trip-edit-search.vue mounts groundService-search-inputs.vue with showAllInputs=false, so the
@@ -192,6 +214,199 @@ class GroundTransportSearchPage {
 
     // Small wait for UI to process the blur event
     await this.page.waitForTimeout(100);
+  }
+
+  // ===== Pick-up date / time (app-datepicker + app-timepicker) =====
+
+  /**
+   * Reads the committed pick-up date as the search form renders it.
+   *
+   * app-datepicker is mounted here with its default 'ddd, DD MMM' format, so the value carries no
+   * year (e.g. "Tue, 25 Aug").
+   *
+   * @returns {Promise<string>} The date input's value, trimmed
+   */
+  async getPickupDateValue() {
+    const dateInput = this.page.locator(SELECTORS.PICKUP_DATE_INPUT).first();
+
+    try {
+      await dateInput.waitFor({ state: "visible", timeout: 15000 });
+      return (await dateInput.inputValue()).trim();
+    } catch (error) {
+      throw new Error(
+        "[GroundTransportSearchPage.getPickupDateValue] Could not read the pick-up date field "
+        + `(selector: ${SELECTORS.PICKUP_DATE_INPUT}). The Ground Transport search form is `
+        + `probably not the open tab. Original: ${error.message}`,
+      );
+    }
+  }
+
+  /**
+   * Reads the committed pick-up time as the search form renders it.
+   *
+   * @returns {Promise<string>} "HH:mm" for metric users, "hh:mm a" for imperial ones
+   */
+  async getPickupTimeValue() {
+    const timeInput = this.page.locator(SELECTORS.PICKUP_TIME_INPUT).first();
+
+    try {
+      await timeInput.waitFor({ state: "visible", timeout: 15000 });
+      return (await timeInput.inputValue()).trim();
+    } catch (error) {
+      throw new Error(
+        "[GroundTransportSearchPage.getPickupTimeValue] Could not read the pick-up time field "
+        + `(selector: ${SELECTORS.PICKUP_TIME_INPUT}). The Ground Transport search form is `
+        + `probably not the open tab. Original: ${error.message}`,
+      );
+    }
+  }
+
+  /**
+   * Sets the pick-up time to an explicit hour:minute through the time popper.
+   *
+   * The input is readonly (app-timepicker.vue), so the value can only be set from the popper's
+   * two el-selects. 12h/AM-PM mode is detected by whether the meridiem toggle renders at all — it
+   * never does for a 24h picker — and the meridiem is set BEFORE the hours dropdown is opened,
+   * because the hour option list is rebuilt from it.
+   *
+   * @param {string} hour - Zero-padded 24h hour option text (e.g. "09", "14")
+   * @param {string} minute - Zero-padded minute option text; a multiple of the picker's
+   *   steps="00:15" (i.e. "00", "15", "30", "45")
+   * @throws {Error} If the popper never opens or the value does not commit
+   */
+  async setPickupTime(hour, minute) {
+    if (!/^\d{2}$/.test(String(hour))) {
+      throw new Error(
+        `[GroundTransportSearchPage.setPickupTime] "hour" must be a zero-padded 24h hour string, got: ${hour}`,
+      );
+    }
+
+    if (!/^\d{2}$/.test(String(minute))) {
+      throw new Error(`[GroundTransportSearchPage.setPickupTime] "minute" must be a zero-padded minute string, got: ${minute}`);
+    }
+
+    const hourNumber = Number(hour);
+    const meridiem = hourNumber >= 12 ? "PM" : "AM";
+    const hour12 = String(hourNumber % 12 === 0 ? 12 : hourNumber % 12).padStart(2, "0");
+    const timeInput = this.page.locator(SELECTORS.PICKUP_TIME_INPUT).first();
+
+    try {
+      let popper = await this.#openTimePopper(timeInput, SELECTORS.TIME_HOURS_TRIGGER);
+
+      const isAmPmMode = (await popper.locator(SELECTORS.TIME_AMPM_BUTTON).count()) > 0;
+
+      if (isAmPmMode) {
+        const meridiemButton = popper
+          .locator(SELECTORS.TIME_AMPM_BUTTON, { hasText: new RegExp(`^\\s*${meridiem}\\s*$`) })
+          .first();
+
+        if (!((await meridiemButton.getAttribute("class")) || "").includes("active")) {
+          await meridiemButton.click({ timeout: 5000 });
+          await this.page.waitForTimeout(300);
+
+          // Toggling the meridiem re-applies the currently selected hour/minute and can close the
+          // popper outright, so it is reopened rather than assumed to still be there.
+          popper = await this.#reopenTimePopperIfClosed(timeInput, SELECTORS.TIME_HOURS_TRIGGER);
+        }
+      }
+
+      await popper.locator(SELECTORS.TIME_HOURS_TRIGGER).click({ timeout: 5000 });
+      await this.page
+        .locator(SELECTORS.VISIBLE_TIME_OPTION, {
+          hasText: new RegExp(`^\\s*${isAmPmMode ? hour12 : hour}\\s*$`),
+        })
+        .first()
+        .click({ timeout: 5000 });
+      // Picking the hour can auto-close and re-render the popper; this lets that settle so the
+      // "is it still open?" check below reads the popper's final state, not a mid-transition one.
+      await this.page.waitForTimeout(400);
+
+      popper = await this.#reopenTimePopperIfClosed(timeInput, SELECTORS.TIME_MINUTES_TRIGGER);
+      await popper.locator(SELECTORS.TIME_MINUTES_TRIGGER).click({ timeout: 5000 });
+      await this.page
+        .locator(SELECTORS.VISIBLE_TIME_OPTION, { hasText: new RegExp(`^\\s*${minute}\\s*$`) })
+        .first()
+        .click({ timeout: 5000 });
+      // app-timepicker emits its value on the NEXT tick after the minute click, so the popper
+      // count and the input value below are both read after the component has applied it.
+      await this.page.waitForTimeout(300);
+
+      // The picker auto-closes on the minute pick for 24h users; 12h users have no in-form neutral
+      // blur target, so a neutral corner click is used to commit the value.
+      if ((await this.page.locator(SELECTORS.TIME_SELECTOR_POPPER).count()) > 0) {
+        await this.page.mouse.click(2, 2);
+        await this.page.waitForTimeout(300);
+      }
+
+      const committedValue = (await timeInput.inputValue()).trim();
+      const matches24h = committedValue.includes(String(hour));
+      const matches12h = committedValue.includes(hour12) && new RegExp(meridiem, "i").test(committedValue);
+
+      if (!committedValue || (!matches24h && !matches12h)) {
+        throw new Error(`the pick-up time input reads "${committedValue}" after selecting ${hour}:${minute}`);
+      }
+    } catch (error) {
+      throw new Error(
+        `[GroundTransportSearchPage.setPickupTime] Could not set the pick-up time to ${hour}:${minute}. `
+        + "The time popper (class: time-selector-popper) or its hours/minutes el-select was not "
+        + `available, or the selection never committed. Original: ${error.message}`,
+      );
+    }
+  }
+
+  /**
+   * Opens the pick-up time popper and returns it.
+   *
+   * app-timepicker teleports its own popper to <body> and a just-closed one can still be
+   * transitioning out, so the LAST visible popper is the live one. The open is retried once
+   * because the first click's popper can close mid-transition.
+   *
+   * @param {import('@playwright/test').Locator} timeInput - The readonly time input to click
+   * @param {string} triggerSelector - A control expected inside the open popper
+   * @returns {Promise<import('@playwright/test').Locator>}
+   */
+  async #openTimePopper(timeInput, triggerSelector) {
+    let lastError;
+
+    for (let attempt = 1; attempt <= 2; attempt++) {
+      await timeInput.click({ timeout: 10000 });
+      // The el-dropdown is teleported and animated in; waiting for its transition to start means
+      // ".last()" below picks the popper this click opened, not one still fading out.
+      await this.page.waitForTimeout(400);
+
+      const popper = this.page.locator(SELECTORS.TIME_SELECTOR_POPPER).last();
+
+      try {
+        await popper.waitFor({ state: "visible", timeout: 5000 });
+        await popper.locator(triggerSelector).waitFor({ state: "visible", timeout: 5000 });
+        return popper;
+      } catch (error) {
+        lastError = error;
+        await this.page.waitForTimeout(400);
+      }
+    }
+
+    throw new Error(
+      "[GroundTransportSearchPage.#openTimePopper] The pick-up time popper never rendered "
+      + `${triggerSelector} after two clicks on the time input. Original: ${lastError.message}`,
+    );
+  }
+
+  /**
+   * Returns the open time popper, reopening it first if a previous selection closed it.
+   *
+   * @param {import('@playwright/test').Locator} timeInput
+   * @param {string} triggerSelector - A control expected inside the open popper
+   * @returns {Promise<import('@playwright/test').Locator>}
+   */
+  async #reopenTimePopperIfClosed(timeInput, triggerSelector) {
+    const popper = this.page.locator(SELECTORS.TIME_SELECTOR_POPPER).last();
+    const isStillOpen = await popper
+      .locator(triggerSelector)
+      .isVisible()
+      .catch(() => false);
+
+    return isStillOpen ? popper : this.#openTimePopper(timeInput, triggerSelector);
   }
 
   // ===== Ground transport edit-search drawer =====
