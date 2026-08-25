@@ -67,10 +67,28 @@ jobs:
       # flattened into the parking/ root, which now holds no subfolder at all —
       # so this one passes the FOLDER rather than globbing *.feature, with
       # nothing to recurse into.
+      #
+      # Ground transport (Transferz) joins as one suite of 6 scenarios, the last of
+      # the transferz TODO conversions having landed. transferz_converted/ was
+      # flattened into the transferz/ root, which now holds no subfolder — so, like
+      # parking, this passes the FOLDER with nothing to recurse into (verified by
+      # --dry-run: 6 scenarios, 68 steps).
+      #
+      # parallel 1, deliberately, unlike its sibling suites: all six scenarios log in
+      # as the SAME user (betoribeiro@transferz.com) and two of them book and cancel
+      # a real trip, so concurrent workers would race each other on that one user's
+      # trip/cart state. Serial costs ~12 min, which is well inside the step timeout.
+      # Raise it only after giving the suite per-worker users.
+      #
+      # NOT included: ground_transport/groundscope/ (6 more scenarios) is still
+      # absent from the nightly. Adding it needs its own check first — one of its
+      # features is named 71037_[ground_transportation]_...feature, and those square
+      # brackets read as a glob char-class, so a *.feature glob there silently
+      # matches nothing and reports success with 0 scenarios.
       expected-suites: >-
         cars-amadeus cars-galileo cars-general
         cars-sabre cars-sunny-cars rails-amtrak rails-benerail rails-evolvi
-        rails-deutsche-bahn rails-distribusion parking
+        rails-deutsche-bahn rails-distribusion ground-transport-transferz parking
       matrix: |
         {
           "include": [
@@ -84,6 +102,7 @@ jobs:
             { "suite_id": "rails-evolvi",    "suite_name": "Rails Evolvi",    "test_path": "tests/features/transportation/rails/evolvi/*.feature",                                                    "parallel": 2, "retry": 3, "job_timeout_minutes": 180, "step_timeout_minutes": 175 },
             { "suite_id": "rails-deutsche-bahn", "suite_name": "Rails Deutsche Bahn", "test_path": "tests/features/transportation/rails/deutsche_bahn/*.feature",                                     "parallel": 2, "retry": 3, "job_timeout_minutes": 45,  "step_timeout_minutes": 40 },
             { "suite_id": "rails-distribusion",  "suite_name": "Rails Distribusion",  "test_path": "tests/features/transportation/rails/distribusion/*.feature",                                      "parallel": 1, "retry": 3, "job_timeout_minutes": 45,  "step_timeout_minutes": 40 },
+            { "suite_id": "ground-transport-transferz", "suite_name": "Ground Transport Transferz", "test_path": "tests/features/transportation/ground_transport/transferz/",                    "parallel": 1, "retry": 3, "job_timeout_minutes": 60,  "step_timeout_minutes": 55 },
             { "suite_id": "parking",         "suite_name": "Parking",         "test_path": "tests/features/transportation/parking/",                                                                  "parallel": 2, "retry": 3, "job_timeout_minutes": 45,  "step_timeout_minutes": 40 }
           ]
         }
