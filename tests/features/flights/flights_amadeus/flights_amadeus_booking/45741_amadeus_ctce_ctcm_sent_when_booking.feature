@@ -4,7 +4,7 @@
 # Owner: Bruna Santos
 # Created: 2024-05-08T09:40:55Z
 
-@regression @amadeus @flights @hybrid @contact_info
+@regression @amadeus @flights @hybrid @contact_info @full-purchase
 Feature: 45741 Amadeus - CTCE and CTCM sent when booking
   As a corporate traveler
   I want to book a round trip flight
@@ -14,12 +14,13 @@ Feature: 45741 Amadeus - CTCE and CTCM sent when booking
   # requires backend/API validation that is not covered by this UI scenario.
 
   Scenario: Booking a round trip flight with CTCE and CTCM
-    Given I am logged in as "ruimariano@amadeus.com" booking a new trip
+    Given I am logged in as "brunasantosnl@testim.com" booking a new trip
     And I have added a random guest traveler
     When I search for a round trip flight from "LIS" to "NYC"
     And I add the first flight to cart
     Then the booking status should be "Pending booking"
+    And I add a credit card as payment method
     When I proceed to checkout
     Then the contact email on checkout should contain "@atriis"
     And I complete the booking
-    Then the booking status should be "Finalizing"
+    Then the booking status should be "Finalising"

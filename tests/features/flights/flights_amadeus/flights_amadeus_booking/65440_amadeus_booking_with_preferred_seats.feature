@@ -11,14 +11,15 @@ Feature: 65440 Amadeus - Booking successful with preferred seats
   So that the booking completes successfully with my preferred seating
 
   Scenario: Booking a round trip flight with preferred seats selected
-    Given I am logged in as "ruimariano@amadeus.com" booking a new trip
+    Given I am logged in as "brunasantosnl@testim.com" booking a new trip
     And I have added a random guest traveler
     When I search for a round trip flight from "SEA" to "SBA"
     And I wait for add to trip text to be visible
     And I filter airline results by "Alaska" checkbox
     And I add the first flight to cart
     Then the booking status should be "Pending booking"
-    When I click to edit extras at index 5
+    And I add a credit card as payment method
+    When I click seating in extras
     And I click add seats in extras
     And I wait for the seat map to load
     And I select a random preferred seat
