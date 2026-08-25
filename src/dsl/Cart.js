@@ -5257,6 +5257,108 @@ const Cart = {
   },
 
   /**
+   * Fills and saves the ground transport quote's mandatory Contact Information phone number.
+   *
+   * Checkout is blocked until this row is valid, so the whole open → fill → save sequence lives in
+   * one call: a scenario has no reason to leave the card half-filled.
+   *
+   * @param {import('playwright').Page} page
+   * @param {{ dialCode?: string, areaCode?: string, number?: string }} [phone]
+   */
+  async fillGroundTransportContactDetails(page, phone = {}) {
+    if (!page) throw new Error('page is required');
+
+    const { dialCode = '351', areaCode = '96', number = '566785' } = phone;
+    const cartPage = getPageObject(page, CartPage);
+
+    await cartPage.openGroundTransportContactInfoPanel();
+    await cartPage.fillGroundTransportContactPhone(dialCode, areaCode, number);
+    await cartPage.saveGroundTransportContactInfo();
+
+    logger.info('[Cart.fillGroundTransportContactDetails] Saved the ground transport contact phone', {
+      phone: `+${dialCode} ${areaCode} ${number}`,
+    });
+  },
+
+  /**
+   * Reads the transfer's "Booking Code" off the booked quote card in the trip overview and returns
+   * the bare code.
+   *
+   * ground-transport-quote-card.vue renders it as `Booking Code: <span>{fulfillmentProviderId}</span>`
+   * in its #booking-confirm-info slot, NEXT TO the trip's own "PNR 1734787" line - both are
+   * `.pnr-code` divs. The generic getVisibleQuotesWithPnrCodes() reader takes the first `.pnr-code`
+   * per card and so returns the PNR, which is why this reads a label-filtered locator instead.
+   *
+   * @param {import('playwright').Page} page
+   * @returns {Promise<string>} The code alone, without the "Booking Code:" label
+   */
+  async extractTransferBookingCode(page) {
+    if (!page) throw new Error('page is required');
+
+    const cartPage = getPageObject(page, CartPage);
+    const { text, allCodes } = await cartPage.getGroundTransportBookingCodeText();
+
+    const match = /Booking Code:\s*(\S+)/i.exec(text);
+    if (!match) {
+      throw new Error(
+        `[Cart.extractTransferBookingCode] The transfer's "Booking Code" line is on the trip but carries ` +
+        `no code: "${text}". Codes on the card: ${allCodes.join(' | ') || 'none'}.`,
+      );
+    }
+
+    const code = match[1];
+    logger.info('[Cart.extractTransferBookingCode] Read the transfer booking code from the trip', { code });
+    return code;
+  },
+
+  /**
+   * Verifies the open share email preview shows the transfer's booking code.
+   *
+   * Asserts the label AND the exact code captured from the trip, so the check cannot pass on a
+   * preview that renders the row with a different (or empty) value.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} expectedCode - The code returned by extractTransferBookingCode
+   * @param {{ alsoCheckDetailedView?: boolean }} [options] - Share QUOTE previews have a Simple/Detailed
+   *   toggle and the code has to appear in both; the share ITINERARY preview has no such toggle.
+   */
+  async verifyTransferBookingCodeInSharePreview(page, expectedCode, { alsoCheckDetailedView = false } = {}) {
+    if (!page) throw new Error('page is required');
+    if (!expectedCode || typeof expectedCode !== 'string') {
+      throw new Error(
+        `[Cart.verifyTransferBookingCodeInSharePreview] "expectedCode" must be the booking code read from ` +
+        `the trip, got: ${expectedCode}. Run "the transfer booking code should be displayed on the trip" first.`,
+      );
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+
+    const assertPreview = async (viewName) => {
+      for (const needle of ['Booking Code', expectedCode]) {
+        const found = await cartPage.sharePreviewContainsText(needle);
+        if (!found) {
+          const content = await cartPage.getSharePreviewTextContent();
+          throw new Error(
+            `[Cart.verifyTransferBookingCodeInSharePreview] The ${viewName} share preview does not contain ` +
+            `"${needle}". Preview text: "${content.slice(0, 600)}"`,
+          );
+        }
+      }
+      logger.info('[Cart.verifyTransferBookingCodeInSharePreview] Booking code found in the share preview', {
+        view: viewName,
+        code: expectedCode,
+      });
+    };
+
+    await assertPreview('simple');
+
+    if (alsoCheckDetailedView) {
+      await Cart.switchSharePreviewToDetailedView(page);
+      await assertPreview('detailed');
+    }
+  },
+
+  /**
    * Verifies two stored quote PNR codes match.
    *
    * @param {import('playwright').Page} page

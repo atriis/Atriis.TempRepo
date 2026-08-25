@@ -1410,6 +1410,50 @@ const SELECTORS = {
   AMTRAK_CONTACT_INFO_PHONE_LABEL: '.amtrak-contact-information .extras-card p.mb-2',
   AMTRAK_CONTACT_INFO_PHONE_LABEL_TEXT: 'Phone number',
 
+  // Ground transport Contact Information extras row (ground-transport-contact-information.vue).
+  // Its root is a bare `.contact-information` section — the SAME class parking-contact-information.vue
+  // uses — so every selector is scoped through `.ground-transport-quote-card` (the wrapper the
+  // component is slotted into) rather than the shared class alone.
+  GROUND_TRANSPORT_CONTACT_INFO_SECTION: '.ground-transport-quote-card .contact-information',
+  // Add/Edit control on the COLLAPSED row. extras-layout.vue swaps the whole `.extra` summary out
+  // on open, so this only resolves while the row is closed.
+  GROUND_TRANSPORT_CONTACT_INFO_EXPAND_BUTTON:
+    '.ground-transport-quote-card .contact-information .extra__btns .is-clickable',
+  GROUND_TRANSPORT_CONTACT_INFO_CARD: '.ground-transport-quote-card .contact-information .extras-card',
+  // Phone widget. Unlike Amtrak (still three el-inputs in a `.phone-details` row), ground transport
+  // uses the redesigned app-phone-input.vue: the dial code is a popover-backed <button>, and only
+  // the area code and number are real text inputs. Driving it the Amtrak way finds no inputs at all.
+  // ground-transport-contact-information.vue stamps
+  // data-testid="ground-transport.contact-information.phone-input" on this widget, which would be the
+  // better anchor — but staging does not serve it yet (verified: the testid selector times out on a
+  // cart the class chain drives fine). Switch to the testid once staging catches up to the source.
+  GROUND_TRANSPORT_CONTACT_INFO_PHONE_COUNTRY_BTN:
+    '.ground-transport-quote-card .contact-information .app-phone-input__country',
+  GROUND_TRANSPORT_CONTACT_INFO_PHONE_AREA:
+    '.ground-transport-quote-card .contact-information .app-phone-input__area',
+  GROUND_TRANSPORT_CONTACT_INFO_PHONE_NUMBER:
+    '.ground-transport-quote-card .contact-information .app-phone-input__number',
+  // Save button of the open card's `<div class="btns flex">`. app-btn.vue renders a real
+  // `<button class="btn btn--{type} …">`, so `button.btn--primary` picks Save (type="primary") and
+  // never Close (btn--default), without depending on the translated label.
+  GROUND_TRANSPORT_CONTACT_INFO_SAVE_BUTTON:
+    '.ground-transport-quote-card .contact-information .btns button.btn--primary',
+  // The green check extras-layout.vue renders on the collapsed row once `isValid && hasValue`.
+  // This is the only signal that Save actually persisted — the row collapses either way.
+  GROUND_TRANSPORT_CONTACT_INFO_FILLED_ICON:
+    '.ground-transport-quote-card .contact-information .extra .success-icon.green',
+  // The booked ground transport card carries TWO `.pnr-code` divs side by side: quote-pnr.vue's
+  // "PNR 1734787" and, in the #booking-confirm-info slot, ground-transport-quote-card.vue's own
+  // "Booking Code: D97D74". They are siblings and the PNR comes first, so the generic
+  // getVisibleQuotesWithPnrCodes() reader (which takes `.pnr-code` .first() per card) returns the
+  // PNR and never the booking code — hence this filtered selector rather than reusing it.
+  GROUND_TRANSPORT_BOOKING_CODE: '.ground-transport-quote-card .pnr-code:has-text("Booking Code")',
+  GROUND_TRANSPORT_PNR_CODES: '.ground-transport-quote-card .pnr-code',
+  // The dial-code list is an el-popover teleported to <body>, so it cannot be scoped to the quote
+  // card. Same selectors CheckoutPage/ManualQuoteSearchPage already use for this widget.
+  PHONE_INPUT_POPOVER_SEARCH: '.app-phone-input-popover .app-phone-input__search input:visible',
+  PHONE_INPUT_POPOVER_OPTION: '.app-phone-input-popover:visible .app-phone-input__option',
+
   // The Amtrak quote's line in the cart trip-summary sidebar (amtrak-quote-summary.vue, mounted by
   // general-quote-summary.vue). Anchored on its own product icon rather than a position, so it
   // still resolves in a cart holding other products — app-product-icon.vue stamps the product name
@@ -5105,6 +5149,149 @@ class CartPage {
         `is invalid). Original: ${err.message}`,
       );
     }
+  }
+
+  /**
+   * Opens the ground transport Contact Information extras row.
+   *
+   * No-ops when the row is already open: extras-layout.vue only renders the collapsed `.extra`
+   * summary (and with it the Add/Edit control) while isOpen is false, so a second call would
+   * otherwise time out on a control that no longer exists.
+   * @param {number} timeout
+   */
+  async openGroundTransportContactInfoPanel(timeout = 30000) {
+    const card = this.page.locator(SELECTORS.GROUND_TRANSPORT_CONTACT_INFO_CARD).first();
+    if (await card.isVisible().catch(() => false)) return;
+
+    const expandButton = this.page.locator(SELECTORS.GROUND_TRANSPORT_CONTACT_INFO_EXPAND_BUTTON).first();
+    try {
+      await expandButton.waitFor({ state: 'visible', timeout });
+      await expandButton.scrollIntoViewIfNeeded();
+      await expandButton.click();
+      await card.waitFor({ state: 'visible', timeout });
+    } catch (err) {
+      throw new Error(
+        `[CartPage.openGroundTransportContactInfoPanel] Could not open the ground transport Contact ` +
+        `Information extras row (button: ${SELECTORS.GROUND_TRANSPORT_CONTACT_INFO_EXPAND_BUTTON}, ` +
+        `card: ${SELECTORS.GROUND_TRANSPORT_CONTACT_INFO_CARD}). The row only renders on a ground ` +
+        `transport quote that is still pending. Original: ${err.message}`,
+      );
+    }
+  }
+
+  /**
+   * Fills the phone number in the OPEN ground transport Contact Information card.
+   *
+   * The dial code is NOT a text field — app-phone-input.vue renders it as a <button> backed by an
+   * el-popover list, so it has to be picked by opening the popover, filtering, and clicking the
+   * option. Only the area code and the number are real inputs.
+   * @param {string} dialCode - Country dial code without the plus, e.g. "351"
+   * @param {string} areaCode
+   * @param {string} number
+   * @param {number} timeout
+   */
+  async fillGroundTransportContactPhone(dialCode, areaCode, number, timeout = 15000) {
+    try {
+      const countryBtn = this.page.locator(SELECTORS.GROUND_TRANSPORT_CONTACT_INFO_PHONE_COUNTRY_BTN).first();
+      await countryBtn.waitFor({ state: 'visible', timeout });
+      await countryBtn.click();
+
+      const searchInput = this.page.locator(SELECTORS.PHONE_INPUT_POPOVER_SEARCH).first();
+      await searchInput.waitFor({ state: 'visible', timeout });
+      await searchInput.fill(String(dialCode));
+
+      // Filter on the rendered "(+351)" text: the search box also matches on country name and ISO
+      // code, so an unfiltered .first() can land on a country with a different dial code.
+      const option = this.page
+        .locator(SELECTORS.PHONE_INPUT_POPOVER_OPTION)
+        .filter({ hasText: `+${dialCode}` })
+        .first();
+      await option.waitFor({ state: 'visible', timeout });
+      await option.click();
+
+      const areaInput = this.page.locator(SELECTORS.GROUND_TRANSPORT_CONTACT_INFO_PHONE_AREA).first();
+      await areaInput.waitFor({ state: 'visible', timeout });
+      await areaInput.fill(String(areaCode));
+
+      const numberInput = this.page.locator(SELECTORS.GROUND_TRANSPORT_CONTACT_INFO_PHONE_NUMBER).first();
+      await numberInput.fill(String(number));
+    } catch (err) {
+      throw new Error(
+        `[CartPage.fillGroundTransportContactPhone] Could not fill the ground transport contact phone ` +
+        `"+${dialCode} ${areaCode} ${number}" (country button: ` +
+        `${SELECTORS.GROUND_TRANSPORT_CONTACT_INFO_PHONE_COUNTRY_BTN}). The Contact Information card ` +
+        `must already be open. Original: ${err.message}`,
+      );
+    }
+  }
+
+  /**
+   * Clicks Save in the open ground transport Contact Information card and waits for the collapsed
+   * row to show its green check.
+   *
+   * The check — not the collapse — is what proves the save landed: ground-transport-contact-information.ts
+   * disables Save while the phone is incomplete, and extras-layout.vue only paints
+   * `.success-icon.green` once `isValid && hasValue`.
+   * @param {number} timeout
+   */
+  async saveGroundTransportContactInfo(timeout = 30000) {
+    const saveButton = this.page.locator(SELECTORS.GROUND_TRANSPORT_CONTACT_INFO_SAVE_BUTTON).first();
+    try {
+      await saveButton.waitFor({ state: 'visible', timeout });
+      await saveButton.click();
+    } catch (err) {
+      throw new Error(
+        `[CartPage.saveGroundTransportContactInfo] Could not click Save in the ground transport Contact ` +
+        `Information card (selector: ${SELECTORS.GROUND_TRANSPORT_CONTACT_INFO_SAVE_BUTTON}). Save stays ` +
+        `disabled until the phone number is complete. Original: ${err.message}`,
+      );
+    }
+
+    try {
+      await this.page
+        .locator(SELECTORS.GROUND_TRANSPORT_CONTACT_INFO_FILLED_ICON)
+        .first()
+        .waitFor({ state: 'visible', timeout });
+    } catch (err) {
+      throw new Error(
+        `[CartPage.saveGroundTransportContactInfo] The ground transport Contact Information row never ` +
+        `showed its green check after Save (selector: ${SELECTORS.GROUND_TRANSPORT_CONTACT_INFO_FILLED_ICON}), ` +
+        `so the phone number was not accepted. Original: ${err.message}`,
+      );
+    }
+  }
+
+  /**
+   * Reads the "Booking Code: X" line off the booked ground transport quote card.
+   *
+   * The card shows the provider booking code next to the trip's own PNR, both as `.pnr-code` divs,
+   * so this is filtered on the label rather than positional: a `.first()` read lands on the PNR.
+   * @param {number} timeout - How long to wait for the row, which only renders once the booking
+   *   came back with a fulfillmentProviderId
+   * @returns {Promise<{text: string, allCodes: string[]}>} The matched line and every code on the
+   *   card, so a failed match is diagnosable from the error alone
+   */
+  async getGroundTransportBookingCodeText(timeout = 30000) {
+    const bookingCode = this.page.locator(SELECTORS.GROUND_TRANSPORT_BOOKING_CODE).first();
+    try {
+      await bookingCode.waitFor({ state: 'visible', timeout });
+    } catch (err) {
+      const allCodes = await this.page
+        .locator(SELECTORS.GROUND_TRANSPORT_PNR_CODES)
+        .allInnerTexts()
+        .catch(() => []);
+      throw new Error(
+        `[CartPage.getGroundTransportBookingCodeText] The ground transport quote card never rendered a ` +
+        `"Booking Code" line (selector: ${SELECTORS.GROUND_TRANSPORT_BOOKING_CODE}). Codes on the card: ` +
+        `${allCodes.map((code) => code.replace(/\s+/g, ' ').trim()).join(' | ') || 'none'}. ` +
+        `Original: ${err.message}`,
+      );
+    }
+
+    const text = ((await bookingCode.innerText()) ?? '').replace(/\s+/g, ' ').trim();
+    const allCodes = (await this.page.locator(SELECTORS.GROUND_TRANSPORT_PNR_CODES).allInnerTexts())
+      .map((code) => code.replace(/\s+/g, ' ').trim());
+    return { text, allCodes };
   }
 
   /**

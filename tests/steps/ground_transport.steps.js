@@ -121,7 +121,7 @@ When("I open transfer terms and conditions from trip overview", async function (
 
 When("I fill ground transport contact details in cart", async function () {
   logger.info("Filling ground transport contact details in cart");
-  notImplemented("I fill ground transport contact details in cart");
+  await Cart.fillGroundTransportContactDetails(this.page);
 });
 
 When("I navigate back to ground transport search as consultant {string}", async function (consultantName) {
@@ -248,17 +248,25 @@ Then("the ground transport price, type of payment, date and time and add to trip
 
 Then("the transfer booking code should be displayed on the trip", async function () {
   logger.info("Verifying transfer booking code on trip");
-  notImplemented("the transfer booking code should be displayed on the trip");
+  // Stored on the world so the two share-preview steps assert the SAME code the trip shows,
+  // rather than each independently settling for "some booking code is present".
+  this.transferBookingCode = await Cart.extractTransferBookingCode(this.page);
+  logger.info("Stored the transfer booking code for the share preview comparisons", {
+    transferBookingCode: this.transferBookingCode,
+  });
 });
 
 Then("the share quote preview should contain the transfer booking code", async function () {
   logger.info("Verifying share quote preview contains transfer booking code");
-  notImplemented("the share quote preview should contain the transfer booking code");
+  // The share QUOTE email has a Simple/Detailed toggle and the code has to survive both views.
+  await Cart.verifyTransferBookingCodeInSharePreview(this.page, this.transferBookingCode, {
+    alsoCheckDetailedView: true,
+  });
 });
 
 Then("the share itinerary preview should contain the transfer booking code", async function () {
   logger.info("Verifying share itinerary preview contains transfer booking code");
-  notImplemented("the share itinerary preview should contain the transfer booking code");
+  await Cart.verifyTransferBookingCodeInSharePreview(this.page, this.transferBookingCode);
 });
 
 Then("the share quote preview should contain a ground transport image", async function () {
