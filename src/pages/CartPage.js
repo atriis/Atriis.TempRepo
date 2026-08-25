@@ -1352,6 +1352,19 @@ const SELECTORS = {
   // `.extra` row or on the expanded `.padding` wrapper, so match on the class alone.
   AMTRAK_CONTACT_INFO_ERROR_BORDER: '.amtrak-contact-information .error-border',
   AMTRAK_CONTACT_INFO_TITLE_TEXT: 'Contact Information',
+  // "Please add the required extras" notice — extras-collapse.vue renders it as the first <p> of
+  // `.extras-container`, gated on isQuoteSelected (quote.status === Selected), and its created()
+  // hook opens the accordion for exactly that state, so a pending Amtrak quote shows it without a
+  // click. Scoped to `.amtrak-quote-card` so a cart holding other products still reads the Amtrak
+  // quote's own notice rather than another card's.
+  AMTRAK_REQUIRED_EXTRAS_NOTICE: '.amtrak-quote-card .extras-collapse-container .extras-container > p',
+  AMTRAK_REQUIRED_EXTRAS_NOTICE_TEXT: 'Please add the required extras',
+  // "Phone number" label inside the OPEN Contact Information card
+  // (amtrak-contact-information.vue renders it as `<p class="mb-2">{{ $t('common.phoneNumber') }}</p>`,
+  // the only mb-2 paragraph in that card). Absent until the row is expanded AND its saved contact
+  // info finished loading — while the el-skeleton is up the card holds no label at all.
+  AMTRAK_CONTACT_INFO_PHONE_LABEL: '.amtrak-contact-information .extras-card p.mb-2',
+  AMTRAK_CONTACT_INFO_PHONE_LABEL_TEXT: 'Phone number',
 
   // The Amtrak quote's line in the cart trip-summary sidebar (amtrak-quote-summary.vue, mounted by
   // general-quote-summary.vue). Anchored on its own product icon rather than a position, so it
@@ -1399,11 +1412,17 @@ const SELECTORS = {
 
   // Rail (EU Rail / Benerail) quote-card Fare Rules dialog — same `.app-dialog` el-dialog used for
   // Terms & Conditions/Journey Details on the quote card, scoped to the body for content text.
-  RAIL_FARE_RULES_DIALOG_BODY: '.el-dialog.app-dialog .el-dialog__body',
+  // `:visible` is load-bearing, not decoration: every el-dialog the cart has opened stays attached
+  // to the body as a hidden, EMPTY `.el-dialog__body`, so on a page that already opened others (the
+  // share quote/itinerary dialogs in test 60544) an unscoped `.first()` locks onto one of those and
+  // waits out its timeout while the real Fare Rules dialog is open beside it.
+  RAIL_FARE_RULES_DIALOG_BODY: '.el-dialog.app-dialog:visible .el-dialog__body',
   // Close button scoped to the same `.el-dialog.app-dialog` — the generic TERMS_MODAL_CLOSE_BUTTON
   // is unscoped and can resolve to an unrelated dialog's close button elsewhere in the DOM, leaving
   // this dialog open.
-  RAIL_FARE_RULES_DIALOG_CLOSE_BUTTON: '.el-dialog.app-dialog [aria-label="Close this dialog"], .el-dialog.app-dialog .el-dialog__close, .el-dialog.app-dialog .el-dialog__headerbtn',
+  // Same `:visible` reasoning as the body above — a leftover hidden dialog still carries a close
+  // button, and clicking that one would leave the real Fare Rules dialog open over the cart.
+  RAIL_FARE_RULES_DIALOG_CLOSE_BUTTON: '.el-dialog.app-dialog:visible [aria-label="Close this dialog"], .el-dialog.app-dialog:visible .el-dialog__close, .el-dialog.app-dialog:visible .el-dialog__headerbtn',
 
   // UK rail (Evolvi) quote-card fare rules. Unlike the Benerail card above, uk-rail-quote-card.vue
   // opens them in an el-drawer.app-drawer titled "Full information" (hosting
@@ -4903,6 +4922,29 @@ class CartPage {
     const title = this.page.locator(SELECTORS.AMTRAK_QUOTE_SUMMARY_TITLE).first();
     await title.waitFor({ state: 'visible', timeout });
     return (await title.innerText()).replace(/\s+/g, ' ').trim();
+  }
+
+  /**
+   * Reads the Amtrak quote's "Please add the required extras" notice from the extras section, with
+   * whitespace collapsed.
+   * @param {number} timeout
+   * @returns {Promise<string>}
+   */
+  async getAmtrakRequiredExtrasNoticeText(timeout = 15000) {
+    const notice = this.page.locator(SELECTORS.AMTRAK_REQUIRED_EXTRAS_NOTICE).first();
+    await notice.waitFor({ state: 'visible', timeout });
+    return (await notice.innerText()).replace(/\s+/g, ' ').trim();
+  }
+
+  /**
+   * Reads the "Phone number" label of the open Amtrak Contact Information card.
+   * @param {number} timeout
+   * @returns {Promise<string>}
+   */
+  async getAmtrakContactInfoPhoneLabelText(timeout = 15000) {
+    const label = this.page.locator(SELECTORS.AMTRAK_CONTACT_INFO_PHONE_LABEL).first();
+    await label.waitFor({ state: 'visible', timeout });
+    return (await label.innerText()).replace(/\s+/g, ' ').trim();
   }
 
   /**

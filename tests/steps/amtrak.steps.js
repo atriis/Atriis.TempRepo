@@ -73,10 +73,6 @@ When("I fill in Amtrak contact information and proceed to checkout", async funct
   throw new Error("TODO: Implement filling contact info (phone country '1', area '310', number '3338888'), save, accept T&C, and proceed to checkout. See AmtrakSearch DSL / CartPage.");
 });
 
-When("I expand the Amtrak extras section in cart", async function () {
-  throw new Error("TODO: Implement clicking '.ticket-layout-container .is-clickable' to expand Amtrak extras in cart.");
-});
-
 // ===== TODO STUBS — Then steps =====
 
 Then("the fare rules should be accessible in cart", async function () {
@@ -95,28 +91,34 @@ Then("the Amtrak search results should be displayed", async function () {
   throw new Error("TODO: Implement clicking search button, proceeding through reference fields popup, and waiting for Amtrak results list to appear.");
 });
 
-Then("the Amtrak trip timer badge should be visible in cart", async function () {
-  throw new Error("TODO: Implement checking visibility of '.app-columns .material-symbols-outlined' and hovering '.timed-quote-badge'. See counter() in Testim source.");
-});
+// ===== AMTRAK CART PAGE VALIDATIONS (test 60544) =====
 
+// extras-collapse.vue prints this notice for any quote whose status is Selected and opens the
+// accordion for it on created(), so a pending Amtrak quote shows it with no click of our own.
 Then("the required extras notice should be visible in cart", async function () {
-  throw new Error("TODO: Implement verifying 'Please add the required extras' notice is visible in the Amtrak cart section.");
+  logger.info("Verifying the Amtrak required-extras notice is displayed in the cart");
+  await Cart.verifyAmtrakRequiredExtrasNoticeInCart(this.page);
 });
 
-Then("the contact information section should be visible in the Amtrak cart extras", async function () {
-  throw new Error("TODO: Implement verifying 'Contact Information' card title is visible after expanding Amtrak extras.");
-});
-
+// Must follow "I expand the contact informations section in cart": the label lives inside the open
+// card, and is not rendered while the row is collapsed or still showing its loading skeleton.
 Then("the phone number field should be visible in the Amtrak cart extras", async function () {
-  throw new Error("TODO: Implement verifying 'Phone number' label is visible in the Amtrak cart extras section.");
+  logger.info("Verifying the phone number label is visible in the open Amtrak Contact Information card");
+  await Cart.verifyAmtrakContactInfoPhoneLabelVisible(this.page);
 });
 
-Then("the Amtrak summary title should contain the destination", async function () {
-  throw new Error("TODO: Implement verifying '.summary-title' contains text matching /Amtrak Rail to/.");
+// Partial match, unlike 67751's full-title step: this scenario asserts only the product prefix,
+// which holds for any route, instead of pinning the destination the route under test happens to use.
+Then("the Amtrak summary title should contain {string}", async function (expectedText) {
+  logger.info("Verifying the Amtrak trip-overview summary title", { expectedText });
+  await Cart.verifyAmtrakQuoteSummaryTitleContains(this.page, expectedText);
 });
 
-Then("the fare rules cancellations section should be visible", async function () {
-  throw new Error("TODO: Implement verifying '.rules > :nth-child(1)' contains 'Cancellations' after opening fare rules in cart.");
+// Self-contained like its Benerail counterpart — opens the quote card's Fare Rules dialog, reads it
+// and closes it — so no separate "click to open fare rules" step belongs before it.
+Then("the fare rules should be accessible in the Amtrak cart and contain {string}", async function (expectedText) {
+  logger.info("Verifying the Amtrak fare rules dialog in the cart", { expectedText });
+  await Cart.verifyRailFareRulesDialogContainsText(this.page, expectedText, 0);
 });
 
 // ===== AMTRAK CONTACT INFORMATION (mandatory phone number — test 62852) =====

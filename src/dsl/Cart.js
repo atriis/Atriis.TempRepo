@@ -10970,6 +10970,70 @@ const Cart = {
   },
 
   /**
+   * Verifies the Amtrak quote line in the trip-overview sidebar carries the expected text — the
+   * partial-match counterpart of verifyAmtrakDestinationTitleAndIconInTripOverview above, for
+   * scenarios that assert only the product prefix ("Amtrak Rail to") and not the full destination,
+   * which changes with the route under test. See test 60544.
+   * @param {import('playwright').Page} page
+   * @param {string} expectedText - Text the title must contain, e.g. "Amtrak Rail to"
+   */
+  async verifyAmtrakQuoteSummaryTitleContains(page, expectedText) {
+    if (!page) throw new Error('page is required');
+    if (typeof expectedText !== 'string' || !expectedText) {
+      throw new Error(`expectedText must be a non-empty string, got: ${typeof expectedText}`);
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+    const titleText = await cartPage.getAmtrakQuoteSummaryTitleText();
+
+    expect(
+      titleText,
+      `Expected the Amtrak quote title in the trip overview to contain "${expectedText}", got "${titleText}"`,
+    ).toContain(expectedText);
+    logger.info('Amtrak quote summary title contains the expected text', { titleText, expectedText });
+  },
+
+  /**
+   * Verifies the Amtrak quote's extras section shows the "Please add the required extras" notice —
+   * the cart's prompt that the quote cannot be checked out until its mandatory extras are filled.
+   * Expands the outer extras accordion first so the notice is reachable even if a previous step
+   * collapsed it. See test 60544.
+   * @param {import('playwright').Page} page
+   */
+  async verifyAmtrakRequiredExtrasNoticeInCart(page) {
+    if (!page) throw new Error('page is required');
+
+    const cartPage = getPageObject(page, CartPage);
+    await cartPage.ensureExtrasExpanded();
+
+    const noticeText = await cartPage.getAmtrakRequiredExtrasNoticeText();
+    expect(
+      noticeText,
+      `Expected the Amtrak extras section to show "${CART_SELECTORS.AMTRAK_REQUIRED_EXTRAS_NOTICE_TEXT}", got "${noticeText}"`,
+    ).toContain(CART_SELECTORS.AMTRAK_REQUIRED_EXTRAS_NOTICE_TEXT);
+    logger.info('Amtrak required-extras notice is displayed in the cart', { noticeText });
+  },
+
+  /**
+   * Verifies the open Amtrak Contact Information card labels its phone number input group. Call
+   * after expandAmtrakContactInfoInCart — the label only exists while the row is open.
+   * @param {import('playwright').Page} page
+   */
+  async verifyAmtrakContactInfoPhoneLabelVisible(page) {
+    if (!page) throw new Error('page is required');
+
+    const cartPage = getPageObject(page, CartPage);
+    const labelText = await cartPage.getAmtrakContactInfoPhoneLabelText();
+
+    expect(
+      labelText,
+      `Expected the open Amtrak Contact Information card to label its phone inputs ` +
+      `"${CART_SELECTORS.AMTRAK_CONTACT_INFO_PHONE_LABEL_TEXT}", got "${labelText}"`,
+    ).toContain(CART_SELECTORS.AMTRAK_CONTACT_INFO_PHONE_LABEL_TEXT);
+    logger.info('Amtrak Contact Information phone number label is visible', { labelText });
+  },
+
+  /**
    * Verifies the Amtrak Contact Information extras row is rendered as mandatory — the heading reads
    * "Contact Information" and carries the red asterisk amtrak-contact-information.vue prefixes it
    * with. Expands the outer extras accordion first, since the row is only reachable inside it.
