@@ -17,6 +17,11 @@ When("I select and add one way journey to trip", async function () {
   await Results.clickSelectButtonOneWayAndClickAddToTrip(this.page);
 });
 
+When("I click select button in results", async function () {
+  logger.info("Clicking the first 'Select' button in results");
+  await Results.waitAndClickSelectButton(this.page);
+});
+
 When("I wait for select text to be visible", async function () {
   logger.info("Waiting for 'Select' text to be visible in results");
   const resultsPage = getPageObject(this.page, ResultsPage);

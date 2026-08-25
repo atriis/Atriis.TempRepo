@@ -1357,6 +1357,10 @@ const SELECTORS = {
   // card's `.control.phone-details` row.
   AMTRAK_CONTACT_INFO_PHONE_ROW: '.amtrak-contact-information .phone-details',
   AMTRAK_CONTACT_INFO_PHONE_INPUTS: '.amtrak-contact-information .phone-details input',
+  // Save button of the open card's `<div class="btns flex">`. app-btn.vue renders a real
+  // `<button class="btn btn--{type} …">`, so `button.btn--primary` picks Save (type="primary") and
+  // never Cancel (btn--default), without depending on the translated label.
+  AMTRAK_CONTACT_INFO_SAVE_BUTTON: '.amtrak-contact-information .btns button.btn--primary',
   // Red border extras-layout.vue paints once a checkout attempt was blocked: it adds `error-border`
   // only when isShowRedBorder = !isValid && isCheckoutActivated, and isCheckoutActivated is set
   // solely by the `checkoutActivated` event trip-cart.ts emits from beforeProceedToPayment() — so
@@ -5011,6 +5015,68 @@ class CartPage {
       values.push(((await inputs.nth(index).inputValue()) || '').trim());
     }
     return values;
+  }
+
+  /**
+   * Fills the three Amtrak phone number inputs of the open Contact Information row in DOM order:
+   * country code, prefix (area), number. They are `type="number"` el-inputs bound straight to the
+   * vuelidate model, so fill() commits the value — no blur ritual is needed here, unlike the Amtrak
+   * search form's promo code / membership id fields.
+   * @param {string} code
+   * @param {string} prefix
+   * @param {string} number
+   * @param {number} timeout
+   */
+  async fillAmtrakContactInfoPhone(code, prefix, number, timeout = 15000) {
+    const inputs = this.page.locator(SELECTORS.AMTRAK_CONTACT_INFO_PHONE_INPUTS);
+    await inputs.first().waitFor({ state: 'visible', timeout });
+
+    const count = await inputs.count();
+    if (count < 3) {
+      throw new Error(
+        `[CartPage.fillAmtrakContactInfoPhone] Expected 3 Amtrak phone number inputs (country code, ` +
+        `prefix, number) under ${SELECTORS.AMTRAK_CONTACT_INFO_PHONE_INPUTS}, found ${count}. ` +
+        `Ensure the Contact Information row is open and finished loading.`,
+      );
+    }
+
+    const values = [code, prefix, number];
+    for (let index = 0; index < values.length; index++) {
+      await inputs.nth(index).fill(String(values[index]));
+    }
+  }
+
+  /**
+   * Clicks Save in the open Amtrak Contact Information card and waits for the row to collapse.
+   * The collapse is the only proof the save landed: amtrak-contact-information.ts changeValue('save')
+   * returns silently (setting markFields) while vuelidate is invalid, and calls close() only after
+   * saveAmtrakContactInfo resolves — so a click alone says nothing about the outcome.
+   * @param {number} timeout
+   */
+  async saveAmtrakContactInfo(timeout = 30000) {
+    const saveButton = this.page.locator(SELECTORS.AMTRAK_CONTACT_INFO_SAVE_BUTTON).first();
+    try {
+      await saveButton.waitFor({ state: 'visible', timeout });
+      await saveButton.click();
+    } catch (err) {
+      throw new Error(
+        `[CartPage.saveAmtrakContactInfo] Could not click Save in the Amtrak Contact Information card ` +
+        `(selector: ${SELECTORS.AMTRAK_CONTACT_INFO_SAVE_BUTTON}). Original: ${err.message}`,
+      );
+    }
+
+    try {
+      await this.page
+        .locator(SELECTORS.AMTRAK_CONTACT_INFO_PHONE_ROW)
+        .first()
+        .waitFor({ state: 'hidden', timeout });
+    } catch (err) {
+      throw new Error(
+        `[CartPage.saveAmtrakContactInfo] The Amtrak Contact Information row did not collapse after Save, ` +
+        `so the phone number was not accepted (the form stays open and marks its fields when the value ` +
+        `is invalid). Original: ${err.message}`,
+      );
+    }
   }
 
   /**

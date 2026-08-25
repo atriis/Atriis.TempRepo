@@ -11143,6 +11143,33 @@ const Cart = {
   },
 
   /**
+   * Fills the mandatory Amtrak phone number in the cart's Contact Information extras row and saves
+   * it: expands the row, types country code / area / number, clicks Save and waits for the row to
+   * collapse. Stops there on purpose — accepting the T&C and clicking Proceed to Checkout belong to
+   * the separate "I proceed to checkout" step, which already does both.
+   * @param {import('playwright').Page} page
+   * @param {{ countryCode: string, areaCode: string, number: string }} phone
+   */
+  async fillAmtrakContactInfoInCart(page, phone) {
+    if (!page) throw new Error('page is required');
+
+    const { countryCode, areaCode, number } = phone || {};
+    if (!countryCode || !areaCode || !number) {
+      throw new Error(
+        `[Cart.fillAmtrakContactInfoInCart] countryCode, areaCode and number are all required, got ` +
+        `${JSON.stringify(phone)}`,
+      );
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+    await cartPage.ensureExtrasExpanded();
+    await cartPage.openAmtrakContactInfoPanel();
+    await cartPage.fillAmtrakContactInfoPhone(countryCode, areaCode, number);
+    await cartPage.saveAmtrakContactInfo();
+    logger.info('Amtrak contact information saved in the cart', { countryCode, areaCode, number });
+  },
+
+  /**
    * Verifies the three Amtrak phone number inputs (country code, prefix, number) are all empty —
    * the precondition that makes the blocked checkout later in the scenario meaningful.
    * @param {import('playwright').Page} page

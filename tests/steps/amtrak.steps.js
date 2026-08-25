@@ -67,12 +67,6 @@ When("I expand the traveler detail section in Amtrak search", async function () 
   expect(card, "A loyalty card should have been selected").toBeTruthy();
 });
 
-// ===== TODO STUBS — converted from Testim (need DSL/Page implementation) =====
-
-When("I fill in Amtrak contact information and proceed to checkout", async function () {
-  throw new Error("TODO: Implement filling contact info (phone country '1', area '310', number '3338888'), save, accept T&C, and proceed to checkout. See AmtrakSearch DSL / CartPage.");
-});
-
 // ===== TODO STUBS — Then steps =====
 
 Then("the fare rules should be accessible in cart", async function () {
@@ -134,6 +128,18 @@ Then("the contact information section should be required in cart", async functio
 When("I expand the contact informations section in cart", async function () {
   logger.info("Expanding the Amtrak Contact Information extras row in the cart");
   await Cart.expandAmtrakContactInfoInCart(this.page);
+});
+
+// Expands the row itself, so it stands alone after "I add the first result to trip" with no
+// separate expand step. Stops after Save — the T&C tick and the Proceed click belong to the
+// following "I proceed to checkout" step, which already does both.
+When("I fill in Amtrak contact information", async function () {
+  logger.info("Filling the mandatory Amtrak contact information in the cart");
+  await Cart.fillAmtrakContactInfoInCart(this.page, {
+    countryCode: "1",
+    areaCode: "310",
+    number: "3338888",
+  });
 });
 
 Then("the phone number fields should be empty in cart", async function () {

@@ -58,6 +58,15 @@ Then("the fare rules modal should show the supplier terms and conditions link", 
   ).toBe("_blank");
 });
 
+// Self-contained like its Benerail/Evolvi counterparts — opens the result card's Fare Rules dialog,
+// reads it and closes it — so consecutive assertions can stack without an explicit open/close step.
+// Index 0 is the first result still offering a Fare Rules button: amtrak-preview.vue drops the
+// button from a selected card, so after the outbound Select this reads the first INBOUND result.
+Then("the fare rules should be accessible in Amtrak results and contain {string}", async function (expectedText) {
+  logger.info("Verifying the Amtrak fare rules dialog in the results", { expectedText });
+  await Cart.verifyRailFareRulesDialogContainsText(this.page, expectedText, 0);
+});
+
 Then("the available classes and fares should be displayed", async function () {
   logger.info("Verifying the available classes and fares are displayed in the More details drawer");
   const title = await AmtrakResults.getMoreDetailsClassesTitle(this.page);
