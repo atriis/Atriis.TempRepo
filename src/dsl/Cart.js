@@ -5281,6 +5281,61 @@ const Cart = {
   },
 
   /**
+   * Selects and saves ONE free ground transport (Transferz) add-on, and returns its price.
+   *
+   * The whole open → assert-free → select → save sequence lives in one call because a scenario has no
+   * reason to leave the extras card open, and because the "is it actually free?" check has to happen
+   * while the card is open — once saved, the row's price is no longer on screen.
+   *
+   * The returned `price` is what the row advertises: `0` when `.addon__price` shows the translated
+   * "Free" label. Asserting that here is what keeps the downstream total comparison honest — without
+   * it, "total unchanged" would also pass for an add-on that simply failed to attach.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} [extraName="meet and greet"] - Add-on display name; matched loosely against the
+   *   supplier's own label (see CartPage.getGroundTransportAddOnRow)
+   * @throws {Error} If the quote offers no add-ons, the named row is missing, or it is not free
+   * @returns {Promise<{label: string, price: number, control: string}>}
+   */
+  async addGroundTransportFreeExtra(page, extraName = 'meet and greet') {
+    if (!page) throw new Error('page is required');
+    if (typeof extraName !== 'string' || !extraName.trim()) {
+      throw new Error(
+        `[Cart.addGroundTransportFreeExtra] "extraName" must be a non-empty string, got: ${extraName}`,
+      );
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+
+    await cartPage.openGroundTransportAddOnsPanel();
+
+    const { amount, isFree, label, priceText } = await cartPage.getGroundTransportAddOnPrice(extraName);
+    if (!isFree || amount !== 0) {
+      throw new Error(
+        `[Cart.addGroundTransportFreeExtra] The "${label}" ground transport add-on is not free — its price ` +
+        `reads "${priceText}" (parsed as ${amount}). This step is only for free add-ons, and the cart total ` +
+        `assertion that follows it assumes a zero-cost extra.`,
+      );
+    }
+
+    const { control } = await cartPage.selectGroundTransportAddOn(extraName);
+    await cartPage.saveGroundTransportAddOns();
+
+    // Saving emits reloadQuotes, so the cart re-renders its quote list and the summary total with it.
+    // Settle here rather than in the caller: the reload is caused by THIS save, and a free add-on
+    // leaves the total unchanged, so a later reader has no value change it could poll for instead.
+    await page.waitForLoadState('networkidle', { timeout: 30000 }).catch(() => {});
+
+    logger.info('[Cart.addGroundTransportFreeExtra] Saved a free ground transport add-on', {
+      label,
+      price: amount,
+      control,
+    });
+
+    return { label, price: amount, control };
+  },
+
+  /**
    * Reads the transfer's "Booking Code" off the booked quote card in the trip overview and returns
    * the bare code.
    *

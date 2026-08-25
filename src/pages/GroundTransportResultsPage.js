@@ -3,6 +3,8 @@
  * Contains only UI-level interactions.
  */
 
+const { normalizeText } = require('@utils/text');
+
 const SELECTORS = {
   // Results list wrapper (ground-transport-list.vue:2) — every result card renders inside it.
   GROUND_TRANSPORT_LIST: '.ground-transport-list',
@@ -37,6 +39,14 @@ const SELECTORS = {
   PRICE_AMOUNT: '.price-container > .price-wrapper > .app-price h4.amount',
   // "Pre paid" / "Pay after service" label (ground-transport-preview.vue:143-147).
   PAYMENT_TYPE_LABEL: '.price-container > .payment-method > p',
+  // Vehicle model line of a result card (ground-transport-preview.vue:47-50), rendered as
+  // `<h3 class="ground-transport-desc">{{ transport.VehicleType }} (up to {N} people)</h3>` — so the
+  // supplier's vehicle type ("Minibus", "Minivan", "Business limousine") is the LEADING token of that
+  // text, followed by a localised capacity suffix. Read CARD-scoped: unlike
+  // `.ground-transport-extra-info`, this node is not duplicated between the desktop and mobile blocks
+  // (only the price/payment block is), so there is exactly one per card. The Testim original asserted
+  // the same node (`waitForText(page, ".ground-transport-desc", /Minibus/)`).
+  VEHICLE_TYPE_TEXT: 'h3.ground-transport-desc',
   // Desktop "Add to trip" button (ground-transport-preview.vue:155-157) — app-btn.vue:2 renders a
   // `button.btn` carrying the classes passed to the component.
   ADD_TO_TRIP_BUTTON: 'button.add-btn.desktop-btn',
@@ -195,6 +205,46 @@ class GroundTransportResultsPage {
     const addToTrip = await this.getAddToTripButton(index).boundingBox();
 
     return { pickupDateTime, priceSection, price, paymentType, addToTrip };
+  }
+
+  /**
+   * Reads the vehicle model text of every rendered ground transport result card, in list order.
+   *
+   * Each entry is the whitespace-normalised `.ground-transport-desc` text, i.e.
+   * "{VehicleType} (up to {N} people)". Callers match against it rather than parsing it, because the
+   * capacity suffix is localised while the vehicle type comes straight from the supplier.
+   *
+   * Only the cards currently rendered are read — the results list can be paginated behind a
+   * "View more" button, so this reflects what is on screen at call time.
+   *
+   * @param {object} [options]
+   * @param {number} [options.timeout=15000] - Maximum time to wait for the results list, in ms
+   * @throws {Error} If no result card renders before the timeout, or a card has no model text node
+   * @returns {Promise<string[]>} One model text per rendered result card
+   */
+  async getAllVehicleTypeTexts({ timeout = 15000 } = {}) {
+    await this.waitForResults(timeout);
+
+    const cards = this.page
+      .locator(SELECTORS.GROUND_TRANSPORT_LIST)
+      .locator(SELECTORS.RESULT_CARD);
+    await cards.first().waitFor({ state: 'visible', timeout });
+
+    const count = await cards.count();
+    const texts = [];
+    for (let index = 0; index < count; index += 1) {
+      const desc = cards.nth(index).locator(SELECTORS.VEHICLE_TYPE_TEXT).first();
+      if (!(await desc.count())) {
+        throw new Error(
+          `[GroundTransportResultsPage.getAllVehicleTypeTexts] Ground transport result card index ` +
+          `${index} of ${count} has no ${SELECTORS.VEHICLE_TYPE_TEXT} node. The card markup may have ` +
+          `changed, or a non-Transferz card is rendering inside ${SELECTORS.GROUND_TRANSPORT_LIST}.`
+        );
+      }
+      texts.push(normalizeText(await desc.textContent()));
+    }
+
+    return texts;
   }
 }
 

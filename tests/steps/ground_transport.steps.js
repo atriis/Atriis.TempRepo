@@ -3,6 +3,7 @@ require("module-alias/register");
 const { When, Then, setDefaultTimeout } = require("@cucumber/cucumber");
 const { expect } = require("@playwright/test");
 const { GroundTransportSearch, GroundTransportResults, Cart } = require("../../src/dsl");
+const { expectSumToBeEqualWithTolerance } = require("../../src/assertions/numberAssertions");
 const logger = require("@utils/logger").child("GroundTransport");
 
 setDefaultTimeout(120000);
@@ -113,17 +114,20 @@ When("I expand vehicle filters if available", async function () {
 
 When("I filter ground transport results by vehicle type {string}", async function (vehicleType) {
   logger.info("Filtering ground transport results by vehicle type", { vehicleType });
-  notImplemented("I filter ground transport results by vehicle type {string}");
+  await GroundTransportResults.filterByVehicleType(this.page, vehicleType);
 });
 
 When("I remove the ground transport vehicle filter {string}", async function (vehicleType) {
   logger.info("Removing ground transport vehicle filter", { vehicleType });
-  notImplemented("I remove the ground transport vehicle filter {string}");
+  await GroundTransportResults.removeVehicleTypeFilter(this.page, vehicleType);
 });
 
-When("I capture the ground transport total price", async function () {
-  logger.info("Capturing ground transport total price");
-  notImplemented("I capture the ground transport total price");
+When("I extract the ground transport total price", async function () {
+  logger.info("Extracting the ground transport total price from the cart");
+  this.groundTransportTotalPrice = await Cart.extractCartTotalPrice(this.page);
+  logger.info("Extracted ground transport total price", {
+    groundTransportTotalPrice: this.groundTransportTotalPrice,
+  });
 });
 
 When("I add ground transport contact information", async function () {
@@ -131,9 +135,19 @@ When("I add ground transport contact information", async function () {
   notImplemented("I add ground transport contact information");
 });
 
-When("I add a ground transport extra", async function () {
-  logger.info("Adding ground transport extra");
-  notImplemented("I add a ground transport extra");
+When("I add a ground transport free extra meet and greet", async function () {
+  logger.info("Adding the free meet and greet ground transport extra");
+  this.groundTransportFreeExtra = await Cart.addGroundTransportFreeExtra(this.page, "meet and greet");
+  logger.info("Added the free meet and greet ground transport extra", this.groundTransportFreeExtra);
+});
+
+// The post-save reload is settled inside Cart.addGroundTransportFreeExtra, so this reads straight.
+When("I extract the ground transport total price after adding free extra meet and greet", async function () {
+  logger.info("Extracting the ground transport total price after adding the free extra");
+  this.groundTransportTotalPriceAfterFreeExtra = await Cart.extractCartTotalPrice(this.page);
+  logger.info("Extracted ground transport total price after adding the free extra", {
+    groundTransportTotalPriceAfterFreeExtra: this.groundTransportTotalPriceAfterFreeExtra,
+  });
 });
 
 When("I open transfer terms and conditions from trip overview", async function () {
@@ -212,9 +226,12 @@ Then("the ground transport vehicle filter should be displayed", async function (
   notImplemented("the ground transport vehicle filter should be displayed");
 });
 
-Then("ground transport results should match the vehicle filter {string}", async function (vehicleType) {
-  logger.info("Verifying ground transport results match vehicle filter", { vehicleType });
-  notImplemented("ground transport results should match the vehicle filter {string}");
+// Registered under the phrase the manual test uses verbatim. Replaced the never-called
+// "ground transport results should match the vehicle filter {string}" stub rather than adding a
+// second phrase for the same assertion.
+Then("all the ground transport options on this page contain {string} model text", async function (vehicleType) {
+  logger.info("Verifying every ground transport option advertises the vehicle type", { vehicleType });
+  await GroundTransportResults.expectAllResultsVehicleType(this.page, vehicleType);
 });
 
 Then("the ground transport more details link should be visible", async function () {
@@ -222,10 +239,42 @@ Then("the ground transport more details link should be visible", async function 
   await this.page.locator(".more-details").first().waitFor({ state: "visible", timeout: 15000 });
 });
 
-Then("the ground transport total should include the selected extra", async function () {
-  logger.info("Verifying ground transport total includes selected extra");
-  notImplemented("the ground transport total should include the selected extra");
-});
+// Reads the total LIVE ("current total price") rather than reusing the value the preceding extract
+// step stored, so a total that drifts between the two reads is caught here.
+Then(
+  "ground transport current total price is equal to ground transport free extra meet and greet plus ground transport total price",
+  async function () {
+    if (typeof this.groundTransportTotalPrice !== "number") {
+      throw new Error(
+        '[ground_transport.steps] No ground transport total price stored — run "I extract the ground ' +
+        'transport total price" before the extra is added.',
+      );
+    }
+    if (typeof this.groundTransportFreeExtra?.price !== "number") {
+      throw new Error(
+        '[ground_transport.steps] No free extra price stored — run "I add a ground transport free extra ' +
+        'meet and greet" first.',
+      );
+    }
+
+    const currentTotal = await Cart.extractCartTotalPrice(this.page);
+
+    logger.info("Comparing the ground transport total against the free extra plus the earlier total", {
+      totalBeforeExtra: this.groundTransportTotalPrice,
+      freeExtraPrice: this.groundTransportFreeExtra.price,
+      totalAfterExtra: this.groundTransportTotalPriceAfterFreeExtra,
+      currentTotal,
+    });
+
+    expectSumToBeEqualWithTolerance(
+      this.groundTransportTotalPrice,
+      this.groundTransportFreeExtra.price,
+      currentTotal,
+      1,
+      `Ground transport cart total = total before the extra + "${this.groundTransportFreeExtra.label}" price`,
+    );
+  },
+);
 
 Then("the transfer booking status should be displayed", async function () {
   logger.info("Verifying transfer booking status is displayed");
@@ -286,16 +335,6 @@ Then("the share itinerary preview should contain the transfer booking code", asy
   await Cart.verifyTransferBookingCodeInSharePreview(this.page, this.transferBookingCode);
 });
 
-Then("the share quote preview should contain a ground transport image", async function () {
-  logger.info("Verifying share quote preview contains a ground transport image");
-  notImplemented("the share quote preview should contain a ground transport image");
-});
-
-Then("the share itinerary preview should contain a ground transport image", async function () {
-  logger.info("Verifying share itinerary preview contains a ground transport image");
-  notImplemented("the share itinerary preview should contain a ground transport image");
-});
-
 Then("no ground transport results should be found", async function () {
   logger.info("Verifying no ground transport results are found");
   await this.page.locator(".app-no-results").first().waitFor({ state: "visible", timeout: 15000 });
@@ -305,34 +344,4 @@ Then("the ground transport availability actions should be displayed", async func
   logger.info("Verifying ground transport availability actions are displayed");
   await this.page.locator("[aria-label='Check fare availability...'] .btn--secondary").first().waitFor({ state: "visible", timeout: 15000 });
   await this.page.locator("[class^='ml'], [class*=' ml']").first().waitFor({ state: "visible", timeout: 15000 });
-});
-
-Then("the groundscope result in cart should be correct", async function () {
-  logger.info("Verifying groundscope result in cart is correct");
-  notImplemented("the groundscope result in cart should be correct");
-});
-
-Then("ground transport terms and conditions should be displayed in results", async function () {
-  logger.info("Verifying ground transport terms and conditions in results");
-  notImplemented("ground transport terms and conditions should be displayed in results");
-});
-
-Then("the ground transport pickup time should stay the same across the system", async function () {
-  logger.info("Verifying ground transport pickup time stays the same across the system");
-  notImplemented("the ground transport pickup time should stay the same across the system");
-});
-
-Then("the ground transport results price with VAT should equal the cart price", async function () {
-  logger.info("Verifying ground transport results price with VAT equals cart price");
-  notImplemented("the ground transport results price with VAT should equal the cart price");
-});
-
-Then("ground transport terms and conditions should be displayed in cart", async function () {
-  logger.info("Verifying ground transport terms and conditions in cart");
-  notImplemented("ground transport terms and conditions should be displayed in cart");
-});
-
-Then("ground transport terms and conditions should be displayed after booking", async function () {
-  logger.info("Verifying ground transport terms and conditions after booking");
-  notImplemented("ground transport terms and conditions should be displayed after booking");
 });

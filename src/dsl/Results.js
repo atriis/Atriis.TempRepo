@@ -586,7 +586,7 @@ const Results = {
    * @param {string} filterTitle - The filter section's title, e.g. "Car Class"
    * @returns {Promise<{selected: boolean, optionLabel: string, filterTitle: string}>}
    */
-  async selectFilterSectionOption(page, optionLabel, filterTitle) {
+  async selectFilterSectionOption(page, optionLabel, filterTitle, { exact = false } = {}) {
     if (!page) throw new Error('page is required');
     if (typeof optionLabel !== 'string' || !optionLabel.trim()) {
       throw new Error(`optionLabel must be a non-empty string, got: ${typeof optionLabel}`);
@@ -596,7 +596,7 @@ const Results = {
     }
     const resultsPage = getPageObject(page, ResultsPage);
 
-    const result = await resultsPage.clickFilterSectionOptionByLabel(filterTitle, optionLabel);
+    const result = await resultsPage.clickFilterSectionOptionByLabel(filterTitle, optionLabel, { exact });
     return { selected: result.clicked || result.wasAlreadyChecked, optionLabel, filterTitle };
   },
 
@@ -609,7 +609,7 @@ const Results = {
    * @param {string} filterTitle - The filter section's title, e.g. "Car Class"
    * @returns {Promise<{removed: boolean, optionLabel: string, filterTitle: string}>}
    */
-  async removeFilterSectionOption(page, optionLabel, filterTitle) {
+  async removeFilterSectionOption(page, optionLabel, filterTitle, { exact = false } = {}) {
     if (!page) throw new Error('page is required');
     if (typeof optionLabel !== 'string' || !optionLabel.trim()) {
       throw new Error(`optionLabel must be a non-empty string, got: ${typeof optionLabel}`);
@@ -619,7 +619,7 @@ const Results = {
     }
     const resultsPage = getPageObject(page, ResultsPage);
 
-    await resultsPage.clickFilterSectionOptionByLabel(filterTitle, optionLabel);
+    await resultsPage.clickFilterSectionOptionByLabel(filterTitle, optionLabel, { exact });
     return { removed: true, optionLabel, filterTitle };
   },
 

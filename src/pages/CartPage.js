@@ -32,6 +32,16 @@ const EVOLVI_EXTRAS_SAVE_TIMEOUT_MS = 45000;
  * @param {string} text
  * @returns {string}
  */
+// Reduces a Transferz add-on name to comparable tokens: lowercase alphanumeric words with the
+// filler word "and" dropped. The supplier label ("Meet Greet") and the manual test's wording
+// ("meet and greet") only line up once both are tokenised this way.
+function tokenizeAddOnName(value) {
+  return normalizeText(value)
+    .toLowerCase()
+    .split(/[^a-z0-9]+/)
+    .filter((token) => token && token !== 'and');
+}
+
 function normalizeSuggestionTitle(text) {
   return normalizeText(String(text).replace(/transporation/gi, "transport")).toLowerCase();
 }
@@ -1448,6 +1458,44 @@ const SELECTORS = {
   // getVisibleQuotesWithPnrCodes() reader (which takes `.pnr-code` .first() per card) returns the
   // PNR and never the booking code — hence this filtered selector rather than reusing it.
   GROUND_TRANSPORT_BOOKING_CODE: '.ground-transport-quote-card .pnr-code:has-text("Booking Code")',
+
+  // Ground transport "Available extras" row (add-ons-transferz.vue) — the Transferz add-ons panel.
+  // It is slotted into the SAME extras-content section as the Contact Information row
+  // (ground-transport-quote-card.vue:117-121) and is wrapped in the shared extras-layout, so it opens
+  // exactly like that row: click the collapsed `.extra__btns` control, then the `.extras-card` renders.
+  // Every selector is scoped through `.ground-transport-quote-card` because `.extras-card`,
+  // `.extra__btns` and `.total-price` are all shared extras-layout classes.
+  // The whole section only renders when the quote came back with add-ons (`v-if="hasAddOns"`).
+  GROUND_TRANSPORT_ADDONS_SECTION: '.ground-transport-quote-card .add-ons-transferz',
+  GROUND_TRANSPORT_ADDONS_EXPAND_BUTTON:
+    '.ground-transport-quote-card .add-ons-transferz .extra__btns .is-clickable',
+  GROUND_TRANSPORT_ADDONS_CARD: '.ground-transport-quote-card .add-ons-transferz .extras-card',
+  // One row per add-on (add-ons-transferz.vue:28). Each carries `.addon__type` (the supplier's own
+  // label, e.g. "Meet Greet") and `.addon__price` (a currency amount, or the translated "Free" when
+  // PriceDisplayCurrency is 0).
+  GROUND_TRANSPORT_ADDONS_ROW: '.ground-transport-quote-card .add-ons-transferz .extras-card .addon',
+  GROUND_TRANSPORT_ADDONS_ROW_TYPE: '.addon__type',
+  GROUND_TRANSPORT_ADDONS_ROW_PRICE: '.addon__price',
+  // A row exposes ONE of two controls, decided by the add-on's MaxAllowed (add-ons-transferz.vue:44,57):
+  // a +/- counter pair when more than one may be booked, otherwise a single el-checkbox.
+  GROUND_TRANSPORT_ADDONS_ROW_CHECKBOX: '.addon__btns .el-checkbox',
+  GROUND_TRANSPORT_ADDONS_ROW_CHECKBOX_TOGGLE: '.addon__btns .el-checkbox__inner',
+  GROUND_TRANSPORT_ADDONS_ROW_CHECKBOX_INPUT: '.addon__btns .el-checkbox__input',
+  // Checked state of the row checkbox. Waited on as a LOCATOR STATE rather than asserted, because
+  // Page Objects never assert — the caller decides what a missing tick means.
+  GROUND_TRANSPORT_ADDONS_ROW_CHECKBOX_CHECKED: '.addon__btns .el-checkbox__input.is-checked',
+  // Counter variant: remove is rendered first and add second, so the LAST button is "+".
+  GROUND_TRANSPORT_ADDONS_ROW_COUNTER_BUTTON: '.addon__btns button.btn',
+  GROUND_TRANSPORT_ADDONS_TOTAL:
+    '.ground-transport-quote-card .add-ons-transferz .extras-card .total-price',
+  // Save is `app-btn type="primary"` inside `.save-close-container`; Cancel is the default-type
+  // sibling, so `button.btn--primary` picks Save without depending on the translated label.
+  GROUND_TRANSPORT_ADDONS_SAVE_BUTTON:
+    '.ground-transport-quote-card .add-ons-transferz .save-close-container button.btn--primary',
+  // Lowercase "Free" label, rendered in place of an amount when the add-on costs nothing
+  // (add-ons-transferz.vue:39 -> $t('common.free')).
+  GROUND_TRANSPORT_ADDONS_FREE_LABEL: 'free',
+
   GROUND_TRANSPORT_PNR_CODES: '.ground-transport-quote-card .pnr-code',
   // The dial-code list is an el-popover teleported to <body>, so it cannot be scoped to the quote
   // card. Same selectors CheckoutPage/ManualQuoteSearchPage already use for this widget.
@@ -1491,12 +1539,18 @@ const SELECTORS = {
   // hotel-quote-card el-dialog in the cart; holds the rule lines (cancellation policy, room notices
   // such as the shared-bathroom note). :visible skips the closed duplicate el-dialog leaves attached.
   HOTEL_TERMS_DIALOG_CONTENT: '.app-terms-conditions:visible',
-  // Whichever cart T&C dialog is open, regardless of product: the hotel card's
-  // app-terms-conditions.vue, or uk-rail-quote-card.vue's own .terms-dialog el-dialog, which hosts
-  // uk-rail-result-fare-rules.vue instead (so .app-terms-conditions never appears for an Evolvi
-  // quote). Both halves carry :visible because el-dialog leaves closed instances attached.
+  // Whichever cart T&C dialog is open, regardless of product. Three shapes so far:
+  //   * hotel card -> app-terms-conditions.vue ('.app-terms-conditions')
+  //   * uk-rail-quote-card.vue -> its own .terms-dialog el-dialog hosting
+  //     uk-rail-result-fare-rules.vue (so .app-terms-conditions never appears for an Evolvi quote)
+  //   * ground-transport-quote-card.vue -> a plain el-dialog classed `dialog-box` whose body is just
+  //     `v-html="quote.rateDisclaimer"` — no dedicated content component at all, so the text has to be
+  //     read off `.el-dialog__body` directly. `dialog-box` is unique to that one component
+  //     (verified: it is the only `class="dialog-box"` in Atriis.OBT), so it needs no card scoping —
+  //     which is just as well, since the dialog is appendToBody and detached from its card.
+  // Every branch carries :visible because el-dialog leaves closed instances attached to the body.
   CART_TERMS_DIALOG_CONTENT:
-    '.app-terms-conditions:visible, .app-dialog.terms-dialog:visible .uk-rail-result-fare-rules',
+    '.app-terms-conditions:visible, .app-dialog.terms-dialog:visible .uk-rail-result-fare-rules, .el-dialog.dialog-box:visible .el-dialog__body',
 
   // Rail (EU Rail / Benerail) quote-card Fare Rules dialog — same `.app-dialog` el-dialog used for
   // Terms & Conditions/Journey Details on the quote card, scoped to the body for content text.
@@ -1580,10 +1634,11 @@ class CartPage {
    * closes it so the overlay does not block the next step.
    *
    * Product-agnostic on purpose — the step it serves ("the cart terms and conditions should
-   * include …") is used by hotel and rail quotes alike, and the two render different dialogs:
-   * a hotel card mounts app-terms-conditions.vue, while uk-rail-quote-card.vue mounts
-   * uk-rail-result-fare-rules.vue inside its own .terms-dialog. CART_TERMS_DIALOG_CONTENT covers
-   * both, so whichever card the cart holds is the one read.
+   * include …") is used by hotel, rail and ground transport quotes alike, and each renders a
+   * different dialog: a hotel card mounts app-terms-conditions.vue, uk-rail-quote-card.vue mounts
+   * uk-rail-result-fare-rules.vue inside its own .terms-dialog, and ground-transport-quote-card.vue
+   * renders the raw rate disclaimer straight into a `dialog-box` el-dialog body.
+   * CART_TERMS_DIALOG_CONTENT covers all three, so whichever card the cart holds is the one read.
    *
    * @param {number} timeout - Maximum wait time in ms
    * @returns {Promise<string>} Full text content of the T&C dialog
@@ -5257,6 +5312,229 @@ class CartPage {
         `[CartPage.saveGroundTransportContactInfo] The ground transport Contact Information row never ` +
         `showed its green check after Save (selector: ${SELECTORS.GROUND_TRANSPORT_CONTACT_INFO_FILLED_ICON}), ` +
         `so the phone number was not accepted. Original: ${err.message}`,
+      );
+    }
+  }
+
+  /**
+   * Opens the ground transport "Available extras" (Transferz add-ons) row.
+   *
+   * No-ops when the row is already open — extras-layout.vue swaps the collapsed `.extra` summary (and
+   * with it the Add/View control) out on open, so a second call would time out on a control that no
+   * longer exists.
+   * @param {number} [timeout=30000]
+   * @throws {Error} If the row never opens, or the quote carries no add-ons at all
+   */
+  async openGroundTransportAddOnsPanel(timeout = 30000) {
+    const card = this.page.locator(SELECTORS.GROUND_TRANSPORT_ADDONS_CARD).first();
+    if (await card.isVisible().catch(() => false)) return;
+
+    const section = this.page.locator(SELECTORS.GROUND_TRANSPORT_ADDONS_SECTION).first();
+    if (!(await section.count())) {
+      throw new Error(
+        `[CartPage.openGroundTransportAddOnsPanel] The ground transport "Available extras" row is not on ` +
+        `the page (selector: ${SELECTORS.GROUND_TRANSPORT_ADDONS_SECTION}). add-ons-transferz sits behind ` +
+        `v-if="hasAddOns", so this transfer offers no add-ons at all.`,
+      );
+    }
+
+    const expandButton = this.page.locator(SELECTORS.GROUND_TRANSPORT_ADDONS_EXPAND_BUTTON).first();
+    try {
+      await expandButton.waitFor({ state: 'visible', timeout });
+      await expandButton.scrollIntoViewIfNeeded();
+      await expandButton.click();
+      await card.waitFor({ state: 'visible', timeout });
+    } catch (err) {
+      throw new Error(
+        `[CartPage.openGroundTransportAddOnsPanel] Could not open the ground transport "Available extras" ` +
+        `row (button: ${SELECTORS.GROUND_TRANSPORT_ADDONS_EXPAND_BUTTON}, card: ` +
+        `${SELECTORS.GROUND_TRANSPORT_ADDONS_CARD}). The row only opens on a quote that is still pending. ` +
+        `Original: ${err.message}`,
+      );
+    }
+  }
+
+  /**
+   * Resolves one add-on row in the OPEN ground transport extras card by its display name.
+   *
+   * The name is matched loosely on purpose: `.addon__type` shows the supplier's own label, which drops
+   * filler words the manual test spells out — the app keys the icon off `addOn.Type.toLowerCase()`
+   * === 'meet greet' (add-ons-transferz.ts:107) while the test case calls it "meet and greet". So the
+   * requested name is reduced to alphanumeric tokens (dropping "and") and every token must appear in
+   * the row label. That still separates "meet greet" from "baby seat" / "extra stop" / "pets".
+   *
+   * @param {string} extraName - Display name from the test, e.g. "meet and greet"
+   * @param {number} [timeout=15000]
+   * @throws {Error} If the card shows no rows, no row matches, or more than one matches
+   * @returns {Promise<{row: import('playwright').Locator, label: string, allLabels: string[]}>}
+   */
+  async getGroundTransportAddOnRow(extraName, timeout = 15000) {
+    if (typeof extraName !== 'string' || !extraName.trim()) {
+      throw new Error(
+        `[CartPage.getGroundTransportAddOnRow] "extraName" must be a non-empty string, got: ${extraName}`,
+      );
+    }
+
+    const rows = this.page.locator(SELECTORS.GROUND_TRANSPORT_ADDONS_ROW);
+    try {
+      await rows.first().waitFor({ state: 'visible', timeout });
+    } catch (err) {
+      throw new Error(
+        `[CartPage.getGroundTransportAddOnRow] The open ground transport extras card shows no add-on rows ` +
+        `(selector: ${SELECTORS.GROUND_TRANSPORT_ADDONS_ROW}). Open the panel first — and note the rows sit ` +
+        `behind an el-skeleton while the add-ons load. Original: ${err.message}`,
+      );
+    }
+
+    const wanted = tokenizeAddOnName(extraName);
+    const count = await rows.count();
+    const allLabels = [];
+    const matches = [];
+
+    for (let index = 0; index < count; index += 1) {
+      const row = rows.nth(index);
+      const label = normalizeText(
+        await row.locator(SELECTORS.GROUND_TRANSPORT_ADDONS_ROW_TYPE).first().textContent(),
+      );
+      allLabels.push(label);
+      const actual = tokenizeAddOnName(label);
+      if (wanted.every((token) => actual.includes(token))) {
+        matches.push({ row, label });
+      }
+    }
+
+    if (!matches.length) {
+      throw new Error(
+        `[CartPage.getGroundTransportAddOnRow] No ground transport add-on row matches "${extraName}". ` +
+        `Available rows: ${allLabels.map((label) => JSON.stringify(label)).join(', ') || '(none)'}.`,
+      );
+    }
+    if (matches.length > 1) {
+      throw new Error(
+        `[CartPage.getGroundTransportAddOnRow] "${extraName}" matches ${matches.length} ground transport ` +
+        `add-on rows (${matches.map((match) => JSON.stringify(match.label)).join(', ')}), so the target is ` +
+        `ambiguous. Pass the supplier's exact label instead.`,
+      );
+    }
+
+    return { ...matches[0], allLabels };
+  }
+
+  /**
+   * Reads the price of one ground transport add-on row.
+   *
+   * `.addon__price` holds either a currency amount or the translated "Free" label, which
+   * add-ons-transferz.vue renders instead of an amount when PriceDisplayCurrency is 0 — so a free
+   * add-on reads back as `0` with `isFree: true`. Callers can then assert the add-on really is free
+   * rather than inferring it from an unchanged cart total.
+   *
+   * @param {string} extraName - Display name from the test, e.g. "meet and greet"
+   * @param {number} [timeout=15000]
+   * @returns {Promise<{amount: number, isFree: boolean, label: string, priceText: string}>}
+   */
+  async getGroundTransportAddOnPrice(extraName, timeout = 15000) {
+    const { row, label } = await this.getGroundTransportAddOnRow(extraName, timeout);
+    const priceText = normalizeText(
+      await row.locator(SELECTORS.GROUND_TRANSPORT_ADDONS_ROW_PRICE).first().textContent(),
+    );
+
+    const isFree = priceText.toLowerCase().includes(SELECTORS.GROUND_TRANSPORT_ADDONS_FREE_LABEL);
+    const amount = isFree ? 0 : parseAmountText(priceText, `ground transport add-on "${label}" price`);
+
+    return { amount, isFree, label, priceText };
+  }
+
+  /**
+   * Selects one add-on in the OPEN ground transport extras card.
+   *
+   * Handles both row shapes (add-ons-transferz.vue:44,57): a single el-checkbox when only one may be
+   * booked, or a +/- counter when MaxAllowed is greater than 1. An already-checked checkbox is left
+   * alone, because clicking it again would DESELECT the add-on.
+   *
+   * @param {string} extraName - Display name from the test, e.g. "meet and greet"
+   * @param {number} [timeout=15000]
+   * @throws {Error} If the row exposes neither control
+   * @returns {Promise<{label: string, control: string, wasAlreadySelected: boolean}>}
+   */
+  async selectGroundTransportAddOn(extraName, timeout = 15000) {
+    const { row, label } = await this.getGroundTransportAddOnRow(extraName, timeout);
+
+    const checkbox = row.locator(SELECTORS.GROUND_TRANSPORT_ADDONS_ROW_CHECKBOX).first();
+    if (await checkbox.count()) {
+      const input = row.locator(SELECTORS.GROUND_TRANSPORT_ADDONS_ROW_CHECKBOX_INPUT).first();
+      const classes = (await input.getAttribute('class')) || '';
+      if (classes.includes('is-checked')) {
+        return { label, control: 'checkbox', wasAlreadySelected: true };
+      }
+      const toggle = row.locator(SELECTORS.GROUND_TRANSPORT_ADDONS_ROW_CHECKBOX_TOGGLE).first();
+      await toggle.scrollIntoViewIfNeeded();
+      await toggle.click();
+      try {
+        await row
+          .locator(SELECTORS.GROUND_TRANSPORT_ADDONS_ROW_CHECKBOX_CHECKED)
+          .first()
+          .waitFor({ state: 'attached', timeout });
+      } catch (err) {
+        throw new Error(
+          `[CartPage.selectGroundTransportAddOn] The "${label}" add-on checkbox did not become checked ` +
+          `within ${timeout}ms after clicking it (selector: ` +
+          `${SELECTORS.GROUND_TRANSPORT_ADDONS_ROW_CHECKBOX_CHECKED}). The row may be read-only on this ` +
+          `quote. Original: ${err.message}`,
+        );
+      }
+      return { label, control: 'checkbox', wasAlreadySelected: false };
+    }
+
+    const counterButtons = row.locator(SELECTORS.GROUND_TRANSPORT_ADDONS_ROW_COUNTER_BUTTON);
+    if (await counterButtons.count()) {
+      const addButton = counterButtons.last();
+      await addButton.waitFor({ state: 'visible', timeout });
+      await addButton.scrollIntoViewIfNeeded();
+      await addButton.click();
+      return { label, control: 'counter', wasAlreadySelected: false };
+    }
+
+    throw new Error(
+      `[CartPage.selectGroundTransportAddOn] The "${label}" add-on row exposes neither a checkbox ` +
+      `(${SELECTORS.GROUND_TRANSPORT_ADDONS_ROW_CHECKBOX}) nor a counter button ` +
+      `(${SELECTORS.GROUND_TRANSPORT_ADDONS_ROW_COUNTER_BUTTON}), so it cannot be selected. The row may be ` +
+      `read-only on this quote.`,
+    );
+  }
+
+  /**
+   * Saves the OPEN ground transport extras card.
+   *
+   * Persistence is gated on the card CLOSING, not on a green check: add-ons-transferz.ts calls
+   * `close()` only after `saveAddOns` resolves, whereas the collapsed row's green check comes from the
+   * OptionalServices trip validation and can already be green before this save runs.
+   *
+   * @param {number} [timeout=30000]
+   * @throws {Error} If Save cannot be clicked, or the card never closes
+   */
+  async saveGroundTransportAddOns(timeout = 30000) {
+    const saveButton = this.page.locator(SELECTORS.GROUND_TRANSPORT_ADDONS_SAVE_BUTTON).first();
+    try {
+      await saveButton.waitFor({ state: 'visible', timeout });
+      await saveButton.scrollIntoViewIfNeeded();
+      await saveButton.click();
+    } catch (err) {
+      throw new Error(
+        `[CartPage.saveGroundTransportAddOns] Could not click Save in the ground transport extras card ` +
+        `(selector: ${SELECTORS.GROUND_TRANSPORT_ADDONS_SAVE_BUTTON}). Original: ${err.message}`,
+      );
+    }
+
+    try {
+      await this.page
+        .locator(SELECTORS.GROUND_TRANSPORT_ADDONS_CARD)
+        .first()
+        .waitFor({ state: 'hidden', timeout });
+    } catch (err) {
+      throw new Error(
+        `[CartPage.saveGroundTransportAddOns] The ground transport extras card never closed after Save ` +
+        `(selector: ${SELECTORS.GROUND_TRANSPORT_ADDONS_CARD}), so saveAddOns did not resolve and the ` +
+        `add-on selection was not persisted. Original: ${err.message}`,
       );
     }
   }

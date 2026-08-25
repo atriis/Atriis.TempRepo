@@ -1,4 +1,5 @@
 const GroundTransportResultsPage = require("@pages/GroundTransportResultsPage");
+const Results = require("./Results");
 const { getPageObject } = require("@utils/pageObjectCache");
 const logger = require("@utils/logger").child("GroundTransportResults-DSL");
 
@@ -7,6 +8,12 @@ const logger = require("@utils/logger").child("GroundTransportResults-DSL");
  *
  * Business actions performed on ground transport (Transferz) search results.
  */
+// Title of the vehicle filter section on the ground transport results page
+// (ground-transport-filter.ts:85 -> $t("groundTransport.vehicleType")). Ground transport renders this
+// section where cars render "Car Class", which is why the generic `I filter results by` step (hard-wired
+// to "Car Class") cannot drive it.
+const VEHICLE_TYPE_FILTER_TITLE = 'Vehicle Type';
+
 const GroundTransportResults = {
   /**
    * Verifies that the ground transport search returned results.
@@ -132,6 +139,119 @@ const GroundTransportResults = {
     }
 
     return { index, boxes };
+  },
+
+  /**
+   * Applies the ground transport "Vehicle Type" results filter for one vehicle type.
+   *
+   * Delegates to the shared filter-section mechanism, but with EXACT label matching: the section
+   * lists both "Exclusive minivan" and "Minivan", so a substring match on "Minivan" would tick
+   * "Exclusive minivan" (it comes first in DOM order) and silently filter to the wrong vehicle.
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @param {string} vehicleType - Exact option label, e.g. "Minibus"
+   * @returns {Promise<{selected: boolean, optionLabel: string, filterTitle: string}>}
+   */
+  async filterByVehicleType(page, vehicleType) {
+    if (!page) throw new Error('[GroundTransportResults.filterByVehicleType] "page" is required.');
+    if (typeof vehicleType !== 'string' || !vehicleType.trim()) {
+      throw new Error(
+        `[GroundTransportResults.filterByVehicleType] "vehicleType" must be a non-empty string, got: ` +
+        `${vehicleType}`
+      );
+    }
+
+    logger.info('Applying the ground transport vehicle type filter', { vehicleType });
+    return Results.selectFilterSectionOption(page, vehicleType, VEHICLE_TYPE_FILTER_TITLE, {
+      exact: true,
+    });
+  },
+
+  /**
+   * Removes a previously applied ground transport "Vehicle Type" filter option.
+   *
+   * The checkbox is a plain toggle, so this clicks the same option again. Exact matching for the
+   * same reason as filterByVehicleType — unticking the wrong box would leave the filter applied.
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @param {string} vehicleType - Exact option label, e.g. "Minibus"
+   * @returns {Promise<{removed: boolean, optionLabel: string, filterTitle: string}>}
+   */
+  async removeVehicleTypeFilter(page, vehicleType) {
+    if (!page) throw new Error('[GroundTransportResults.removeVehicleTypeFilter] "page" is required.');
+    if (typeof vehicleType !== 'string' || !vehicleType.trim()) {
+      throw new Error(
+        `[GroundTransportResults.removeVehicleTypeFilter] "vehicleType" must be a non-empty string, got: ` +
+        `${vehicleType}`
+      );
+    }
+
+    logger.info('Removing the ground transport vehicle type filter', { vehicleType });
+    return Results.removeFilterSectionOption(page, vehicleType, VEHICLE_TYPE_FILTER_TITLE, {
+      exact: true,
+    });
+  },
+
+  /**
+   * Verifies that EVERY rendered ground transport result advertises the given vehicle type.
+   *
+   * Used after a vehicle-type filter to prove the filter actually narrowed the list. The match is
+   * case-insensitive and substring-based against the card's model line, which reads
+   * "{VehicleType} (up to {N} people)" — the capacity suffix is localised, so only the vehicle type
+   * itself is compared.
+   *
+   * An empty result list FAILS: "every option matches" is vacuously true over zero cards, which is
+   * exactly the false pass this assertion exists to catch.
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @param {string} vehicleType - Expected vehicle type, e.g. "Minibus"
+   * @param {object} [options]
+   * @param {number} [options.timeout=15000] - Maximum time to wait for the results list, in ms
+   * @throws {Error} If no results render, or any rendered result advertises a different vehicle type
+   * @returns {Promise<{vehicleType: string, matched: number, texts: string[]}>}
+   */
+  async expectAllResultsVehicleType(page, vehicleType, { timeout = 15000 } = {}) {
+    if (!page) {
+      throw new Error('[GroundTransportResults.expectAllResultsVehicleType] "page" is required.');
+    }
+    if (typeof vehicleType !== 'string' || !vehicleType.trim()) {
+      throw new Error(
+        `[GroundTransportResults.expectAllResultsVehicleType] "vehicleType" must be a non-empty ` +
+        `string, got: ${vehicleType}`
+      );
+    }
+
+    logger.info('Verifying every ground transport result matches the vehicle type', { vehicleType });
+
+    const resultsPage = getPageObject(page, GroundTransportResultsPage);
+    const texts = await resultsPage.getAllVehicleTypeTexts({ timeout });
+
+    if (!texts.length) {
+      throw new Error(
+        `[GroundTransportResults.expectAllResultsVehicleType] No ground transport results are rendered, ` +
+        `so "every option is a ${vehicleType}" cannot be verified. The vehicle filter may have excluded ` +
+        `every offer, or the search returned nothing.`
+      );
+    }
+
+    const needle = vehicleType.trim().toLowerCase();
+    const mismatched = texts.filter((text) => !text.toLowerCase().includes(needle));
+
+    if (mismatched.length) {
+      throw new Error(
+        `[GroundTransportResults.expectAllResultsVehicleType] ${mismatched.length} of ${texts.length} ` +
+        `ground transport results do not advertise "${vehicleType}": ` +
+        `${mismatched.map((text) => JSON.stringify(text)).join(', ')}. All rendered results: ` +
+        `${texts.map((text) => JSON.stringify(text)).join(', ')}.`
+      );
+    }
+
+    logger.info('All ground transport results match the vehicle type', {
+      vehicleType,
+      matched: texts.length,
+    });
+
+    return { vehicleType, matched: texts.length, texts };
   },
 };
 

@@ -1,5 +1,5 @@
 const { waitForText } = require("@utils/wait");
-const { buildFlexibleAddressRegex } = require("@utils/text");
+const { buildFlexibleAddressRegex, escapeRegex } = require("@utils/text");
 const { SELECTORS: CART_SELECTORS } = require("@pages/CartPage");
 const { SELECTORS: COMMON_SELECTORS } = require("@pages/CommonPage");
 
@@ -1072,7 +1072,7 @@ class ResultsPage {
    * @throws {Error} If inputs are invalid, the section never appears, or the option never becomes clickable
    * @returns {Promise<{clicked: boolean, wasAlreadyChecked: boolean, wasDisabled: boolean}>}
    */
-  async clickFilterSectionOptionByLabel(filterTitle, optionLabel, { timeout = 15000 } = {}) {
+  async clickFilterSectionOptionByLabel(filterTitle, optionLabel, { timeout = 15000, exact = false } = {}) {
     if (typeof filterTitle !== 'string' || !filterTitle.trim()) {
       throw new Error(`[ResultsPage.clickFilterSectionOptionByLabel] filterTitle must be a non-empty string, got: ${typeof filterTitle}`);
     }
@@ -1093,9 +1093,17 @@ class ResultsPage {
       );
     }
 
+    // `hasText` is a case-insensitive SUBSTRING match, which cross-matches whenever one option label
+    // contains another — the ground transport "Vehicle Type" section lists both "Exclusive minivan"
+    // and "Minivan", so a substring match on "Minivan" hits "Exclusive minivan" first in DOM order and
+    // silently filters to the wrong vehicle. `exact` opts into a whole-label regex instead; the default
+    // stays substring so existing callers (car "Car Class") behave exactly as before.
+    const optionMatcher = exact
+      ? new RegExp('^\\s*' + escapeRegex(optionLabel) + '\\s*$', 'i')
+      : optionLabel;
     let labelEl = section.first()
       .locator(SELECTORS.FILTER_SECTION_OPTION_LABEL)
-      .filter({ hasText: optionLabel })
+      .filter({ hasText: optionMatcher })
       .first();
 
     // The option may not be rendered at all yet — app-checkbox-group.vue only renders the first
@@ -1113,7 +1121,7 @@ class ResultsPage {
         await viewMoreToggle.click();
         labelEl = section.first()
           .locator(SELECTORS.FILTER_SECTION_OPTION_LABEL)
-          .filter({ hasText: optionLabel })
+          .filter({ hasText: optionMatcher })
           .first();
       }
     }
