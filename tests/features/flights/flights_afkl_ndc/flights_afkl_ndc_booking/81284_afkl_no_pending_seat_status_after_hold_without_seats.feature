@@ -5,7 +5,7 @@
 
 # ADO Test Case ID: 81284
 # ADO workitem ID: 72034
-@ado:81284 @regression @flights @afkl @ndc @seating @extras @hold
+@ado:81284 @regression @flights @afkl @ndc @seating @extras @hold @full-purchase
 Feature: 81284 AFKL - No pending seat validation when booking without seats
   As a corporate traveler
   I want the Seating extra to not show a pending status when I never selected a seat
