@@ -12,6 +12,12 @@ When("I navigate to my user profile", async function () {
   this.page = profilePage;
 });
 
+When("I click my user initials in the header", async function () {
+  logger.info("Opening the header profile dropdown from the avatar");
+  // Leaves the dropdown open — the entry to pick is chosen by the following step.
+  await Profile.openProfileMenu(this.page);
+});
+
 When("I open the frequent programs tab in my profile", async function () {
   logger.info("Opening frequent programs tab in user profile");
   await Profile.openFrequentProgramsTab(this.page);

@@ -13,6 +13,11 @@ const SELECTORS = {
   // in a given deployment breaks navigation.
   PROFILE_MENU_TRIGGER: '[data-testid="profile-menu.trigger"], .app-profile-menu .avatar-trigger',
   MY_PROFILE_MENU_ITEM: '[data-testid="profile-menu.my-profile"], .profile-menu-item.my-profile-item',
+  // Sibling of "My profile" in the same dropdown, but rendered only when the logged-in user
+  // holds "Can view profile of other users" AND the manage-profiles feature flag is on
+  // (app-profile-menu.ts: canManageProfiles). Absent for everyone else, by design.
+  MANAGE_PROFILES_MENU_ITEM:
+    '[data-testid="profile-menu.manage-profiles"], .profile-menu-item.manage-profiles-item',
 
   // Profile tabs
   FREQUENT_PROGRAMS_TAB: '#tab-frequentPrograms',
@@ -272,6 +277,38 @@ class ProfilePage {
         `Original: ${err.message}`
       );
     }
+  }
+
+  /**
+   * Clicks "Manage profiles" inside the open profile dropdown. Opens the list in a new tab.
+   *
+   * A missing entry is reported as a privilege/flag problem rather than a generic timeout:
+   * app-profile-menu.vue only renders it behind `v-if="canManageProfiles"`.
+   */
+  async clickManageProfiles() {
+    const item = this.page.locator(SELECTORS.MANAGE_PROFILES_MENU_ITEM).first();
+    try {
+      await item.waitFor({ state: 'visible', timeout: 10000 });
+      await item.click({ timeout: 10000 });
+    } catch (err) {
+      throw new Error(
+        `[ProfilePage.clickManageProfiles] Could not click "Manage profiles" (selector: ${SELECTORS.MANAGE_PROFILES_MENU_ITEM}). ` +
+        `The dropdown may not have opened (it is revealed by CLICKING the avatar trigger, not hovering it), ` +
+        `or the entry is not rendered for this user — it is gated on the "Can view profile of other users" ` +
+        `privilege and the manage-profiles feature flag. Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Reports whether "Manage profiles" is offered in the currently open profile dropdown.
+   * Lets a privilege-negative scenario assert its absence without paying a full timeout.
+   *
+   * @returns {Promise<boolean>}
+   */
+  async isManageProfilesMenuItemVisible() {
+    const item = this.page.locator(SELECTORS.MANAGE_PROFILES_MENU_ITEM).first();
+    return (await item.count()) > 0 && (await item.isVisible());
   }
 
   // --- Tabs ---

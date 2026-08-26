@@ -32,6 +32,7 @@ module.exports = {
   HotelLevelResults: require("./HotelLevelResults"),
   HotelSearch: require("./HotelSearch"),
   LegacyGtp: require("./LegacyGtp"),
+  ManageProfiles: require("./ManageProfiles"),
   ManualQuoteSearch: require("./ManualQuoteSearch"),
   ParallelSearch: require("./ParallelSearch"),
   Profile: require("./Profile"),

@@ -80,6 +80,29 @@ const Profile = {
   },
 
   /**
+   * Opens the header avatar dropdown and leaves it open.
+   *
+   * navigateToProfile above opens the same menu, but immediately commits to "My profile".
+   * This is the standalone half, for scenarios that go on to pick a different entry (e.g.
+   * the permission-gated "Manage profiles") or that assert on what the menu offers.
+   */
+  async openProfileMenu(page) {
+    if (!page) {
+      throw new Error('[Profile.openProfileMenu] "page" is required.');
+    }
+
+    const profilePage = getPageObject(page, ProfilePage);
+    const loginPage = getPageObject(page, LoginPage);
+
+    // The consent banner can overlay the avatar — same guard navigateToProfile applies.
+    await loginPage.acceptCookiesIfPresent(8000);
+
+    logger.debug("[Profile.openProfileMenu] Clicking the header avatar to open the profile dropdown");
+    await profilePage.openProfileMenu();
+    logger.info("[Profile.openProfileMenu] Profile dropdown opened");
+  },
+
+  /**
    * Opens the Frequent Programs tab in the user profile.
    */
   async openFrequentProgramsTab(page) {
