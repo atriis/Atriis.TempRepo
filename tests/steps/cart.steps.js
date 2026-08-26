@@ -1658,6 +1658,16 @@ Then("the last quote destination should contain {string}", async function (city)
   await Cart.verifyLastQuoteDestination(this.page, city);
 });
 
+// Title and drop-off are populated from different fields of the quote, so a title that already
+// names the destination does not prove the drop-off does — which is what an edited search has to
+// show. Assert both together rather than trusting the title alone.
+Then("the last added quote title contains {string} and drop off contains {string}", async function (expectedTitle, expectedDropOff) {
+  logger.info("Verifying last quote title and drop-off", { expectedTitle, expectedDropOff });
+  await Cart.verifyLastQuoteDestination(this.page, expectedTitle);
+  const dropOff = await Cart.verifyLastQuoteDropOffAddress(this.page, expectedDropOff);
+  logger.info("Last quote drop-off", { dropOff });
+});
+
 Then("the flight quote destination should be {string}", async function (expectedTitle) {
   logger.info("Verifying flight quote destination", { expectedTitle });
   await Cart.verifyFlightQuoteDestination(this.page, expectedTitle);

@@ -58,6 +58,10 @@ const SELECTORS = {
   // Container-scoped because the trip bar renders its own breadcrumb; the whole block sits behind
   // `v-if="!isLoading"`, so waiting for it doubles as a results-ready gate.
   RESULTS_BREADCRUMB_SEARCH_LINK: '.ground-transport-results .breadcrumbs a',
+  // Pick-up / drop-off pair echoed above the results (ground-transport-info-bar.vue:5-9 — the class
+  // is misspelled "location-wrpper" in the app). The two addresses are the only `.ellipsis-txt`
+  // children, separated by an arrow icon: index 0 is pick-up, index 1 is drop-off.
+  INFO_BAR_LOCATION: '.ground-transport-info-bar .location-wrpper .ellipsis-txt',
 };
 
 class GroundTransportResultsPage {
@@ -88,6 +92,48 @@ class GroundTransportResultsPage {
         `[GroundTransportResultsPage.waitForResults] No ground transport results rendered within ${timeout}ms ` +
         `(neither ${SELECTORS.RESULTS_COUNT} nor ${SELECTORS.RESULT_CARD_CTA} became visible). The search may ` +
         `still be loading, or it returned no results. Original: ${error.message}`
+      );
+    }
+  }
+
+  /**
+   * Waits until the results info bar's drop-off address contains `expected`.
+   *
+   * This is the re-search gate after an edit: the PREVIOUS result set stays on screen until the new
+   * one arrives, so "results are visible" proves nothing about which search produced them — the info
+   * bar swapping to the new drop-off does.
+   *
+   * @param {string} expected - Substring the drop-off address must contain (case-insensitive)
+   * @param {number} [timeout=60000]
+   * @throws {Error} If the drop-off never picks up the expected text
+   */
+  async waitForInfoBarDropOffToContain(expected, timeout = 60000) {
+    if (!expected || typeof expected !== 'string') {
+      throw new Error(
+        `[GroundTransportResultsPage.waitForInfoBarDropOffToContain] "expected" must be a non-empty string, got: ${expected}`
+      );
+    }
+
+    // `hasText` with a plain string is a case-insensitive substring match, so this resolves only
+    // once the SECOND address (the drop-off) carries the expected text.
+    const dropOff = this.page
+      .locator(SELECTORS.INFO_BAR_LOCATION)
+      .nth(1)
+      .filter({ hasText: expected });
+
+    try {
+      await dropOff.waitFor({ state: 'visible', timeout });
+    } catch (error) {
+      const rendered = await this.page
+        .locator(SELECTORS.INFO_BAR_LOCATION)
+        .allInnerTexts()
+        .catch(() => []);
+      throw new Error(
+        `[GroundTransportResultsPage.waitForInfoBarDropOffToContain] The results info bar's drop-off ` +
+        `never contained "${expected}" within ${timeout}ms. The bar reads: ` +
+        `${rendered.map((text) => `"${normalizeText(text)}"`).join(' -> ') || '(nothing)'}. ` +
+        `The edited search was probably never submitted, or it re-ran the previous criteria. ` +
+        `Original: ${error.message}`
       );
     }
   }

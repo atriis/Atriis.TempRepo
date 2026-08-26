@@ -14,17 +14,17 @@ Feature: 20078 GroundScope - Pickup time is pre-populated and edit search works 
   So that I can add the correct transfer from cart without losing search context
 
   Scenario: Flight pickup time is pre-populated for GroundScope and the edited search can still be added to cart
-    Given I am logged in as "elisabeteferreira@groundscope.com" booking a new trip
+    Given I am logged in as "elisabete@groundscope.com" booking a new trip
     And I have added myself as the traveler
     When I search for a one way flight from "LHR" to "MAD"
-    And I handle conflicting quotes if visible
     And I add the first flight to cart
-    Then the booking status should be "Pending booking"
-    When I search for ground transport from cart validating prepopulated pickup time with "lhr" and airline "emirates"
+    And the booking status should be "Pending booking"
+    When I search for ground transport from cart validating prepopulated pickup time is displayed with pickup in "lhr" and drop off in "emirates"
     And I wait for add to trip text to be visible
     And I add the first result to trip
-    When I search for ground transport from cart validating prepopulated pickup time with "lgw" and airline "lhr"
-    And I edit the groundscope search from the results page
-    And I wait for add to trip text to be visible
+    When I search for ground transport from cart validating prepopulated pickup time is displayed with pickup in "lgw" and drop off in "lhr"
+    Then I wait for add to trip text to be visible
+    When I edit the groundscope search from the results page drop off location only in "stn" and search
     And I add the first result to trip
-    Then the groundscope result in cart should be correct
+    And the booking status should be "Pending booking"
+    Then the last added quote title contains "stn" and drop off contains "stn"

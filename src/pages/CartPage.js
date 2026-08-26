@@ -387,6 +387,12 @@ const SELECTORS = {
   FLIGHT_QUOTE_HEADING_TEXT: 'Flight to',
   FIRST_QUOTE_TITLE: '.quote-payment-card:not(.last-quote) h6.quote-title',
   LAST_QUOTE_TITLE: '.last-quote h6.quote-title',
+  // Drop-off address of the last quote card. car-pickupdropoff-details.vue renders the pick-up and
+  // drop-off legs as `li.pickup-details` / `li.dropoff-details`, each holding the plain address in
+  // `.location-address-plain` next to its Google Maps link — so the leg has to be named, or the
+  // pick-up address wins on document order. The component is shared by the car and ground
+  // transport quote cards.
+  LAST_QUOTE_DROPOFF_ADDRESS: '.last-quote li.dropoff-details .location-address-plain',
   LAST_QUOTE_STATUS_LABEL: '.last-quote .app-label--quote',
   PNR_CODE: '.pnr-code',
   FLIGHT_QUOTE_NUMBER_TEXT: '.flight-info.cart-format .carrier-container .carrier-name + p',
@@ -952,6 +958,13 @@ const SELECTORS = {
   ADD_FLIGHT_CAROUSEL_BUTTON: '.product-carousel button.product-btn:has-text("Flight")',
   ADD_PARKING_CAROUSEL_BUTTON: '.product-carousel button.product-btn:has-text("Parking")',
   ADD_MANUAL_QUOTE_CAROUSEL_BUTTON: '.product-carousel button.product-btn:has-text("Manual quote")',
+  // Ground transport tile in the same carousel (product-carousel.vue, the `Products.GroundService`
+  // branch). Keyed on the material-symbol NAME printed inside the tile rather than on its label:
+  // the label is `$t('products.btns.groundService')` and so is translated, while "local_taxi" is
+  // not. Like Hotel and Car it opens the edit-search drawer (productAction -> `openDrawer`), and
+  // that drawer arrives pre-filled from the trip's booked flight.
+  ADD_GROUND_TRANSPORT_CAROUSEL_BUTTON:
+    '.product-carousel button.product-btn:has(.material-symbols-outlined:text-is("local_taxi"))',
   // Car tile in the same carousel. Like Hotel (and unlike Flight/Parking) it opens the edit-search
   // drawer: product-carousel.ts → productAction() emits `openDrawer` for every product except
   // 'manual-quote', and the cart renders that drawer in place instead of routing away.
@@ -6956,6 +6969,33 @@ class CartPage {
   }
 
   /**
+   * Clicks the Ground transport tile in the "Add more services" product carousel.
+   *
+   * Opens the edit-search drawer in place (productAction -> `openDrawer`); it does NOT navigate,
+   * so the caller waits for the drawer rather than for a load state. The tile can sit outside the
+   * carousel's visible window, hence the scroll.
+   *
+   * @param {number} [timeout=15000]
+   * @throws {Error} If the tile is not offered to this user
+   */
+  async clickAddGroundTransportFromCarousel({ timeout = 15000 } = {}) {
+    const btn = this.page.locator(SELECTORS.ADD_GROUND_TRANSPORT_CAROUSEL_BUTTON).first();
+
+    try {
+      await btn.waitFor({ state: 'visible', timeout });
+      await btn.scrollIntoViewIfNeeded();
+      await btn.click();
+    } catch (err) {
+      throw new Error(
+        `[CartPage.clickAddGroundTransportFromCarousel] Could not open the ground transport search ` +
+        `from the cart product carousel (tile: ${SELECTORS.ADD_GROUND_TRANSPORT_CAROUSEL_BUTTON}). ` +
+        `Likely causes: the logged-in user has no ground transport product access, or the tile is ` +
+        `parked in the carousel's "more products" overflow dropdown. Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
    * Clicks the Parking button in the "Add more services" product carousel.
    * Navigates to the parking search page.
    * @param {number} [timeout=10000]
@@ -7113,6 +7153,24 @@ class CartPage {
     const el = this.page.locator(SELECTORS.LAST_QUOTE_TITLE).first();
     await el.waitFor({ state: 'visible', timeout });
     return (await el.innerText()).trim();
+  }
+
+  /**
+   * Gets the drop-off address printed on the last quote card (e.g. "london stansted airport ...").
+   *
+   * The card renders the address lower-cased (`location?.toLocaleLowerCase()` in
+   * car-pickupdropoff-details.vue) unless the quote carries a structured `locationDetail`, so
+   * callers should compare case-insensitively.
+   *
+   * @param {{ timeout?: number }} [options]
+   * @returns {Promise<string>}
+   */
+  async getLastQuoteDropOffText({ timeout = 10000 } = {}) {
+    return this._readTripOverviewText(
+      SELECTORS.LAST_QUOTE_DROPOFF_ADDRESS,
+      "the last quote's drop-off address",
+      timeout,
+    );
   }
 
   /**

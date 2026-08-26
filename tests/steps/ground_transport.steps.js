@@ -61,9 +61,16 @@ When("I search for ground transport from specific address {string} to specific a
   });
 });
 
-When("I search for ground transport from cart validating prepopulated pickup time with {string} and airline {string}", async function (pickup, airline) {
-  logger.info("Searching for ground transport from cart with prepopulated time validation", { pickup, airline });
-  notImplemented("I search for ground transport from cart validating prepopulated pickup time with {string} and airline {string}");
+// Opens the search from the cart's product carousel (NOT the cross-sell suggestion, which is
+// "I click search button from {string}"): the drawer that tile opens is the one the app pre-fills
+// from the flight already in the trip, which is what makes the pick-up time assertion meaningful.
+When("I search for ground transport from cart validating prepopulated pickup time is displayed with pickup in {string} and drop off in {string}", async function (pickup, dropOff) {
+  logger.info("Searching for ground transport from cart with prepopulated pickup time validation", { pickup, dropOff });
+  const { pickupTime } = await GroundTransportSearch.searchFromCartCarouselValidatingPrepopulatedPickupTime(
+    this.page,
+    { pickup, dropOff },
+  );
+  logger.info("The cart search drawer's pre-populated pick-up time", { pickupTime });
 });
 
 When("I search for ground transport from airport {string} to airport {string} changing the pickup time", async function (from, to) {
@@ -180,9 +187,9 @@ When("I open the current ground transport trip", async function () {
   notImplemented("I open the current ground transport trip");
 });
 
-When("I edit the groundscope search from the results page", async function () {
-  logger.info("Editing groundscope search from results page");
-  notImplemented("I edit the groundscope search from the results page");
+When("I edit the groundscope search from the results page drop off location only in {string} and search", async function (dropOffLocation) {
+  logger.info("Editing the groundscope search from the results page", { dropOffLocation });
+  await GroundTransportSearch.editSearchDropOffFromResultsPage(this.page, dropOffLocation);
 });
 
 When("I extract the ground transport results price and VAT", async function () {

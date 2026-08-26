@@ -5,8 +5,14 @@ const { selectDatesByNthAvailable } = require("@utils/calendar.helper");
 const { resolveRoute } = require("@utils/route.helper");
 const { SEARCH_DEFAULTS } = require("@utils/search.constants");
 const { CartPage } = require("@pages/CartPage");
+const { ResultsPage } = require("@pages/ResultsPage");
+const GroundTransportResultsPage = require("@pages/GroundTransportResultsPage");
 const logger = require("@utils/logger").child("GroundTransportSearch-DSL");
 const groundTransportRoutes = require("@data/groundtransport.json");
+
+// The pick-up time as the drawer can render it: "HH:mm" for a metric user, "hh:mm AM/PM" for an
+// imperial one (app-timepicker's `isAmPm`, driven by the user's units system).
+const PICKUP_TIME_PATTERN = /^([01]?\d|2[0-3]):[0-5]\d(\s*[AaPp]\.?[Mm]\.?)?$/;
 
 /**
  * GroundTransportSearch DSL
@@ -357,6 +363,125 @@ const GroundTransportSearch = {
     await groundTransportSearchPage.clickEditSearchSubmitButton();
 
     return { searched: true, dropOffLocation, vehicleType, travellerNumber };
+  },
+
+  /**
+   * Opens the ground transport search from the cart's "Add more services" carousel, proves the
+   * pick-up time arrived pre-populated, then searches the given route from that same drawer.
+   *
+   * This is the OTHER cart entry point: the cross-sell suggestion (searchFromCartSuggestion) offers
+   * a transfer for a specific booked leg, while the carousel tile just opens the product — and the
+   * app fills that drawer from the trip's booked flight
+   * (groundService-search-inputs.ts -> updateTransportInfoDetails), which is what puts a time in
+   * the pick-up field before anything has been typed.
+   *
+   * The time is read BEFORE the form is touched, so what is asserted is the value the drawer
+   * OPENED with and not something a later interaction produced. Both location fields are cleared
+   * before typing for the same reason they are pre-filled at all.
+   *
+   * @param {import('playwright').Page} page
+   * @param {Object} options
+   * @param {string} options.pickup - Pick-up airport to search from
+   * @param {string} options.dropOff - Drop-off address to search to
+   * @param {string} [options.vehicleType] - Vehicle type option label
+   * @param {number} [options.travellerNumber=1] - Number of travellers (>= 1)
+   * @returns {Promise<{pickupTime: string, pickup: string, dropOff: string}>}
+   * @throws {Error} If the drawer's pick-up time is empty or is not a time
+   */
+  async searchFromCartCarouselValidatingPrepopulatedPickupTime(
+    page,
+    {
+      pickup,
+      dropOff,
+      vehicleType = groundTransportRoutes.vehicleTypes.all,
+      travellerNumber = 1,
+    } = {},
+  ) {
+    if (!page) {
+      throw new Error("page is required");
+    }
+
+    if (!pickup || typeof pickup !== "string") {
+      throw new Error(`pickup must be a non-empty string, got: ${typeof pickup}`);
+    }
+
+    if (!dropOff || typeof dropOff !== "string") {
+      throw new Error(`dropOff must be a non-empty string, got: ${typeof dropOff}`);
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+    const groundTransportSearchPage = getPageObject(page, GroundTransportSearchPage);
+
+    await cartPage.clickAddGroundTransportFromCarousel();
+    await groundTransportSearchPage.waitForEditSearchDrawerReady();
+
+    const pickupTime = await groundTransportSearchPage.getEditSearchPickupTimeValue();
+
+    if (!PICKUP_TIME_PATTERN.test(pickupTime)) {
+      throw new Error(
+        "[GroundTransportSearch.searchFromCartCarouselValidatingPrepopulatedPickupTime] The ground "
+        + "transport search drawer opened from the cart with a pick-up time of "
+        + `"${pickupTime}", which is not a time. It should have been pre-populated from the flight `
+        + "already in the trip.",
+      );
+    }
+
+    logger.info("The cart search drawer opened with a pre-populated pick-up time", {
+      pickupTime,
+      pickup,
+      dropOff,
+    });
+
+    await groundTransportSearchPage.fillEditSearchPickupField(pickup);
+    await this.completeSearchDrawerAndSearch(page, {
+      dropOffLocation: dropOff,
+      vehicleType,
+      travellerNumber,
+    });
+
+    return { pickupTime, pickup, dropOff };
+  },
+
+  /**
+   * Re-runs the trip's ground transport search with a different drop-off, without leaving the
+   * results page.
+   *
+   * Only the drop-off is touched: the drawer opens pre-filled from the search that produced the
+   * results behind it, so everything else is deliberately left as the previous search set it.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} dropOffLocation - New drop-off to type into the drawer's autocomplete
+   * @returns {Promise<{edited: boolean, dropOffLocation: string}>}
+   */
+  async editSearchDropOffFromResultsPage(page, dropOffLocation) {
+    if (!page) {
+      throw new Error("page is required");
+    }
+
+    if (!dropOffLocation || typeof dropOffLocation !== "string") {
+      throw new Error(`dropOffLocation must be a non-empty string, got: ${typeof dropOffLocation}`);
+    }
+
+    const resultsPage = getPageObject(page, ResultsPage);
+    const groundTransportSearchPage = getPageObject(page, GroundTransportSearchPage);
+    const groundTransportResultsPage = getPageObject(page, GroundTransportResultsPage);
+    const searchPage = getPageObject(page, SearchPage);
+
+    logger.info("Editing the ground transport search from the results page", { dropOffLocation });
+
+    // The "Edit" control belongs to the trip bar, not to ground-transport-results.vue, and it opens
+    // the shared edit-search drawer around the trimmed ground transport form.
+    await resultsPage.clickEditButton();
+    await groundTransportSearchPage.waitForEditSearchDrawerReady();
+    await groundTransportSearchPage.fillEditSearchDropOffField(dropOffLocation);
+    await searchPage.waitAndClickEditSearchButton();
+
+    // The previous result set stays on screen until the new one arrives, so the info bar picking up
+    // the new drop-off is what proves the edit took — not the presence of results.
+    await groundTransportResultsPage.waitForInfoBarDropOffToContain(dropOffLocation);
+    await resultsPage.waitForAddToTripText();
+
+    return { edited: true, dropOffLocation };
   },
 };
 

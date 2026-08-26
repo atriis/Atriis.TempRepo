@@ -5569,6 +5569,37 @@ const Cart = {
   },
 
   /**
+   * Verifies the drop-off address on the last quote card carries the expected location.
+   *
+   * The card's title and its drop-off leg are populated from different fields of the quote, so a
+   * title that already names the destination does not prove the drop-off does — which is exactly
+   * what an edited search has to demonstrate.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} location - Substring the drop-off address must contain (case-insensitive)
+   * @returns {Promise<string>} The drop-off address as the card renders it
+   */
+  async verifyLastQuoteDropOffAddress(page, location) {
+    if (!page) throw new Error('page is required');
+    if (!location || typeof location !== 'string') {
+      throw new Error(`location must be a non-empty string, got: ${typeof location}`);
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+    const actualDropOff = await cartPage.getLastQuoteDropOffText();
+
+    if (!actualDropOff.toLowerCase().includes(location.toLowerCase())) {
+      throw new Error(
+        `[Cart.verifyLastQuoteDropOffAddress] The last quote's drop-off reads "${actualDropOff}", ` +
+        `which does not contain "${location}". The quote added to the cart is not the one the ` +
+        `edited search returned.`
+      );
+    }
+
+    return actualDropOff;
+  },
+
+  /**
    * Verifies a round-trip cart contains the expected airport/city code on both legs.
    * For a route like LIS -> BCN -> LIS, the connection/turn-point code should appear
    * once as the outbound arrival and once as the return departure.

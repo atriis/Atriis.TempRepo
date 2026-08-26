@@ -91,6 +91,15 @@ const SELECTORS = {
   VISIBLE_SELECT_OPTION: ".el-select-dropdown:visible .el-select-dropdown__item",
   // trip-search-control.vue renders the drawer's submit button as app-btn.search-btn size=large.
   EDIT_SEARCH_SUBMIT_BUTTON: ".trip-search-control .search-btn",
+  // Pick-up LOCATION autocomplete inside the drawer. The `:not([placeholder='Pick-up Date'])` is
+  // load-bearing for the same reason it is on PICKUP_LOCATION_INPUT above: PICK_UP_PLACEHOLDER is a
+  // SUBSTRING match, so it also matches the drawer's own readonly "Pick-up Date" field, which can
+  // never accept text.
+  EDIT_SEARCH_PICKUP_LOCATION_INPUT:
+    `${SEARCH_SELECTORS.PICK_UP_PLACEHOLDER}:not([placeholder='Pick-up Date'])`,
+  // The drawer mounts the same groundService-search-inputs.vue as the search page, so its pick-up
+  // time is the same app-timepicker inside .details-container — drawer-scoped by the page method.
+  EDIT_SEARCH_PICKUP_TIME_INPUT: ".details-container input.app-timepicker-input",
 };
 
 class GroundTransportSearchPage {
@@ -517,22 +526,51 @@ class GroundTransportSearchPage {
   }
 
   /**
+   * Reads the pick-up time the drawer opened with.
+   *
+   * This is the value the app pre-populates from the trip's booked flight
+   * (groundService-search-inputs.ts -> updateTransportInfoDetails), so it is read BEFORE anything
+   * else in the drawer is touched.
+   *
+   * @returns {Promise<string>} "HH:mm" for metric users, "hh:mm a" for imperial ones; "" if the
+   *   field arrived empty
+   */
+  async getEditSearchPickupTimeValue(timeout = 15000) {
+    const timeInput = this.getEditSearchDrawer()
+      .locator(SELECTORS.EDIT_SEARCH_PICKUP_TIME_INPUT)
+      .first();
+
+    try {
+      await timeInput.waitFor({ state: "visible", timeout });
+      return (await timeInput.inputValue()).trim();
+    } catch (error) {
+      throw new Error(
+        "[GroundTransportSearchPage.getEditSearchPickupTimeValue] Could not read the pick-up time "
+        + `field in the edit-search drawer (selector: ${SELECTORS.EDIT_SEARCH_PICKUP_TIME_INPUT}). `
+        + "The drawer is probably still loading its ground transport form. "
+        + `Original: ${error.message}`,
+      );
+    }
+  }
+
+  /**
+   * Types a pick-up location in the drawer and commits the first autocomplete suggestion.
+   *
+   * The field arrives pre-filled from the booked flight's destination, so it is cleared first —
+   * typing into it would otherwise append to that value and match nothing.
+   *
+   * @param {string} pickupLocation
+   */
+  async fillEditSearchPickupField(pickupLocation) {
+    await this.#fillDrawerAutocomplete(SELECTORS.EDIT_SEARCH_PICKUP_LOCATION_INPUT, pickupLocation);
+  }
+
+  /**
    * Types a drop-off address in the drawer and commits the first autocomplete suggestion.
    * @param {string} dropOffLocation
    */
   async fillEditSearchDropOffField(dropOffLocation) {
-    const dropOffInput = this.getEditSearchDrawer()
-      .locator(SEARCH_SELECTORS.DROP_OFF_PLACEHOLDER)
-      .first();
-
-    await dropOffInput.waitFor({ state: "visible", timeout: 15000 });
-    await dropOffInput.click();
-    await dropOffInput.fill("");
-    await dropOffInput.pressSequentially(dropOffLocation, { delay: 100 });
-
-    const firstSuggestion = this.page.locator(SEARCH_SELECTORS.AUTOCOMPLETE_LIST).first();
-    await firstSuggestion.waitFor({ state: "visible", timeout: 15000 });
-    await firstSuggestion.click();
+    await this.#fillDrawerAutocomplete(SEARCH_SELECTORS.DROP_OFF_PLACEHOLDER, dropOffLocation);
   }
 
   /**
@@ -571,6 +609,29 @@ class GroundTransportSearchPage {
 
     await submitButton.waitFor({ state: "visible", timeout: 15000 });
     await submitButton.click();
+  }
+
+  /**
+   * Types into one of the drawer's location autocompletes and commits the first suggestion.
+   *
+   * Both fields open PRE-FILLED (from the booked flight on the first search, from the previous
+   * search on an edit), so the value is cleared before typing — typing into them would otherwise
+   * append to what is already there and match no suggestion.
+   *
+   * @param {string} fieldSelector - Drawer-relative selector for the autocomplete input
+   * @param {string} value - Text to type
+   */
+  async #fillDrawerAutocomplete(fieldSelector, value) {
+    const input = this.getEditSearchDrawer().locator(fieldSelector).first();
+
+    await input.waitFor({ state: "visible", timeout: 15000 });
+    await input.click();
+    await input.fill("");
+    await input.pressSequentially(value, { delay: 100 });
+
+    const firstSuggestion = this.page.locator(SEARCH_SELECTORS.AUTOCOMPLETE_LIST).first();
+    await firstSuggestion.waitFor({ state: "visible", timeout: 15000 });
+    await firstSuggestion.click();
   }
 
   /**
