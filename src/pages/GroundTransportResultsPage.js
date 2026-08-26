@@ -39,6 +39,26 @@ const SELECTORS = {
   PRICE_AMOUNT: '.price-container > .price-wrapper > .app-price h4.amount',
   // "Pre paid" / "Pay after service" label (ground-transport-preview.vue:143-147).
   PAYMENT_TYPE_LABEL: '.price-container > .payment-method > p',
+  // VAT line printed under the price as `<p class="vat">VAT: <app-price/></p>`
+  // (ground-transport-preview.vue:138-141). Behind `v-if="transport.DisplayTax > 0"`, so a
+  // zero-tax offer renders NO node here at all — callers must treat it as optional rather than
+  // waiting for it. The direct-child chain matters for the same reason it does on PRICE_AMOUNT:
+  // the sibling `.app-price` holds the net price, so a descendant selector would cross-match.
+  VAT_AMOUNT: '.price-container > .price-wrapper > p.vat',
+  // "Terms & Conditions" text button on a result card — rendered inside `.links-container` on
+  // desktop (ground-transport-preview.vue:88-92) and inside `.mobile-btn-container` on mobile
+  // (:176-182). Both copies carry the same class and only one is rendered per viewport, so this is
+  // resolved CARD-scoped with `:visible` instead of picking a branch.
+  TERMS_AND_CONDITIONS_LINK: '.terms-and-conditions:visible',
+  // The rate-disclaimer dialog that button opens (ground-transport-preview.vue:117-127). It is
+  // `appendToBody`, so it is NOT nested under the card and has to be resolved page-level. The
+  // title guard is load-bearing: `app-dialog` is a shared app-wide class, so without it any other
+  // open app dialog would match first.
+  TERMS_DIALOG: '.el-dialog.app-dialog:visible:has(.el-dialog__title:has-text("Terms"))',
+  // Dialog body — the raw `transport.RateDisclaimer` HTML is v-html'd straight into it.
+  TERMS_DIALOG_BODY: '.el-dialog__body',
+  // el-dialog's header close icon, used as the fallback when Escape does not dismiss the dialog.
+  TERMS_DIALOG_CLOSE: '.el-dialog__headerbtn',
   // Vehicle model line of a result card (ground-transport-preview.vue:47-50), rendered as
   // `<h3 class="ground-transport-desc">{{ transport.VehicleType }} (up to {N} people)</h3>` — so the
   // supplier's vehicle type ("Minibus", "Minivan", "Business limousine") is the LEADING token of that
@@ -205,6 +225,141 @@ class GroundTransportResultsPage {
    */
   getPaymentTypeLabel(index = 0) {
     return this.getPriceSection(index).locator(SELECTORS.PAYMENT_TYPE_LABEL).first();
+  }
+
+  /**
+   * Returns the VAT line inside the price section of the result card at the given index.
+   *
+   * The node is optional — see SELECTORS.VAT_AMOUNT — so callers must check `count()` rather than
+   * waiting for it to become visible.
+   *
+   * @param {number} [index=0] - Zero-based index of the result card
+   * @returns {import('playwright').Locator}
+   */
+  getVatAmount(index = 0) {
+    return this.getPriceSection(index).locator(SELECTORS.VAT_AMOUNT).first();
+  }
+
+  /**
+   * Reads the RAW price and VAT texts from the price section of the result card at the given index.
+   *
+   * Parsing is deliberately left to the DSL layer so this stays a pure UI read. `vatText` comes
+   * back `null` when the offer carries no tax line at all, which is a legitimate state (the app
+   * only renders it for `DisplayTax > 0`) and not an error.
+   *
+   * @param {number} [index=0] - Zero-based index of the result card
+   * @param {number} [timeout=60000] - Maximum time to wait for the price section, in milliseconds
+   * @throws {Error} If the price never renders
+   * @returns {Promise<{priceText: string, vatText: string|null}>}
+   */
+  async getPriceAndVatText(index = 0, timeout = 60000) {
+    await this.waitForPriceSection(index, timeout);
+
+    const price = this.getPriceAmount(index);
+    const elementTimeout = Math.min(timeout, 15000);
+
+    try {
+      await price.waitFor({ state: 'visible', timeout: elementTimeout });
+    } catch (error) {
+      throw new Error(
+        `[GroundTransportResultsPage.getPriceAndVatText] The price amount never became visible in ` +
+        `result card at index ${index} within ${elementTimeout}ms (selector: ${SELECTORS.PRICE_AMOUNT}). ` +
+        `Original: ${error.message}`
+      );
+    }
+
+    const priceText = (await price.innerText()).trim();
+
+    const vat = this.getVatAmount(index);
+    const vatText = (await vat.count()) > 0 ? (await vat.innerText()).trim() : null;
+
+    return { priceText, vatText };
+  }
+
+  /**
+   * Opens the "Terms & Conditions" dialog on the result card at the given index, returns its full
+   * text, and closes it again so the overlay cannot swallow the next click (the "Add to trip"
+   * button sits behind it).
+   *
+   * Escape is tried first because that is el-dialog's own default dismissal, with the header close
+   * icon as the fallback — and the dialog staying open is raised as a failure rather than
+   * swallowed, since a live overlay would make every later step on the results page time out
+   * somewhere unrelated.
+   *
+   * @param {number} [index=0] - Zero-based index of the result card
+   * @param {object} [options]
+   * @param {number} [options.timeout=20000] - Maximum time to wait for the link and dialog, in ms
+   * @throws {Error} If the link/dialog never appears, or the dialog cannot be closed
+   * @returns {Promise<string>} Full text content of the T&C dialog body
+   */
+  async getTermsAndConditionsText(index = 0, { timeout = 20000 } = {}) {
+    const link = this.getResultCard(index).locator(SELECTORS.TERMS_AND_CONDITIONS_LINK).first();
+
+    try {
+      await link.waitFor({ state: 'visible', timeout });
+      await link.click({ timeout: 10000 });
+    } catch (error) {
+      throw new Error(
+        `[GroundTransportResultsPage.getTermsAndConditionsText] Could not click the ` +
+        `"Terms & Conditions" button on ground transport result index ${index} (selector: ` +
+        `${SELECTORS.TERMS_AND_CONDITIONS_LINK}). The results list may not have rendered yet. ` +
+        `Original: ${error.message}`
+      );
+    }
+
+    const dialog = this.page.locator(SELECTORS.TERMS_DIALOG).first();
+
+    try {
+      await dialog.waitFor({ state: 'visible', timeout });
+    } catch (error) {
+      throw new Error(
+        `[GroundTransportResultsPage.getTermsAndConditionsText] The Terms & Conditions dialog never ` +
+        `became visible within ${timeout}ms after clicking the link on result index ${index} ` +
+        `(selector: ${SELECTORS.TERMS_DIALOG}). The offer may carry no RateDisclaimer, or the dialog ` +
+        `title is no longer the one the selector guards on. Original: ${error.message}`
+      );
+    }
+
+    const text = ((await dialog.locator(SELECTORS.TERMS_DIALOG_BODY).first().textContent()) ?? '').trim();
+
+    await this.closeTermsAndConditionsDialog();
+
+    return text;
+  }
+
+  /**
+   * Closes an open ground transport Terms & Conditions dialog: Escape first, then the header close
+   * icon, and raises if it is still on screen after both.
+   *
+   * @throws {Error} If the dialog is still visible after both close attempts
+   * @returns {Promise<void>}
+   */
+  async closeTermsAndConditionsDialog() {
+    const dialog = this.page.locator(SELECTORS.TERMS_DIALOG).first();
+
+    await this.page.keyboard.press('Escape');
+
+    const closed = await dialog
+      .waitFor({ state: 'hidden', timeout: 5000 })
+      .then(() => true)
+      .catch(() => false);
+
+    if (closed) {
+      return;
+    }
+
+    await dialog.locator(SELECTORS.TERMS_DIALOG_CLOSE).first().click({ timeout: 10000 }).catch(() => {});
+
+    try {
+      await dialog.waitFor({ state: 'hidden', timeout: 10000 });
+    } catch (error) {
+      throw new Error(
+        `[GroundTransportResultsPage.closeTermsAndConditionsDialog] The Terms & Conditions dialog ` +
+        `stayed open after both Escape and the header close icon (selectors: ` +
+        `${SELECTORS.TERMS_DIALOG} / ${SELECTORS.TERMS_DIALOG_CLOSE}). Leaving it open would make the ` +
+        `next click on the results page land on the modal overlay instead. Original: ${error.message}`
+      );
+    }
   }
 
   /**

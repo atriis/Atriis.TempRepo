@@ -360,6 +360,15 @@ const SELECTORS = {
   // Details drawer.
   GROUND_TRANSPORT_PICKUP_DATETIME:
     ".ground-transport-quote-card .pickupdropoff-detailed:visible .pickup-details > p",
+  // The SAME pick-up line, but the copy inside the More Details el-drawer: the ground transport
+  // quote card mounts car-pickupdropoff-details.vue twice — once on the card and once in the
+  // drawer (ground-transport-quote-card.vue:74-82 and :207-215). While the drawer is OPEN both are
+  // visible and the card's comes first in document order, so GROUND_TRANSPORT_PICKUP_DATETIME
+  // ".first()" keeps reading the card and the drawer copy needs its own drawer-scoped selector.
+  // `.parking-details-drawer` is the shared el-drawer class cars, parking AND ground transport all
+  // render into (see CAR_MORE_DETAILS_DRAWER).
+  MORE_DETAILS_DRAWER_PICKUP_DATETIME:
+    ".parking-details-drawer:visible li.pickup-details > p",
 
   // Trip Overview selectors
   TRIP_OVERVIEW_TITLE: ".payments-title",
@@ -12960,6 +12969,29 @@ class CartPage {
         + `date/time line never rendered (selector: ${SELECTORS.GROUND_TRANSPORT_PICKUP_DATETIME}). `
         + "The cart probably holds no ground transport quote, or the quote card is still loading. "
         + `Original: ${error.message}`,
+      );
+    }
+  }
+
+  /**
+   * Reads the pick-up "{date} · {time}" line from the OPEN More Details drawer.
+   *
+   * The drawer must already be open (see clickMoreDetailsInCart) — this only reads.
+   *
+   * @returns {Promise<string>} e.g. "25 Aug 2026 · 14:30"
+   */
+  async getMoreDetailsDrawerPickupDateTimeText() {
+    const pickupLine = this.page.locator(SELECTORS.MORE_DETAILS_DRAWER_PICKUP_DATETIME).first();
+
+    try {
+      await pickupLine.waitFor({ state: "visible", timeout: 30000 });
+      return (await pickupLine.innerText()).trim();
+    } catch (error) {
+      throw new Error(
+        "[CartPage.getMoreDetailsDrawerPickupDateTimeText] The More Details drawer's pick-up "
+        + `date/time line never rendered (selector: ${SELECTORS.MORE_DETAILS_DRAWER_PICKUP_DATETIME}). `
+        + "The drawer may not be open, or this product's drawer does not render a pick-up/drop-off "
+        + `block. Original: ${error.message}`,
       );
     }
   }

@@ -1,6 +1,8 @@
 const GroundTransportResultsPage = require("@pages/GroundTransportResultsPage");
 const Results = require("./Results");
 const { getPageObject } = require("@utils/pageObjectCache");
+const { toNumber } = require("@utils/numbers");
+const { stripWhitespaceAndLowercase } = require("@utils/text");
 const logger = require("@utils/logger").child("GroundTransportResults-DSL");
 
 /**
@@ -139,6 +141,114 @@ const GroundTransportResults = {
     }
 
     return { index, boxes };
+  },
+
+  /**
+   * Extracts the net price and the VAT from a ground transport result card.
+   *
+   * The card prints the two apart — `app-price` holds the price NET of tax and the `p.vat` line
+   * holds the tax on top of it — while the cart charges their sum. So both are returned separately
+   * and the caller adds them; see "the ground transport results price with VAT should equal the
+   * cart price".
+   *
+   * An offer with no tax renders no VAT line at all, which is a valid state, so `vat` comes back 0
+   * rather than raising.
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @param {object} [options]
+   * @param {number} [options.index=0] - Zero-based index of the ground transport result card
+   * @param {number} [options.timeout=60000] - Maximum time to wait for the price, in milliseconds
+   * @throws {Error} If page/index/timeout are invalid, the price never renders, or either value is
+   *                 not parseable as a number
+   * @returns {Promise<{price: number, vat: number, priceText: string, vatText: string|null}>}
+   */
+  async extractPriceAndVat(page, { index = 0, timeout = 60000 } = {}) {
+    if (!page) {
+      throw new Error('[GroundTransportResults.extractPriceAndVat] "page" is required.');
+    }
+    if (!Number.isInteger(index) || index < 0) {
+      throw new Error(
+        `[GroundTransportResults.extractPriceAndVat] "index" must be a non-negative integer, got: ${index}`
+      );
+    }
+    if (typeof timeout !== 'number' || timeout <= 0) {
+      throw new Error(
+        `[GroundTransportResults.extractPriceAndVat] "timeout" must be a positive number, got: ${timeout}`
+      );
+    }
+
+    const resultsPage = getPageObject(page, GroundTransportResultsPage);
+    const { priceText, vatText } = await resultsPage.getPriceAndVatText(index, timeout);
+
+    let price;
+    let vat;
+
+    try {
+      price = toNumber(priceText, 'ground transport results price');
+      // The VAT line reads "VAT: <currency> <amount>" — toNumber strips the label and the currency
+      // symbol along with it, so the raw text goes in as-is.
+      vat = vatText === null ? 0 : toNumber(vatText, 'ground transport results VAT');
+    } catch (error) {
+      throw new Error(
+        `[GroundTransportResults.extractPriceAndVat] Could not parse the price/VAT read from ground ` +
+        `transport result index ${index} (price: "${priceText}", VAT: ${vatText === null ? 'not rendered' : `"${vatText}"`}). ` +
+        `Original: ${error.message}`
+      );
+    }
+
+    logger.info('Extracted ground transport results price and VAT', { index, price, vat, priceText, vatText });
+
+    return { price, vat, priceText, vatText };
+  },
+
+  /**
+   * Opens the Terms & Conditions dialog on a ground transport result card and asserts it contains
+   * the expected text, then closes it again (the Page Object owns the closing, and raises if the
+   * dialog will not dismiss).
+   *
+   * Matching mirrors Cart.verifyTextInCartTermsAndConditions — both go through the shared
+   * stripWhitespaceAndLowercase: the disclaimer is v-html'd raw supplier HTML, so adjacent nodes
+   * concatenate with no separator and line breaks land wherever the supplier put them, which means
+   * all whitespace has to be stripped on both sides rather than merely collapsed.
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @param {string} expectedText - Text expected to appear in the results T&C dialog
+   * @param {object} [options]
+   * @param {number} [options.index=0] - Zero-based index of the ground transport result card
+   * @throws {Error} If page/expectedText are invalid, or the dialog does not contain the text
+   * @returns {Promise<{dialogText: string}>}
+   */
+  async verifyTermsAndConditionsInclude(page, expectedText, { index = 0 } = {}) {
+    if (!page) {
+      throw new Error('[GroundTransportResults.verifyTermsAndConditionsInclude] "page" is required.');
+    }
+    if (typeof expectedText !== 'string' || expectedText.trim().length === 0) {
+      throw new Error(
+        `[GroundTransportResults.verifyTermsAndConditionsInclude] "expectedText" must be a non-empty ` +
+        `string, got: ${typeof expectedText}`
+      );
+    }
+    if (!Number.isInteger(index) || index < 0) {
+      throw new Error(
+        `[GroundTransportResults.verifyTermsAndConditionsInclude] "index" must be a non-negative ` +
+        `integer, got: ${index}`
+      );
+    }
+
+    logger.info('Verifying ground transport results terms and conditions', { index, expectedText });
+
+    const resultsPage = getPageObject(page, GroundTransportResultsPage);
+    const dialogText = await resultsPage.getTermsAndConditionsText(index);
+
+    if (!stripWhitespaceAndLowercase(dialogText).includes(stripWhitespaceAndLowercase(expectedText))) {
+      throw new Error(
+        `[GroundTransportResults.verifyTermsAndConditionsInclude] Expected the ground transport ` +
+        `results Terms & Conditions dialog on result index ${index} to contain "${expectedText}", but ` +
+        `its text was: "${dialogText.slice(0, 500)}"`
+      );
+    }
+
+    return { dialogText };
   },
 
   /**

@@ -142,9 +142,12 @@ When("I extract the ground transport total price", async function () {
   });
 });
 
+// Same action as "I fill ground transport contact details in cart" (used by the Transferz features)
+// — both phrasings are kept because each comes verbatim from its own manual test, and they share
+// the one DSL method rather than duplicating the flow.
 When("I add ground transport contact information", async function () {
   logger.info("Adding ground transport contact information");
-  notImplemented("I add ground transport contact information");
+  await Cart.fillGroundTransportContactDetails(this.page);
 });
 
 When("I add a ground transport free extra meet and greet", async function () {
@@ -192,9 +195,18 @@ When("I edit the groundscope search from the results page drop off location only
   await GroundTransportSearch.editSearchDropOffFromResultsPage(this.page, dropOffLocation);
 });
 
+// The results card prints the price NET of tax with the VAT on a separate line, while the cart
+// charges their sum — so both are recorded and it is the SUM that is later compared to the cart
+// (see "the ground transport results price with VAT should equal the cart price").
 When("I extract the ground transport results price and VAT", async function () {
   logger.info("Extracting ground transport results price and VAT");
-  notImplemented("I extract the ground transport results price and VAT");
+  const { price, vat } = await GroundTransportResults.extractPriceAndVat(this.page);
+  this.groundTransportResultsPrice = price;
+  this.groundTransportResultsVat = vat;
+  logger.info("Extracted ground transport results price and VAT", {
+    groundTransportResultsPrice: this.groundTransportResultsPrice,
+    groundTransportResultsVat: this.groundTransportResultsVat,
+  });
 });
 
 // ===== THEN STEPS =====
@@ -202,6 +214,53 @@ When("I extract the ground transport results price and VAT", async function () {
 Then("ground transport results should be displayed", async function () {
   logger.info("Verifying ground transport results are displayed");
   await GroundTransportResults.expectResultsDisplayed(this.page);
+});
+
+// Results-page counterpart of "the cart terms and conditions should include {string}" — the results
+// card renders the supplier's rate disclaimer in its own append-to-body dialog, not in the cart's
+// quote-card dialog, so the two cannot share one step. The DSL closes the dialog again.
+Then("the ground transport terms and conditions should include {string}", async function (expectedText) {
+  logger.info("Verifying ground transport results terms and conditions include expected text", { expectedText });
+  await GroundTransportResults.verifyTermsAndConditionsInclude(this.page, expectedText);
+});
+
+Then("the ground transport pickup time should stay the same in cart and more details", async function () {
+  logger.info("Verifying the ground transport pickup time matches between the cart card and More details");
+  await Cart.verifyGroundTransportPickupTimeMatchesMoreDetails(this.page);
+});
+
+Then("the ground transport results price with VAT should equal the cart price", async function () {
+  if (typeof this.groundTransportResultsPrice !== "number" || typeof this.groundTransportResultsVat !== "number") {
+    throw new Error(
+      "No ground transport results price/VAT stored (price: "
+      + `${this.groundTransportResultsPrice}, VAT: ${this.groundTransportResultsVat}). `
+      + "Run \"When I extract the ground transport results price and VAT\" on the results page "
+      + "before this step."
+    );
+  }
+
+  const cartPrice = await Cart.extractCartTotalPrice(this.page);
+
+  if (typeof cartPrice !== "number" || Number.isNaN(cartPrice)) {
+    throw new Error(
+      `Could not read the cart total price to compare against the results price, got: ${cartPrice}. `
+      + "The cart may still be loading, or it holds no priced quote."
+    );
+  }
+
+  logger.info("Comparing the ground transport results price plus VAT with the cart price", {
+    resultsPrice: this.groundTransportResultsPrice,
+    resultsVat: this.groundTransportResultsVat,
+    cartPrice,
+  });
+
+  expectSumToBeEqualWithTolerance(
+    this.groundTransportResultsPrice,
+    this.groundTransportResultsVat,
+    cartPrice,
+    0.02,
+    "Ground transport results price + VAT vs cart price"
+  );
 });
 
 Then("I should see that pickup contains {string}", async function (expectedPickup) {

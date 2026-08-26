@@ -31,6 +31,26 @@ function normalizeText(text) {
 }
 
 /**
+ * Normalizes text for matching against markup where adjacent nodes concatenate with NO separator
+ * — removes every whitespace character and lowercases the result.
+ *
+ * Distinct from normalizeTextStrict, which collapses whitespace to single spaces: that is right for
+ * addresses and labels, but wrong for text read off a container whose children run together (a
+ * rule title immediately followed by its description, or raw supplier HTML v-html'd into a dialog).
+ * There, "sharedbathroom" and "shared bathroom" must compare equal, and a collapse-to-one-space
+ * normalizer would still see two different strings.
+ *
+ * Both sides of a comparison must be passed through this — see the Terms & Conditions assertions in
+ * Cart and GroundTransportResults.
+ *
+ * @param {string|any} value - Text to normalize (non-strings normalize to an empty string)
+ * @returns {string} Lowercased text with all whitespace removed
+ */
+function stripWhitespaceAndLowercase(value) {
+  return normalizeText(value).replace(/\s+/g, "").toLowerCase();
+}
+
+/**
  * Creates a case-insensitive RegExp for partial text matching.
  *
  * @param {string} text - The text to search for
@@ -126,6 +146,7 @@ module.exports = {
   escapeRegExp,
   normalizeText,
   normalizeTextStrict,
+  stripWhitespaceAndLowercase,
   tokenizeAddress,
   buildFlexibleAddressRegex,
   caseInsensitiveContains,

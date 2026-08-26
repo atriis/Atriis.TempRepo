@@ -16,7 +16,7 @@ const BookingErrorHandler = require("@utils/bookingErrorHandler");
 const { selectDateOfBirthWithYearArrows, parseDateValue, parseTimeToMinutes } = require("@utils/calendar.helper");
 const { expectNumbersToBeEqualWithTolerance } = require("../assertions/numberAssertions");
 const { parseAmountText } = require("@utils/dom");
-const { normalizeText, extractDateTokens, escapeRegex } = require("@utils/text");
+const { normalizeText, extractDateTokens, escapeRegex, stripWhitespaceAndLowercase } = require("@utils/text");
 const logger = require("@utils/logger").child("Cart-DSL");
 
 // Journey legs of a round-trip rail quote, in the order eu-rail-seats.vue renders them: the API
@@ -796,9 +796,10 @@ const Cart = {
     const dialogText = await cartPage.getCartTermsAndConditionsText();
     // The T&C rule title and its description render as adjacent DOM nodes whose text content
     // concatenates with no separator (e.g. "shared bathroom" + "this room includes...") — so strip
-    // all whitespace on both sides before matching (case-insensitive) rather than just collapsing it.
-    const strip = (s) => normalizeText(s).replace(/\s+/g, "").toLowerCase();
-    if (!strip(dialogText).includes(strip(expectedText))) {
+    // all whitespace on both sides before matching (case-insensitive) rather than just collapsing
+    // it. Shared with GroundTransportResults.verifyTermsAndConditionsInclude, which reads the same
+    // kind of raw supplier markup off the results card's own dialog.
+    if (!stripWhitespaceAndLowercase(dialogText).includes(stripWhitespaceAndLowercase(expectedText))) {
       throw new Error(
         `Expected cart Terms & Conditions dialog to contain "${expectedText}", but got text: "${dialogText.slice(-300)}"`
       );
@@ -14132,6 +14133,105 @@ const Cart = {
     });
 
     return { verified: true, pickupLineText };
+  },
+
+  /**
+   * Verifies the ground transport quote shows the SAME pick-up date and time on the cart quote card
+   * and inside its "More details" drawer, then closes the drawer.
+   *
+   * Both surfaces mount the same car-pickupdropoff-details.vue off the same `quote.pickupDateTime`,
+   * so a mismatch means one of them is rendering stale quote data — which is exactly what this test
+   * is guarding. The card is read BEFORE the drawer is opened because while the drawer is open both
+   * copies are visible in the DOM.
+   *
+   * Comparison is on PARSED day/month/time, not on strings, for the same reason as
+   * verifyGroundTransportPickupDateTime: an imperial user's screens can switch to 12h AM/PM, and
+   * the raw text would then differ on formatting alone.
+   *
+   * @param {import('playwright').Page} page
+   * @throws {Error} If either line is unreadable/malformed, or the two do not match
+   * @returns {Promise<{verified: boolean, cardPickupLineText: string, drawerPickupLineText: string}>}
+   */
+  async verifyGroundTransportPickupTimeMatchesMoreDetails(page) {
+    if (!page) {
+      throw new Error('[Cart.verifyGroundTransportPickupTimeMatchesMoreDetails] "page" is required.');
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+
+    const cardPickupLineText = await cartPage.getGroundTransportPickupDateTimeText();
+
+    const splitPickupLine = (text, source) => {
+      const [dateText, timeText] = text.split(/\s*·\s*/);
+
+      if (!dateText || !timeText) {
+        throw new Error(
+          `[Cart.verifyGroundTransportPickupTimeMatchesMoreDetails] The ${source} pick-up line reads ` +
+          `"${text}", which does not hold a "{date} · {time}" pair.`
+        );
+      }
+
+      return { dateText, timeText };
+    };
+
+    const card = splitPickupLine(cardPickupLineText, 'cart quote card');
+
+    await cartPage.clickMoreDetailsInCart();
+
+    let drawerPickupLineText;
+
+    try {
+      drawerPickupLineText = await cartPage.getMoreDetailsDrawerPickupDateTimeText();
+    } finally {
+      // Close the drawer whatever happened — leaving it open would put the modal overlay in front
+      // of every later step (contact information, checkout).
+      await cartPage.closeMoreDetailsDrawer().catch(() => {});
+    }
+
+    const drawer = splitPickupLine(drawerPickupLineText, 'More details drawer');
+
+    let cardDate;
+    let drawerDate;
+    let cardMinutes;
+    let drawerMinutes;
+
+    try {
+      cardDate = parseDateValue(card.dateText);
+      drawerDate = parseDateValue(drawer.dateText);
+      cardMinutes = parseTimeToMinutes(card.timeText);
+      drawerMinutes = parseTimeToMinutes(drawer.timeText);
+    } catch (err) {
+      throw new Error(
+        `[Cart.verifyGroundTransportPickupTimeMatchesMoreDetails] Could not compare the cart card ` +
+        `pick-up ("${cardPickupLineText}") with the More details drawer's ("${drawerPickupLineText}"): ` +
+        `one of the values is not in a format the app is known to render. Original: ${err.message}`
+      );
+    }
+
+    if (cardDate.getDate() !== drawerDate.getDate() || cardDate.getMonth() !== drawerDate.getMonth()) {
+      throw new Error(
+        `[Cart.verifyGroundTransportPickupTimeMatchesMoreDetails] The cart quote card shows pick-up ` +
+        `date "${card.dateText}" but its More details drawer shows "${drawer.dateText}". The pick-up ` +
+        `date changed between the two views. Card line: "${cardPickupLineText}", drawer line: ` +
+        `"${drawerPickupLineText}".`
+      );
+    }
+
+    if (cardMinutes !== drawerMinutes) {
+      throw new Error(
+        `[Cart.verifyGroundTransportPickupTimeMatchesMoreDetails] The cart quote card shows pick-up ` +
+        `time "${card.timeText}" (${cardMinutes} minutes past midnight) but its More details drawer ` +
+        `shows "${drawer.timeText}" (${drawerMinutes} minutes). The pick-up time changed between the ` +
+        `two views.`
+      );
+    }
+
+    logger.info(
+      '[Cart.verifyGroundTransportPickupTimeMatchesMoreDetails] Pick-up date and time match between the cart card and More details',
+      { cardPickupLineText, drawerPickupLineText }
+    );
+
+    return { verified: true, cardPickupLineText, drawerPickupLineText };
   },
 
 };
