@@ -14,8 +14,8 @@ Feature: 58621 Fusion - Ancillary options load as expected
   Scenario: Ancillary options load and a selection is saved in cart
     Given I am logged in as "mikeshinoda@travelfusion.com" booking a new trip
     And I have added myself as the traveler
-    When I search for a one way flight from "KNO" to "KUL"
-    And I filter results by carrier "QZ"
+    When I search for a one way flight from "LTN" to "BUD"
+    And I filter results by carrier "Wizz Air"
     And I add the first flight to cart
     Then the booking status should be "Pending booking"
     When I click to edit the ancillary options section
