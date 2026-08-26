@@ -340,6 +340,16 @@ Then("the share itinerary preview should contain the transfer booking code", asy
   await Cart.verifyTransferBookingCodeInSharePreview(this.page, this.transferBookingCode);
 });
 
+Then("the share quote preview should contain a ground transport image", async function () {
+  logger.info("Verifying share quote preview contains a ground transport image");
+  await Cart.verifyShareEmailContainsGroundScopeVehicleImage(this.page, "share quote");
+});
+
+Then("the share itinerary preview should contain a ground transport image", async function () {
+  logger.info("Verifying share itinerary preview contains a ground transport image");
+  await Cart.verifyShareEmailContainsGroundScopeVehicleImage(this.page, "share itinerary");
+});
+
 Then("no ground transport results should be found", async function () {
   logger.info("Verifying no ground transport results are found");
   await this.page.locator(".app-no-results").first().waitFor({ state: "visible", timeout: 15000 });

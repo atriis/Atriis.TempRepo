@@ -7859,21 +7859,26 @@ class CartPage {
   }
 
   /**
-   * Checks if the share email preview iframe contains a hotel image.
-   * @returns {Promise<boolean>} True if an image with a real src is found
+   * Parses every <img> out of the share email preview iframe.
+   *
+   * The preview is backend-generated email HTML injected as the iframe's srcdoc
+   * (app-share-quotes.vue -> :srcdoc="emailContent"), so the images are read from that raw HTML
+   * rather than the live iframe DOM: the email is a long table document and most of its images sit
+   * far below the fold, where a DOM read would need scrolling inside the frame.
+   *
+   * @returns {Promise<Array<{tag: string, src: string, alt: string}>>} One entry per <img> in
+   *   document order; empty when the preview has not rendered any srcdoc yet.
    */
-  async hasHotelImageInSharePreview() {
-    // Wait for srcdoc to be populated (same polling approach as getHotelAddressFromSharePreview)
+  async getSharePreviewImages() {
     const srcdoc = await this._waitForShareIframeSrcdoc();
-    if (srcdoc.trim().length === 0) return false;
+    if (srcdoc.trim().length === 0) return [];
 
-    // Parse img src values directly from srcdoc HTML (all images present regardless of scroll)
-    const imgMatches = [...srcdoc.matchAll(/<img[^>]+src=["']([^"']+)["']/gi)];
-    for (const match of imgMatches) {
-      const src = match[1];
-      if (src && src.startsWith('http') && !src.includes('logo')) return true;
-    }
-    return false;
+    return [...srcdoc.matchAll(/<img[^>]*>/gi)].map((match) => {
+      const tag = match[0];
+      const src = /src=["']([^"']+)["']/i.exec(tag);
+      const alt = /alt=["']([^"']*)["']/i.exec(tag);
+      return { tag, src: src ? src[1] : '', alt: alt ? alt[1] : '' };
+    });
   }
 
   /**

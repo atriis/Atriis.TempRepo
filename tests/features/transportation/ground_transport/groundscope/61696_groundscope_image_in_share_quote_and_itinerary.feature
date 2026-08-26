@@ -14,12 +14,13 @@ Feature: 61696 GroundScope - Image is displayed in share quote and share itinera
   So that the shared transfer content is visually complete
 
   Scenario: GroundScope image is visible in quote and itinerary share previews
-    Given I am logged in as "elisabeteferreira@groundscope.com" booking a new trip
+    Given I am logged in as "elisabete@groundscope.com" booking a new trip
     And I have added myself as the traveler
     When I search for ground transport from airport "lhr" to specific address "emirates"
-    And I wait for add to trip text to be visible
     And I add the first result to trip
+    And the booking status should be "Pending booking"
     When I click the share quote button
     Then the share quote preview should contain a ground transport image
+    And I close the share dialog
     When I click the share itinerary button
     Then the share itinerary preview should contain a ground transport image
