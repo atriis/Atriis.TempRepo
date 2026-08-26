@@ -14,11 +14,12 @@ Feature: 65439 LCC - Booking successful with mandatory reference field
   Scenario: LCC booking succeeds when mandatory reference field is filled
     Given I am logged in as "shawg@fusionmandatoryref.com" booking a new trip
     And I have added myself as the traveler
-    When I search for a one way flight from "LIS" to "NCE"
+    When I search for a one way flight from "LON" to "MAD"
     And I add the first flight to cart
-    Then the booking status should be "Pending booking"
+    And the booking status should be "Pending booking"
     And I fill credit card cvv if needed
     And I proceed to checkout
+    And I wait for booking details in checkout
     And I fill in the "lcc only" reference field with "lcc only mandatory"
-    And I complete the Fusion credit card verification booking
+    And I complete the booking with Fusion credit card verification
     Then the quote destination should contain "Flight to"
