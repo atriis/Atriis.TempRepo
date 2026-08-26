@@ -80,15 +80,24 @@ jobs:
       # trip/cart state. Serial costs ~12 min, which is well inside the step timeout.
       # Raise it only after giving the suite per-worker users.
       #
-      # NOT included: ground_transport/groundscope/ (6 more scenarios) is still
-      # absent from the nightly. Adding it needs its own check first — one of its
-      # features is named 71037_[ground_transportation]_...feature, and those square
-      # brackets read as a glob char-class, so a *.feature glob there silently
-      # matches nothing and reports success with 0 scenarios.
+      # Groundscope joins as one suite of 4 scenarios. Unlike transferz/parking it
+      # DOES still hold a subfolder — groundscope_blocked/, deliberately not run —
+      # so this one globs *.feature at the folder root instead of passing the
+      # folder, which would recurse into it. The old warning about square brackets
+      # in a filename no longer applies here: the one offending feature
+      # (71037_[ground_transportation]_...) sits inside groundscope_blocked/, so the
+      # root glob has no char-class to trip over (verified by --dry-run: 4
+      # scenarios, 58 steps, nothing undefined).
+      #
+      # parallel 1, for the same reason as transferz: three of the four scenarios
+      # log in as the SAME user (elisabete@groundscope.com) and one of those is a
+      # @full_purchase, so concurrent workers would race on that user trip/cart
+      # state.
       expected-suites: >-
         cars-amadeus cars-galileo cars-general
         cars-sabre cars-sunny-cars rails-amtrak rails-benerail rails-evolvi
-        rails-deutsche-bahn rails-distribusion ground-transport-transferz parking
+        rails-deutsche-bahn rails-distribusion ground-transport-transferz
+        ground-transport-groundscope parking
       matrix: |
         {
           "include": [
@@ -103,6 +112,7 @@ jobs:
             { "suite_id": "rails-deutsche-bahn", "suite_name": "Rails Deutsche Bahn", "test_path": "tests/features/transportation/rails/deutsche_bahn/*.feature",                                     "parallel": 2, "retry": 3, "job_timeout_minutes": 45,  "step_timeout_minutes": 40 },
             { "suite_id": "rails-distribusion",  "suite_name": "Rails Distribusion",  "test_path": "tests/features/transportation/rails/distribusion/*.feature",                                      "parallel": 1, "retry": 3, "job_timeout_minutes": 45,  "step_timeout_minutes": 40 },
             { "suite_id": "ground-transport-transferz", "suite_name": "Ground Transport Transferz", "test_path": "tests/features/transportation/ground_transport/transferz/",                    "parallel": 1, "retry": 3, "job_timeout_minutes": 60,  "step_timeout_minutes": 55 },
+            { "suite_id": "ground-transport-groundscope", "suite_name": "Ground Transport Groundscope", "test_path": "tests/features/transportation/ground_transport/groundscope/*.feature",  "parallel": 1, "retry": 3, "job_timeout_minutes": 60,  "step_timeout_minutes": 55 },
             { "suite_id": "parking",         "suite_name": "Parking",         "test_path": "tests/features/transportation/parking/",                                                                  "parallel": 2, "retry": 3, "job_timeout_minutes": 45,  "step_timeout_minutes": 40 }
           ]
         }
