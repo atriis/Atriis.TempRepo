@@ -14,14 +14,13 @@ Feature: 47716 Iberia - Validate random CVV for IB/BA and invoice
   I want CVV to be required only for credit cards without random CVV configured
   So that invoice and random-CVV cards do not prompt for CVV unnecessarily
 
-  #BLOCKED - no results, could not test the entire scenario 
   Scenario: CVV requirement varies by FOP type for IB NDC booking
     Given I am logged in as "cvv@ib.com" booking a new trip
     And I have added myself as the traveler
     When I search for a one way flight from "MAD" to "LON"
     And I add the first flight to cart
-    Then the booking status should be "Pending booking"
-    Then the payment type should be "Paid by TMC"
+    And the booking status should be "Pending booking"
+    And the payment type should be "Paid by TMC"
     Then the CVV field should not be displayed
     When I click to edit the card
     And I select card 2 and save
@@ -29,4 +28,4 @@ Feature: 47716 Iberia - Validate random CVV for IB/BA and invoice
     Then the CVV field should not be displayed
     When I click to edit the card
     And I select card 3 and save
-    And I fill CVV with "123"
+    Then I fill CVV with "123"

@@ -92,8 +92,11 @@ Then("the last {int} digits of the credit card {string} should be displayed in t
   await CartPayment.verifyLastFourDigitsOfCreditCard(this.page, last4);
 });
 
+// Asserts the CVV field is actually required before typing — unlike
+// "I fill credit card cvv if needed", which no-ops when CVV is absent.
 When("I fill CVV with {string}", async function (cvv) {
-  throw new Error(`TODO: implement 'I fill CVV with {string}' — type CVV value ${cvv} in CVV input`);
+  logger.info("Filling CVV with an explicit value", { cvv });
+  await CartPayment.fillCreditCardCVV(this.page, cvv);
 });
 
 Then("CVV should display {string}", async function (cvv) {
