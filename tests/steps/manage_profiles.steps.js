@@ -3,25 +3,12 @@ const { When, Then } = require("@cucumber/cucumber");
 const { ManageProfiles } = require("@dsl");
 const logger = require("@utils/logger").child("ManageProfiles");
 
-// The only header-menu entry these steps drive. "My profile" has its own step
-// ("I navigate to my user profile"), which opens the menu and clicks through in one go.
-const MANAGE_PROFILES_MENU_LABEL = "Manage profiles";
-
 // --- Opening the Manage profiles list ---
-
-When("I open {string} from the profile menu", async function (menuItem) {
-  if (menuItem !== MANAGE_PROFILES_MENU_LABEL) {
-    throw new Error(
-      `No step implementation for the "${menuItem}" profile-menu entry. This step drives ` +
-      `"${MANAGE_PROFILES_MENU_LABEL}" only — "My profile" is covered by "I navigate to my user profile".`,
-    );
-  }
-
-  logger.info(`Opening "${menuItem}" from the header profile menu`);
-  // Opens in a new tab (app-profile-menu.ts openInNewTab) — adopt it as the active page so
-  // every later step in the scenario runs against the Manage profiles list.
-  this.page = await ManageProfiles.openFromProfileMenu(this.page);
-});
+//
+// "I open {string} from the profile menu" lives in profile.steps.js, which owns the header dropdown
+// for every entry it offers. Declaring the same pattern here as well would make the step ambiguous
+// for every scenario. The list render this page's assertions need is waited out by
+// verifyListDisplayed below, not by the step that opened the tab.
 
 Then("the Manage profiles list should be displayed", async function () {
   logger.info("Verifying the Manage profiles list is displayed");

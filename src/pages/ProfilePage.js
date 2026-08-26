@@ -1,5 +1,8 @@
 const { expect } = require("@playwright/test");
 const { EL_SELECT_DISABLED_INNER } = require("@utils/elementPlus");
+// The header dropdown's Log out button is owned by MenuPage (App.clickLogout clicks it there).
+// Imported rather than redeclared so the two never drift apart.
+const { SELECTORS: MENU_SELECTORS } = require("@pages/MenuPage");
 
 const SELECTORS = {
   // Navigation to profile.
@@ -15,9 +18,19 @@ const SELECTORS = {
   MY_PROFILE_MENU_ITEM: '[data-testid="profile-menu.my-profile"], .profile-menu-item.my-profile-item',
   // Sibling of "My profile" in the same dropdown, but rendered only when the logged-in user
   // holds "Can view profile of other users" AND the manage-profiles feature flag is on
-  // (app-profile-menu.ts: canManageProfiles). Absent for everyone else, by design.
+  // (app-profile-menu.ts: canManageProfiles). It sits behind a v-if, so for everyone else the
+  // node is absent from the DOM entirely rather than merely hidden - which is what the
+  // absence assertion in 83407 leans on.
   MANAGE_PROFILES_MENU_ITEM:
     '[data-testid="profile-menu.manage-profiles"], .profile-menu-item.manage-profiles-item',
+
+  // The dropdown itself. el-tooltip teleports its #content into a .el-popper carrying the
+  // component's popper-class, so the panel is NOT a descendant of .app-profile-menu and cannot be
+  // reached from the trigger. Scoping every option lookup to this panel is what makes the ABSENCE
+  // assertion mean something: an unscoped "Manage profiles is not visible" check passes just as
+  // happily against a menu that never opened.
+  PROFILE_MENU_CONTENT: '.el-popper.profile-menu-tooltip:not([aria-hidden="true"]) .profile-menu-content',
+  // "Log out" is deliberately absent here — see MENU_SELECTORS.LOGOUT_ICON above.
 
   // Profile tabs
   FREQUENT_PROGRAMS_TAB: '#tab-frequentPrograms',
@@ -280,35 +293,110 @@ class ProfilePage {
   }
 
   /**
-   * Clicks "Manage profiles" inside the open profile dropdown. Opens the list in a new tab.
+   * Waits for the profile dropdown panel to be on screen after the trigger was clicked.
    *
-   * A missing entry is reported as a privilege/flag problem rather than a generic timeout:
-   * app-profile-menu.vue only renders it behind `v-if="canManageProfiles"`.
+   * Separate from openProfileMenu so a caller that asserts on the menu's CONTENTS can prove the
+   * panel is genuinely open first — otherwise "Manage profiles is not visible" is indistinguishable
+   * from "the menu never opened".
    */
-  async clickManageProfiles() {
-    const item = this.page.locator(SELECTORS.MANAGE_PROFILES_MENU_ITEM).first();
+  async waitForProfileMenuOpen(timeout = 10000) {
+    const panel = this.page.locator(SELECTORS.PROFILE_MENU_CONTENT).first();
     try {
-      await item.waitFor({ state: 'visible', timeout: 10000 });
-      await item.click({ timeout: 10000 });
+      await panel.waitFor({ state: 'visible', timeout });
     } catch (err) {
       throw new Error(
-        `[ProfilePage.clickManageProfiles] Could not click "Manage profiles" (selector: ${SELECTORS.MANAGE_PROFILES_MENU_ITEM}). ` +
-        `The dropdown may not have opened (it is revealed by CLICKING the avatar trigger, not hovering it), ` +
-        `or the entry is not rendered for this user — it is gated on the "Can view profile of other users" ` +
-        `privilege and the manage-profiles feature flag. Original: ${err.message}`
+        `[ProfilePage.waitForProfileMenuOpen] The profile dropdown did not open (selector: ${SELECTORS.PROFILE_MENU_CONTENT}). ` +
+        `el-tooltip teleports the panel into a .el-popper on click — the avatar trigger may not have been clicked, ` +
+        `or a cookie-consent overlay swallowed the click. Original: ${err.message}`
       );
     }
   }
 
   /**
-   * Reports whether "Manage profiles" is offered in the currently open profile dropdown.
-   * Lets a privilege-negative scenario assert its absence without paying a full timeout.
+   * Locator for one option inside the OPEN profile dropdown, by the label the user reads.
    *
-   * @returns {Promise<boolean>}
+   * Scoped to the open panel on purpose — see SELECTORS.PROFILE_MENU_CONTENT.
+   *
+   * @param {string} optionName - "My profile" | "Manage profiles" | "Log out"
    */
-  async isManageProfilesMenuItemVisible() {
-    const item = this.page.locator(SELECTORS.MANAGE_PROFILES_MENU_ITEM).first();
-    return (await item.count()) > 0 && (await item.isVisible());
+  profileMenuOptionLocator(optionName) {
+    const byLabel = {
+      'My profile': SELECTORS.MY_PROFILE_MENU_ITEM,
+      'Manage profiles': SELECTORS.MANAGE_PROFILES_MENU_ITEM,
+      'Log out': MENU_SELECTORS.LOGOUT_ICON,
+    };
+    const selector = byLabel[optionName];
+    if (!selector) {
+      throw new Error(
+        `[ProfilePage.profileMenuOptionLocator] Unknown profile menu option "${optionName}". ` +
+        `app-profile-menu.vue renders only: ${Object.keys(byLabel).map((k) => `"${k}"`).join(', ')}.`
+      );
+    }
+    return this.page.locator(SELECTORS.PROFILE_MENU_CONTENT).first().locator(selector);
+  }
+
+  /**
+   * Whether an option is present in the open profile dropdown.
+   *
+   * The dropdown must already be open — call waitForProfileMenuOpen first. Returns false for an
+   * option the user's privileges strip out (v-if, so the node is absent, not hidden).
+   *
+   * @param {string} optionName - "My profile" | "Manage profiles" | "Log out"
+   */
+  async isProfileMenuOptionVisible(optionName, timeout = 3000) {
+    const option = this.profileMenuOptionLocator(optionName).first();
+    try {
+      await option.waitFor({ state: 'visible', timeout });
+      return true;
+    } catch (err) {
+      // A privilege-gated entry is removed by v-if, so zero matches IS the expected negative.
+      // Anything else the waitFor can reject with — a closed page or context, a broken selector —
+      // is a real fault, and reporting it as "the option is not there" would turn it into a
+      // passing absence assertion. Let those through instead.
+      //
+      // count() is itself guarded: on a closed page or context it throws too, and letting that
+      // replace `err` would bury the original failure behind a less informative one.
+      let matches;
+      try {
+        matches = await option.count();
+      } catch {
+        throw err;
+      }
+
+      if (matches === 0) {
+        return false;
+      }
+
+      throw new Error(
+        `[ProfilePage.isProfileMenuOptionVisible] "${optionName}" is present in the DOM but never became ` +
+        `visible within ${timeout}ms, so its presence could not be decided. Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Clicks an option inside the ALREADY-OPEN profile dropdown.
+   *
+   * Deliberately does not click the avatar trigger first, unlike clickMyProfile's usual caller
+   * Profile.navigateToProfile: el-tooltip's trigger="click" TOGGLES, so re-clicking it here would
+   * shut the menu the assertion just inspected.
+   *
+   * @param {string} optionName - "My profile" | "Manage profiles" | "Log out"
+   */
+  async clickProfileMenuOption(optionName) {
+    const option = this.profileMenuOptionLocator(optionName).first();
+    try {
+      await option.waitFor({ state: 'visible', timeout: 10000 });
+      await option.click({ timeout: 10000 });
+    } catch (err) {
+      throw new Error(
+        `[ProfilePage.clickProfileMenuOption] Could not click "${optionName}" inside the open profile dropdown ` +
+        `(panel: ${SELECTORS.PROFILE_MENU_CONTENT}). ` +
+        `The dropdown may have closed, or the entry is not rendered for this user — "Manage profiles" in ` +
+        `particular is gated on the "Can view profile of other users" privilege AND the manage-profiles ` +
+        `feature flag (app-profile-menu.ts: canManageProfiles). Original: ${err.message}`
+      );
+    }
   }
 
   // --- Tabs ---

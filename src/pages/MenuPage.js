@@ -22,7 +22,10 @@ const SELECTORS = {
   // Log out button. Previously a standalone header icon (`.logout-icon`); app v2.13 moved it into a
   // dropdown revealed by clicking AVATAR_TRIGGER (profile-menu.vue renders it as a
   // `.profile-menu-item.logout-item` button, teleported into an `.el-popper` on click/open).
-  LOGOUT_ICON: ".profile-menu-item.logout-item",
+  // Leads with the component's data-testid, keeping the class as a fallback for deployments that
+  // predate it. Single source of truth for this button: ProfilePage reads it from here for the
+  // profile-menu option assertions instead of holding a second copy.
+  LOGOUT_ICON: "[data-testid=\"profile-menu.logout\"], .profile-menu-item.logout-item",
   TRIPS_ICON: "a[href=\"/trips\"]",
   // Language switcher (app-header.vue): the globe icon reveals a hover tooltip
   // listing each enabled language as a ".language-item" row labelled by name.
@@ -188,4 +191,4 @@ class MenuPage {
   }
 }
 
-module.exports = MenuPage;
+module.exports = { MenuPage, SELECTORS };

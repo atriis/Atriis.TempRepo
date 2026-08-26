@@ -1,6 +1,6 @@
 const { getPageObject } = require("@utils/pageObjectCache");
 const { expect } = require("@playwright/test");
-const MenuPage = require("@pages/MenuPage");
+const { MenuPage } = require("@pages/MenuPage");
 const TripsPage = require("@pages/TripsPage");
 const LoginPage = require("@pages/LoginPage");
 const logger = require("@utils/logger").child("Trips");

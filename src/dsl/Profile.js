@@ -84,22 +84,180 @@ const Profile = {
    *
    * navigateToProfile above opens the same menu, but immediately commits to "My profile".
    * This is the standalone half, for scenarios that go on to pick a different entry (e.g.
-   * the permission-gated "Manage profiles") or that assert on what the menu offers.
+   * the permission-gated "Manage profiles") or that assert on what the menu offers. The
+   * latter has to inspect the panel BEFORE anything closes it - app-profile-menu.ts calls
+   * closeMenu() on every entry it renders, so navigateToProfile's open-and-immediately-click
+   * flow gives no window to look inside.
+   *
+   * @param {import("playwright").Page} page
+   * @returns {Promise<{ opened: true }>}
    */
   async openProfileMenu(page) {
     if (!page) {
       throw new Error('[Profile.openProfileMenu] "page" is required.');
     }
 
+    logger.debug("[Profile.openProfileMenu] Clicking the header avatar to open the profile dropdown");
+
     const profilePage = getPageObject(page, ProfilePage);
     const loginPage = getPageObject(page, LoginPage);
 
-    // The consent banner can overlay the avatar — same guard navigateToProfile applies.
+    // Cookie consent banner can overlay the avatar — same guard navigateToProfile uses.
     await loginPage.acceptCookiesIfPresent(8000);
 
-    logger.debug("[Profile.openProfileMenu] Clicking the header avatar to open the profile dropdown");
     await profilePage.openProfileMenu();
-    logger.info("[Profile.openProfileMenu] Profile dropdown opened");
+    await profilePage.waitForProfileMenuOpen();
+
+    logger.info("[Profile.openProfileMenu] Profile dropdown is open");
+    return { opened: true };
+  },
+
+  /**
+   * Asserts an option IS listed in the open profile dropdown.
+   *
+   * @param {import("playwright").Page} page
+   * @param {string} optionName - "My profile" | "Manage profiles" | "Log out"
+   * @returns {Promise<{ optionName: string, visible: true }>}
+   */
+  async verifyProfileMenuOptionVisible(page, optionName) {
+    if (!page) {
+      throw new Error('[Profile.verifyProfileMenuOptionVisible] "page" is required.');
+    }
+    if (typeof optionName !== "string" || !optionName) {
+      throw new Error(
+        "[Profile.verifyProfileMenuOptionVisible] \"optionName\" must be a non-empty string, got: " +
+        `${typeof optionName} (${JSON.stringify(optionName)})`
+      );
+    }
+
+    const profilePage = getPageObject(page, ProfilePage);
+
+    // Proves the panel is open before reading it, so a passing assertion cannot be the side effect
+    // of a menu that never rendered.
+    await profilePage.waitForProfileMenuOpen();
+    const visible = await profilePage.isProfileMenuOptionVisible(optionName);
+
+    if (!visible) {
+      throw new Error(
+        `[Profile.verifyProfileMenuOptionVisible] "${optionName}" is not listed in the open profile dropdown, ` +
+        "but every user should see it. Check app-profile-menu.vue still renders that entry unconditionally."
+      );
+    }
+
+    logger.info(`[Profile.verifyProfileMenuOptionVisible] "${optionName}" is listed in the profile dropdown`);
+    return { optionName, visible: true };
+  },
+
+  /**
+   * Asserts an option is NOT listed in the open profile dropdown.
+   *
+   * This is the privilege gate under test for "Manage profiles": app-profile-menu.ts computes
+   * canManageProfiles as isManageProfilesEnabled && canManageOtherProfiles(permissions), and the
+   * entry is behind a v-if, so a user without the privilege has no such node at all.
+   *
+   * @param {import("playwright").Page} page
+   * @param {string} optionName - "My profile" | "Manage profiles" | "Log out"
+   * @returns {Promise<{ optionName: string, visible: false }>}
+   */
+  async verifyProfileMenuOptionNotVisible(page, optionName) {
+    if (!page) {
+      throw new Error('[Profile.verifyProfileMenuOptionNotVisible] "page" is required.');
+    }
+    if (typeof optionName !== "string" || !optionName) {
+      throw new Error(
+        "[Profile.verifyProfileMenuOptionNotVisible] \"optionName\" must be a non-empty string, got: " +
+        `${typeof optionName} (${JSON.stringify(optionName)})`
+      );
+    }
+
+    const profilePage = getPageObject(page, ProfilePage);
+
+    // Without this the assertion would also pass against a dropdown that failed to open, which
+    // would prove nothing about the privilege.
+    await profilePage.waitForProfileMenuOpen();
+    const visible = await profilePage.isProfileMenuOptionVisible(optionName);
+
+    if (visible) {
+      throw new Error(
+        `[Profile.verifyProfileMenuOptionNotVisible] "${optionName}" IS listed in the profile dropdown, but this ` +
+        `user does not hold the privilege that unlocks it — another user's profile is reachable when it should ` +
+        "not be. Confirm the account's privileges and that the Manage-profiles feature flag is on (an entry " +
+        "hidden by the flag being off would hide it for a privileged user too, which is a different defect)."
+      );
+    }
+
+    logger.info(`[Profile.verifyProfileMenuOptionNotVisible] "${optionName}" is correctly absent from the profile dropdown`);
+    return { optionName, visible: false };
+  },
+
+  /**
+   * Clicks an entry in the ALREADY-OPEN profile dropdown that opens a new tab, and returns that tab.
+   *
+   * Every entry that navigates ("My profile", "Manage profiles") goes through app-profile-menu.ts's
+   * openInNewTab helper (utilService.openNewWindow), so this is the single owner of the
+   * click-then-adopt-the-tab workflow for all of them. openInNewTab navigates IN PLACE on mobile
+   * viewports, hence the same-tab fallback — the same one navigateToProfile applies.
+   *
+   * @param {import("playwright").Page} page
+   * @param {string} optionName - "My profile" | "Manage profiles"
+   * @param {object} [options]
+   * @param {boolean} [options.requireNewTab=false] Fail instead of falling back to the current tab.
+   *   For a desktop-viewport scenario the fallback can only mask a swallowed click or a blocked
+   *   popup, and returning the ORIGINAL page makes the next step fail somewhere less obvious.
+   * @returns {Promise<import("playwright").Page>} The page showing the opened destination.
+   */
+  async openProfileMenuOptionInNewTab(page, optionName, { requireNewTab = false } = {}) {
+    if (!page) {
+      throw new Error('[Profile.openProfileMenuOptionInNewTab] "page" is required.');
+    }
+    if (typeof optionName !== "string" || !optionName) {
+      throw new Error(
+        "[Profile.openProfileMenuOptionInNewTab] \"optionName\" must be a non-empty string, got: " +
+        `${typeof optionName} (${JSON.stringify(optionName)})`
+      );
+    }
+
+    const profilePage = getPageObject(page, ProfilePage);
+    const context = page.context();
+
+    if (!context) {
+      throw new Error("[Profile.openProfileMenuOptionInNewTab] Page context is null — cannot detect the new tab.");
+    }
+
+    logger.debug(`[Profile.openProfileMenuOptionInNewTab] Clicking "${optionName}" in the open profile dropdown`);
+
+    // Subscribe before clicking: the tab can open faster than the click call resolves.
+    const newPagePromise = context.waitForEvent("page", { timeout: 20000 }).catch(() => null);
+
+    try {
+      await profilePage.clickProfileMenuOption(optionName);
+    } catch (err) {
+      throw new Error(
+        `[Profile.openProfileMenuOptionInNewTab] Failed to open "${optionName}" from the profile dropdown: ${err.message}`
+      );
+    }
+
+    const newTab = await newPagePromise;
+
+    if (newTab) {
+      await newTab.waitForLoadState("domcontentloaded", { timeout: 30000 });
+      await newTab.bringToFront().catch(() => {});
+      logger.info(`[Profile.openProfileMenuOptionInNewTab] "${optionName}" opened in a new tab`);
+      return newTab;
+    }
+
+    if (requireNewTab) {
+      throw new Error(
+        `[Profile.openProfileMenuOptionInNewTab] Clicking "${optionName}" opened no new tab within 20s. ` +
+        "app-profile-menu.ts routes this entry through openInNewTab, so a new tab is expected at a desktop " +
+        "viewport. The click may have been swallowed by the tooltip closing, or the browser context blocked " +
+        "the popup."
+      );
+    }
+
+    logger.info(`[Profile.openProfileMenuOptionInNewTab] "${optionName}" opened in the current tab (no new tab detected)`);
+    await page.waitForLoadState("domcontentloaded", { timeout: 30000 });
+    return page;
   },
 
   /**

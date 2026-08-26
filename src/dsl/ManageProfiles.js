@@ -6,7 +6,12 @@ const logger = require("@utils/logger").child("ManageProfiles");
 
 // The counter reads "Showing <shown> of <total> profile(s)" — the numbers are data-dependent,
 // so the shape is what is asserted, not a literal string.
-const PROFILES_COUNT_PATTERN = /\b\d+\b.*\b\d+\b.*profiles?/i;
+//
+// Deliberately boundary-free: the counter is built from separate spans, and whether the rendered
+// text carries whitespace between them varies by environment ("Showing 5 of 5 Profiles" on staging,
+// "Showing 5of5Profiles" on dev). \b\d+\b matches neither digit in the unspaced form, so the
+// old boundary-anchored pattern failed against a list that had rendered perfectly well.
+const PROFILES_COUNT_PATTERN = /\d+\D+\d+\D*profiles?/i;
 
 // el-tab-pane name of the tab manage-profiles' dialog lands on. user-profile.vue defaults to
 // the personal details pane, and ProfilePage recovers the name from the header's `tab-<name>` id.
@@ -24,53 +29,6 @@ const PERSONAL_DETAILS_TAB_NAME = "personalDetails";
  * assert on, just titled with the selected row's name).
  */
 const ManageProfiles = {
-  /**
-   * Clicks "Manage profiles" in the already-open header profile dropdown.
-   *
-   * app-profile-menu.ts routes this entry through openInNewTab, so the list lands in a NEW
-   * tab. The new page handle is returned and the caller must adopt it as the active page —
-   * every later step runs against the list, not against the tab the menu was clicked in.
-   *
-   * @param {import("@playwright/test").Page} page The tab holding the open profile dropdown.
-   * @returns {Promise<import("@playwright/test").Page>} The tab the Manage profiles list opened in.
-   */
-  async openFromProfileMenu(page) {
-    if (!page) throw new Error("[ManageProfiles.openFromProfileMenu] \"page\" is required.");
-
-    const profilePage = getPageObject(page, ProfilePage);
-    const context = page.context();
-
-    if (!context) {
-      throw new Error("[ManageProfiles.openFromProfileMenu] Page context is null — cannot detect the new tab.");
-    }
-
-    logger.debug("[ManageProfiles.openFromProfileMenu] Clicking \"Manage profiles\" in the profile dropdown");
-
-    // Subscribe before clicking: the tab can open faster than the click call resolves.
-    const newPagePromise = context.waitForEvent("page", { timeout: 20000 }).catch(() => null);
-
-    await profilePage.clickManageProfiles();
-
-    const newTab = await newPagePromise;
-
-    if (!newTab) {
-      throw new Error(
-        "[ManageProfiles.openFromProfileMenu] Clicking \"Manage profiles\" opened no new tab within 20s. " +
-        "app-profile-menu.ts opens this entry with openInNewTab, so a new tab is expected. The click may " +
-        "have been swallowed by the tooltip closing, or the browser context blocked the popup.",
-      );
-    }
-
-    await newTab.waitForLoadState("domcontentloaded", { timeout: 30000 });
-    await newTab.bringToFront().catch(() => {});
-
-    const manageProfilesPage = getPageObject(newTab, ManageProfilesPage);
-    await manageProfilesPage.waitForList();
-
-    logger.info("[ManageProfiles.openFromProfileMenu] Manage profiles list opened in a new tab");
-    return newTab;
-  },
-
   /**
    * Asserts the Manage profiles list has fully rendered: heading, the "Showing X of Y profiles"
    * counter, the search box, the three desktop columns, and at least one profile row.

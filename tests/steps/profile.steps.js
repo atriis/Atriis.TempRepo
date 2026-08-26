@@ -12,10 +12,36 @@ When("I navigate to my user profile", async function () {
   this.page = profilePage;
 });
 
+// --- Header profile menu steps ---
+
+// Unlike "I navigate to my user profile", this stops with the dropdown OPEN so the following
+// Then steps can read what the user's privileges actually put in it.
 When("I click my user initials in the header", async function () {
-  logger.info("Opening the header profile dropdown from the avatar");
-  // Leaves the dropdown open — the entry to pick is chosen by the following step.
+  logger.info("Opening the header profile menu from the user initials");
   await Profile.openProfileMenu(this.page);
+});
+
+Then("the {string} option should be displayed in the profile menu", async function (optionName) {
+  logger.info("Verifying the profile menu option is displayed", { optionName });
+  await Profile.verifyProfileMenuOptionVisible(this.page, optionName);
+});
+
+Then("the {string} option should not be displayed in the profile menu", async function (optionName) {
+  logger.info("Verifying the profile menu option is not displayed", { optionName });
+  await Profile.verifyProfileMenuOptionNotVisible(this.page, optionName);
+});
+
+// Clicks the entry in the already-open dropdown - re-clicking the avatar trigger (as
+// "I navigate to my user profile" does) would toggle the menu shut. Opens a new tab, so the
+// active page reference moves with it.
+//
+// Single owner of this phrase for every menu entry, "Manage profiles" included: two definitions
+// of the same pattern would make the step ambiguous for every scenario in the suite.
+When("I open {string} from the profile menu", async function (optionName) {
+  logger.info("Opening an option from the already-open profile menu", { optionName });
+  // requireNewTab: these scenarios all run at a desktop viewport, where openInNewTab always opens
+  // one. Falling back to the current page there would only hide a swallowed click.
+  this.page = await Profile.openProfileMenuOptionInNewTab(this.page, optionName, { requireNewTab: true });
 });
 
 When("I open the frequent programs tab in my profile", async function () {
