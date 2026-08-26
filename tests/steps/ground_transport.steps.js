@@ -122,6 +122,11 @@ When("I remove the ground transport vehicle filter {string}", async function (ve
   await GroundTransportResults.removeVehicleTypeFilter(this.page, vehicleType);
 });
 
+When("I navigate back to ground transport search via breadcrumb", async function () {
+  logger.info("Navigating back to ground transport search via breadcrumb");
+  await GroundTransportResults.navigateBackToSearchViaBreadcrumb(this.page);
+});
+
 When("I extract the ground transport total price", async function () {
   logger.info("Extracting the ground transport total price from the cart");
   this.groundTransportTotalPrice = await Cart.extractCartTotalPrice(this.page);

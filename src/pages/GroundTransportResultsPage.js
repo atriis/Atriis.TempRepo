@@ -50,6 +50,14 @@ const SELECTORS = {
   // Desktop "Add to trip" button (ground-transport-preview.vue:155-157) — app-btn.vue:2 renders a
   // `button.btn` carrying the classes passed to the component.
   ADD_TO_TRIP_BUTTON: 'button.add-btn.desktop-btn',
+  // Root of the ground transport results view (ground-transport-results.vue:2). Unique to that view
+  // in Atriis.App, so it doubles as the "still on the results page" signal after a breadcrumb click.
+  RESULTS_CONTAINER: '.ground-transport-results',
+  // First (and only) link in the results breadcrumb (ground-transport-results.vue:18-25) — the
+  // router-link back to the trip index for the ground transport product, labelled $t('btn.search').
+  // Container-scoped because the trip bar renders its own breadcrumb; the whole block sits behind
+  // `v-if="!isLoading"`, so waiting for it doubles as a results-ready gate.
+  RESULTS_BREADCRUMB_SEARCH_LINK: '.ground-transport-results .breadcrumbs a',
 };
 
 class GroundTransportResultsPage {
@@ -245,6 +253,39 @@ class GroundTransportResultsPage {
     }
 
     return texts;
+  }
+
+  /**
+   * Clicks the "Search" link in the ground transport results breadcrumb to navigate back to the
+   * trip search page. The search form keeps the criteria that were already submitted, so the caller
+   * can change the travelers and re-submit the same search.
+   *
+   * The breadcrumb only renders once loading has finished (`v-if="!isLoading"` in
+   * ground-transport-results.vue), so waiting for it doubles as a results-ready gate.
+   *
+   * @param {number} [timeout=30000] - Max wait time in ms
+   * @throws {Error} If the link never becomes clickable, or the run never leaves the results view
+   * @returns {Promise<void>}
+   */
+  async clickBreadcrumbSearchLink(timeout = 30000) {
+    const link = this.page.locator(SELECTORS.RESULTS_BREADCRUMB_SEARCH_LINK).first();
+
+    try {
+      await link.waitFor({ state: 'visible', timeout });
+      await link.click();
+      // Confirm the router actually left the results route rather than trusting the click: the
+      // search form and the results list are distinct views, so the results container
+      // disappearing is the only reliable signal that the navigation happened.
+      await this.page.locator(SELECTORS.RESULTS_CONTAINER).waitFor({ state: 'hidden', timeout });
+    } catch (err) {
+      throw new Error(
+        `[GroundTransportResultsPage.clickBreadcrumbSearchLink] Could not navigate back via the ` +
+        `"Search" link in the ground transport results breadcrumb (selector: ` +
+        `"${SELECTORS.RESULTS_BREADCRUMB_SEARCH_LINK}"). Likely causes: the results page is still ` +
+        `loading (the breadcrumb is hidden while isLoading), or the run is not on the ground ` +
+        `transport results page at all. Original: ${err.message}`
+      );
+    }
   }
 }
 

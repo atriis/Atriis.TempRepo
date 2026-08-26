@@ -35,6 +35,19 @@ const SELECTORS = {
   // because the "Pick-up Date" placeholder is shared with the car search form, so an unscoped
   // lookup can resolve to another product's field.
   PICKUP_DATE_INPUT: ".ground-transport-search .details-container .app-datepicker input",
+  // ---- Pick-up / drop-off LOCATION autocompletes on the ground transport search form ----
+  // Scoped to the tab's own .ground-transport-search root (groundService-search-inputs.vue:2) and
+  // filtered to the visible copy, for the same reason as PICKUP_DATE_INPUT above and then some:
+  // SEARCH_SELECTORS.PICK_UP_PLACEHOLDER is a SUBSTRING match, so `input[placeholder*='Pick-up']`
+  // also matches a "Pick-up Date" field — including the CAR form's, which el-tabs keeps mounted but
+  // hidden behind the active tab. For a user whose corporation shows a Car tab, that hidden readonly
+  // date combobox precedes this input in DOM order and wins `.first()`, so the fill times out on an
+  // element that can never accept text (test 63833, user testim@groundscoupe.am). Users without a
+  // Car tab never hit it, which is why an unscoped lookup appeared to work.
+  PICKUP_LOCATION_INPUT:
+    `.ground-transport-search ${SEARCH_SELECTORS.PICK_UP_PLACEHOLDER}:not([placeholder='Pick-up Date']):visible`,
+  DROPOFF_LOCATION_INPUT:
+    `.ground-transport-search ${SEARCH_SELECTORS.DROP_OFF_PLACEHOLDER}:visible`,
   PICKUP_TIME_INPUT: ".ground-transport-search .details-container input.app-timepicker-input",
   // app-timepicker teleports its el-dropdown to <body> with this popper class.
   TIME_SELECTOR_POPPER: ".time-selector-popper:visible",
@@ -202,7 +215,7 @@ class GroundTransportSearchPage {
    */
   async fillInPickUpField(from) {
     const pickUpInput = this.page
-      .locator(SEARCH_SELECTORS.PICK_UP_PLACEHOLDER)
+      .locator(SELECTORS.PICKUP_LOCATION_INPUT)
       .first();
 
     await pickUpInput.fill(from);
@@ -225,7 +238,7 @@ class GroundTransportSearchPage {
    */
   async fillInDropOffField(to) {
     const dropOffInput = this.page
-      .locator(SEARCH_SELECTORS.DROP_OFF_PLACEHOLDER)
+      .locator(SELECTORS.DROPOFF_LOCATION_INPUT)
       .first();
 
     await dropOffInput.fill(to);
@@ -247,6 +260,34 @@ class GroundTransportSearchPage {
    *
    * @returns {Promise<string>} The date input's value, trimmed
    */
+  /**
+   * Opens the pick-up date picker on the ground transport search form.
+   *
+   * Deliberately NOT SearchPage.clickPickupDateField: that one keys on the bare
+   * `[placeholder='Pick-up Date']`, which the car search form's own date input shares. el-tabs keeps
+   * that form mounted behind the active tab, so for a user whose corporation shows a Car tab the
+   * unscoped lookup resolves to TWO elements and clicks the hidden one — 30s of retries on an
+   * element that will never be visible (test 63833, user testim@groundscoupe.am). This uses the
+   * tab-scoped PICKUP_DATE_INPUT instead.
+   *
+   * @param {number} [timeout=15000] - Max wait for the field, in ms
+   * @throws {Error} If the ground transport form's date field never becomes clickable
+   */
+  async clickPickupDateField(timeout = 15000) {
+    const dateInput = this.page.locator(SELECTORS.PICKUP_DATE_INPUT).first();
+
+    try {
+      await dateInput.waitFor({ state: "visible", timeout });
+      await dateInput.click();
+    } catch (error) {
+      throw new Error(
+        "[GroundTransportSearchPage.clickPickupDateField] Could not open the pick-up date picker "
+        + `(selector: ${SELECTORS.PICKUP_DATE_INPUT}). The Ground Transport search form is probably `
+        + `not the open tab. Original: ${error.message}`,
+      );
+    }
+  }
+
   async getPickupDateValue() {
     const dateInput = this.page.locator(SELECTORS.PICKUP_DATE_INPUT).first();
 

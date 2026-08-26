@@ -175,6 +175,32 @@ Then("I remove myself as the traveler", async function () {
   expect(result.removed, "Traveler should be removed").toBe(true);
 });
 
+// Clears the whole traveler list, unlike the step above which removes the first tag only. The
+// removed count is asserted rather than logged: a no-op would leave the previous traveler on the
+// trip, and the next search would then quietly re-run under the wrong traveler.
+When("I remove all travelers", async function () {
+  logger.info("Removing every traveler from the trip");
+  const { removed } = await Search.removeAllTravelers(this.page);
+  expect(
+    removed,
+    "At least one traveler should have been removed — the trip already had no travelers, so the " +
+    "step could not have cleared the one the next search is meant to replace"
+  ).toBeGreaterThan(0);
+  this.selectedTravelerCount = 0;
+});
+
+// Same intent as "I have added {string} as primary traveler" below, but routed through the empty
+// slot's own "Select traveller" placeholder so the emptied slot is FILLED rather than a second one
+// appended — and with the primary checkbox set idempotently, so one the app already ticked is not
+// clicked back off. Use after clearing the travelers, where a leftover empty slot would block the
+// next search. The DSL asserts primary on the traveler's own tag, so there is nothing to re-check here.
+Given("I have added {string} as primary traveler by clicking select traveller", async function (travelerName) {
+  logger.info("Adding traveler as primary through the empty traveler slot", { travelerName });
+  const result = await Search.addTravelerAsPrimaryViaSelectTravelerSlot(this.page, travelerName);
+  logger.info("Traveler added as primary", result);
+  this.selectedTravelerCount = result.selectedTravelerCount;
+});
+
 Given("I have added {string} as primary traveler", async function (travelerName) {
   logger.info("Adding traveler as primary by name", { travelerName });
   const result = await Search.addTravelerAsPrimaryByName(this.page, travelerName);

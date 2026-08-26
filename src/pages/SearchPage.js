@@ -121,6 +121,11 @@ const SELECTORS = {
   // tags inside it, so it is the one safe anchor for "the list loaded but holds no traveller".
   TRAVELERS_LIST: '.travelers-list',
   SELECTED_TRAVELER_NAME: '.trip-traveler-tag .traveler-name.black',
+  // Tag-scoped variant of the above, for asking one already-resolved tag whether it holds a named
+  // traveller. trip-traveler-tag.vue gives only the FILLED name the `black` class, so its absence is
+  // how an empty "Select traveller" placeholder is told apart from a real traveller in the staging
+  // build, which does not yet ship the placeholder's own `.select-traveler` class.
+  TRAVELER_TAG_FILLED_NAME: '.traveler-name.black',
   // trip-traveler-tag.vue renders this star ONLY under v-if="primary", so its presence inside a
   // specific traveller's tag is the one reliable proof that THAT traveller is the primary one.
   // STAR_ICON above is unscoped and only proves *some* traveller on the trip is primary.
@@ -137,7 +142,12 @@ const SELECTORS = {
   CHECKBOX_LABEL: '.edit-traveler .el-checkbox .checkbox-label',
   // Edit traveler dialog — autocomplete input for searching traveler
   EDIT_TRAVELER_NAME_FIELD: ".edit-traveler [placeholder='Search by name, user group, username or email']",
-  EDIT_TRAVELER_OPTION: '.user-autocomplete-popper li',
+  // One rendered suggestion in the edit-traveler autocomplete. The `li[id*='item-']` filter is
+  // load-bearing: el-autocomplete also renders a bare, handler-less <li> for its loading state, and
+  // that li is the FIRST child until the suggestions land — clicking it does nothing, and it
+  // detaches mid-click as the results arrive ("element was detached from the DOM", test 63833).
+  // Only real suggestions carry an id of the form `{popperId}-item-{index}`.
+  EDIT_TRAVELER_OPTION: ".user-autocomplete-popper:visible li[id*='item-']",
   // Traveler autocomplete result rows. The el-autocomplete has NO "no data" element — when a typed
   // name matches no bookable user, the popper simply renders no result rows (see user-autocomplete.vue).
   // :visible so a stale hidden popper is never matched.
@@ -476,6 +486,45 @@ class SearchPage {
   }
 
   /**
+   * Opens the edit-traveler dialog for the trip's EMPTY slot, preferring the slot's own
+   * "Select traveller" placeholder and falling back to the round "Add traveler" button.
+   *
+   * Both routes land on the same dialog for the same empty slot, but only when the trip is
+   * completely empty. trip-travelers-list.vue hides the whole tag list at `isSingleEmptyTraveler`
+   * (nobody added + one empty slot), so right after clearing every traveller there IS no
+   * placeholder to click — just the buttons — and `addEmptyTraveler` then reveals the existing
+   * empty slot rather than appending one. With a real traveller still on the trip the placeholder
+   * does render, and there the distinction matters: the round add-btn would append a SECOND slot
+   * and leave the empty one unfilled, so the placeholder must win. Hence prefer, then fall back.
+   *
+   * @param {string} [label='Select traveller'] - The placeholder's expected visible text.
+   * @param {object} [options]
+   * @param {number} [options.timeout=15000] - Max wait for the dialog to open, in ms
+   * @returns {Promise<{via: 'select-traveller-slot'|'add-traveler-button'}>} Which route was taken
+   */
+  async openEmptyTravelerSlotDialog(label = 'Select traveller', { timeout = 15000 } = {}) {
+    await this.closeVisibleEditTravelerModal();
+
+    // Probed BEFORE delegating, and after the close above: a lingering modal can hide the slot and
+    // would flip the routing decision. The click itself is left to clickSelectTravelerSlot rather
+    // than repeated here, so the slot's label check and error message live in one place.
+    const slot = this.page
+      .locator(`${SELECTORS.SELECT_TRAVELER_SLOT}:visible`)
+      .filter({ hasText: label });
+
+    if (await slot.count()) {
+      await this.clickSelectTravelerSlot(label, { timeout });
+      return { via: 'select-traveller-slot' };
+    }
+
+    // No placeholder on screen: the trip is empty, so the round add-btn opens the dialog for the
+    // slot that is already there. clickAddTravelerButton also retries a dialog that opens blank.
+    await this.clickAddTravelerButton();
+    await this.assertEditTravelerDialogVisible({ timeout });
+    return { via: 'add-traveler-button' };
+  }
+
+  /**
    * Waits for at least one empty ("Select traveller") slot to be visible in the trip header. Used
    * after raising a search form's traveller count, which is what makes the extra slot appear.
    * @param {number} timeout - Max wait time in ms (default: 15000)
@@ -590,6 +639,68 @@ class SearchPage {
     const removeButton = this.getRemoveTravelerButton();
     await removeButton.waitFor({ state: 'visible' });
     await removeButton.click();
+  }
+
+  /**
+   * Counts the visible traveller tags, split by whether they hold a traveller.
+   *
+   * A tag counts as named when it carries a filled name node; the empty slot has its own
+   * `.select-traveler` class in Atriis.App but the staging build does not ship it yet, so emptiness
+   * has to be read as the ABSENCE of a name. Matched `:visible` because the app renders hidden
+   * responsive-duplicate tags, which would inflate both counts.
+   *
+   * @returns {Promise<{named: number, empty: number}>}
+   */
+  async getTravelerTagCounts() {
+    const tags = this.page.locator(`${SELECTORS.TRIP_TRAVELER_TAG}:visible`);
+    const filledName = this.page.locator(SELECTORS.TRAVELER_TAG_FILLED_NAME);
+
+    const [named, empty] = await Promise.all([
+      tags.filter({ has: filledName }).count(),
+      tags.filter({ hasNot: filledName }).count(),
+    ]);
+
+    return { named, empty };
+  }
+
+  /**
+   * Clicks the remove button on the first visible traveller tag of the given kind.
+   *
+   * Parameterized over named/empty rather than split into two near-identical methods. Reports
+   * whether there was a remove button to click at all: trip-traveler-tag.vue withholds it from the
+   * PRIMARY traveller unless trip.canChangePrimaryPax, from a primary/placeholder tag once the trip
+   * holds a quote, and from a lone empty slot (`traveler.isEmpty && travelers.length === 1`). Which
+   * of those is fatal is the caller's decision, not this method's.
+   *
+   * @param {'named'|'empty'} kind - Which tag to target
+   * @param {object} [options]
+   * @param {number} [options.timeout=15000] - Max wait for the button to be clickable, in ms
+   * @throws {Error} If kind is not "named" or "empty"
+   * @returns {Promise<{clicked: boolean}>} clicked=false when that tag offers no remove button
+   */
+  async removeFirstTravelerTag(kind, { timeout = 15000 } = {}) {
+    if (kind !== 'named' && kind !== 'empty') {
+      throw new Error(
+        `[SearchPage.removeFirstTravelerTag] "kind" must be "named" or "empty", got: ${kind}`
+      );
+    }
+
+    const tags = this.page.locator(`${SELECTORS.TRIP_TRAVELER_TAG}:visible`);
+    const filledName = this.page.locator(SELECTORS.TRAVELER_TAG_FILLED_NAME);
+    const tag = (kind === 'named'
+      ? tags.filter({ has: filledName })
+      : tags.filter({ hasNot: filledName })
+    ).first();
+
+    const removeButton = tag.locator(SELECTORS.REMOVE_TRAVELER_BUTTON).first();
+    if (!(await removeButton.count())) {
+      return { clicked: false };
+    }
+
+    await removeButton.waitFor({ state: 'visible', timeout });
+    await removeButton.click();
+
+    return { clicked: true };
   }
 
   async getSelectedTravelerCount() {
@@ -1700,10 +1811,52 @@ class SearchPage {
    * Checks the "Use as primary traveller" checkbox in the edit-traveler dialog.
    * The add-traveler dialog must already be open.
    */
+  /**
+   * @deprecated Kept as a thin alias so existing callers keep working; prefer
+   * ensurePrimaryTravelerCheckboxChecked below, which is what this now delegates to.
+   */
   async checkPrimaryTravelerCheckbox() {
+    return this.ensurePrimaryTravelerCheckboxChecked();
+  }
+
+  /**
+   * Leaves the "Use as primary traveller" checkbox CHECKED, whatever state it arrived in.
+   *
+   * Clicks only when the box is unchecked, then confirms the checked state landed. The previous
+   * unconditional click was a latent bug for every caller: trip-edit-traveler.vue binds the box to
+   * `travelerToEdit.isPrimary`, so a slot that arrives already ticked was silently UNTICKED —
+   * leaving the traveller non-primary while the step read as "added as primary".
+   *
+   * Element Plus marks the state on the inner `.el-checkbox__input.is-checked`, so that node — not
+   * the wrapper's class — is what gets read and awaited.
+   *
+   * @param {object} [options]
+   * @param {number} [options.timeout=10000] - Max wait for the checkbox and its state, in ms
+   * @throws {Error} If the checkbox never renders, or is still unchecked after clicking
+   */
+  async ensurePrimaryTravelerCheckboxChecked({ timeout = 10000 } = {}) {
     const checkbox = this.page.locator(SELECTORS.PRIMARY_TRAVELER_CHECKBOX).first();
-    await checkbox.waitFor({ state: 'visible', timeout: 10000 });
+    await checkbox.waitFor({ state: 'visible', timeout });
+
+    const checkedInput = checkbox.locator('.el-checkbox__input.is-checked');
+    if (await checkedInput.count()) {
+      return { alreadyChecked: true };
+    }
+
     await checkbox.click();
+
+    try {
+      await checkedInput.first().waitFor({ state: 'visible', timeout });
+    } catch (err) {
+      throw new Error(
+        `[SearchPage.ensurePrimaryTravelerCheckboxChecked] The "Use as primary traveller" checkbox ` +
+        `(${SELECTORS.PRIMARY_TRAVELER_CHECKBOX}) is still unchecked after clicking it. ` +
+        `trip-edit-traveler.vue disables it when trip.canChangePrimaryPax is false, which would ` +
+        `swallow the click. Original: ${err.message}`
+      );
+    }
+
+    return { alreadyChecked: false };
   }
 
   /**
@@ -1830,12 +1983,41 @@ class SearchPage {
   }
 
   /**
-   * Selects the first option from the edit-traveler autocomplete dropdown.
+   * Selects the traveler matching `name` from the edit-traveler autocomplete dropdown.
+   *
+   * Matched by name rather than taken as "the first option": the search is by name, user group,
+   * username OR email (user-autocomplete.vue), so a name fragment can return several people, and
+   * the first row is not necessarily the one the scenario named. Filtering also sidesteps
+   * el-autocomplete's loading <li>, which is first in the list until the results land.
+   *
+   * @param {string} name - Traveler name as typed into the autocomplete, e.g. "Salvador Carneiro"
+   * @param {object} [options]
+   * @param {number} [options.timeout=30000] - Max wait for a matching suggestion, in ms
+   * @throws {Error} If name is missing, or no suggestion matching it renders in time
    */
-  async selectEditTravelerOption() {
-    const option = this.page.locator(SELECTORS.EDIT_TRAVELER_OPTION).first();
-    await option.waitFor({ state: 'visible', timeout: 30000 });
-    await option.click();
+  async selectEditTravelerOption(name, { timeout = 30000 } = {}) {
+    if (!name || typeof name !== 'string') {
+      throw new Error(
+        `[SearchPage.selectEditTravelerOption] "name" must be a non-empty string, got: ${typeof name}`
+      );
+    }
+
+    const options = this.page.locator(SELECTORS.EDIT_TRAVELER_OPTION);
+    const match = options.filter({ hasText: name }).first();
+
+    try {
+      await match.waitFor({ state: 'visible', timeout });
+      await match.click();
+    } catch (err) {
+      const rendered = await options.allInnerTexts().catch(() => []);
+      throw new Error(
+        `[SearchPage.selectEditTravelerOption] No traveler suggestion matching "${name}" was clickable ` +
+        `within ${timeout}ms (selector: "${SELECTORS.EDIT_TRAVELER_OPTION}"). Suggestions rendered: ` +
+        `${rendered.length ? rendered.map((text) => JSON.stringify(normalizeText(text))).join(', ') : 'none'}. ` +
+        `The traveler may not exist for this corporation, or may be outside the booker's permitted ` +
+        `user group. Original: ${err.message}`
+      );
+    }
   }
 
   /**

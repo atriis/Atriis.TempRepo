@@ -253,6 +253,29 @@ const GroundTransportResults = {
 
     return { vehicleType, matched: texts.length, texts };
   },
+
+  /**
+   * Navigates back from the ground transport results page to the trip search page by clicking the
+   * "Search" link in the results breadcrumb. The search form keeps the criteria that were already
+   * submitted, so the caller can change the travelers and re-submit the same search with
+   * "I click the search button".
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @throws {Error} If page is missing, or the run never leaves the results view
+   * @returns {Promise<{navigated: boolean}>}
+   */
+  async navigateBackToSearchViaBreadcrumb(page) {
+    if (!page) {
+      throw new Error('[GroundTransportResults.navigateBackToSearchViaBreadcrumb] "page" is required.');
+    }
+
+    logger.info('Navigating back to the ground transport search via the results breadcrumb');
+
+    const resultsPage = getPageObject(page, GroundTransportResultsPage);
+    await resultsPage.clickBreadcrumbSearchLink();
+
+    return { navigated: true };
+  },
 };
 
 module.exports = GroundTransportResults;

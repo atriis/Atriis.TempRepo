@@ -5,7 +5,6 @@
 # Owner: Pedro Carneiro
 # Created: 2025-06-20T09:29:38Z
 # Updated: 2025-09-29T04:03:47Z
-# TODO: add USER_GROUNDSCOUPE_TESTIM for testim@groundscoupe.am before running this scenario.
 
 @regression @transportation @ground_transport @provider:groundscope
 Feature: 63833 GroundTransport - Traveler entitlement should drive GroundScope content for consultants
@@ -15,11 +14,17 @@ Feature: 63833 GroundTransport - Traveler entitlement should drive GroundScope c
   So that only eligible content is shown for each consultant case
 
   Scenario: Consultant search content changes based on the selected traveler
-    Given I am logged in as "testim@groundscope.com" booking a new trip
+    Given I am logged in as "testim@groundscoupe.am" booking a new trip
     And I have added myself as the traveler
     When I search for ground transport from specific address "LHR" to specific address "Emirates Stadium, Hornsey Road, London, UK"
-    Then ground transport results should be displayed
-    When I navigate back to ground transport search as consultant "Salvador Carneiro"
-    Then ground transport results should be displayed
-    When I navigate back to ground transport search as consultant "Pedro Andrade"
-    Then no ground transport results should be found
+    Then I wait for add to trip text to be visible
+    When I navigate back to ground transport search via breadcrumb
+    And I remove all travelers
+    And I have added "Salvador Carneiro" as primary traveler by clicking select traveller
+    When I click the search button
+    Then I wait for add to trip text to be visible
+    When I navigate back to ground transport search via breadcrumb
+    And I remove all travelers
+    And I have added "Pedro Andrade" as primary traveler by clicking select traveller
+    And I click the search button
+    Then the no results found message should be displayed

@@ -92,7 +92,7 @@ const GroundTransportSearch = {
     }
 
     await groundTransportSearchPage.fillInDropOffField(to);
-    await searchPage.clickPickupDateField();
+    await groundTransportSearchPage.clickPickupDateField();
     await searchPage.clickCalendarNextArrow();
     await selectDatesByNthAvailable(page, {
       startIndex: pickupIndex,

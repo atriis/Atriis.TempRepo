@@ -22,6 +22,12 @@ function getFixedAgeDateOfBirth(age) {
 // reload request even starts, so it resolves too early. Arm this BEFORE the add action fires,
 // then await the returned settle() after — so callers only proceed once the reload has landed
 // and the watcher-triggered re-render has settled (test 62001).
+// Upper bound on removeAllTravelers' one-tag-at-a-time loop. Set from the app's own ceiling
+// (MAX_TRAVELERS_AMOUNT = 5 in Atriis.App types/consts) plus headroom, so it only trips on a tag
+// that keeps re-rendering — a real bug worth a diagnostic rather than a silent spin to the step
+// timeout.
+const MAX_TRAVELER_REMOVAL_PASSES = 12;
+
 function armTripReloadSettle(page, timeout = 30000) {
   const responsePromise = page
     .waitForResponse((response) => response.url().includes('/tripinit'), { timeout })
@@ -130,6 +136,103 @@ const Search = {
     await searchPage.waitForAddMeButton();
 
     return { removed: true };
+  },
+
+  /**
+   * Clears the trip's traveler list: every NAMED traveler, plus any SURPLUS empty slot beyond the
+   * first, removed one tag at a time.
+   *
+   * Distinct from removeTraveler above, which removes the FIRST tag only. Use this when a scenario
+   * re-runs the same search under a different traveler and must not carry over a leftover tag —
+   * e.g. an entitlement test where a stale traveler would keep the previous content in play.
+   *
+   * The terminal state is "no named traveler left", NOT "no tag left". Removing the last real
+   * traveler routinely leaves ONE empty "Select traveller" placeholder rendered: the tag list only
+   * unmounts at trip-travelers-list.vue's `isSingleEmptyTraveler`, which also needs its own
+   * `isTravelerAdded` flag back to false, and that lone slot has no remove button at all because it
+   * IS the trip's empty state (`numberOfPassengers` is already 1 and the app will not go below it).
+   * Waiting for zero tags could therefore never be satisfied. Two or more empty slots ARE cleared —
+   * a surplus slot flags red and blocks the next search.
+   *
+   * Ends on the "Add me" / "Add traveler" buttons. The placeholder that may remain is what the next
+   * "I have added ... by clicking select traveller" step fills, rather than appending a second slot.
+   *
+   * @param {Object} page - Playwright page instance
+   * @throws {Error} If page is missing, or a named traveler cannot be removed through the UI
+   * @returns {Promise<{removed: number, emptySlotsLeft: number}>}
+   */
+  async removeAllTravelers(page) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+
+    const searchPage = getPageObject(page, SearchPage);
+    let removed = 0;
+
+    for (let pass = 0; pass < MAX_TRAVELER_REMOVAL_PASSES; pass += 1) {
+      const { named, empty } = await searchPage.getTravelerTagCounts();
+
+      // Named travelers first, then any surplus placeholder. A lone placeholder is left alone.
+      const kind = named > 0 ? 'named' : empty > 1 ? 'empty' : null;
+      if (!kind) {
+        if (removed > 0) {
+          await searchPage.waitForAddMeButton();
+        }
+        logger.info('Traveler list cleared', { removed, emptySlotsLeft: empty });
+        return { removed, emptySlotsLeft: empty };
+      }
+
+      const before = kind === 'named' ? named : empty;
+      const { clicked } = await searchPage.removeFirstTravelerTag(kind);
+
+      if (!clicked) {
+        if (kind === 'empty') {
+          // Surplus placeholders the app offers no remove button for are not worth failing over:
+          // nothing named is left, which is what the caller asked for.
+          logger.warn('Left surplus empty traveler slots that offer no remove button', { empty });
+          return { removed, emptySlotsLeft: empty };
+        }
+
+        throw new Error(
+          `[Search.removeAllTravelers] ${named} named traveler(s) remain but the first offers no ` +
+          `remove button. trip-traveler-tag.vue withholds it from the PRIMARY traveler unless ` +
+          `trip.canChangePrimaryPax, and from the primary/placeholder tag once the trip holds a ` +
+          `quote — so this traveler cannot be removed through the UI in the current trip state. ` +
+          `Removed ${removed} so far.`
+        );
+      }
+
+      // Poll this category's own count, not the total: a leftover placeholder pins the total at 1.
+      // Thrown rather than left to expect.poll's own message, which does not reach the report.
+      try {
+        await expect
+          .poll(async () => (await searchPage.getTravelerTagCounts())[kind], { timeout: 30000 })
+          .toBeLessThan(before);
+      } catch (err) {
+        if (page.isClosed()) {
+          throw new Error(
+            `[Search.removeAllTravelers] The page/browser closed while waiting for the ${kind} tag ` +
+            `count to drop below ${before} (removed ${removed} so far). The removal itself may well ` +
+            `have succeeded — this is a lost browser, not a failed app action. Original: ${err.message}`
+          );
+        }
+
+        throw new Error(
+          `[Search.removeAllTravelers] Clicked remove on a ${kind} traveler tag but the visible count ` +
+          `never dropped below ${before}. The removal round-trip (tripStore/removeTraveler + loadTrip) ` +
+          `may have failed. Removed ${removed} so far. Original: ${err.message}`
+        );
+      }
+
+      removed += 1;
+    }
+
+    const { named } = await searchPage.getTravelerTagCounts();
+    throw new Error(
+      `[Search.removeAllTravelers] Still ${named} named traveler(s) on the trip after ` +
+      `${MAX_TRAVELER_REMOVAL_PASSES} removal passes (removed ${removed}). Either the trip holds more ` +
+      `travelers than the app allows, or a removed tag is being re-rendered.`
+    );
   },
 
   /**
@@ -397,12 +500,71 @@ const Search = {
     await searchPage.checkPrimaryTravelerCheckbox();
     // Fill the autocomplete inside the edit-traveler panel (scoped)
     await searchPage.fillInEditTravelerName(name);
-    await searchPage.selectEditTravelerOption();
+    await searchPage.selectEditTravelerOption(name);
     // Wait for the traveler to be selected
     const starIconVisible = await searchPage.isStarIconVisible();
     const selectedTravelerCount = await searchPage.getSelectedTravelerCount();
 
     return { selected: true, starIconVisible, selectedTravelerCount };
+  },
+
+  /**
+   * Adds a named existing traveler as the trip's PRIMARY traveler, going through the empty slot's
+   * own "Select traveller" placeholder rather than the round add-traveler button.
+   *
+   * Distinct from addTravelerAsPrimaryByName above on two points:
+   *  - it fills the slot that is already empty instead of appending a new one, so no unfilled slot
+   *    is left behind to block the next search;
+   *  - the primary checkbox is set idempotently, so a checkbox the app already ticked is left
+   *    ticked instead of being clicked back off.
+   *
+   * Primary is then verified on that traveler's OWN tag, not by "some star is visible": these are
+   * entitlement scenarios where the searched content is resolved against the primary traveler, so a
+   * traveler who quietly landed non-primary would leave the previous entitlements in play and the
+   * search would prove nothing.
+   *
+   * @param {Object} page - Playwright page instance
+   * @param {string} name - Existing traveler's name, e.g. "Salvador Carneiro"
+   * @param {string} [label='Select traveller'] - The empty slot placeholder's visible label
+   * @throws {Error} If page/name are invalid, or the traveler does not end up primary
+   * @returns {Promise<{added: boolean, via: string, isPrimary: boolean, selectedTravelerCount: number}>}
+   */
+  async addTravelerAsPrimaryViaSelectTravelerSlot(page, name, label = 'Select traveller') {
+    if (!page) {
+      throw new Error('page is required');
+    }
+    if (!name || typeof name !== 'string') {
+      throw new Error('name must be a non-empty string, got: ' + typeof name);
+    }
+    if (!label || typeof label !== 'string') {
+      throw new Error('label must be a non-empty string, got: ' + typeof label);
+    }
+
+    logger.info('Adding a named traveler as primary through the empty traveler slot', { name, label });
+
+    const searchPage = getPageObject(page, SearchPage);
+    const settleTripReload = armTripReloadSettle(page);
+
+    const { via } = await searchPage.openEmptyTravelerSlotDialog(label);
+    await searchPage.ensurePrimaryTravelerCheckboxChecked();
+    await searchPage.fillInEditTravelerName(name);
+    await searchPage.selectEditTravelerOption(name);
+    await settleTripReload();
+
+    await searchPage.waitForTravelerNameVisible(name);
+    const isPrimary = await searchPage.isTravelerPrimaryByName(name);
+    const selectedTravelerCount = await searchPage.getSelectedTravelerCount();
+
+    if (!isPrimary) {
+      throw new Error(
+        `[Search.addTravelerAsPrimaryViaSelectTravelerSlot] "${name}" was added to the trip ` +
+        `(via the ${via}) but their own tag carries no primary star, so they are NOT the primary ` +
+        `traveler. The searched content is resolved against the primary traveler, so the next ` +
+        `search would still run under the previous one.`
+      );
+    }
+
+    return { added: true, via, isPrimary, selectedTravelerCount };
   },
 
   /**
