@@ -408,7 +408,18 @@ const Cart = {
     await cartPage.clickCancelTripOption();
 
     // Confirm cancellation
-    await cartPage.waitForTripCancellationDialogTitle();
+    try {
+      await cartPage.waitForTripCancellationDialogTitle();
+    } catch (err) {
+      if (await cartPage.isCancelTripOptionDisabled()) {
+        throw new Error(
+          '[Cart.cancelTripStrict] "Cancel trip" is disabled in the trip actions menu, so the confirmation ' +
+          'dialog never opened. The app blocks cancellation while a booking is still finalising - the trip has ' +
+          `to reach a cancellable status first. Original: ${err.message}`
+        );
+      }
+      throw err;
+    }
     await cartPage.clickConfirmTripCancellationButton();
 
     // Check if cancellation was successful
@@ -11643,6 +11654,105 @@ const Cart = {
     const cartPage = getPageObject(page, CartPage);
     await cartPage.fillPassportExpiryDate(dateValue);
     logger.info('Filled passport expiry date in passenger info', { dateValue });
+  },
+
+  /**
+   * Fills every mandatory field of the flight passenger-info (APIS) form in one go.
+   *
+   * No-ops when the passenger-info section is not rendered in extras: APIS only appears for the
+   * routes/carriers that require it (e.g. it is absent on non-US BA NDC routes — test 36755), so
+   * a shared "fill it all" step has to tolerate its absence. Pair it with an explicit assertion
+   * (`the passenger info section should be marked as required with an asterisk`) whenever the
+   * test's point is that APIS IS required — otherwise a missing section reads as a pass.
+   *
+   * Assumes the panel is already expanded (openPassengerInfoPanel toggles, so calling it again
+   * would collapse the form) and does NOT save — pair it with `clickPassengerInfoInExtras`
+   * before and `savePassengerInfo` after, so a test can still assert on the unsaved state.
+   *
+   * Fields are filled in the same order the per-field steps use, because selecting the
+   * nationality auto-fills "Issued at" through the form's own handler.
+   *
+   * Date of birth is only filled when the field is rendered AND empty: it renders only for
+   * travellers with no DOB on their profile, and arrives pre-filled for everyone else.
+   *
+   * @param {import('playwright').Page} page
+   * @param {object} [overrides] - Per-field value overrides
+   * @param {string} [overrides.passportNumber='8732186']
+   * @param {string} [overrides.nationality='united kingdom']
+   * @param {string} [overrides.applicableCountry='afghanistan']
+   * @param {string} [overrides.expiryDate='15 Jan 2030'] - "DD MMM YYYY"
+   * @param {string} [overrides.dateOfBirth='15 Jan 1990'] - "DD MMM YYYY"
+   * @returns {Promise<boolean>} true when the form was filled, false when the section is absent
+   */
+  async fillAllPassengerInfo(page, overrides = {}) {
+    if (!page) throw new Error('[Cart.fillAllPassengerInfo] "page" is required.');
+    if (typeof overrides !== 'object' || overrides === null || Array.isArray(overrides)) {
+      throw new Error(`[Cart.fillAllPassengerInfo] "overrides" must be a plain object, got: ${typeof overrides}`);
+    }
+
+    const defaults = {
+      passportNumber: '8732186',
+      nationality: 'united kingdom',
+      applicableCountry: 'afghanistan',
+      expiryDate: '15 Jan 2030',
+      dateOfBirth: '15 Jan 1990',
+    };
+
+    const unknown = Object.keys(overrides).filter((key) => !Object.hasOwn(defaults, key));
+    if (unknown.length) {
+      throw new Error(
+        `[Cart.fillAllPassengerInfo] Unknown passenger info field(s): ${unknown.join(', ')}. ` +
+        `Supported: ${Object.keys(defaults).join(', ')}.`
+      );
+    }
+
+    const values = { ...defaults, ...overrides };
+    for (const [key, value] of Object.entries(values)) {
+      if (typeof value !== 'string' || !value.trim()) {
+        throw new Error(`[Cart.fillAllPassengerInfo] "${key}" must be a non-empty string, got: ${value}`);
+      }
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+
+    // A collapsed extras accordion hides .flight-passenger-info, so open it before concluding
+    // that APIS is absent. Saving any other extra collapses extras back to its summary row.
+    if (!(await cartPage.isPassengerInfoSectionVisible(1000))) {
+      await cartPage.reopenExtrasAfterSave().catch((err) => {
+        logger.debug('Could not expand the extras accordion before filling passenger info', { error: err.message });
+      });
+    }
+
+    if (!(await cartPage.isPassengerInfoSectionVisible())) {
+      logger.info('Skipped passenger info — the section is not displayed in cart extras (APIS not required)');
+      return false;
+    }
+
+    // Expand only when the form is still closed: the expand button toggles, so clicking it on an
+    // already-open panel would collapse the fields we are about to fill.
+    if (!(await cartPage.isPassengerInfoFormExpanded())) {
+      await cartPage.openPassengerInfoPanel();
+      logger.info('Expanded the passenger info panel before filling');
+    }
+
+    const currentDob = await cartPage.getPassengerInfoDateOfBirthValue();
+    if (currentDob === '') {
+      await cartPage.fillPassengerInfoDateOfBirth(values.dateOfBirth);
+      logger.info('Filled passenger info date of birth', { dateOfBirth: values.dateOfBirth });
+    } else {
+      logger.info('Skipped passenger info date of birth', {
+        reason: currentDob === null ? 'field not rendered' : 'already filled',
+        currentDob,
+      });
+    }
+
+    await cartPage.fillPassportNumber(values.passportNumber);
+    await cartPage.fillNationality(values.nationality);
+    await cartPage.fillApplicableCountry(values.applicableCountry);
+    await cartPage.fillPassportExpiryDate(values.expiryDate);
+
+    logger.info('Filled all passenger info fields', values);
+    return true;
   },
 
   /**

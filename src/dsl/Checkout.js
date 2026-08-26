@@ -7,6 +7,15 @@ const BookingErrorHandler = require("@utils/bookingErrorHandler");
 const { expectSumToBeEqualWithTolerance } = require("../assertions/numberAssertions");
 const logger = require("@utils/logger").child("Checkout-DSL");
 
+// reference-form-contact-details assigns isDoNotShareContactInfo from the profile inside
+// populateData(), which awaits getLoggedInUser - so the checkbox can still read unchecked while the
+// phone inputs are already (or about to be) disabled. Retry the whole uncheck-and-fill sequence this
+// many times, giving the widget this long to become interactive and bounding each fill so a disabled
+// input fails fast instead of burning the default 30s locator timeout.
+const CONTACT_PHONE_EDIT_ATTEMPTS = 3;
+const CONTACT_SHARING_SETTLE_TIMEOUT = 5000;
+const CONTACT_PHONE_FILL_TIMEOUT = 10000;
+
 
 /**
  * Checkout DSL
@@ -441,19 +450,55 @@ const Checkout = {
     // Ensure checkout page is loaded
     await checkoutPage.waitForBookingDetailsText();
 
-    // The "Don't share contact details" checkbox controls whether the phone
-    // fields are enabled (fields are disabled while it is checked). Its initial
-    // state is user-dependent (driven by the profile's isRefusedToSharePersonalData),
-    // so toggle only when needed to reach the unchecked/enabled state — clicking
-    // unconditionally would disable the fields for users who already share.
-    if (await checkoutPage.isContactDetailsCheckboxChecked()) {
-      await checkoutPage.clickContactDetailsCheckbox();
+    // The "Don't share contact details" checkbox controls whether the phone fields are
+    // enabled (they are disabled while it is checked). Its state is user-dependent, driven
+    // by the profile's isRefusedToSharePersonalData.
+    //
+    // populateData() assigns that default only after awaiting getLoggedInUser, so a single read
+    // can catch the pre-populate value and skip the click while the inputs end up disabled. Rather
+    // than guess at the timing, drive to the goal state: uncheck, wait for the widget to actually
+    // become interactive, fill, and only accept the result once the values read back correctly.
+    const expectedPhone = countryCode + areaCode + phoneNumber;
+    let lastError = null;
+
+    for (let attempt = 1; attempt <= CONTACT_PHONE_EDIT_ATTEMPTS; attempt++) {
+      try {
+        if (await checkoutPage.isContactDetailsCheckboxChecked()) {
+          logger.debug('Contact sharing checkbox is checked - unchecking to enable the phone fields', { attempt });
+          await checkoutPage.clickContactDetailsCheckbox();
+        }
+
+        if (!(await checkoutPage.isContactPhoneEnabledWithin(CONTACT_SHARING_SETTLE_TIMEOUT))) {
+          lastError = new Error('Contact phone fields did not become enabled after unchecking the sharing checkbox');
+          logger.debug('Contact phone still disabled after unchecking - retrying', { attempt });
+          continue;
+        }
+
+        await checkoutPage.fillContactPhoneCountryCode(countryCode, { timeout: CONTACT_PHONE_FILL_TIMEOUT });
+        await checkoutPage.fillContactPhoneAreaCode(areaCode, { timeout: CONTACT_PHONE_FILL_TIMEOUT });
+        await checkoutPage.fillContactPhoneNumber(phoneNumber, { timeout: CONTACT_PHONE_FILL_TIMEOUT });
+
+        const actualPhone = await checkoutPage.getContactPhoneValues();
+        if (actualPhone === expectedPhone) return;
+
+        lastError = new Error(`Contact phone read back as "${actualPhone}" instead of "${expectedPhone}"`);
+        logger.debug('Contact phone did not stick - the section most likely remounted; retrying', {
+          attempt,
+          expectedPhone,
+          actualPhone,
+        });
+      } catch (err) {
+        lastError = err;
+        logger.debug('Contact phone edit attempt failed - retrying', { attempt, error: err.message });
+      }
     }
 
-    // Fill phone fields
-    await checkoutPage.fillContactPhoneCountryCode(countryCode);
-    await checkoutPage.fillContactPhoneAreaCode(areaCode);
-    await checkoutPage.fillContactPhoneNumber(phoneNumber);
+    throw new Error(
+      `[Checkout.uncheckContactSharingAndEditPhone] Could not set the traveller contact phone to "${expectedPhone}" ` +
+      `after ${CONTACT_PHONE_EDIT_ATTEMPTS} attempts. Either "Don't share the contact details with airlines" kept the ` +
+      `phone inputs disabled (it is re-applied from the profile's isRefusedToSharePersonalData), or the dial code did ` +
+      `not take. Last failure: ${lastError ? lastError.message : 'unknown'}`
+    );
   },
 
   /**

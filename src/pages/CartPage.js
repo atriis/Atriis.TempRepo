@@ -5643,6 +5643,34 @@ class CartPage {
   }
 
   /**
+   * Reads the current value of the passenger info Date of Birth input.
+   * The field only renders when the traveller has no DOB on their profile, and it arrives
+   * pre-filled when they do, so callers that fill the whole form need to tell those apart.
+   * @param {number} timeout
+   * @returns {Promise<string|null>} Trimmed value, or null when the field is not rendered
+   */
+  /**
+   * Checks whether the passenger-info form itself is expanded (not just the section header),
+   * anchored on the "Passport number" input the way openPassengerInfoPanel waits on its label.
+   * Callers use this to avoid re-clicking the expand button, which toggles the form shut.
+   * @param {number} timeout
+   * @returns {Promise<boolean>}
+   */
+  async isPassengerInfoFormExpanded(timeout = 5000) {
+    return this.page.locator(SELECTORS.PASSPORT_NUMBER_INPUT)
+      .first()
+      .isVisible({ timeout })
+      .catch(() => false);
+  }
+
+  async getPassengerInfoDateOfBirthValue(timeout = 5000) {
+    const dobInput = this.page.locator(SELECTORS.PASSENGER_INFO_DOB_INPUT).first();
+    const isVisible = await dobInput.isVisible({ timeout }).catch(() => false);
+    if (!isVisible) return null;
+    return ((await dobInput.inputValue()) ?? '').trim();
+  }
+
+  /**
    * Counts the number of fields highlighted with is-danger inside the passenger info section.
    * @returns {Promise<number>}
    */

@@ -77,6 +77,10 @@ const SELECTORS = {
   // Country-code dropdown popover (teleported to <body> by el-popover; :visible scopes to the active one)
   PHONE_INPUT_POPOVER_SEARCH: ".app-phone-input-popover .app-phone-input__search input:visible",
   PHONE_INPUT_POPOVER_OPTION: ".app-phone-input-popover:visible .app-phone-input__option",
+  // Each option renders its dial code as its own span, e.g. "(+1)" / "(+1268)". Matching on that
+  // span with an EXACT text match is required: hasText is a substring match, so "+1" also matches
+  // "+1268" (Antigua) and silently selects the wrong country.
+  PHONE_INPUT_POPOVER_OPTION_DIAL: ".app-phone-input__option-dial",
 
   // Booker notification phone (trip-reference-form.vue — notifications-behalf section)
   // Redesigned to use app-phone-input; inputs use __dial/__area/__number classes (not .el-input__inner)
@@ -495,6 +499,31 @@ class CheckoutPage {
   }
 
   /**
+   * Waits until the contact phone country button is interactive.
+   *
+   * The whole app-phone-input is bound to :disabled="isDoNotShareContactInfo", and the country
+   * button carries a real `disabled` attribute, so this is the one observable signal that the
+   * "Don't share the contact details with airlines" checkbox has actually been turned off.
+   *
+   * @param {number} [timeout=10000]
+   * @returns {Promise<boolean>} true when the button became enabled within the timeout
+   */
+  async isContactPhoneEnabledWithin(timeout = 10000) {
+    const countryBtn = this.page.locator(SELECTORS.CONTACT_PHONE_COUNTRY_BTN).first();
+    const deadline = Date.now() + timeout;
+    try {
+      await countryBtn.waitFor({ state: 'visible', timeout });
+    } catch {
+      return false;
+    }
+    while (Date.now() < deadline) {
+      if (await countryBtn.isEnabled().catch(() => false)) return true;
+      await this.page.waitForTimeout(250);
+    }
+    return false;
+  }
+
+  /**
    * Checks whether the contact details sharing checkbox is checked.
    * @returns {Promise<boolean>}
    */
@@ -508,15 +537,17 @@ class CheckoutPage {
    * Opens the country-code popover, searches for the dial code, and selects the matching option.
    * @param {string} value - Dial code digits only (e.g. "1" for +1)
    */
-  async fillContactPhoneCountryCode(value) {
+  async fillContactPhoneCountryCode(value, { timeout = 10000 } = {}) {
     const countryBtn = this.page.locator(SELECTORS.CONTACT_PHONE_COUNTRY_BTN).first();
-    await countryBtn.waitFor({ state: 'visible', timeout: 10000 });
-    await countryBtn.click();
+    await countryBtn.waitFor({ state: 'visible', timeout });
+    await countryBtn.click({ timeout });
     const searchInput = this.page.locator(SELECTORS.PHONE_INPUT_POPOVER_SEARCH);
     await searchInput.waitFor({ state: 'visible', timeout: 5000 });
     await searchInput.fill(value);
+    // Exact match on the option's dial span - a substring match on "+1" would also hit "+1268".
+    const exactDial = this.page.getByText(`(+${value})`, { exact: true });
     const option = this.page.locator(SELECTORS.PHONE_INPUT_POPOVER_OPTION)
-      .filter({ hasText: `+${value}` })
+      .filter({ has: exactDial })
       .first();
     await option.waitFor({ state: 'visible', timeout: 5000 });
     await option.click();
@@ -526,20 +557,20 @@ class CheckoutPage {
    * Fills the contact phone area code field.
    * @param {string} value
    */
-  async fillContactPhoneAreaCode(value) {
+  async fillContactPhoneAreaCode(value, { timeout = 10000 } = {}) {
     const input = this.page.locator(SELECTORS.CONTACT_PHONE_AREA).first();
-    await input.waitFor({ state: 'visible', timeout: 10000 });
-    await input.fill(value);
+    await input.waitFor({ state: 'visible', timeout });
+    await input.fill(value, { timeout });
   }
 
   /**
    * Fills the contact phone number field.
    * @param {string} value
    */
-  async fillContactPhoneNumber(value) {
+  async fillContactPhoneNumber(value, { timeout = 10000 } = {}) {
     const input = this.page.locator(SELECTORS.CONTACT_PHONE_NUMBER).first();
-    await input.waitFor({ state: 'visible', timeout: 10000 });
-    await input.fill(value);
+    await input.waitFor({ state: 'visible', timeout });
+    await input.fill(value, { timeout });
   }
 
   /**

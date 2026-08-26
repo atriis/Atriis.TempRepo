@@ -979,7 +979,9 @@ Then("cancellation confirmation is spelled correctly", async function () {
   await Cart.verifyCancellationConfirmedSpelledCorrectly(this.page);
 });
 
-Then("the booking status should be {string}", async function (status) {
+// Bound to two phrases on purpose: features spell this "is" before checkout and "should be"
+// after booking. Same cart quote status assertion either way — keep one implementation.
+async function verifyBookingStatus(status) {
   logger.info("Verifying booking status", { status });
 
   const scenarioTags = Array.isArray(this.scenarioTags) ? this.scenarioTags : [];
@@ -1015,7 +1017,10 @@ Then("the booking status should be {string}", async function (status) {
       : `message: ${result.bookingErrorText || 'unknown booking error'}`;
     throw new Error(`Unexpected booking error detected (${errorSummary})`);
   }
-});
+}
+
+Then("the booking status should be {string}", verifyBookingStatus);
+Then("the booking status is {string}", verifyBookingStatus);
 
 Then("the stored flight details should match the displayed flight details", async function () {
   if (!Array.isArray(this.storedFlightSegmentDetails) || this.storedFlightSegmentDetails.length === 0) {
@@ -2648,6 +2653,43 @@ When("I fill in the passport expiry date in passenger info section", async funct
 When("I fill in the passport expiry date {string} in passenger info section", async function (expiryDate) {
   logger.info("Filling passport expiry date in passenger info", { expiryDate });
   await Cart.fillPassportExpiryDateInPassengerInfo(this.page, expiryDate);
+});
+
+// Field labels accepted in the "I fill in all the passenger info with:" table, mapped to the
+// Cart.fillAllPassengerInfo override keys. Keys are normalised (lowercased, non-alphanumerics
+// stripped) so "Passport number", "passport number" and "passportNumber" all resolve.
+const PASSENGER_INFO_FIELD_KEYS = {
+  passportnumber: "passportNumber",
+  nationality: "nationality",
+  applicablecountry: "applicableCountry",
+  expirydate: "expiryDate",
+  passportexpirydate: "expiryDate",
+  dateofbirth: "dateOfBirth",
+  dob: "dateOfBirth",
+};
+
+// Both steps no-op when passenger info is not displayed in extras (APIS is route/carrier
+// dependent). Keep an explicit assertion in the scenario when its point is that APIS IS required.
+When("I fill in all the passenger info", async function () {
+  logger.info("Filling all passenger info fields with defaults");
+  const filled = await Cart.fillAllPassengerInfo(this.page);
+  logger.info(filled ? "Passenger info filled" : "Passenger info not displayed in extras — nothing filled");
+});
+
+When("I fill in all the passenger info with:", async function (dataTable) {
+  const overrides = {};
+  for (const [label, value] of Object.entries(dataTable.rowsHash())) {
+    const key = PASSENGER_INFO_FIELD_KEYS[label.toLowerCase().replace(/[^a-z0-9]/g, "")];
+    if (!key) {
+      throw new Error(
+        `Unknown passenger info field "${label}". Supported: ${Object.keys(PASSENGER_INFO_FIELD_KEYS).join(", ")}.`
+      );
+    }
+    overrides[key] = value;
+  }
+  logger.info("Filling all passenger info fields", overrides);
+  const filled = await Cart.fillAllPassengerInfo(this.page, overrides);
+  logger.info(filled ? "Passenger info filled" : "Passenger info not displayed in extras — nothing filled");
 });
 
 When("I save the passenger info", async function () {
