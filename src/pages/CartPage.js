@@ -4068,6 +4068,16 @@ class CartPage {
   }
 
   /**
+   * Every quote status badge currently reading "on hold" - one per held quote, NOT
+   * narrowed to the first. Counting these is the only way to detect that a hold
+   * completed on a trip that already holds a quote: getOnHoldStatusLabel() is an
+   * any-quote check, so it is already visible before the second hold is clicked.
+   */
+  getOnHoldStatusLabels() {
+    return this.page.locator(SELECTORS.QUOTE_STATUS_LABEL, { hasText: /on hold/i });
+  }
+
+  /**
    * Waits for the Price Breakdown button to be visible.
    */
   async waitForPriceBreakdownButton() {

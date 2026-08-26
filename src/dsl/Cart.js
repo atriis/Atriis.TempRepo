@@ -2898,7 +2898,7 @@ const Cart = {
     
     const cartPage = getPageObject(page, CartPage);
     const checkoutPage = getPageObject(page, CheckoutPage);
-    const onHoldStatusLabel = cartPage.getOnHoldStatusLabel();
+    const onHoldStatusLabels = cartPage.getOnHoldStatusLabels();
     const bookingErrorDialog = page.locator(CheckoutSelectors.BOOKING_ERROR_DIALOG).first();
     const timeout = process.env.CI ? 120000 : 90000;
     const deadline = Date.now() + timeout;
@@ -2942,12 +2942,19 @@ const Cart = {
       };
     };
 
+    // Count the quotes ALREADY on hold before clicking. On a trip that holds a quote
+    // from an earlier hold, "a quote is on hold" is true before this hold even starts,
+    // so waiting for that badge to appear returns instantly and leaves the quote just
+    // added still Pending booking (test 55056, second hold). Waiting for the count to
+    // GROW is the same check for a first hold (0 -> 1) and correct for every later one.
+    const heldBefore = await onHoldStatusLabels.count().catch(() => 0);
+
     // Initial hold action.
     await cartPage.waitForHoldButton();
     await cartPage.clickHoldButton().catch(() => {});
 
     while (Date.now() < deadline) {
-      if (await onHoldStatusLabel.isVisible().catch(() => false)) {
+      if ((await onHoldStatusLabels.count().catch(() => heldBefore)) > heldBefore) {
         const status = await cartPage.getBookingStatus({ page });
         return {
           held: true,

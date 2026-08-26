@@ -13,22 +13,26 @@ Feature: 55056 Amadeus - Split rules applied correctly when holding 2 round trip
   So that the split rule configuration is applied correctly to both quotes
 
   Scenario: Two round trip flights held with correct split rules and PNR codes
-  #Edit is not working
     Given I am logged in as "ruimariano@amadeus.com" booking a new trip
     And I have added a random guest traveler
-    When I search for a round trip flight from "LON" to "DOH"
+    When I search for a round trip flight from "MAD" to "DOH"
     And I filter results by carrier "Qatar Airways"
     And I add the first flight to cart
     Then the booking status should be "Pending booking"
     When I accept Terms & Conditions
     And I hold the trip
     When I click to add a flight to my trip from cart
-    When I edit the flight search from "BKK" to "SIN"
+    When I edit the flight search from "ZRH" to "SIN"
     And flight results should be available
     And I add the first flight to cart
-    Then the booking status should be "Pending booking"
+    # The first quote is already ON HOLD here, and the shared "booking status"
+    # step reads the FIRST quote card - it would read that held quote, not the
+    # one just added. Assert by status text so the new quote is the one checked.
+    Then I should see a quote with status "Pending booking"
     When I accept Terms & Conditions
     And I hold the trip
     Then the last quote status should be "On hold"
-    And all quotes should have PNR codes
+    When I store the first quote PNR code
+    And I store the second quote PNR code
+    Then the stored quote PNR codes should not match
     Then I successfully cancel the trip
