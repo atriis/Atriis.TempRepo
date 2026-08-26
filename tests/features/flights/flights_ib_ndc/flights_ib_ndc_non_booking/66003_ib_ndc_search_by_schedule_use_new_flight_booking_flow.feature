@@ -13,7 +13,6 @@ Feature: 66003 IB NDC - Round trip with 'Use New Flight Booking Flow' role
   I want pricing options to drive the round trip booking flow
   So that the Select Flight button leads me through pricing options for the inbound leg
 
-  #BLOCKED - no results, could not test the entire scenario 
   Scenario: Round trip search shows Select Flight on outbound and pricing options on inbound
     Given I am logged in as "ibndcuser@soniatest.com" booking a new trip
     And I have added myself as the traveler
@@ -25,4 +24,6 @@ Feature: 66003 IB NDC - Round trip with 'Use New Flight Booking Flow' role
     Then I should see the heading "Pricing Options"
     When I select the first option from pricing options
     Then I should see the heading "Pricing Options"
+    When I select the first option from pricing options
     When I add to trip from pricing options
+    Then the booking status should be "Pending booking"
