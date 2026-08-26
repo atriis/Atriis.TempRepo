@@ -27,12 +27,17 @@ const SELECTORS = {
   DB_RAIL_DRAWER_CONTINUE_BUTTON: '.atrs-edit-search-drawer button.search-btn:has-text("Continue")',
   DB_RAIL_DRAWER_GO_TO_TRIP_BUTTON: '.atrs-edit-search-drawer button.search-btn:has-text("Go to trip")',
 
-  // Warning dialog db-rail-search-inputs.vue appends to <body> when no finalised DB order can be
-  // found (`showNoQuoteMessage`). Closed Element Plus dialogs linger in the DOM, hence ':visible'.
+  // Warning dialog db-rail-search-inputs.vue appends to <body>. It serves TWO cases: the
+  // punch-out rejection (search() got canProceedToPunchOut=false — e.g. "Error while trying to
+  // process payment card for Deutsche Bahn booking") and the post-"Go to trip" no-order-found
+  // message (`showNoQuoteMessage`). Which one it is depends on the stage the flow was in when it
+  // appeared. Closed Element Plus dialogs linger in the DOM, hence ':visible'.
   DB_RAIL_MESSAGE_DIALOG: '.app-dialog.db-rail-dialog-message:visible',
   // The message body is rendered with v-html (the locale string contains a <br/>), so its
   // textContent has no separator between the two sentences.
   DB_RAIL_MESSAGE_DIALOG_TEXT: '.app-dialog.db-rail-dialog-message:visible .message-text p',
+  // The dialog's footer Close button (app-btn → native <button>).
+  DB_RAIL_MESSAGE_DIALOG_CLOSE_BUTTON: '.app-dialog.db-rail-dialog-message:visible button:has-text("Close")',
 };
 
 /**
@@ -114,25 +119,65 @@ class DbRailPage {
   }
 
   /**
-   * Waits for the drawer's stage-two "Go to trip" button, which only renders once the punch-out
-   * returned a Deutsche Bahn URL (isDbRailSecondStage).
+   * Waits for the punch-out to resolve either way: the drawer reaching its second stage
+   * ("Go to trip" rendered) or the warning dialog reporting that the backend refused the
+   * punch-out (canProceedToPunchOut=false — e.g. a payment-card processing error).
+   *
+   * Returns `{ punchOutError: null }` when the second stage was reached, or
+   * `{ punchOutError: '<backend message>' }` when the punch-out was rejected — so the caller can
+   * fail fast with the real cause instead of timing out on a button that will never render.
    *
    * @param {number} [timeout=60000]
-   * @returns {Promise<void>}
+   * @returns {Promise<{punchOutError: string|null}>}
    */
-  async waitForGoToTripButton({ timeout = 60000 } = {}) {
+  async waitForSecondStageOrPunchOutError({ timeout = 60000 } = {}) {
+    const goToTrip = this.page.locator(SELECTORS.DB_RAIL_DRAWER_GO_TO_TRIP_BUTTON).first();
+    const errorDialog = this.page.locator(SELECTORS.DB_RAIL_MESSAGE_DIALOG).first();
+    // Comma union: resolves as soon as EITHER outcome renders.
+    const outcome = this.page
+      .locator(`${SELECTORS.DB_RAIL_DRAWER_GO_TO_TRIP_BUTTON}, ${SELECTORS.DB_RAIL_MESSAGE_DIALOG}`)
+      .first();
+
     try {
-      await this.page
-        .locator(SELECTORS.DB_RAIL_DRAWER_GO_TO_TRIP_BUTTON)
-        .first()
-        .waitFor({ state: 'visible', timeout });
+      await outcome.waitFor({ state: 'visible', timeout });
     } catch (err) {
       throw new Error(
-        `[DbRailPage.waitForGoToTripButton] The Deutsche Bahn drawer never reached its second stage ` +
-        `— "Go to trip" (${SELECTORS.DB_RAIL_DRAWER_GO_TO_TRIP_BUTTON}) was not visible within ` +
-        `${timeout}ms. Likely causes: the punch-out call returned canProceedToPunchOut=false (the ` +
-        `drawer then shows a warning dialog instead), the traveller is not eligible to book ` +
-        `Deutsche Bahn, or the DB service did not respond. Original: ${err.message}`
+        `[DbRailPage.waitForSecondStageOrPunchOutError] The Deutsche Bahn punch-out did not ` +
+        `resolve within ${timeout}ms — neither the second-stage "Go to trip" button ` +
+        `(${SELECTORS.DB_RAIL_DRAWER_GO_TO_TRIP_BUTTON}) nor the rejection warning dialog ` +
+        `(${SELECTORS.DB_RAIL_MESSAGE_DIALOG}) appeared. Likely cause: the /DBRail punch-out call ` +
+        `never answered (DB service down or network stall). Original: ${err.message}`
+      );
+    }
+
+    // A visible dialog at THIS stage can only be the punch-out rejection: the no-order-found
+    // dialog only appears after "Go to trip" is clicked.
+    if (await errorDialog.isVisible().catch(() => false)) {
+      const text = await this.getMessageDialogText({ timeout: 5000 }).catch(() => '');
+      return { punchOutError: text || '(the warning dialog rendered no message text)' };
+    }
+
+    await goToTrip.waitFor({ state: 'visible', timeout: 5000 });
+    return { punchOutError: null };
+  }
+
+  /**
+   * Closes the DB Rail warning dialog via its footer Close button and waits for it to leave the
+   * screen, so a follow-up "Continue" click cannot be intercepted by the dialog overlay.
+   *
+   * @param {number} [timeout=10000]
+   * @returns {Promise<void>}
+   */
+  async closeMessageDialog({ timeout = 10000 } = {}) {
+    const dialog = this.page.locator(SELECTORS.DB_RAIL_MESSAGE_DIALOG).first();
+    const closeButton = this.page.locator(SELECTORS.DB_RAIL_MESSAGE_DIALOG_CLOSE_BUTTON).first();
+    try {
+      await closeButton.click({ timeout });
+      await dialog.waitFor({ state: 'hidden', timeout });
+    } catch (err) {
+      throw new Error(
+        `[DbRailPage.closeMessageDialog] Could not close the Deutsche Bahn warning dialog ` +
+        `(${SELECTORS.DB_RAIL_MESSAGE_DIALOG_CLOSE_BUTTON}) within ${timeout}ms. Original: ${err.message}`
       );
     }
   }

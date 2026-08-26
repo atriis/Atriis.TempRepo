@@ -21,6 +21,13 @@ const DB_RAIL_CAROUSEL_ITEM = /DB\s*Rail/i;
 // original Testim recording of this flow needs (see continueAndConfirmOrderRetrieval).
 const PUNCH_OUT_SETTLE_MS = 6000;
 
+// The staging backend intermittently rejects the punch-out with canProceedToPunchOut=false and
+// "Error while trying to process payment card for Deutsche Bahn booking" (seen in nightly runs
+// 32842013994 / 32914338119 — the identical request passes minutes later). One in-step retry
+// after this pause is far cheaper than a full scenario retry (~90s of login + navigation).
+const PUNCH_OUT_ATTEMPTS = 2;
+const PUNCH_OUT_REJECTION_RETRY_PAUSE_MS = 15000;
+
 // Both message texts come from the DBrail locale block (assets/locale/en.json). Apostrophes are
 // matched permissively because the app mixes straight (') and typographic (’) forms across these
 // strings, and the second sentence of the error is separated by a <br/> that leaves no whitespace
@@ -104,13 +111,43 @@ const DbRail = {
     let punchOutTab = null;
 
     try {
-      const popupPromise = page.context().waitForEvent('page', { timeout: 30000 });
-      await dbRailPage.clickContinue();
-      punchOutTab = await popupPromise;
+      for (let attempt = 1; attempt <= PUNCH_OUT_ATTEMPTS; attempt += 1) {
+        // db-rail-search-inputs.ts calls window.open before it knows whether the punch-out will
+        // succeed, so a popup fires on the rejection path too (the app closes it itself there).
+        const popupPromise = page.context().waitForEvent('page', { timeout: 30000 }).catch(() => null);
+        await dbRailPage.clickContinue();
+        punchOutTab = await popupPromise;
 
-      // Second stage only appears once the punch-out returned a Deutsche Bahn URL, so this doubles
-      // as the wait for the punch-out call itself.
-      await dbRailPage.waitForGoToTripButton();
+        // Second stage only appears once the punch-out returned a Deutsche Bahn URL, so this
+        // doubles as the wait for the punch-out call itself. When staging instead answers
+        // canProceedToPunchOut=false, the drawer stays in stage one and shows a warning dialog
+        // with the backend's error — detected here instead of timing out on "Go to trip".
+        const { punchOutError } = await dbRailPage.waitForSecondStageOrPunchOutError();
+
+        if (!punchOutError) break; // punch-out accepted — the drawer is in its second stage
+
+        // The app already closed the popup on this path; guard-close ours anyway.
+        if (punchOutTab) {
+          await punchOutTab.close().catch(() => {});
+          punchOutTab = null;
+        }
+
+        if (attempt === PUNCH_OUT_ATTEMPTS) {
+          throw new Error(
+            `The staging backend refused the Deutsche Bahn punch-out on all ` +
+            `${PUNCH_OUT_ATTEMPTS} attempts (canProceedToPunchOut=false): "${punchOutError}". ` +
+            `This is an app/staging-side rejection answered by POST /DBRail before any booking ` +
+            `window could open — not an automation timing issue.`
+          );
+        }
+
+        logger.warn(
+          `[DbRail.continueAndConfirmOrderRetrieval] Punch-out rejected by staging ` +
+          `("${punchOutError}") — retrying once after ${PUNCH_OUT_REJECTION_RETRY_PAUSE_MS}ms`
+        );
+        await dbRailPage.closeMessageDialog();
+        await page.waitForTimeout(PUNCH_OUT_REJECTION_RETRY_PAUSE_MS);
+      }
 
       // The original Testim recording of this flow sleeps 6s between "Continue" and "Go to trip",
       // and the flow only works with that pause: the button renders as soon as the punch-out URL
@@ -118,8 +155,10 @@ const DbRail = {
       // retrieving the order too early answers before the backend can decide anything.
       await page.waitForTimeout(PUNCH_OUT_SETTLE_MS);
 
-      await punchOutTab.close();
-      punchOutTab = null;
+      if (punchOutTab) {
+        await punchOutTab.close();
+        punchOutTab = null;
+      }
       await page.bringToFront();
 
       await dbRailPage.clickGoToTrip();
