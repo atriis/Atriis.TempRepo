@@ -11,8 +11,7 @@ Feature: 66002 IB NDC - Search By Schedule with 'Must Use Flights Pricing Option
   As a corporate traveler with the 'Must Use Flights Pricing Options' privilege
   I want pricing options to be displayed on the Select Flight click for both legs
   So that I can pick a fare for outbound and inbound before adding to my trip
-  
-  #BLOCKED - no results, could not test the entire scenario 
+
   Scenario: Round trip by schedule shows pricing options on Select Flight for outbound and inbound
     Given I am logged in as "ibndcuser@soniatest.com" booking a new trip
     And I have added myself as the traveler
@@ -23,11 +22,13 @@ Feature: 66002 IB NDC - Search By Schedule with 'Must Use Flights Pricing Option
     When I select one flight segment by schedule
     Then I should see the heading "Pricing Options"
     When I select the first option from pricing options
-    And I add to trip from pricing options
+    And I confirm the pricing option for the current segment
     Then the Select Flight button should be visible in results
     And the Add to trip and Pricing Options buttons should not be visible in results
     When I select one flight segment by schedule
     Then I should see the heading "Pricing Options"
     When I select the first option from pricing options
     And I add to trip from pricing options
+    And I wait for "Your Selection" text to be visible
+    And I add "Your Selection" fare to trip
     Then the booking status should be "Pending booking"
