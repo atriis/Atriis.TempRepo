@@ -234,6 +234,11 @@ Then("the journey details travel mode should be {string}", async function (expec
   await EvolviResults.expectJourneyDetailsTravelMode(this.page, expectedMode);
 });
 
+Then("I should see outbound text in Evolvi results page", async function () {
+  logger.info("Verifying the outbound heading is displayed on the Evolvi results page");
+  await EvolviResults.expectDirectionHeadingDisplayed(this.page, "outbound");
+});
+
 // The Evolvi-scoped counterpart of the generic "I should see the heading {string}": it takes the
 // expected wording so it works with the application in any language, reads only the outbound
 // .stations-container heading (a bare h3 in that section is a departure time), and allows the time
@@ -274,45 +279,12 @@ Then(
   },
 );
 
-// ===== TODO STUBS — need DSL/Page implementation =====
+// ===== Travel-together (GroupSave) discount =====
 
-Then("I should see outbound text in Evolvi results page", async function () {
-  logger.info("Verifying the outbound heading is displayed on the Evolvi results page");
-  await EvolviResults.expectDirectionHeadingDisplayed(this.page, "outbound");
+Then("discount banner is displayed in at least one of the fares", async function () {
+  logger.info("Verifying at least one Evolvi fare is priced as a travel-together discount");
+  await EvolviResults.expectTravelTogetherDiscountDisplayed(this.page);
 });
 
-When("I select an outbound Evolvi fare", async function () {
-  throw new Error("TODO: implement 'I select an outbound Evolvi fare' — click an outbound fare amount on results");
-});
 
-When("I select the highlighted inbound Evolvi fare", async function () {
-  throw new Error("TODO: implement 'I select the highlighted inbound Evolvi fare' — select the focused inbound fare option after outbound selection");
-});
 
-Then("the inbound selection should display the selected return time", async function () {
-  throw new Error("TODO: implement 'the inbound selection should display the selected return time' — compare stored outbound/inbound time markers and validate displayed inbound summary");
-});
-
-When("I select a random available Evolvi fare", async function () {
-  throw new Error("TODO: implement 'I select a random available Evolvi fare' — select the first or random visible fare in Evolvi results");
-});
-
-When("I select the first available Evolvi fare", async function () {
-  throw new Error("TODO: implement 'I select the first available Evolvi fare' — select the first available fare option in Evolvi results");
-});
-
-Then("the cart status should be Pending booking", async function () {
-  throw new Error("TODO: implement 'the cart status should be Pending booking' — assert Pending booking badge/label in cart");
-});
-
-Then("the departure city should be correct in the Evolvi TOD section", async function () {
-  throw new Error("TODO: implement 'the departure city should be correct in the Evolvi TOD section' — validate departure city text in delivery method (TOD) section");
-});
-
-Then("the FOP owner should be displayed as Paid by TMC", async function () {
-  throw new Error("TODO: implement 'the FOP owner should be displayed as Paid by TMC' — assert FOP owner label text in cart payment section");
-});
-
-Then("the CVV field should not be displayed for invoice FOP", async function () {
-  throw new Error("TODO: implement 'the CVV field should not be displayed for invoice FOP' — assert CVV input is hidden when invoice FOP is configured");
-});

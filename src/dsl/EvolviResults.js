@@ -959,6 +959,51 @@ const EvolviResults = {
 
     return actualMode;
   },
+
+  /**
+   * Verifies at least one fare in the Evolvi price grid is priced as a travel-together (GroupSave)
+   * fare — the "Discount" label uk-rail-results.vue prints inside a price cell whenever that cell's
+   * priceDetails.isTravelTogether is set (US 52510).
+   *
+   * This is the whole point of test 46785: a search carrying several travellers must come back with
+   * group-discounted fares. Asserting on the label rather than on prices is what makes that check
+   * meaningful — a cheaper amount could come from any number of causes, whereas the label is the app
+   * stating outright that Evolvi priced the fare for the group.
+   *
+   * "At least one" is deliberate and matches the manual step: which fare types qualify for GroupSave
+   * is the supplier's call and varies by route and date, so pinning the assertion to a named fare
+   * would fail on live inventory that is behaving correctly.
+   *
+   * @param {import('playwright').Page} page
+   * @returns {Promise<{labels: string[], fareGroups: string[]}>} The labels found and the fare groups carrying them
+   */
+  async expectTravelTogetherDiscountDisplayed(page) {
+    if (!page) throw new Error("[EvolviResults.expectTravelTogetherDiscountDisplayed] page is required");
+    const resultsPage = getPageObject(page, EvolviResultsPage);
+
+    logger.debug(
+      "[EvolviResults.expectTravelTogetherDiscountDisplayed] Looking for a travel-together discount label in the price grid",
+    );
+    const labels = await resultsPage.getTravelTogetherDiscountLabels();
+
+    if (labels.length === 0) {
+      throw new Error(
+        "[EvolviResults.expectTravelTogetherDiscountDisplayed] No fare in the Evolvi price grid shows a " +
+          "travel-together discount label. uk-rail-results.vue only renders a .discount-label span in a " +
+          "price cell when that fare's isTravelTogether is set, so Evolvi priced none of the returned fares as a " +
+          "group fare for the travellers on this search.",
+      );
+    }
+
+    const fareGroups = await resultsPage.getFareGroupTitlesWithTravelTogetherDiscount();
+    logger.info("[EvolviResults.expectTravelTogetherDiscountDisplayed] Travel-together discount displayed", {
+      discountedCells: labels.length,
+      label: labels[0],
+      fareGroups,
+    });
+
+    return { labels, fareGroups };
+  },
 };
 
 module.exports = EvolviResults;

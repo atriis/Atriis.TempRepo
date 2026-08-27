@@ -198,6 +198,25 @@ const SELECTORS = {
   // (e.g. "TRAIN"). Only rendered for a change station that is not the final row
   // (shouldShowTrainServiceType), so a trailing row is legitimately blank.
   JOURNEY_DETAILS_TRANSPORT_CELL: "td:last-child",
+
+  // ===== Travel-together (GroupSave) discount label (US 52510, test 46785) =====
+  //
+  // When the search carries enough travellers for Evolvi to price a group fare, uk-rail-results.vue
+  // appends <span class="discount-label">{{ $t('ukRail.discount') }}</span> INSIDE the affected
+  // .price-cell, next to the fare amount — guarded by v-if="priceDetails?.isTravelTogether". So
+  // the label's presence in a cell IS the app's statement that that fare is a travel-together one,
+  // and no cell renders the span otherwise.
+  //
+  // Scoped to ".results" — the DESKTOP grid. The view renders a second, mobile copy of the whole
+  // price grid further down (v-if isMobile), which carries the same classes; anchoring on the
+  // desktop container is what keeps a run from counting the same fare twice.
+  //
+  // Deliberately NOT restricted to each group's first .price-row the way FIRST_PRICE_ROW is. That
+  // restriction exists so a CLICK target is genuinely reachable in a collapsed group, which is a
+  // different question from the one this asks: the manual test only wants the discount to appear on
+  // at least one fare in the grid, and a label in a collapsed group's second row is still the app
+  // having priced a travel-together fare.
+  TRAVEL_TOGETHER_DISCOUNT_LABEL: ".results .price-cell .discount-label",
 };
 
 /**
@@ -1040,6 +1059,50 @@ class EvolviResultsPage {
     return this.page.locator(
       `${SELECTORS.FIRST_PRICE_ROW} > ${cell} ${SELECTORS.SELECTABLE_FARE_OPTION}`,
     );
+  }
+
+  /**
+   * Reads the travel-together (GroupSave) discount labels the price grid is currently rendering,
+   * in DOM order — one entry per fare cell priced as a group fare.
+   *
+   * Waits for the FIRST label rather than reading straight away: this runs right after the results
+   * grid paints, and the cells re-render as the view resolves each fare's price details, so a bare
+   * count would race the render and read 0 on a grid that does show discounts a moment later. The
+   * wait is bounded and its timeout is swallowed — a grid that genuinely prices no group fare is a
+   * legitimate (failing) outcome for the caller to report, not an error from the page object.
+   *
+   * @param {number} [timeout=30000] - How long to allow the first discount label to appear
+   * @returns {Promise<string[]>} The label texts as rendered, empty when no fare carries one
+   */
+  async getTravelTogetherDiscountLabels(timeout = 30000) {
+    const labels = this.page.locator(SELECTORS.TRAVEL_TOGETHER_DISCOUNT_LABEL);
+    try {
+      await labels.first().waitFor({ state: "visible", timeout });
+    } catch {
+      return [];
+    }
+    const texts = await labels.allInnerTexts();
+    return texts.map((text) => normalizeText(text ?? "")).filter((text) => text !== "");
+  }
+
+  /**
+   * The titles of the fare groups whose cells carry a travel-together discount label, in grid
+   * order. Diagnostic only — it names the fares a run actually found the discount on, so a failure
+   * elsewhere in the scenario can be read without re-running with a screenshot.
+   *
+   * A SplitTix group takes the other branch of the title v-if and prints .splittix-title instead of
+   * .title, so both are read; a group renders exactly one of them.
+   *
+   * @returns {Promise<string[]>}
+   */
+  async getFareGroupTitlesWithTravelTogetherDiscount() {
+    const groups = this.page.locator(
+      `.results .main-rows:has(${SELECTORS.TRAVEL_TOGETHER_DISCOUNT_LABEL.replace(".results ", "")})`,
+    );
+    const titles = await groups
+      .locator("> .title-cell :is(.title, .splittix-title)")
+      .allInnerTexts();
+    return titles.map((text) => normalizeText(text ?? "")).filter((text) => text !== "");
   }
 }
 

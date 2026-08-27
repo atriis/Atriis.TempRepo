@@ -32,6 +32,10 @@
       "from": "NCL",
       "to": "105"
     },
+    "nclToWok": {
+      "from": "NCL",
+      "to": "WOK"
+    },
     "licToLic": {
       "from": "LIC",
       "to": "LIC"
