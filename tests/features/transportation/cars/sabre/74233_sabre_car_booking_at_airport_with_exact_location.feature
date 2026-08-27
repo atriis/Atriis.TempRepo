@@ -1,7 +1,5 @@
-﻿#ADO Test Case: #74234 - Sabre Car Booking Flow with Exact Airport Location
-
-@transportation @cars @provider:sabre @booking @priority:critical @ado:74234
-Feature: 74234 Sabre Car Booking Flow with Exact Airport Location
+﻿@transportation @cars @provider:sabre @booking @priority:critical @ado:74233
+Feature: 74233 Sabre Car Booking Flow with Exact Airport Location
   As a corporate traveler using Sabre
   I want to book cars with exact airport location validation
 
