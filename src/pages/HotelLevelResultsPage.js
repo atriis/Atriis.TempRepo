@@ -123,9 +123,11 @@ const SELECTORS = {
 };
 
 // Filter section title → Vuex hotelFilter key. Most sections store under the lowercased title,
-// but the Sustainability section is stored under 'ecoLabels' (hotel.service.ts).
+// a few sections differ: Sustainability stores under 'ecoLabels' (hotel.service.ts) and
+// Hotel Chains under 'masterChains' (hotel-filter.vue).
 const HOTEL_FILTER_STORE_KEYS = {
   sustainability: 'ecoLabels',
+  'hotel chains': 'masterChains',
 };
 
 class HotelLevelResultsPage {

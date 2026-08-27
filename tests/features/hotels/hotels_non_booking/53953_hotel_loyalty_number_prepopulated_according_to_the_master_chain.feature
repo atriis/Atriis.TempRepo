@@ -16,23 +16,26 @@ Feature: 53953 Hotel loyalty number pre-populated according to the master chain
   Scenario: Loyalty number from same master chain is pre-populated (Case 1: sibling chain)
     Given I am logged in as "Terry@Chain.com" booking a new trip
     And I have added myself as the traveler
-    When I search for a hotel in "LON" for 1 night
+    When I search for a hotel in "london,united" for 1 night
+    And I click proceed button if visible
     And I wait to see view rates text in results page
+    And I apply hotel level filter "Hotel Chains" with option "Hilton"
     And I select the first hotel result
     And I add a refundable room to my cart
     Then the loyalty number should be pre-populated with a green success icon
     When I expand the loyalty number extras section
-    Then the loyalty chain dropdown should show "CN - 121212"
+    Then the loyalty chain dropdown should show "Conrad Hotels - 121212"
 
   @priority:critical
   Scenario: Loyalty number from master chain is pre-populated (Case 2: master chain directly)
     Given I am logged in as "Terry@Chain.com" booking a new trip
     And I have added myself as the traveler
     When I search for a hotel in "LON" for 1 night
-    And I filter hotel results by hotel name "doubletree"
+    And I click proceed button if visible
     And I wait to see view rates text in results page
+    And I apply hotel level filter "Hotel Chains" with option "Intercontinental"
     And I select the first hotel result
     And I add a refundable room to my cart
     Then the loyalty number should be pre-populated with a green success icon
     When I expand the loyalty number extras section
-    Then the loyalty chain dropdown should show "Conrad Hotels - 456456"
+    Then the loyalty chain dropdown should show "Intercontinental Hotels Group - 686868"
