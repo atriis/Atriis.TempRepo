@@ -6,7 +6,7 @@
 # Created: 2024-04-02T10:14:01Z
 # Updated: 2025-07-21T03:06:46Z
 
-@regression @shell @compensation @approval_flow @flights @provider:amadeus
+@regression @shell @compensation @approval_flow @flights @provider:amadeus @full_purchase
 Feature: 44362 Amadeus - Compensations active and related items in an approval trip
   As a corporate traveler whose company has climate compensation switched on
   I want the Climate Contribution quote to be purchased alongside my flight and to stay linked to it
@@ -42,14 +42,5 @@ Feature: 44362 Amadeus - Compensations active and related items in an approval t
     Then the approval flow should show no pending items
     When I close the approval flow dialog
     And I refresh the page
-    Then the flight booking status should be "Finalizing" or "Confirmed"
+    Then the flight booking status should be "Finalising" or "Confirmed"
     And the compensation booking status should be "On hold" or "Confirmed"
-    # NOTE: Booking status is finalizing, so we can't cancel this trip. But the following steps to cancel it would be:
-    # When I open the related items of the compensation quote
-    # Then the compensation related items should list a quote titled "Flight to"
-    # When I close the compensation related items dialog
-    # And I hover the trip actions menu
-    # And I open the trip cancellation from the trip actions menu
-    # Then the trip cancellation dialog should be displayed
-    # And the trip cancellation details should list the "Climate Contribution" quote
-    # Then I confirm the trip cancellation successfully
