@@ -43,10 +43,19 @@ const SELECTORS = {
   INFO_ICON_IN_DIALOG: "span.material-symbols-outlined",
   TOOLTIP_POPPER: '[role="tooltip"], .el-tooltip__popper, .el-popper',
   TERMS_AND_CONDITIONS_BUTTON: ".room-list button:has-text('Terms & Conditions')",
-  TERMS_AND_CONDITIONS_DIALOG: ".terms-conditions-dialog",
+  // The open T&C dialog. Every room-preview appends its own el-dialog to the body the first time it
+  // is opened, and all the helpers below close the dialog on their way out, so :visible is what
+  // separates the dialog that is actually open from the hidden leftovers of earlier opens.
+  TERMS_AND_CONDITIONS_DIALOG: ".terms-conditions-dialog:visible",
   // Rendered rule lines inside the T&C dialog (app-terms-conditions.vue). They load asynchronously
-  // after the dialog opens, so getTermsAndConditionsText waits on this before reading the body.
+  // after the dialog opens, so openTermsAndConditionsDialogOnFirstRoom waits on this before any
+  // caller reads the body or clicks the footer.
   TERMS_AND_CONDITIONS_CONTENT: ".terms-container",
+  // Primary footer button of the T&C dialog (the app-btn with type="primary" in room-preview.vue):
+  // it closes the dialog and calls the same selectRoom() as the room card button. Relative to the
+  // dialog locator. Keyed on btn--primary rather than the label, which is localized; the sibling
+  // Cancel button is type="text" -> btn--text, so it cannot be hit by mistake.
+  TERMS_AND_CONDITIONS_ADD_TO_TRIP_BUTTON: ".app-footer button.btn--primary",
   ALL_ROOM_PRICE_AMOUNTS: ".room-list__cards > div .price-details-main h4.amount",
   // Active filter badge tag in the room-filter summary bar
   ROOM_FILTER_SUMMARY_TAG: (text) => `.room-filter-summary .el-tag:has-text("${text}")`,
@@ -729,16 +738,38 @@ class RoomLevelResultsPage {
   }
 
   /**
-   * Clicks the "Terms and conditions" link on the first room card and waits for the dialog.
-   * @returns {Promise<boolean>} True if the dialog is visible after clicking
+   * Opens the Terms & Conditions dialog on the first room card and returns a locator for the open
+   * dialog. Every T&C helper below closes the dialog on its way out, so each one that needs the
+   * dialog has to open it for itself — this is that shared opening.
+   * @returns {Promise<import('playwright').Locator>} Locator scoped to the open dialog
    */
-  async clickTermsAndConditionsButton() {
+  async openTermsAndConditionsDialogOnFirstRoom() {
     const btn = this.page.locator(SELECTORS.TERMS_AND_CONDITIONS_BUTTON).first();
     await btn.scrollIntoViewIfNeeded();
     await btn.waitFor({ state: 'visible', timeout: 15000 });
     await btn.click();
+
     const dialog = this.page.locator(SELECTORS.TERMS_AND_CONDITIONS_DIALOG).first();
     await dialog.waitFor({ state: 'visible', timeout: 15000 });
+
+    // The terms body (app-terms-conditions) loads asynchronously after the dialog opens. Waiting on
+    // it means readers capture the policy text rather than just the title and buttons, and clickers
+    // find the footer at its final position. Not fatal on its own, so it never fails the caller.
+    await dialog
+      .locator(SELECTORS.TERMS_AND_CONDITIONS_CONTENT)
+      .first()
+      .waitFor({ state: 'visible', timeout: 15000 })
+      .catch(() => {});
+
+    return dialog;
+  }
+
+  /**
+   * Clicks the "Terms and conditions" link on the first room card and waits for the dialog.
+   * @returns {Promise<boolean>} True if the dialog is visible after clicking
+   */
+  async clickTermsAndConditionsButton() {
+    const dialog = await this.openTermsAndConditionsDialogOnFirstRoom();
     const isVisible = await dialog.isVisible();
     // Close the dialog so subsequent steps are not blocked by the overlay
     await this.page.keyboard.press('Escape');
@@ -752,21 +783,7 @@ class RoomLevelResultsPage {
    * @returns {Promise<string>} Full text content of the T&C dialog
    */
   async getTermsAndConditionsText() {
-    const btn = this.page.locator(SELECTORS.TERMS_AND_CONDITIONS_BUTTON).first();
-    await btn.scrollIntoViewIfNeeded();
-    await btn.waitFor({ state: 'visible', timeout: 15000 });
-    await btn.click();
-
-    const dialog = this.page.locator(SELECTORS.TERMS_AND_CONDITIONS_DIALOG).first();
-    await dialog.waitFor({ state: 'visible', timeout: 15000 });
-
-    // The terms body (app-terms-conditions) loads asynchronously after the dialog opens; wait for
-    // the rendered rule lines before reading so we capture the policy text, not just title/buttons.
-    await dialog
-      .locator(SELECTORS.TERMS_AND_CONDITIONS_CONTENT)
-      .first()
-      .waitFor({ state: 'visible', timeout: 15000 })
-      .catch(() => {});
+    const dialog = await this.openTermsAndConditionsDialogOnFirstRoom();
 
     const text = (await dialog.textContent()) ?? '';
 
@@ -774,6 +791,47 @@ class RoomLevelResultsPage {
     await dialog.waitFor({ state: 'hidden', timeout: 5000 });
 
     return text.trim();
+  }
+
+  /**
+   * Re-opens the Terms & Conditions dialog on the first room and clicks its footer "Add to trip"
+   * button, which closes the dialog and selects the room (the app-btn with type="primary" in the
+   * dialog footer of room-preview.vue). The re-open is mandatory: every other T&C helper closes the
+   * dialog, so by the time this runs there is no open dialog to click in.
+   */
+  async clickAddToTripInTermsAndConditionsDialog() {
+    const dialog = await this.openTermsAndConditionsDialogOnFirstRoom();
+
+    const addToTripBtn = dialog.locator(SELECTORS.TERMS_AND_CONDITIONS_ADD_TO_TRIP_BUTTON).first();
+    try {
+      await addToTripBtn.waitFor({ state: 'visible', timeout: 15000 });
+    } catch (err) {
+      throw new Error(
+        `[RoomLevelResultsPage.clickAddToTripInTermsAndConditionsDialog] "Add to trip" button never appeared in the Terms & Conditions dialog footer. The dialog may have rendered without a footer, or its markup changed. Original: ${err.message}`
+      );
+    }
+
+    // The app disables this button when the room is restricted or non-refundable
+    // (:isDisabled="isRestricted || room.refundableStatus == RoomRefundableStatus.None"). A click on
+    // a disabled button is a silent no-op that would only surface much later as a confusing
+    // booking-status timeout, so fail here with the real reason.
+    if (await addToTripBtn.isDisabled()) {
+      throw new Error(
+        '[RoomLevelResultsPage.clickAddToTripInTermsAndConditionsDialog] The "Add to trip" button in the Terms & Conditions dialog is disabled, so the room cannot be added from the dialog. The first room is likely restricted or non-refundable.'
+      );
+    }
+
+    await addToTripBtn.click();
+
+    // The button sets termsAndConditionsDialogVisible = false and then calls selectRoom(), so the
+    // dialog closing is the signal that the click actually landed.
+    try {
+      await dialog.waitFor({ state: 'hidden', timeout: 15000 });
+    } catch (err) {
+      throw new Error(
+        `[RoomLevelResultsPage.clickAddToTripInTermsAndConditionsDialog] The Terms & Conditions dialog stayed open after clicking "Add to trip", so the room was not selected. Original: ${err.message}`
+      );
+    }
   }
 
   /**

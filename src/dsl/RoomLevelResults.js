@@ -90,6 +90,24 @@ const RoomLevelResults = {
     await Results.clickProceedConflictQuoteModal(page);
   },
 
+  /**
+   * Adds the first room to the cart from inside the Terms & Conditions dialog, using the dialog's
+   * own "Add to trip" footer button instead of the room card button.
+   * @param {import('playwright').Page} page
+   */
+  async addRoomToCartFromTermsAndConditions(page) {
+    if (!page) throw new Error('page parameter is required');
+
+    const roomLevelResultsPage = getPageObject(page, RoomLevelResultsPage);
+
+    logger.debug("Adding the first room to the cart from the terms and conditions dialog");
+    await roomLevelResultsPage.clickAddToTripInTermsAndConditionsDialog();
+
+    // The dialog button calls the same selectRoom() as the room card button, so it can raise the
+    // conflicting-quotes modal just as the other add-to-cart flows do.
+    await Results.clickProceedConflictQuoteModal(page);
+  },
+
   async extractRoomLevelPrice(page) {
     if (!page) throw new Error('page parameter is required');
 

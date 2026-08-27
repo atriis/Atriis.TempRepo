@@ -33,6 +33,11 @@ When("I add the first available room to my cart", async function () {
   await RoomLevelResults.addFirstHotelRoomLevelToCart(this.page);
 });
 
+When("I add the first room to my cart from the terms and conditions dialog", async function () {
+  logger.info("Adding first room to cart from the terms and conditions dialog");
+  await RoomLevelResults.addRoomToCartFromTermsAndConditions(this.page);
+});
+
 When("I add room called {string} to cart", async function (roomName) {
   logger.info("Adding room to cart by name", { roomName });
   await RoomLevelResults.addRoomByNameToCart(this.page, roomName);
