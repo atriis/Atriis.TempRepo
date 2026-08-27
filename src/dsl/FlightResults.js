@@ -291,6 +291,151 @@ const FlightResults = {
   },
 
   /**
+   * Verifies that every flight result's "Add to trip" button is rendered but not actionable.
+   *
+   * This is how the app surfaces a ticketing/office-hours TIME LIMIT: flight-extra-info.vue binds
+   * `:isDisabled="isAddToCardDisabled"`, which is true when the fare is past its last ticketing date
+   * or outside TMC office hours. The traveller still sees every result, but cannot add any to the trip.
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @throws {Error} If page is missing, no result button is found, or any button is enabled
+   * @returns {Promise<{checked: number}>} How many result buttons were asserted
+   */
+  async expectAllAddToTripButtonsDisabledInResults(page) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+
+    logger.debug('Verifying every flight result "Add to trip" button is disabled by the time limit');
+
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    await flightResultsPage.waitForFlightResults();
+
+    const buttons = flightResultsPage.getAddToTripButtonsInResults();
+    const count = await buttons.count();
+
+    if (count === 0) {
+      throw new Error(
+        '[FlightResults.expectAllAddToTripButtonsDisabledInResults] No "Add to trip" button was found in the ' +
+        'flight results list. Either the search returned no results, or the results render a different ' +
+        'primary action (e.g. "Select" for a by-schedule search), so the time limit cannot be verified here.'
+      );
+    }
+
+    for (let i = 0; i < count; i += 1) {
+      const button = buttons.nth(i);
+
+      await expect(
+        button,
+        `The "Add to trip" button on flight result ${i} should stay visible — a time-limited result is still ` +
+        'shown to the traveller, only blocked from being booked',
+      ).toBeVisible();
+
+      await expect(
+        button,
+        `The "Add to trip" button on flight result ${i} should be disabled because a ticketing time limit ` +
+        'applies to this user. An enabled button means the app did not flag the fare as expired ' +
+        '(isExpired / isExpiredOfficeHours false in flight-extra-info.vue)',
+      ).toBeDisabled();
+    }
+
+    logger.info('All flight result "Add to trip" buttons are disabled', { checked: count });
+
+    return { checked: count };
+  },
+
+  /**
+   * Verifies the results-list "Pricing Options" button is still visible and clickable while a
+   * time limit applies — the fares stay browsable even though they cannot be added to the trip.
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @param {number} [index=0] - Zero-based index of the flight result
+   * @throws {Error} If page is missing, index is invalid, or the button is missing/disabled
+   * @returns {Promise<void>}
+   */
+  async expectPricingOptionsButtonEnabled(page, index = 0) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+    if (!Number.isInteger(index) || index < 0) {
+      throw new Error(`index must be a non-negative integer, got: ${index}`);
+    }
+
+    logger.debug('Verifying the "Pricing Options" button stays enabled under the time limit', { index });
+
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    await flightResultsPage.waitForPricingOptionsButton(index);
+
+    const button = flightResultsPage.getPricingOptionsButton(index);
+
+    await expect(
+      button,
+      `The "Pricing Options" button on flight result ${index} should be visible — the time limit blocks ` +
+      'booking, not browsing the fares',
+    ).toBeVisible();
+
+    await expect(
+      button,
+      `The "Pricing Options" button on flight result ${index} should be enabled. The app never binds ` +
+      'isDisabled on this button (flight-extra-info.vue), so a disabled one means the results are ' +
+      'rendering a different action than "Pricing Options"',
+    ).toBeEnabled();
+  },
+
+  /**
+   * Verifies every fare card in the open Pricing Options drawer is rendered but not selectable.
+   *
+   * leg-pricing-option.vue binds the same `isAddToCardDisabled` on each card's "Select" button as the
+   * results list does on "Add to trip", so a time limit locks the whole drawer.
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @throws {Error} If page is missing, no fare card is found, or any "Select" button is enabled
+   * @returns {Promise<{checked: number}>} How many fare-card buttons were asserted
+   */
+  async expectAllPricingOptionsDisabled(page) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+
+    logger.debug('Verifying every pricing option "Select" button is disabled by the time limit');
+
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    await flightResultsPage.waitForPricingOptionCards();
+
+    const selectButtons = flightResultsPage.getPricingOptionSelectButtons();
+    const count = await selectButtons.count();
+
+    if (count === 0) {
+      throw new Error(
+        '[FlightResults.expectAllPricingOptionsDisabled] The Pricing Options drawer rendered fare cards but ' +
+        'none of them exposed a "Select" button, so there is nothing to assert. The drawer markup likely ' +
+        'changed, or the cards are still loading their fares.'
+      );
+    }
+
+    for (let i = 0; i < count; i += 1) {
+      const button = selectButtons.nth(i);
+
+      await expect(
+        button,
+        `The "Select" button on pricing option ${i} should stay visible — a time-limited fare is still ` +
+        'listed in the drawer, only blocked from being selected',
+      ).toBeVisible();
+
+      await expect(
+        button,
+        `The "Select" button on pricing option ${i} should be disabled because a ticketing time limit ` +
+        'applies to this user. An enabled button means leg-pricing-option.vue did not receive ' +
+        'isAddToCardDisabled for this fare',
+      ).toBeDisabled();
+    }
+
+    logger.info('All pricing options are disabled', { checked: count });
+
+    return { checked: count };
+  },
+
+  /**
    * Hovers over the office-hours restriction icon and returns the tooltip title text.
    *
    * @param {import('playwright').Page} page

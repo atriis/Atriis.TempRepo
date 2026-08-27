@@ -600,6 +600,50 @@ class FlightResultsPage {
   }
 
   /**
+   * Returns every "Add to trip" button in the flight results list, one per result card.
+   * Scoped to FLIGHT_PREVIEW so the pricing-options / by-schedule buttons never leak in.
+   *
+   * @returns {import('@playwright/test').Locator} Locator resolving to all result "Add to trip" buttons
+   */
+  getAddToTripButtonsInResults() {
+    return this.page
+      .locator(SELECTORS.FLIGHT_PREVIEW)
+      .locator(SELECTORS.RESULTS_ADD_TO_TRIP_BUTTON);
+  }
+
+  /**
+   * Waits for the first fare card to render in the open Pricing Options drawer.
+   *
+   * @param {number} timeout - Max wait time in ms (default: 60000)
+   */
+  async waitForPricingOptionCards(timeout = 60000) {
+    try {
+      await this.getPricingOptionsOverlay()
+        .locator(SELECTORS.PRICING_OPTIONS_CARD)
+        .first()
+        .waitFor({ state: 'visible', timeout });
+    } catch (err) {
+      throw new Error(
+        `[FlightResultsPage.waitForPricingOptionCards] No pricing-option fare card became visible in the ` +
+        `Pricing Options drawer within ${timeout}ms. The drawer likely never opened, or the fare list is empty. ` +
+        `Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Returns the "Select" button of every fare card in the open Pricing Options drawer.
+   * Scoping through the card (not the raw button selector) keeps the results-list buttons out.
+   *
+   * @returns {import('@playwright/test').Locator} Locator resolving to all fare-card "Select" buttons
+   */
+  getPricingOptionSelectButtons() {
+    return this.getPricingOptionsOverlay()
+      .locator(SELECTORS.PRICING_OPTIONS_CARD)
+      .locator(SELECTORS.PRICING_OPTIONS_SELECT_BUTTON);
+  }
+
+  /**
    * Gets the visible Element Plus tooltip text.
    *
    * @param {{ timeout?: number }} options
@@ -1129,6 +1173,16 @@ class FlightResultsPage {
    */
   async waitForPricingOptionsButton(index = 0, timeout = 60000) {
     await this.page.locator(SELECTORS.PRICING_OPTIONS_BUTTON).nth(index).waitFor({ state: "visible", timeout });
+  }
+
+  /**
+   * Gets the results-list "Pricing Options" button locator, for state assertions.
+   *
+   * @param {number} index - Zero-based index of the pricing options button (default: 0)
+   * @returns {import('@playwright/test').Locator} Locator for that result's "Pricing Options" button
+   */
+  getPricingOptionsButton(index = 0) {
+    return this.page.locator(SELECTORS.PRICING_OPTIONS_BUTTON).nth(index);
   }
 
   async isPricingOptionsButtonVisible(timeout = 5000) {

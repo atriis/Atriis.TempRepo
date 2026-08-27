@@ -505,6 +505,23 @@ When('I hover over time limit icon and verify booking restricted message', async
   logger.info('Booking restricted message found', { message: this.bookingRestrictedMessage });
 });
 
+Then('all results should have "Add to trip" button disabled', async function () {
+  logger.info('Verifying every flight result "Add to trip" button is disabled by the time limit');
+  const { checked } = await FlightResults.expectAllAddToTripButtonsDisabledInResults(this.page);
+  logger.info('Flight result "Add to trip" buttons verified as disabled', { checked });
+});
+
+Then('the "Pricing Options" button should be enabled', async function () {
+  logger.info('Verifying the "Pricing Options" button is still enabled under the time limit');
+  await FlightResults.expectPricingOptionsButtonEnabled(this.page);
+});
+
+Then('all pricing options should be disabled', async function () {
+  logger.info('Verifying every pricing option "Select" button is disabled by the time limit');
+  const { checked } = await FlightResults.expectAllPricingOptionsDisabled(this.page);
+  logger.info('Pricing options verified as disabled', { checked });
+});
+
 When('I hover over the add to trip button in flight results', async function () {
   logger.info('Hovering over the add to trip button in flight results');
   this.bookingRestrictedMessage = await FlightResults.hoverAddToTripButtonAndGetTooltipText(this.page);
