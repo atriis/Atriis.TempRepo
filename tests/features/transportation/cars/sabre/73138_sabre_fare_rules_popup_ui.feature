@@ -1,5 +1,5 @@
 @transportation @cars @regression @provider:sabre
-Feature: 73542 Sabre - Fare Rules Popup UI - Vendor And Location Details Tab
+Feature: 73138 Sabre - Fare Rules Popup UI - Vendor And Location Details Tab
 
   @priority:high
   Scenario: Verify fare rules are displayed throughout the booking flow for Sabre cars
