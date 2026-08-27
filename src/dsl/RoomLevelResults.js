@@ -416,6 +416,40 @@ const RoomLevelResults = {
   },
 
   /**
+   * Asserts the "Deposit Required" note is displayed on a room card (ADO 55723).
+   *
+   * This is the precondition the voucher test depends on: the scenario must book a deposit
+   * (prepaid) rate, and the note rendered by room-deposit.vue is the only place room results say
+   * so. Asserting it here means a supplier that stops returning deposit rates fails on the room
+   * list, not several steps later at checkout.
+   *
+   * @param {import('playwright').Page} page
+   * @param {number} [position=1] - 1-based room card position
+   * @returns {Promise<string>} The note's text
+   */
+  async verifyRoomDepositRequired(page, position = 1) {
+    if (!page) throw new Error('[RoomLevelResults.verifyRoomDepositRequired] "page" is required.');
+    if (!Number.isInteger(position) || position < 1) {
+      throw new Error(
+        `[RoomLevelResults.verifyRoomDepositRequired] "position" must be a positive integer, got: ${position}`,
+      );
+    }
+
+    const p = getPageObject(page, RoomLevelResultsPage);
+    const text = await p.getRoomDepositRequiredText(position);
+
+    if (!/Deposit\s*Required/i.test(text)) {
+      throw new Error(
+        `[RoomLevelResults.verifyRoomDepositRequired] Expected room ${position} to show the "Deposit Required" ` +
+        `note (room-deposit.vue), but the note's text read: "${text}".`,
+      );
+    }
+
+    logger.info('Deposit Required note is displayed on the room card', { position, text });
+    return text;
+  },
+
+  /**
    * Enables the "Refundable" filter in room level results.
    * @param {import('playwright').Page} page
    */

@@ -17,6 +17,7 @@ const { selectDateOfBirthWithYearArrows, parseDateValue, parseTimeToMinutes } = 
 const { expectNumbersToBeEqualWithTolerance } = require("../assertions/numberAssertions");
 const { parseAmountText } = require("@utils/dom");
 const { normalizeText, extractDateTokens, escapeRegex, stripWhitespaceAndLowercase } = require("@utils/text");
+const { extractPdfText, countLetters, assertPdfTextIsReadable, containsAmount, findCurrencyAmounts } = require("@utils/pdf");
 const logger = require("@utils/logger").child("Cart-DSL");
 
 // Journey legs of a round-trip rail quote, in the order eu-rail-seats.vue renders them: the API
@@ -4884,6 +4885,174 @@ const Cart = {
     if (!isVisible) {
       throw new Error('Download voucher options (English and French) are not visible in the trip overview');
     }
+  },
+
+  /**
+   * Downloads the hotel voucher in one language and reads its text (ADO 55723).
+   *
+   * The language is a parameter of the request, not of the UI: `hotel-quote-card.ts getVoucher(lang)`
+   * calls GET /hotelVoucher?tripId=&quoteId=&lang=EN|FR and saves the returned blob client-side, so
+   * the app's display language never has to be switched to fetch the French voucher.
+   *
+   * The download event is armed before the click because the save is client-side — a wait armed
+   * after the click misses it.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} language - Link label to click: "English" or "French"
+   * @returns {Promise<{language: string, suggestedFilename: string, filePath: string, sizeBytes: number, text: string}>}
+   * @throws {Error} If the link is missing, no download arrives, or the saved file is empty
+   */
+  async downloadHotelVoucher(page, language) {
+    if (!page) throw new Error('[Cart.downloadHotelVoucher] "page" is required.');
+    if (typeof language !== 'string' || !language.trim()) {
+      throw new Error(`[Cart.downloadHotelVoucher] "language" must be a non-empty string, got: ${typeof language}`);
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+    logger.info('Downloading the hotel voucher', { language });
+
+    // Armed BEFORE the click — see waitForVoucherDownload.
+    const downloadPromise = cartPage.waitForVoucherDownload();
+    await cartPage.clickVoucherDownloadLink(language);
+    const download = await downloadPromise;
+
+    const suggestedFilename = download.suggestedFilename();
+
+    // waitForEvent('download') only proves the browser STARTED the save, so completion is asserted
+    // too: no reported failure, a real path, and a non-empty file on disk.
+    let failure;
+    let filePath;
+    try {
+      failure = await download.failure();
+      filePath = await download.path();
+    } catch (err) {
+      throw new Error(
+        `[Cart.downloadHotelVoucher] Could not resolve the downloaded ${language} voucher ` +
+        `"${suggestedFilename}" on disk. The download may not have completed, or downloads may be ` +
+        `disabled in this browser context. Original: ${err.message}`,
+      );
+    }
+
+    if (failure) {
+      throw new Error(
+        `[Cart.downloadHotelVoucher] The ${language} voucher download "${suggestedFilename}" did not ` +
+        `complete: ${failure}`,
+      );
+    }
+
+    const sizeBytes = filePath ? fs.statSync(filePath).size : 0;
+    if (!filePath || sizeBytes === 0) {
+      throw new Error(
+        `[Cart.downloadHotelVoucher] The ${language} voucher "${suggestedFilename}" reached disk empty ` +
+        `(${sizeBytes} bytes at "${filePath}"), so there is nothing to verify.`,
+      );
+    }
+
+    // Clear the spinner before returning, so a second language click is not swallowed while the
+    // first request is still in flight.
+    await cartPage.waitForVoucherLoaderToClear();
+
+    const text = extractPdfText(filePath);
+    logger.info('Hotel voucher downloaded', {
+      language,
+      suggestedFilename,
+      sizeBytes,
+      extractedLetters: countLetters(text),
+    });
+
+    return { language, suggestedFilename, filePath, sizeBytes, text };
+  },
+
+  /**
+   * Asserts a downloaded hotel voucher shows no prices at all (ADO 55723).
+   *
+   * Anchored on currency codes and symbols rather than on any decimal number, because a voucher
+   * legitimately carries dates, phone numbers, and confirmation codes.
+   *
+   * Readability is asserted first: an unparsed PDF must fail here rather than pass an assertion
+   * about what it does NOT contain.
+   *
+   * @param {import('playwright').Page} page
+   * @param {{language: string, suggestedFilename: string, filePath: string, text: string}} voucher -
+   *   the object returned by Cart.downloadHotelVoucher
+   * @throws {Error} If the voucher is unreadable or shows any currency amount
+   */
+  async verifyVoucherHasNoPrices(page, voucher) {
+    if (!page) throw new Error('[Cart.verifyVoucherHasNoPrices] "page" is required.');
+    if (!voucher || typeof voucher.text !== 'string' || !voucher.filePath) {
+      throw new Error(
+        `[Cart.verifyVoucherHasNoPrices] "voucher" must be the object returned by Cart.downloadHotelVoucher ` +
+        `(carrying "text" and "filePath"), got: ${typeof voucher}. Ensure the ` +
+        `"When I download the hotel voucher in ..." step ran before this assertion.`,
+      );
+    }
+
+    assertPdfTextIsReadable(voucher.text, 'Cart.verifyVoucherHasNoPrices', voucher.filePath);
+
+    const amounts = findCurrencyAmounts(voucher.text);
+    if (amounts.length > 0) {
+      throw new Error(
+        `[Cart.verifyVoucherHasNoPrices] The ${voucher.language} hotel voucher ` +
+        `"${voucher.suggestedFilename}" shows ${amounts.length} price(s), but a voucher must not include ` +
+        `prices: ${JSON.stringify(amounts)}.`,
+      );
+    }
+
+    logger.info('Hotel voucher shows no prices', {
+      language: voucher.language,
+      suggestedFilename: voucher.suggestedFilename,
+    });
+  },
+
+  /**
+   * Asserts a specific amount does not appear in a downloaded hotel voucher (ADO 55723).
+   *
+   * Stronger than verifyVoucherHasNoPrices, and the reason the scenario reads the cart's More
+   * details total before booking: the exact figure that must be absent is known, so the assertion
+   * does not depend on recognising a currency format.
+   *
+   * Matching is on digit runs (see pdf.containsAmount) because PDF text extraction cannot preserve
+   * separators or word boundaries — a formatted-string comparison could miss a split amount and
+   * pass an absence assertion that should have failed.
+   *
+   * @param {import('playwright').Page} page
+   * @param {{language: string, suggestedFilename: string, filePath: string, text: string}} voucher -
+   *   the object returned by Cart.downloadHotelVoucher
+   * @param {number} amount - The amount that must be absent, e.g. the cart's More details total
+   * @throws {Error} If the voucher is unreadable or the amount appears in it
+   */
+  async verifyAmountNotInVoucher(page, voucher, amount) {
+    if (!page) throw new Error('[Cart.verifyAmountNotInVoucher] "page" is required.');
+    if (!voucher || typeof voucher.text !== 'string' || !voucher.filePath) {
+      throw new Error(
+        `[Cart.verifyAmountNotInVoucher] "voucher" must be the object returned by Cart.downloadHotelVoucher ` +
+        `(carrying "text" and "filePath"), got: ${typeof voucher}. Ensure the ` +
+        `"When I download the hotel voucher in ..." step ran before this assertion.`,
+      );
+    }
+    if (typeof amount !== 'number' || !Number.isFinite(amount)) {
+      throw new Error(
+        `[Cart.verifyAmountNotInVoucher] "amount" must be a finite number, got: ${amount}. Ensure the ` +
+        `"When I extract the price from more details" step ran and captured a price.`,
+      );
+    }
+
+    assertPdfTextIsReadable(voucher.text, 'Cart.verifyAmountNotInVoucher', voucher.filePath);
+
+    const { found, matched, via } = containsAmount(voucher.text, amount);
+    if (found) {
+      throw new Error(
+        `[Cart.verifyAmountNotInVoucher] The ${voucher.language} hotel voucher ` +
+        `"${voucher.suggestedFilename}" shows the cart price ${amount} — matched "${matched}" by ${via} — ` +
+        `but the voucher must not include prices.`,
+      );
+    }
+
+    logger.info('Hotel voucher does not show the cart price', {
+      language: voucher.language,
+      amount,
+      suggestedFilename: voucher.suggestedFilename,
+    });
   },
 
   /**

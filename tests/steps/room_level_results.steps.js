@@ -96,6 +96,11 @@ When("I filter room results by refundable", async function () {
   await RoomLevelResults.filterRoomsByRefundable(this.page);
 });
 
+Then("deposit required is displayed in the first room", async function () {
+  logger.info("Verifying the Deposit Required note is displayed on the first room");
+  await RoomLevelResults.verifyRoomDepositRequired(this.page, 1);
+});
+
 When("I verify the room price appears in the terms and conditions", async function () {
   if (this.roomLevelPrice === undefined) {
     throw new Error(

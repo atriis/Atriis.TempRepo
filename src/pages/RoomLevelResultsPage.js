@@ -100,6 +100,11 @@ const SELECTORS = {
   ROOM_CARD_OOP_INFO_ICON: '.price-details-oop .app-out-of-policy span.info-icon',
   // Price amount inside a room card, relative to ROOM_CARD
   ROOM_CARD_PRICE_AMOUNT: '.price-details-main h4.amount',
+  // "Deposit Required" note inside a room card (room-deposit.vue), relative to ROOM_CARD.
+  // room-deposit.vue reuses the .app-out-of-policy class for styling, so the section is matched on
+  // its own text instead — that class alone would also match a genuine policy violation badge.
+  // en.json common.depositRequired is "Deposit Required".
+  ROOM_CARD_DEPOSIT_REQUIRED: 'section.app-out-of-policy:has-text("Deposit Required")',
 };
 
 class RoomLevelResultsPage {
@@ -287,6 +292,36 @@ class RoomLevelResultsPage {
       el => el.checked,
       await input.elementHandle(),
     );
+  }
+
+  /**
+   * Waits for the "Deposit Required" note on the room card at the given position and returns its
+   * text. Positions are 1-based, matching the other first/second-room helpers in this page object.
+   *
+   * @param {number} position - 1-based room card position in the room list
+   * @param {object} options
+   * @param {number} options.timeout - Maximum wait time in ms
+   * @returns {Promise<string>} The note's text
+   */
+  async getRoomDepositRequiredText(position, { timeout = 15000 } = {}) {
+    const note = this.page
+      .locator(SELECTORS.ROOM_CARD)
+      .nth(position - 1)
+      .locator(SELECTORS.ROOM_CARD_DEPOSIT_REQUIRED)
+      .first();
+
+    try {
+      await note.scrollIntoViewIfNeeded();
+      await note.waitFor({ state: "visible", timeout });
+    } catch (err) {
+      throw new Error(
+        `[RoomLevelResultsPage.getRoomDepositRequiredText] No "Deposit Required" note was visible on room ` +
+        `${position} within ${timeout}ms (selector: ${SELECTORS.ROOM_CARD} >> nth=${position - 1} >> ` +
+        `${SELECTORS.ROOM_CARD_DEPOSIT_REQUIRED}). Original: ${err.message}`,
+      );
+    }
+
+    return (await note.innerText()).trim();
   }
 
   /** Verifies refundable tag appears on room cards */

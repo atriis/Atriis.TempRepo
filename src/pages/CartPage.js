@@ -856,6 +856,12 @@ const SELECTORS = {
   // Voucher download box in hotel-quote-card.vue (.voucher-box)
   DOWNLOAD_VOUCHER_BOX: ".download-text",
   VOUCHER_DOWNLOAD_LINKS: ".voucher-box .download-links",
+  // One language link inside the voucher box. They are plain <span>s with a @click handler (no
+  // href, no role), so they are matched on their label — en.json common.english / common.french.
+  // GoGlobal renders the English link only.
+  VOUCHER_DOWNLOAD_LINK: (label) => `.voucher-box .download-links span:text-is("${label}")`,
+  // Spinner shown in place of the language links while /hotelVoucher is in flight
+  VOUCHER_LOADER: ".voucher-box .voucher-loader",
 
   // Share itinerary / quotes dropdown
   SHARE_BUTTON: ".share-container .share-btn",
@@ -6722,6 +6728,76 @@ class CartPage {
     } catch {
       return false;
     }
+  }
+
+  /**
+   * Returns a promise that resolves with the Playwright download event fired by a voucher language
+   * link. `hotel-quote-card.ts getVoucher(lang)` fetches the PDF as a blob and saves it client-side,
+   * so this is a download event on the page and never a navigation. ARM this BEFORE clicking the
+   * link — a wait armed afterwards misses the event.
+   *
+   * @param {number} [timeout=60000] - Maximum wait in ms. Generous because the PDF is generated
+   *   on demand by the supplier, and /hotelVoucher answers 425 ("too early") until it is ready.
+   * @returns {Promise<import('@playwright/test').Download>}
+   */
+  waitForVoucherDownload(timeout = 60000) {
+    return this.page.waitForEvent('download', { timeout }).catch((err) => {
+      throw new Error(
+        `[CartPage.waitForVoucherDownload] No voucher file download was triggered within ${timeout}ms after ` +
+        `clicking the language link (waited for a Playwright 'download' event). The app may have shown the ` +
+        `"voucher unavailable" warning instead, which is what it does when GET /hotelVoucher answers 425 ` +
+        `because the supplier has not produced the voucher yet. Original: ${err.message}`,
+      );
+    });
+  }
+
+  /**
+   * Clicks one language link in the voucher download box.
+   *
+   * @param {string} label - The link's visible label, e.g. "English" or "French"
+   * @param {object} [options]
+   * @param {number} [options.timeout=15000] - Maximum wait for the link to be visible
+   */
+  async clickVoucherDownloadLink(label, { timeout = 15000 } = {}) {
+    if (typeof label !== 'string' || !label.trim()) {
+      throw new Error(`[CartPage.clickVoucherDownloadLink] "label" must be a non-empty string, got: ${typeof label}`);
+    }
+
+    const link = this.page.locator(SELECTORS.VOUCHER_DOWNLOAD_LINK(label)).first();
+    try {
+      await link.scrollIntoViewIfNeeded();
+      await link.waitFor({ state: 'visible', timeout });
+    } catch (err) {
+      const available = await this.page
+        .locator(SELECTORS.VOUCHER_DOWNLOAD_LINKS)
+        .first()
+        .innerText()
+        .catch(() => '(the voucher box has no language links)');
+      throw new Error(
+        `[CartPage.clickVoucherDownloadLink] The "${label}" voucher link was not visible within ${timeout}ms ` +
+        `(selector: ${SELECTORS.VOUCHER_DOWNLOAD_LINK(label)}). The voucher box offers: "${available}". ` +
+        `Note GoGlobal bookings render the English link only. Original: ${err.message}`,
+      );
+    }
+
+    await link.click();
+  }
+
+  /**
+   * Waits for the voucher spinner to clear, so a second language download is not clicked while the
+   * first request is still in flight (the links are replaced by the spinner while it is).
+   *
+   * @param {object} [options]
+   * @param {number} [options.timeout=60000]
+   */
+  async waitForVoucherLoaderToClear({ timeout = 60000 } = {}) {
+    await this.page
+      .locator(SELECTORS.VOUCHER_LOADER)
+      .first()
+      .waitFor({ state: 'hidden', timeout })
+      .catch(() => {
+        // The spinner may never render for a cached voucher — its absence is the desired state.
+      });
   }
 
   /**

@@ -1538,6 +1538,48 @@ Then("the download voucher options for english and french should not be visible 
   await Cart.verifyVoucherDownloadOptionsNotVisible(this.page);
 });
 
+// The voucher is fetched per language by the link itself (GET /hotelVoucher?...&lang=EN|FR), so the
+// downloaded file is kept on the world and the assertions below run against whichever language was
+// downloaded last. The scenario downloads English, asserts, then French, asserts (ADO 55723).
+When("I download the hotel voucher in {string}", async function (language) {
+  logger.info("Downloading the hotel voucher", { language });
+  this.hotelVoucher = await Cart.downloadHotelVoucher(this.page, language);
+  logger.info("Stored downloaded hotel voucher", {
+    language,
+    suggestedFilename: this.hotelVoucher.suggestedFilename,
+    sizeBytes: this.hotelVoucher.sizeBytes,
+  });
+});
+
+Then("the downloaded hotel voucher should not contain any prices", async function () {
+  if (!this.hotelVoucher) {
+    throw new Error(
+      'No hotel voucher has been downloaded — run "When I download the hotel voucher in <language>" before this assertion',
+    );
+  }
+  logger.info("Verifying the downloaded hotel voucher shows no prices", { language: this.hotelVoucher.language });
+  await Cart.verifyVoucherHasNoPrices(this.page, this.hotelVoucher);
+});
+
+Then("the extracted price from cart more details is not displayed", async function () {
+  if (!this.hotelVoucher) {
+    throw new Error(
+      'No hotel voucher has been downloaded — run "When I download the hotel voucher in <language>" before this assertion',
+    );
+  }
+  if (typeof this.moreDetailsPrice !== "number") {
+    throw new Error(
+      'No cart More details price was captured — run "When I extract the price from more details" before this assertion, ' +
+        `got: ${this.moreDetailsPrice}`,
+    );
+  }
+  logger.info("Verifying the cart More details price is absent from the voucher", {
+    language: this.hotelVoucher.language,
+    moreDetailsPrice: this.moreDetailsPrice,
+  });
+  await Cart.verifyAmountNotInVoucher(this.page, this.hotelVoucher, this.moreDetailsPrice);
+});
+
 Then("the car location at airport index {int} should contain {string} on cart", async function (index, expectedAirport) {
   logger.info("Verifying car airport location contains expected airport location on cart", { index, expectedAirport });
   await Cart.expectAirportAddressOnCartToContain(this.page, index, expectedAirport);
