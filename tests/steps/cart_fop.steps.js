@@ -176,6 +176,13 @@ Then("the payment options should include {string} and {string}", async function 
   await CartPayment.verifyPaymentOptions(this.page, [optionOne, optionTwo]);
 });
 
+// Single-option variant of the step above — use it when only one option is guaranteed for the user
+// under test, so the assertion doesn't fail on an option that the user's configuration never offers.
+Then("the {string} payment option should be displayed", async function (optionText) {
+  logger.info("Verifying a single payment option is displayed", { optionText });
+  await CartPayment.verifyPaymentOptions(this.page, [optionText]);
+});
+
 When("I select the {string} payment option", async function (optionText) {
   logger.info("Selecting payment option", { optionText });
   await CartPayment.selectPaymentOption(this.page, optionText);
