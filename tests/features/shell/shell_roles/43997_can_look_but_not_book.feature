@@ -20,7 +20,7 @@ Feature: 43997 - can look but not book
     And I fill in NL reference fields education and courses
     And I select the first hotel result
     And I add a refundable room to my cart
-    And the checkout should display the role restriction message "*Your role does not allow to make bookings. Share the quote with a user with Booker rights to finalize it"
+    And the checkout should display the role restriction message "*Your role does not allow to make bookings. Share the quote with a user with Booker rights to finalise it"
     When I accept Terms & Conditions
-    Then the checkout should display the role restriction message "*Your role does not allow to make bookings. Share the quote with a user with Booker rights to finalize it"
+    Then the checkout should display the role restriction message "*Your role does not allow to make bookings. Share the quote with a user with Booker rights to finalise it"
     And the proceed to checkout button should be disabled
