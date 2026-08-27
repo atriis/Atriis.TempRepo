@@ -24,15 +24,13 @@ Feature: 48270 HYBRID Email administration, Add event to Outlook calendar
     And I have added myself as the traveler
     And I search for a one way Evolvi train from "padToBth"
     And I add an Evolvi one way to the trip
-    Then the booking status should be "Pending booking"
-    And I select default delivery method and save
+    And the booking status should be "Pending booking"
+    And I fill mandatory Evolvi fields in cart
     When I click to add a hotel to my trip from cart
     And I search for a hotel in "Bath Spa Railway Station, Bath, UK" for 1 night from the cart drawer
     And I select the first hotel result
     And I add a refundable room to my cart
-    And I add a credit card as payment method
-    And I fill credit card cvv if needed
-    When I accept all Terms & Conditions on the page
+    And I add a credit card as payment method for the hotel quote
     And I accept all Terms & Conditions on the page
     And I click the proceed to checkout button
     And I wait for booking details in checkout

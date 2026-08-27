@@ -16,6 +16,13 @@ When("I add a credit card as payment method", async function () {
   await CartPayment.addCreditCard(this.page);
 });
 
+// Scoped variant of "I add a credit card as payment method" + "I fill credit card cvv if needed".
+// Use in multi-product carts so the card lands on the hotel quote instead of the first pending quote.
+When("I add a credit card as payment method for the hotel quote", async function () {
+  logger.info("Adding credit card as payment method for the hotel quote");
+  await CartPayment.addCreditCardToHotelQuote(this.page);
+});
+
 When("I fill credit card details", async function () {
   logger.info("Filling credit card details in already-open form");
   await CartPayment.fillCreditCardDetails(this.page);

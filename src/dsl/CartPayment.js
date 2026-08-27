@@ -64,6 +64,32 @@ class CartPayment {
   }
 
   /**
+   * Adds a credit card as the hotel quote's form of payment and fills its CVV when required.
+   *
+   * In a multi-product cart every pending quote renders its own form-of-payment block, and
+   * addCreditCard/fillCreditCardCVVifNeeded act on the first / all of them. This variant scopes
+   * both actions to the hotel quote card, so an already-paid rail or flight quote earlier in the
+   * cart is left untouched. The card dialog itself is teleported to <body>, so the form filling
+   * reuses fillCreditCardDetails unchanged.
+   * @param {import('@playwright/test').Page} page - Playwright page instance
+   * @param {Object} [cardData] - Card details (defaults to Visa from cards.json)
+   * @param {string} [cvv='123'] - CVV to type when the hotel quote asks for one
+   */
+  static async addCreditCardToHotelQuote(page, cardData = cards[0], cvv = "123") {
+    if (!page) {
+      throw new Error("page is required");
+    }
+    if (!cvv || typeof cvv !== "string") {
+      throw new Error("cvv must be a non-empty string");
+    }
+    const fop = getPageObject(page, CartPaymentPage);
+    await fop.clickAddPaymentMethodButtonInHotelQuote();
+    await fop.clickAddCardDetailsButton();
+    await CartPayment.fillCreditCardDetails(page, cardData);
+    await fop.fillCVVInHotelQuote(cvv);
+  }
+
+  /**
    * Checks if a payment method has been successfully added to the cart.
    * @param {import('@playwright/test').Page} page - Playwright page instance
    * @returns {Promise<boolean>} True if payment method green icon is visible

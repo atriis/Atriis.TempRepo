@@ -82,6 +82,12 @@ const SELECTORS = {
   EDIT_CARD_LINK: '.edit-payment-btn .is-clickable',
   LAST_FOUR_DIGIT: '.last-four-digit',
   NO_COUNTRY_CARD_CHECKBOX: '.select-credit-card > :nth-child(1) > :nth-child(2) > :nth-child(2) [type="checkbox"]',
+  // Hotel quote card in the cart. hotel-quote-card.vue's root is a bare `section.quote-payment-card`
+  // with no product class of its own (unlike `.flight-quote-card` / `.car-quote-card` / `.uk-rail-quote-card`),
+  // so the hotel card is identified by the `section.hotel-preview` it renders into base-quote-card's
+  // #ticket-details slot. Used to scope form-of-payment actions to the hotel quote in multi-product trips.
+  HOTEL_QUOTE_CARD: '.quote-payment-card:has(section.hotel-preview)',
+
   // Items inside the currently-visible el-select dropdown popper panel.
   // Element Plus teleports poppers to <body>; :visible scopes to the active one.
   VISIBLE_DROPDOWN_ITEM: '.el-select-dropdown:visible .el-select-dropdown__item',
@@ -185,6 +191,63 @@ class CartPaymentPage {
     const button = this.page.getByRole("button", { name: SELECTORS.ADD_PAYMENT_METHOD_BTN_NAME }).first();
     await button.waitFor({ state: "visible", timeout: 30000 });
     await button.click({ timeout: 30000 });
+  }
+
+  /**
+   * Gets the hotel quote card in the cart.
+   * @returns {import('@playwright/test').Locator}
+   */
+  getHotelQuoteCard() {
+    return this.page.locator(SELECTORS.HOTEL_QUOTE_CARD).first();
+  }
+
+  /**
+   * Clicks the "Add payment method" button belonging to the hotel quote card.
+   * Unlike clickAddPaymentMethodButton, which takes the first button on the page, this scopes the
+   * click to the hotel quote so a rail/flight/car quote earlier in the cart is not paid instead.
+   */
+  async clickAddPaymentMethodButtonInHotelQuote() {
+    const card = this.getHotelQuoteCard();
+    await card.waitFor({ state: "visible", timeout: 30000 });
+    await card.scrollIntoViewIfNeeded().catch(() => {});
+    const button = card.getByRole("button", { name: SELECTORS.ADD_PAYMENT_METHOD_BTN_NAME }).first();
+    await button.waitFor({ state: "visible", timeout: 30000 });
+    await button.click({ timeout: 30000 });
+  }
+
+  /**
+   * Fills every visible CVV input inside the hotel quote card, if any. No-ops when the hotel quote
+   * does not require a CVV.
+   * @param {string} cvv - CVV code (required)
+   * @returns {Promise<number>} How many CVV inputs were filled
+   */
+  async fillCVVInHotelQuote(cvv) {
+    if (!cvv || typeof cvv !== 'string') {
+      throw new Error('cvv must be a non-empty string');
+    }
+
+    const card = this.getHotelQuoteCard();
+    await card.waitFor({ state: "visible", timeout: 30000 });
+
+    const cvvInputs = card.locator(SELECTORS.CVV_INPUT);
+    const totalInputs = await cvvInputs.count();
+    let filled = 0;
+
+    for (let index = 0; index < totalInputs; index += 1) {
+      const cvvInput = cvvInputs.nth(index);
+      if (!(await cvvInput.isVisible().catch(() => false))) {
+        continue;
+      }
+
+      await cvvInput.scrollIntoViewIfNeeded().catch(() => {});
+      await cvvInput.click();
+      await cvvInput.clear();
+      await cvvInput.fill('');
+      await cvvInput.type(cvv, { delay: 100 });
+      filled += 1;
+    }
+
+    return filled;
   }
 
   /**
