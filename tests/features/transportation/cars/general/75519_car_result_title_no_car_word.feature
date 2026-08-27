@@ -1,13 +1,11 @@
-# ADO Test Case: #75326 - Car Search Results - Quote Title Should Not Contain Unexpected "Car" Word
+# ADO Test Case: #75519 - Car Search Results - Quote Title Should Not Contain Unexpected "Car" Word
 
-@transportation @cars @regression @daily_cars @provider:amadeus @ado:75326
-Feature: 75326 Car Search Results - Quote Title Should Not Contain Unexpected "Car" Word
+@transportation @cars @regression @daily_cars @provider:amadeus @ado:75519
+Feature: 75519 Car Search Results - Quote Title Should Not Contain Unexpected "Car" Word
   As a corporate traveler
   When I search for cars via Amadeus
   The result title should show only the car category and type (e.g. "Compact 2/3 Doors")
   Without the standalone word "car" appearing out of context in any result title
-  # Related to ADO Bug #75326 - fix: added a space in carType (OBT Frontend)
-  # Regression of ADO Bug #74767
 
   @priority:high
   Scenario: Car result titles do not contain the word "car" as standalone text
