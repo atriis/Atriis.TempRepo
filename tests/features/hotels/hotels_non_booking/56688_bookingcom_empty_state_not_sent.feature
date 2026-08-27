@@ -1,4 +1,4 @@
-﻿# Test Name: HYBRID for 56688 Booking.com - Empty state is not being sent when passanger's location is a country that does not have a state
+﻿# Test Name: 56688 Booking.com - Empty state is not being sent when passanger's location is a country that does not have a state
 # Description: 
 # Status: Active
 # Labels: Booking.com,Regression,hybrid,Hotel,2026 plan 2
@@ -12,9 +12,14 @@ Feature: 56688 Booking.com - Empty state is not sent when passenger location has
   I want to book a Booking.com hotel without a state in my location
   So that the booking request does not send an empty state value to Booking.com
 
+  # Account precondition from ADO 56688 step 1 - configured on the account, not driven by the test:
+  #   brunanina@bookingcomspecifictest.com sits under TMC "Club Travel", corp
+  #   "TESTIM Bruna - specific test - do not touch". The CORP location is United States
+  #   (a country that has states); the USER PROFILE country is United Kingdom (no states).
+  #   That mismatch is what used to make the app send an empty "state" to Booking.com.
   @priority:medium
   Scenario: Booking.com hotel search succeeds without empty state field in passenger location
     Given I am logged in as "brunanina@bookingcomspecifictest.com" booking a new trip
     And I have added myself as the traveler
     When I search for a hotel in "London" for 1 night
-    And I wait to see view rates text in results page
+    Then I wait to see view rates text in results page
