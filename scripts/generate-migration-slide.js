@@ -56,28 +56,34 @@ slide.addShape(pptx.ShapeType.line, {
   line: { color: COLORS.border, width: 1 },
 });
 
-// === LEFT COLUMN: Agents ===
+// === LEFT COLUMN: Next steps ===
+// Replaced the "AI Agents accelerating migration" panel: with the migration at
+// 100% the how-we-got-here story has served its purpose, and the question the
+// slide now has to answer is what the team does next.
 const LX = 0.4;
 let ly = 1.35;
 
-slide.addText('AI Agents accelerating migration', {
+slide.addText('Next steps', {
   x: LX, y: ly, w: 4.2, h: 0.35,
   fontSize: 14, bold: true, color: COLORS.accent, fontFace: 'Calibri',
 });
 ly += 0.38;
 
+// One paragraph per bullet. `bullet` opens a new paragraph and `breakLine`
+// keeps the runs from collapsing onto a single line.
+const nextSteps = [
+  'Migrate the new tests created in Testim after the migration.',
+  'Add manual tests that can now be automated.',
+  'Unblock the blocked tests.',
+  'Ongoing test maintenance.',
+];
+
 slide.addText(
-  [
-    { text: 'Foundation: ', options: { bold: true, color: COLORS.ink } },
-    { text: 'mapped all OBT pages & main UI elements.\n', options: { color: COLORS.ink } },
-    { text: 'Agent 1: ', options: { bold: true, color: COLORS.ink } },
-    { text: 'converts Testim → Playwright.\n', options: { color: COLORS.ink } },
-    { text: 'Agent 2: ', options: { bold: true, color: COLORS.ink } },
-    { text: 'adapts output to our project format.\n', options: { color: COLORS.ink } },
-    { text: 'Agent 3: ', options: { bold: true, color: COLORS.ink } },
-    { text: 'implements steps.', options: { color: COLORS.ink } },
-  ],
-  { x: LX, y: ly, w: 4.2, h: 1.4, fontSize: 11, fontFace: 'Calibri', paraSpaceAfter: 3 }
+  nextSteps.map((t) => ({
+    text: t,
+    options: { color: COLORS.ink, bullet: true, breakLine: true },
+  })),
+  { x: LX, y: ly, w: 4.2, h: 1.4, fontSize: 11, fontFace: 'Calibri', paraSpaceAfter: 4 }
 );
 ly += 1.5;
 
@@ -91,8 +97,8 @@ ly += 0.3;
 slide.addChart(pptx.ChartType.line, [
   {
     name: 'Migration %',
-    labels: ['9', '10', '11', '12', '13', '14', '15', '16'],
-    values: [45, 53, 63, 63, 68, 74, 86, 94],
+    labels: ['9', '10', '11', '12', '13', '14', '15', '16', '17'],
+    values: [45, 53, 63, 63, 68, 74, 86, 94, 100],
   },
 ], {
   x: LX, y: ly, w: 4.2, h: 2.2,
@@ -129,11 +135,11 @@ slide.addText('Overall Migration', {
   x: CX, y: 1.42, w: 3.7, h: 0.3,
   fontSize: 12, bold: true, color: COLORS.ink, align: 'center', fontFace: 'Calibri',
 });
-slide.addText('94%', {
+slide.addText('100%', {
   x: CX, y: 1.7, w: 3.7, h: 0.95,
   fontSize: 64, bold: true, color: COLORS.green, align: 'center', fontFace: 'Calibri',
 });
-slide.addText('672 / 712 tests migrated', {
+slide.addText('713 / 713 tests migrated', {
   x: CX, y: 2.65, w: 3.7, h: 0.35,
   fontSize: 13, color: COLORS.ink, align: 'center', fontFace: 'Calibri',
 });
@@ -149,16 +155,18 @@ slide.addText('Domain Breakdown', {
 // but cannot run (supplier error / known bug / awaiting review). It is drawn as
 // an orange segment following the green one, and its count comes from the
 // *_blocked folders under tests/features/<domain>.
-// Conversion is complete for Hotels / Flights / Shell, so their total IS their
-// converted scope and the blocked slice is all that is outstanding. Only
-// Transportation still carries a to-do backlog (148 in scope, 108 converted, of
-// which 2 are blocked, leaving 106 running), so it alone sets `showRemainder` to
-// paint that backlog as a grey track behind.
+// As of sprint 17 conversion is complete in ALL FOUR domains — Transportation
+// closed its last 40-test backlog — so every total IS that domain's converted
+// scope and the blocked slice is all that is outstanding. No domain sets
+// `showRemainder` any more; the flag (and the grey track, grey number and grey
+// legend swatch it drives) is kept because a future in-scope backlog would need
+// it again, and the legend below only prints "Not migrated" when some domain
+// actually has one.
 const domains = [
-  { name: 'Hotels',         total: 121, done: 121, blocked: 4,  pct: 100, showRemainder: false },
-  { name: 'Flights',        total: 254, done: 254, blocked: 25, pct: 100, showRemainder: false },
-  { name: 'Transportation', total: 148, done: 108, blocked: 2,  pct: 73,  showRemainder: true  },
-  { name: 'Shell',          total: 189, done: 189, blocked: 25, pct: 100, showRemainder: false },
+  { name: 'Hotels',         total: 121, done: 121, blocked: 3,  pct: 100, showRemainder: false },
+  { name: 'Flights',        total: 254, done: 254, blocked: 17, pct: 100, showRemainder: false },
+  { name: 'Transportation', total: 148, done: 148, blocked: 11, pct: 100, showRemainder: false },
+  { name: 'Shell',          total: 190, done: 190, blocked: 23, pct: 100, showRemainder: false },
 ];
 
 const barX = CX;
@@ -249,11 +257,15 @@ slide.addText(`\uD83D\uDEA7 ${blockedTotal} tests blocked (supplier errors / kno
 const legY = blockedY + 0.55;
 // Each item advances by its OWN width — a single fixed pitch crowded the amber
 // swatch right up against the long 'Done & running' label.
+// 'Not migrated' is only listed while some domain still paints a grey track —
+// with every domain at 100% there is no grey segment for it to explain.
 const legendItems = [
   { label: 'Done & running', color: COLORS.green,  w: 1.50 },
   { label: 'Blocked',        color: COLORS.yellow, w: 0.95 },
-  { label: 'Not migrated',   color: COLORS.gray,   w: 1.20 },
 ];
+if (domains.some((d) => d.showRemainder)) {
+  legendItems.push({ label: 'Not migrated', color: COLORS.gray, w: 1.20 });
+}
 let legX = CX;
 legendItems.forEach((it) => {
   slide.addShape(pptx.ShapeType.rect, {
@@ -291,25 +303,37 @@ slide.addText(
 
 // Feature-file counts for every test_path in the nightly chain
 // (suite-flights → suite-hotels → suite-shell → suite-transportation):
-// Flights 23 suites, Hotels 2, Shell 28, Transportation 7 = 60 suites.
+// Flights 23 suites, Hotels 2, Shell 28, Transportation 13 = 66 suites.
 // One .feature file is one test, which is why these are FILE counts and not
 // cucumber pickle counts — the handful of Scenario Outlines in the suites expand
-// into several runs each, which would total 737 and overstate the test count.
+// into several runs each, which would overstate the test count.
 // Recount with: for each "test_path" in .github/workflows/suite-*.yml, count the
 // *.feature files under it (the *_blocked folders sit outside those paths).
+// Two traps when recounting: flights_general_non_booking appears TWICE in
+// suite-flights.yml because it is sharded across two legs, so its 60 features
+// must be counted once, not twice; and a test_path ending in "*.feature" is a
+// non-recursive glob (that is how the rail suites keep their _blocked subfolder
+// out), so do not recurse into it.
 const comp = [
-  { name: 'Flights', value: 284 },
-  { name: 'Hotels',  value: 115 },
-  { name: 'Transportation',    value: 112 },
-  { name: 'Shell',   value: 191 },
+  { name: 'Flights', value: 300 },
+  { name: 'Hotels',  value: 119 },
+  { name: 'Transportation',    value: 154 },
+  { name: 'Shell',   value: 199 },
 ];
 const compTotal = comp.reduce((a, b) => a + b.value, 0);
 
 // KPI tiles — the daily count is the composition sum so the two cannot drift.
+// The duration is the CHAIN wall-clock, not one leg: the four suites run in
+// sequence (flights → hotels → shell → transportation), so measure from the
+// suite-flights start to the suite-transportation end. Recount with
+// `gh run list --workflow suite-<domain>.yml --json createdAt,updatedAt` for all
+// four and pair the runs by night. Over the 9 nights to 2026-08-28 the legs
+// averaged ~104 / ~120 / ~36 / ~57 min for a ~5h17m chain (range 4h44m-6h45m),
+// which is why this reads 5h and not the 4h carried since sprint 15.
 const tiles = [
   { label: 'Tests running daily',   value: String(compTotal), color: COLORS.accent },
-  { label: 'Avg passing rate',      value: '82%',             color: COLORS.green  },
-  { label: 'Avg total duration',    value: '4h',              color: COLORS.ink    },
+  { label: 'Avg passing rate',      value: '80%',             color: COLORS.green  },
+  { label: 'Avg total duration',    value: '5h',              color: COLORS.ink    },
 ];
 tiles.forEach((t, i) => {
   const ty = 2.55 + i * 0.72;
@@ -333,7 +357,7 @@ slide.addText(
   [
     { text: '⏱  Why the run is taking longer. ', options: { bold: true, color: COLORS.ink } },
     {
-      text: 'We now run 2 tests at a time instead of 4, so the full run needs '
+      text: 'We now run 1-2 tests at a time instead of 4, so the full run needs '
         + 'more time to finish. Running more at once was making the tests '
         + 'unstable, so for now we prefer a slower run we can trust.',
       options: { color: COLORS.sub },
@@ -351,20 +375,24 @@ slide.addText('Composition', {
   fontSize: 12, bold: true, color: COLORS.ink, fontFace: 'Calibri',
 });
 
+// The longest label ('Transportation') sets the label width, so the track has
+// to shrink by the same amount to keep the row ending at the value column.
+const COMP_TRACK_W = 1.9;
+
 comp.forEach((c, i) => {
   const cy = 5.70 + i * 0.33;
   slide.addText(c.name, {
-    x: RX + 0.2, y: cy, w: 1.0, h: 0.28,
+    x: RX + 0.2, y: cy, w: 1.25, h: 0.28,
     fontSize: 11, color: COLORS.ink, fontFace: 'Calibri',
   });
   slide.addShape(pptx.ShapeType.roundRect, {
-    x: RX + 1.15, y: cy + 0.05, w: 2.2, h: 0.18,
+    x: RX + 1.45, y: cy + 0.05, w: COMP_TRACK_W, h: 0.18,
     fill: { color: COLORS.gray }, line: { color: COLORS.gray, width: 0 },
     rectRadius: 0.04,
   });
-  const w = Math.max(0.05, (2.2 * c.value) / compTotal);
+  const w = Math.max(0.05, (COMP_TRACK_W * c.value) / compTotal);
   slide.addShape(pptx.ShapeType.roundRect, {
-    x: RX + 1.15, y: cy + 0.05, w, h: 0.18,
+    x: RX + 1.45, y: cy + 0.05, w, h: 0.18,
     fill: { color: COLORS.accent }, line: { color: COLORS.accent, width: 0 },
     rectRadius: 0.04,
   });
