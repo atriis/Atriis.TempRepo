@@ -18,6 +18,7 @@ applyTo: '**/*.feature, **/payload_validation.steps.js, **/PayloadValidation.js'
 - ✅ Deep JSON subset matching (arrays + object nesting)
 - ✅ XML and JSON validation with loose structure matching
 - ✅ Request counting — prove a supplier call was **not** re-sent
+- ✅ Request-type inventory — prove a supplier call was **never sent at all**
 
 ## Supported Step Definitions
 
@@ -25,6 +26,7 @@ applyTo: '**/*.feature, **/payload_validation.steps.js, **/PayloadValidation.js'
 |------|------|
 | Capture payloads by request type | Assert contains/not contains with operators |
 | Capture a request **count** as a baseline | Multi-line XML assertions (exact tag match) |
+| Capture the trip's **request-type inventory** | Assert a request type was never sent (wildcards) |
 | | Multi-line JSON assertions (deep subset match) |
 | | JSON path exists/contains/not contains |
 | | Assert no additional requests were sent since the baseline |
@@ -188,6 +190,39 @@ And every "otaRailAvail" request should have "DepartureDateTime" within "ReturnD
 
 
 
+### 7. Request-Type Inventory — Prove a Call Was Never Sent
+
+Use when the requirement is *"this supplier must never be called for this trip"* — e.g. no NDC search when the
+corporate content has no active NDC airlines. Like §5 and §6 these steps read the trip's request log directly and
+need **no** capture-payload step.
+
+```gherkin
+# Drive the flow past the point where the request would have been sent
+And flight results should be available
+
+When I capture all the "request" types from Storage
+Then the captured "request" types do not contain request type "Sabre NDC Flight Search*"
+```
+
+- **Prefer this over `exactly 0 "..." requests should have been sent`.** §6's caveat is fatal for a pure absence
+  test: `exactly 0` maps "not found" to zero, so it passes identically whether the request was never sent or the
+  logs simply had not published yet. The capture step here reads the **whole** inventory and **fails** when it comes
+  back empty ("the trip never reached a supplier"), which is the proof-of-contact §6 tells you to pair with — and
+  there is no standalone anchor step to pair with instead.
+- **Wildcards are usually mandatory, not optional.** Several suppliers suffix the logged type with the corporate
+  account code that produced the call — a real NDC-enabled trip logs `Sabre NDC Flight Search FROCDE` and
+  `Sabre NDC Flight Search aaaaaa`, and **never** the bare name. An exact-match assertion on `"Sabre NDC Flight
+  Search"` therefore clears a trip that *did* send the request. Always assert on the family: `"... Search*"`.
+  Confirm the real spelling by listing the inventory on a trip where the call **is** expected.
+- **Matching is case-insensitive**, deliberately looser than the storage lookup: an absence check must err toward
+  matching more, never toward silently clearing.
+- **The failure names the whole inventory**, so a failing run reports which types the trip actually sent.
+- **Trip-scoped**, and `world.tripId` must already be set.
+- **`source` must be `request` or `response`** — `block` is a fragment of an already-captured payload and is
+  rejected.
+
+Canonical example: `tests/features/flights/flights_sabre/flights_sabre_non_booking/79477_sabre_ndc_no_active_airlines_no_ndc_search_request.feature`
+
 ## Scenario Identifiers (world context)
 
 These are automatically captured during booking flow:
@@ -273,10 +308,13 @@ Error: Expected content not found in any of the 3 captured request payload(s) fo
 - ✅ Use `.map()` for flexible pattern matching instead of exact strings
 - ✅ Use multi-line JSON for full structure validation
 - ✅ Use the request-count steps for "must not be re-sent" requirements, always with an anchor
+- ✅ Use the request-type inventory steps for "never sent at all" requirements, with a `*` suffix on the type
 
 ### DON'T
 - ❌ Skip the capture step before assertions (content **and** request count)
 - ❌ Use a request-count assertion without an anchor request that the action under test really sends
+- ❌ Use `exactly 0` to prove a call was never sent — it cannot tell that from "not published yet" (use §7)
+- ❌ Assert absence on a bare request type when the supplier suffixes it with an account code (use `"... Search*"`)
 - ❌ Create new expression types
 - ❌ Hardcode dynamic values — use `{tripNumber}`, `{transactionId}`, `{sid}`
 - ❌ Assume order of keys in JSON

@@ -1,6 +1,6 @@
 require("module-alias/register");
 const { expect } = require("@playwright/test");
-const { fetchPayloadFromStorage } = require("@utils/payloadValidationClient");
+const { fetchPayloadFromStorage, buildRequestTypeMatcher } = require("@utils/payloadValidationClient");
 const logger = require("@utils/logger").child("PayloadValidation-DSL");
 
 // Request-count polling. Distributor logs are published asynchronously, so counts are read
@@ -15,6 +15,9 @@ const MAX_REQUESTS_TO_INSPECT = 200;
 // Downloading every payload takes far longer than fetching the latest one, and the volume is
 // highest exactly when a request is being repeated - the case this check exists to catch.
 const INSPECT_ALL_TIMEOUT_MS = 180000;
+// Matches every request type in the trip log. The storage client turns "*" into a regex
+// (buildRequestTypeMatcher), which is how a whole-trip inventory is read without naming a type.
+const ALL_REQUEST_TYPES_WILDCARD = "*";
 
 function buildKey(source, requestType) {
   return `${source.toLowerCase()}::${requestType.trim()}`;
@@ -2150,6 +2153,163 @@ const PayloadValidation = {
       `Expected exactly ${expected} "${normalizedRequestType}" request(s) to have been sent for this trip, ` +
       `but ${actualCount} were logged.`
     ).toBe(expected);
+  },
+
+  /**
+   * Builds the inventory of every request type the trip logged, without downloading any payload.
+   *
+   * This is the capture half of an ABSENCE check. Capturing by request type cannot serve one:
+   * capturePayloadByRequestType throws "No request payload found" when the type is missing, which
+   * is the very outcome the test wants to prove, so the scenario would error instead of passing.
+   * Reading the whole inventory first turns that into an ordinary assertion over a known list -
+   * and, unlike a not-found error, it also shows WHICH types were sent when the check fails.
+   *
+   * The listing is fetched with the "*" request-type wildcard (see buildRequestTypeMatcher in
+   * payloadValidationClient) and listOnly, so only entry metadata crosses the wire.
+   */
+  async captureRequestTypes(page, world, source) {
+    if (!page) {
+      throw new Error("page is required");
+    }
+
+    assertWorld(world);
+
+    const normalizedSource = normalizeSource(source);
+    // "block" is a derived, in-memory source (see parseBlockExpression) - there is nothing in
+    // Storage to enumerate for it, so it is rejected here rather than confusing the API later.
+    if (normalizedSource === "block") {
+      throw new Error(
+        `[PayloadValidation.captureRequestTypes] "source" must be "request" or "response" to ` +
+        `enumerate Storage types, got: ${source}. "block" only exists as an extracted fragment ` +
+        `of an already-captured payload.`
+      );
+    }
+
+    const identifiers = getScenarioIdentifiers(world);
+
+    if (!identifiers.tripId) {
+      throw new Error(
+        "[PayloadValidation.captureRequestTypes] Cannot list the request types for this trip: " +
+        "no trip id is available on the world context. The trip id is captured by the " +
+        '"I am logged in as ... booking a new trip" step - ensure it ran before this step.'
+      );
+    }
+
+    logger.debug("Listing every request type logged for the trip", {
+      source: normalizedSource,
+      ...identifiers,
+    });
+
+    let result;
+    try {
+      result = await fetchPayloadFromStorage({
+        source: normalizedSource,
+        requestType: ALL_REQUEST_TYPES_WILDCARD,
+        tripId: identifiers.tripId,
+        transactionId: identifiers.transactionId,
+        sid: identifiers.sid,
+        listOnly: true,
+        timeoutMs: INSPECT_ALL_TIMEOUT_MS,
+      });
+    } catch (error) {
+      // An empty listing means the trip logged nothing at all - never that the type under test is
+      // absent. Letting it through as an empty inventory would pass every absence check for free.
+      if (isNoPayloadFoundError(error)) {
+        throw new Error(
+          `[PayloadValidation.captureRequestTypes] No ${normalizedSource} was logged for trip ` +
+          `${identifiers.tripId} at all. The trip never reached a supplier, or the logs had not ` +
+          `been published yet - either way the request-type inventory cannot be trusted. ` +
+          `Original: ${error.message}`
+        );
+      }
+      throw new Error(
+        `[PayloadValidation.captureRequestTypes] Failed to list the ${normalizedSource} types for trip ` +
+        `${identifiers.tripId}. The distributor-requests API may be unreachable or the trip ` +
+        `context (sid/transactionId) may not match. Original: ${error.message}`
+      );
+    }
+
+    const entries = result.entries || [];
+    const types = [...new Set(entries.map((entry) => entry.requestType).filter(Boolean))].sort();
+
+    world.capturedRequestTypes = {
+      source: normalizedSource,
+      types,
+      entryCount: entries.length,
+      capturedAt: new Date().toISOString(),
+      filters: {
+        tripId: identifiers.tripId,
+        transactionId: identifiers.transactionId,
+        sid: identifiers.sid,
+      },
+    };
+
+    logger.info(`Captured ${types.length} distinct ${normalizedSource} type(s) for the trip`, {
+      entryCount: entries.length,
+      types,
+    });
+
+    return world.capturedRequestTypes;
+  },
+
+  /**
+   * Asserts a request type is absent from the inventory captured by captureRequestTypes.
+   *
+   * Matching goes through buildRequestTypeMatcher, the same wildcard rule the storage lookup uses,
+   * so "*" means what it means everywhere else in this framework. An absence check needs it: several
+   * suppliers suffix the logged type with the corporate account code that produced the call
+   * ("Sabre NDC Flight Search FROCDE", "Sabre NDC Flight Search aaaaaa"), so an exact-match
+   * assertion on the bare name would clear a trip that DID send the request - passing for exactly
+   * the reason the test exists to rule out. Feature files spell the family out: "... Search*".
+   *
+   * The diagnostic IS the failure here - "it was sent" is useless without the list of what else
+   * the trip sent - so this throws with the full inventory rather than leaning on expect(), whose
+   * custom message is discarded by this repo's @playwright/test.
+   */
+  async expectCapturedRequestTypesNotContaining(world, source, requestType) {
+    assertWorld(world);
+
+    const normalizedSource = normalizeSource(source);
+    const normalizedRequestType = normalizeRequestType(requestType);
+    const captured = world.capturedRequestTypes;
+
+    if (!captured) {
+      throw new Error(
+        `[PayloadValidation.expectCapturedRequestTypesNotContaining] No ${normalizedSource} type ` +
+        `inventory is on the world context. The "I capture all the {source} types from Storage" ` +
+        `step must run before this assertion.`
+      );
+    }
+
+    if (captured.source !== normalizedSource) {
+      throw new Error(
+        `[PayloadValidation.expectCapturedRequestTypesNotContaining] The captured inventory is for ` +
+        `"${captured.source}", but the assertion asked about "${normalizedSource}". Capture the ` +
+        `matching source before asserting on it.`
+      );
+    }
+
+    // Lower-cased on both sides: the storage lookup matches case-sensitively, but an absence check
+    // errs toward matching MORE, not less - a casing difference must fail the test, never silently
+    // clear it.
+    const matcher = buildRequestTypeMatcher(normalizedRequestType.toLowerCase());
+    const offenders = captured.types.filter((type) => matcher.matches(type.trim().toLowerCase()));
+
+    if (offenders.length > 0) {
+      throw new Error(
+        `[PayloadValidation.expectCapturedRequestTypesNotContaining] Request type ` +
+        `"${normalizedRequestType}" WAS sent for trip ${captured.filters.tripId}, but this test ` +
+        `requires it never to be sent. Matched as: ${offenders.map((t) => `"${t}"`).join(", ")}. ` +
+        `All ${captured.types.length} ${normalizedSource} type(s) logged for the trip: ` +
+        `${captured.types.join(", ")}.`
+      );
+    }
+
+    logger.info(`Request type "${normalizedRequestType}" is absent from the trip log, as expected`, {
+      source: normalizedSource,
+      typesLogged: captured.types.length,
+      types: captured.types,
+    });
   },
 
   /**

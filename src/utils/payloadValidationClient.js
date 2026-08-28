@@ -267,9 +267,18 @@ async function downloadPayload({ baseUrl, tripId, rowKey, source, operationTimeo
  * @param {number}  [options.lookbackMinutes]     - defaults to config value
  * @param {number}  [options.timeoutMs]           - whole-operation budget; defaults to config value.
  *                                                  Raise it when downloading many payloads at once.
- * @returns {Promise<{ payload: string, metadata: object }>}
+ * @param {boolean} [options.listOnly]            - return the matched entries' metadata WITHOUT
+ *                                                  downloading any payload body. For callers that
+ *                                                  only need to know which calls were logged (e.g.
+ *                                                  enumerating the request types a trip sent):
+ *                                                  `returnAllMatches` downloads every body, which
+ *                                                  is minutes of transfer for an answer that is
+ *                                                  already in the listing. Resolves to
+ *                                                  `{ entries, metadata }` instead of a payload.
+ * @returns {Promise<{ payload: string, metadata: object }>} - or, when `listOnly` is set,
+ *            `{ entries: object[], metadata: object }` with no payload downloaded.
  */
-async function fetchPayloadFromStorage({ source, requestType, tripId, transactionId, sid, rowKey, lookbackMinutes, returnAllMatches = false, maxMatches, timeoutMs } = {}) {
+async function fetchPayloadFromStorage({ source, requestType, tripId, transactionId, sid, rowKey, lookbackMinutes, returnAllMatches = false, maxMatches, timeoutMs, listOnly = false } = {}) {
   if (!source || !["request", "response"].includes(source)) {
     throw new Error(`source must be "request" or "response", got: ${source}`);
   }
@@ -572,6 +581,21 @@ async function fetchPayloadFromStorage({ source, requestType, tripId, transactio
   // Sort newest first and take the latest entry (or return multiple matches when requested)
   entries.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
 
+  // Metadata-only callers stop here: the listing already answers "which calls were logged", so
+  // downloading the bodies would only cost time. No maxMatches cap - a truncated listing would
+  // silently hide the very entry an absence check is looking for.
+  if (listOnly) {
+    return {
+      entries,
+      metadata: {
+        requestType,
+        source,
+        totalMatches: entries.length,
+        returnedMatches: entries.length,
+      },
+    };
+  }
+
   if (returnAllMatches) {
     const limitedEntries = entries.slice(0, Math.max(1, Number.isFinite(maxRequestsMatches) ? maxRequestsMatches : 10));
     const matches = [];
@@ -635,4 +659,4 @@ async function fetchPayloadFromStorage({ source, requestType, tripId, transactio
   };
 }
 
-module.exports = { fetchPayloadFromStorage };
+module.exports = { fetchPayloadFromStorage, buildRequestTypeMatcher };

@@ -559,6 +559,41 @@ Then(
   }
 );
 
+// Capture half of an ABSENCE check: lists every request type the trip logged, so the assertion
+// below can prove one is missing. Capturing by request type cannot do that — it throws when the
+// type is absent, which is exactly the outcome under test.
+When("I capture all the {string} types from Storage", async function (source) {
+  await runPayloadValidationStep(this, "captureRequestTypes", { source }, async () => {
+    logger.info("Capturing every request type logged for the trip", {
+      source,
+      ...getScenarioIdentifiers(this),
+    });
+
+    const record = await PayloadValidation.captureRequestTypes(this.page, this, source);
+
+    logger.info("Request type inventory captured from Storage", {
+      source: record.source,
+      typeCount: record.types.length,
+      entryCount: record.entryCount,
+      capturedAt: record.capturedAt,
+    });
+  });
+});
+
+Then("the captured {string} types do not contain request type {string}", async function (source, requestType) {
+  await runPayloadValidationStep(this, "expectCapturedRequestTypesNotContaining", {
+    source,
+    requestType,
+  }, async () => {
+    logger.info("Validating the captured type inventory does not contain the request type", {
+      source,
+      requestType,
+    });
+
+    await PayloadValidation.expectCapturedRequestTypesNotContaining(this, source, requestType);
+  });
+});
+
 When("I capture the number of {string} requests sent for the trip", async function (requestType) {
   await runPayloadValidationStep(this, "captureRequestCount", { requestType }, async () => {
     logger.info("Capturing baseline request count", { requestType, ...getScenarioIdentifiers(this) });
