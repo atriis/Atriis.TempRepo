@@ -3593,6 +3593,32 @@ async verifyFareComponentTextColorInPricingOptions(page, expectedColor, index = 
     return { agreementCardIndices };
   },
 
+  /**
+   * Hovers the agreement icon of the first pricing-options fare that carries one and returns the
+   * tooltip it opens. The tooltip stays open only while the pointer rests on the icon, so the text
+   * is read here and handed back for the caller to assert on.
+   *
+   * @param {import('playwright').Page} page
+   * @returns {Promise<{tooltipText: string}>}
+   */
+  async hoverAgreementIconInPricingOptions(page) {
+    if (!page) throw new Error('[FlightResults.hoverAgreementIconInPricingOptions] "page" is required.');
+
+    logger.info('Hovering the agreement icon of the first pricing option that carries an agreement');
+
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    const tooltipText = await flightResultsPage.hoverAgreementIconInFirstPricingOptionAndGetTooltipText();
+
+    if (!tooltipText) {
+      throw new Error(
+        '[FlightResults.hoverAgreementIconInPricingOptions] The agreement tooltip opened but is empty. ' +
+        'The agreement has no tooltip text configured in administration.'
+      );
+    }
+
+    return { tooltipText };
+  },
+
   async verifyFareShowsFeatureInBrandCard(page, fareName, expectedText) {
     if (!page) throw new Error('[FlightResults.verifyFareShowsFeatureInBrandCard] "page" is required.');
     if (!fareName || typeof fareName !== 'string') throw new Error('[FlightResults.verifyFareShowsFeatureInBrandCard] "fareName" must be a non-empty string, got: ' + typeof fareName);

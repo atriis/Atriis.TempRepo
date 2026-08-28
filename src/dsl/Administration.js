@@ -2546,6 +2546,227 @@ const Administration = {
 
     logger.info(`[Administration.verifyEmailProviderDropdownOptionCount] Email provider dropdown has ${actualCount} option(s)`);
   },
+
+  // --- Agreements / PTC Special Fares tooltip edit (test 27016) ---
+
+  /**
+   * Opens the Agreements section in the administration left menu.
+   *
+   * @param {import('playwright').Page} adminPage - The administration page
+   */
+  async openAgreementsSection(adminPage) {
+    if (!adminPage) {
+      throw new Error('[Administration.openAgreementsSection] "adminPage" is required.');
+    }
+
+    logger.debug('[Administration.openAgreementsSection] Opening the Agreements section in administration');
+
+    const page = getPageObject(adminPage, AdministrationPage);
+
+    try {
+      await page.clickAdminSectionByTitle('Agreements');
+      // Leaving the settings form raises the "unsaved items" navigation guard; confirm it so the
+      // Agreements list actually loads. No-op when the dialog is absent.
+      await page.dismissUnsavedItemsDialogIfPresent();
+      await page.waitForAgreementsListReady();
+    } catch (err) {
+      throw new Error(
+        `[Administration.openAgreementsSection] Failed to open the Agreements section in administration: ${err.message}`
+      );
+    }
+
+    logger.info('[Administration.openAgreementsSection] Agreements section is open');
+    return { opened: true };
+  },
+
+  /**
+   * Filters the agreements list by a category and opens the first agreement in it.
+   *
+   * @param {import('playwright').Page} adminPage - The administration page
+   * @param {string} categoryName - Agreement category to filter by (e.g. "PTC Special Fares")
+   */
+  async openFirstAgreementUnderCategory(adminPage, categoryName) {
+    if (!adminPage) {
+      throw new Error('[Administration.openFirstAgreementUnderCategory] "adminPage" is required.');
+    }
+    if (!categoryName || typeof categoryName !== 'string') {
+      throw new Error(
+        `[Administration.openFirstAgreementUnderCategory] "categoryName" must be a non-empty string, got: ${typeof categoryName} (${JSON.stringify(categoryName)})`
+      );
+    }
+
+    logger.debug(`[Administration.openFirstAgreementUnderCategory] Opening the first agreement under "${categoryName}"`);
+
+    const page = getPageObject(adminPage, AdministrationPage);
+
+    try {
+      await page.clickAdminSectionByTitle(categoryName);
+      await page.clickFirstAgreementRow();
+    } catch (err) {
+      throw new Error(
+        `[Administration.openFirstAgreementUnderCategory] Failed to open the first agreement under category ` +
+        `"${categoryName}": ${err.message}. The category may not exist, or it holds no agreements in this environment.`
+      );
+    }
+
+    logger.info(`[Administration.openFirstAgreementUnderCategory] First agreement under "${categoryName}" is open`);
+    return { opened: true, categoryName };
+  },
+
+  /**
+   * Sets the open agreement's tooltip to a freshly generated random value and returns it, so the
+   * caller can later assert the same value surfaces in the booking flow.
+   *
+   * @param {import('playwright').Page} adminPage - The administration page
+   * @returns {Promise<string>} The generated tooltip value
+   */
+  async enterRandomAgreementTooltipValue(adminPage) {
+    if (!adminPage) {
+      throw new Error('[Administration.enterRandomAgreementTooltipValue] "adminPage" is required.');
+    }
+
+    const randomValue = `tooltip-${faker.string.alphanumeric(8)}`;
+
+    logger.debug(`[Administration.enterRandomAgreementTooltipValue] Setting the agreement tooltip to "${randomValue}"`);
+
+    const page = getPageObject(adminPage, AdministrationPage);
+
+    try {
+      await page.fillAgreementTooltip(randomValue);
+    } catch (err) {
+      throw new Error(
+        `[Administration.enterRandomAgreementTooltipValue] Failed to set the agreement tooltip to the generated ` +
+        `value "${randomValue}": ${err.message}`
+      );
+    }
+
+    logger.info(`[Administration.enterRandomAgreementTooltipValue] Agreement tooltip set to "${randomValue}"`);
+    return randomValue;
+  },
+
+  /**
+   * Sets the open agreement's tooltip to an explicit value (used to revert the change).
+   *
+   * @param {import('playwright').Page} adminPage - The administration page
+   * @param {string} tooltipValue - The tooltip text to set
+   */
+  async enterAgreementTooltipValue(adminPage, tooltipValue) {
+    if (!adminPage) {
+      throw new Error('[Administration.enterAgreementTooltipValue] "adminPage" is required.');
+    }
+    if (!tooltipValue || typeof tooltipValue !== 'string') {
+      throw new Error(
+        `[Administration.enterAgreementTooltipValue] "tooltipValue" must be a non-empty string, got: ${typeof tooltipValue} (${JSON.stringify(tooltipValue)})`
+      );
+    }
+
+    logger.debug(`[Administration.enterAgreementTooltipValue] Setting the agreement tooltip to "${tooltipValue}"`);
+
+    const page = getPageObject(adminPage, AdministrationPage);
+
+    try {
+      await page.fillAgreementTooltip(tooltipValue);
+    } catch (err) {
+      throw new Error(
+        `[Administration.enterAgreementTooltipValue] Failed to set the agreement tooltip to "${tooltipValue}": ${err.message}`
+      );
+    }
+
+    logger.info(`[Administration.enterAgreementTooltipValue] Agreement tooltip set to "${tooltipValue}"`);
+    return { tooltipValue };
+  },
+
+  /**
+   * Records the mandatory change reason on the open agreement.
+   *
+   * @param {import('playwright').Page} adminPage - The administration page
+   * @param {string} comment - The change reason
+   */
+  async enterAgreementChangeComment(adminPage, comment) {
+    if (!adminPage) {
+      throw new Error('[Administration.enterAgreementChangeComment] "adminPage" is required.');
+    }
+    if (!comment || typeof comment !== 'string') {
+      throw new Error(
+        `[Administration.enterAgreementChangeComment] "comment" must be a non-empty string, got: ${typeof comment} (${JSON.stringify(comment)})`
+      );
+    }
+
+    logger.debug(`[Administration.enterAgreementChangeComment] Recording the agreement change reason "${comment}"`);
+
+    const page = getPageObject(adminPage, AdministrationPage);
+
+    try {
+      await page.fillAgreementChangeComment(comment);
+    } catch (err) {
+      throw new Error(
+        `[Administration.enterAgreementChangeComment] Failed to record the agreement change reason "${comment}": ${err.message}`
+      );
+    }
+
+    logger.info(`[Administration.enterAgreementChangeComment] Agreement change reason recorded`);
+    return { comment };
+  },
+
+  /**
+   * Saves the open agreement.
+   *
+   * @param {import('playwright').Page} adminPage - The administration page
+   */
+  async saveAgreement(adminPage) {
+    if (!adminPage) {
+      throw new Error('[Administration.saveAgreement] "adminPage" is required.');
+    }
+
+    logger.debug('[Administration.saveAgreement] Saving the agreement');
+
+    const page = getPageObject(adminPage, AdministrationPage);
+
+    try {
+      await page.clickSaveAgreement();
+    } catch (err) {
+      throw new Error(
+        `[Administration.saveAgreement] Failed to save the agreement: ${err.message}`
+      );
+    }
+
+    logger.info('[Administration.saveAgreement] Agreement saved');
+    return { saved: true };
+  },
+
+  /**
+   * Verifies the open agreement's tooltip holds the expected value — used to confirm the revert
+   * actually persisted.
+   *
+   * @param {import('playwright').Page} adminPage - The administration page
+   * @param {string} expectedTooltip - The tooltip text the agreement should hold
+   */
+  async verifyAgreementTooltipValue(adminPage, expectedTooltip) {
+    if (!adminPage) {
+      throw new Error('[Administration.verifyAgreementTooltipValue] "adminPage" is required.');
+    }
+    if (!expectedTooltip || typeof expectedTooltip !== 'string') {
+      throw new Error(
+        `[Administration.verifyAgreementTooltipValue] "expectedTooltip" must be a non-empty string, got: ${typeof expectedTooltip} (${JSON.stringify(expectedTooltip)})`
+      );
+    }
+
+    logger.debug(`[Administration.verifyAgreementTooltipValue] Verifying the agreement tooltip reads "${expectedTooltip}"`);
+
+    const page = getPageObject(adminPage, AdministrationPage);
+    const actual = await page.getAgreementTooltipValue();
+
+    if (actual !== expectedTooltip) {
+      throw new Error(
+        `[Administration.verifyAgreementTooltipValue] Agreement tooltip mismatch. ` +
+        `Expected "${expectedTooltip}" but the field holds "${actual}". ` +
+        `The revert save may not have persisted.`
+      );
+    }
+
+    logger.info(`[Administration.verifyAgreementTooltipValue] Agreement tooltip reads "${actual}"`);
+    return { expectedTooltip, actual };
+  },
 };
 
 module.exports = Administration;

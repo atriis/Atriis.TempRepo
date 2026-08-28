@@ -217,6 +217,20 @@ const SELECTORS = {
   // Open select2 dropdown (rendered at body level) and its option rows
   ADMIN_EMAIL_PROVIDER_SELECT2_DROPDOWN: ".select2-drop:visible",
   ADMIN_EMAIL_PROVIDER_SELECT2_OPTION: ".select2-drop:visible .select2-results .select2-result-selectable > div",
+
+  // --- Agreements / PTC Special Fares tooltip edit (test 27016) ---
+  // "Add New Agreement" button in the Agreements toolbar — its visibility proves the list rendered
+  AGREEMENTS_ADD_NEW_BTN: "[data-ng-click='onAddNewAgreementClicked()'] span",
+  // Agreement rows of the (optionally category-filtered) agreements list
+  AGREEMENT_ROWS: "[data-ng-repeat='corporateAgreement in corporateAgreements | filter:agreementSearchText']",
+  // Name cell (1st cell) of an agreement row — the click target that opens it for editing
+  AGREEMENT_ROW_NAME_CELL: ":scope > :nth-child(1) .ng-binding",
+  // Tooltip field on the agreement detail form
+  AGREEMENT_TOOLTIP_INPUT: "[name='ToolTip']",
+  // Mandatory change-reason comment field on the agreement detail form
+  AGREEMENT_COMMENT_INPUT: "[ng-required='isCommentRequired()']",
+  // Save button on the agreement detail form (shares the onSaveClicked handler used elsewhere)
+  AGREEMENT_SAVE_BTN: "[data-ng-click='onSaveClicked()']",
 };
 
 class AdministrationPage {
@@ -2360,6 +2374,146 @@ class AdministrationPage {
         `[AdministrationPage.countEmailProviderDropdownOptions] Could not count email provider dropdown options ` +
         `(selector: ${SELECTORS.ADMIN_EMAIL_PROVIDER_SELECT2_OPTION}). ` +
         `The dropdown may not be open. Original: ${err.message}`
+      );
+    }
+  }
+
+  // --- Agreements / PTC Special Fares tooltip edit (test 27016) ---
+
+  /**
+   * Waits for the Agreements list to render by asserting its "Add New Agreement" button is visible.
+   */
+  async waitForAgreementsListReady() {
+    try {
+      const addBtn = this.page.locator(SELECTORS.AGREEMENTS_ADD_NEW_BTN).first();
+      await addBtn.waitFor({ state: 'visible', timeout: 20000 });
+    } catch (err) {
+      throw new Error(
+        `[AdministrationPage.waitForAgreementsListReady] The Agreements list did not render ` +
+        `(selector: ${SELECTORS.AGREEMENTS_ADD_NEW_BTN}). ` +
+        `The Agreements section may not be open, or the logged-in user's role does not grant it. ` +
+        `Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Opens the first agreement in the currently displayed (optionally category-filtered) list by
+   * clicking its name cell. The list is filtered by the caller before this runs, so "first row"
+   * means the first agreement of that category.
+   */
+  async clickFirstAgreementRow() {
+    try {
+      const firstRow = this.page.locator(SELECTORS.AGREEMENT_ROWS).first();
+      await firstRow.waitFor({ state: 'visible', timeout: 20000 });
+
+      const nameCell = firstRow.locator(SELECTORS.AGREEMENT_ROW_NAME_CELL).first();
+      await nameCell.waitFor({ state: 'visible', timeout: 15000 });
+      await nameCell.click({ timeout: 10000 });
+    } catch (err) {
+      throw new Error(
+        `[AdministrationPage.clickFirstAgreementRow] Could not open the first agreement in the list ` +
+        `(row selector: ${SELECTORS.AGREEMENT_ROWS}, name cell: ${SELECTORS.AGREEMENT_ROW_NAME_CELL}). ` +
+        `The filtered agreements list may be empty in this environment. Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Replaces the agreement's Tooltip field with the given value.
+   *
+   * Uses fill() (replace), not type() (append): the field arrives pre-populated with the current
+   * tooltip, so appending would leave a concatenated value behind and the revert half of the
+   * scenario could never restore the original text exactly.
+   *
+   * @param {string} value - The tooltip text to set
+   */
+  async fillAgreementTooltip(value) {
+    if (!value || typeof value !== 'string') {
+      throw new Error(
+        `[AdministrationPage.fillAgreementTooltip] "value" must be a non-empty string, got: ${typeof value} (${JSON.stringify(value)})`
+      );
+    }
+
+    try {
+      const input = this.page.locator(SELECTORS.AGREEMENT_TOOLTIP_INPUT).first();
+      await input.waitFor({ state: 'visible', timeout: 15000 });
+      await input.scrollIntoViewIfNeeded({ timeout: 5000 }).catch(() => {});
+      await input.fill(value, { timeout: 10000 });
+      // AngularJS commits the model on blur/change for this form
+      await input.press('Tab');
+    } catch (err) {
+      throw new Error(
+        `[AdministrationPage.fillAgreementTooltip] Could not set the agreement Tooltip field to "${value}" ` +
+        `(selector: ${SELECTORS.AGREEMENT_TOOLTIP_INPUT}). ` +
+        `An agreement must be open for editing. Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Reads the current value of the agreement's Tooltip field.
+   *
+   * @returns {Promise<string>}
+   */
+  async getAgreementTooltipValue() {
+    try {
+      const input = this.page.locator(SELECTORS.AGREEMENT_TOOLTIP_INPUT).first();
+      await input.waitFor({ state: 'visible', timeout: 15000 });
+      return ((await input.inputValue()) ?? '').trim();
+    } catch (err) {
+      throw new Error(
+        `[AdministrationPage.getAgreementTooltipValue] Could not read the agreement Tooltip field ` +
+        `(selector: ${SELECTORS.AGREEMENT_TOOLTIP_INPUT}). ` +
+        `An agreement must be open for editing. Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Fills the mandatory change-reason comment on the agreement detail form. The comment field sits
+   * below the fold, so the form is scrolled first to make sure its lazy sections have rendered.
+   *
+   * @param {string} comment - The change reason to record
+   */
+  async fillAgreementChangeComment(comment) {
+    if (!comment || typeof comment !== 'string') {
+      throw new Error(
+        `[AdministrationPage.fillAgreementChangeComment] "comment" must be a non-empty string, got: ${typeof comment} (${JSON.stringify(comment)})`
+      );
+    }
+
+    try {
+      await this.scrollAdminFormToBottom();
+
+      const input = this.page.locator(SELECTORS.AGREEMENT_COMMENT_INPUT).first();
+      await input.waitFor({ state: 'visible', timeout: 15000 });
+      await input.scrollIntoViewIfNeeded({ timeout: 5000 }).catch(() => {});
+      await input.fill(comment, { timeout: 10000 });
+      await input.press('Tab');
+    } catch (err) {
+      throw new Error(
+        `[AdministrationPage.fillAgreementChangeComment] Could not enter the agreement change comment "${comment}" ` +
+        `(selector: ${SELECTORS.AGREEMENT_COMMENT_INPUT}). ` +
+        `The comment field only renders when a change requires a reason. Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Clicks Save on the open agreement detail form.
+   */
+  async clickSaveAgreement() {
+    try {
+      const saveBtn = this.page.locator(SELECTORS.AGREEMENT_SAVE_BTN).first();
+      await saveBtn.waitFor({ state: 'visible', timeout: 15000 });
+      await saveBtn.scrollIntoViewIfNeeded({ timeout: 5000 }).catch(() => {});
+      await saveBtn.click({ timeout: 10000 });
+    } catch (err) {
+      throw new Error(
+        `[AdministrationPage.clickSaveAgreement] Could not click Save on the agreement detail form ` +
+        `(selector: ${SELECTORS.AGREEMENT_SAVE_BTN}). ` +
+        `The form may be invalid — a change comment is mandatory. Original: ${err.message}`
       );
     }
   }

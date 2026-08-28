@@ -466,3 +466,48 @@ Then("the corporate main email provider dropdown should contain {int} options", 
   logger.info("Verifying the corporate main email provider dropdown option count", { expectedCount });
   await Administration.verifyEmailProviderDropdownOptionCount(this.adminPage, expectedCount);
 });
+
+// --- Agreements / PTC Special Fares tooltip edit (test 27016) ---
+
+When("I open the Agreements section in the administration", async function () {
+  logger.info("Opening the Agreements section in administration");
+  if (!this.adminPage) {
+    throw new Error('[administration.steps] No admin page stored — call "I navigate to the administration page" first.');
+  }
+  await Administration.openAgreementsSection(this.adminPage);
+});
+
+When("I open the first agreement listed under the {string} category in the administration", async function (categoryName) {
+  logger.info("Opening the first agreement listed under a category in administration", { categoryName });
+  await Administration.openFirstAgreementUnderCategory(this.adminPage, categoryName);
+});
+
+// Side effect: stores the generated tooltip on the world, so the pricing-options hover assertion
+// can check for the exact value written here.
+When("I enter a random value into the agreement tooltip in the administration", async function () {
+  logger.info("Entering a random value into the agreement tooltip in administration");
+  this.generatedAgreementTooltip = await Administration.enterRandomAgreementTooltipValue(this.adminPage);
+  logger.info("Stored the generated agreement tooltip on the world", {
+    generatedAgreementTooltip: this.generatedAgreementTooltip,
+  });
+});
+
+When("I enter the agreement tooltip value {string} in the administration", async function (tooltipValue) {
+  logger.info("Entering a fixed value into the agreement tooltip in administration", { tooltipValue });
+  await Administration.enterAgreementTooltipValue(this.adminPage, tooltipValue);
+});
+
+When("I enter the comment {string} for the agreement change in the administration", async function (comment) {
+  logger.info("Entering the required comment for the agreement change in administration", { comment });
+  await Administration.enterAgreementChangeComment(this.adminPage, comment);
+});
+
+When("I save the agreement in the administration", async function () {
+  logger.info("Saving the agreement in administration");
+  await Administration.saveAgreement(this.adminPage);
+});
+
+Then("the agreement tooltip should display {string} in the administration", async function (expectedTooltip) {
+  logger.info("Verifying the agreement tooltip value in administration", { expectedTooltip });
+  await Administration.verifyAgreementTooltipValue(this.adminPage, expectedTooltip);
+});

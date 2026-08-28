@@ -540,6 +540,43 @@ Then('the add to trip tooltip should contain {string}', async function (expected
   logger.info('Add to trip tooltip validated', { actualText });
 });
 
+// --- Agreement icon tooltip in pricing options (test 27016) ---
+
+// Side effect: stores the tooltip text. The Element Plus tooltip closes as soon as the pointer
+// leaves the icon, so it is read while hovered here and asserted on in the Then step below.
+When('I hover over the first fare that has agreement icon in flight pricing options', async function () {
+  logger.info('Hovering over the first pricing options fare that carries an agreement icon');
+  const { tooltipText } = await FlightResults.hoverAgreementIconInPricingOptions(this.page);
+  this.agreementTooltipText = tooltipText;
+  logger.info('Agreement tooltip opened in pricing options', { tooltipText });
+});
+
+Then('the agreement tooltip in the first fare that has agreement in pricing options should contain the generated value', function () {
+  if (!this.generatedAgreementTooltip) {
+    throw new Error(
+      '[flight_results.steps] No generated agreement tooltip stored — call ' +
+      '"I enter a random value into the agreement tooltip in the administration" first.'
+    );
+  }
+  if (!this.agreementTooltipText) {
+    throw new Error(
+      '[flight_results.steps] No agreement tooltip text stored — call ' +
+      '"I hover over the first fare that has agreement icon in flight pricing options" first.'
+    );
+  }
+
+  logger.info('Verifying the agreement tooltip carries the value saved in administration', {
+    expectedSubstring: this.generatedAgreementTooltip,
+    actualTooltip: this.agreementTooltipText,
+  });
+
+  expect(
+    this.agreementTooltipText.toLowerCase(),
+    `The agreement tooltip in pricing options ("${this.agreementTooltipText}") should contain the value saved ` +
+    `in administration ("${this.generatedAgreementTooltip}"). The tooltip change did not reach the booking flow.`
+  ).toContain(this.generatedAgreementTooltip.toLowerCase());
+});
+
 When("I scroll into offers and get prices", async function () {
   logger.info("Scrolling into offers and getting prices");
   const { sharedPrice1, sharedPrice2 } = await FlightResults.scrollIntoOffersAndGetPrices(this.page);

@@ -2969,6 +2969,61 @@ async clickSelectForFareWithBaggagePricingOptions(baggageText) {
     await icon.hover();
   }
 
+  // ===== AGREEMENT ICON TOOLTIP IN PRICING OPTIONS (test 27016) =====
+
+  /**
+   * Hovers the agreement icon of the first pricing-options fare that carries one, and returns the
+   * text of the Element Plus tooltip it opens.
+   *
+   * The fare rows are scanned for an agreement icon rather than assuming the first row has one —
+   * only negotiated fares render the icon, and its position in the carousel is not fixed.
+   *
+   * @param {number} timeout - Max wait time in ms per step (default: 30000)
+   * @returns {Promise<string>} The visible tooltip text
+   */
+  async hoverAgreementIconInFirstPricingOptionAndGetTooltipText(timeout = 30000) {
+    const overlay = this.getPricingOptionsOverlay();
+
+    let icon;
+    try {
+      await overlay.waitFor({ state: 'visible', timeout });
+
+      // A visible amount proves the fares are real data, not the loading skeleton — without this the
+      // icon scan below can run against placeholder rows and wrongly conclude no agreement exists.
+      await overlay.locator(SELECTORS.PRICING_OPTIONS_AMOUNT_VALUE).first().waitFor({ state: 'visible', timeout });
+
+      const fareWithAgreement = overlay
+        .locator(SELECTORS.PRICING_OPTIONS_ITEM)
+        .filter({ has: this.page.locator(SELECTORS.AGREEMENT_ICON) })
+        .first();
+      await fareWithAgreement.waitFor({ state: 'visible', timeout });
+
+      icon = fareWithAgreement.locator(SELECTORS.AGREEMENT_ICON).first();
+      await icon.waitFor({ state: 'visible', timeout });
+      await icon.scrollIntoViewIfNeeded({ timeout: 5000 }).catch(() => {});
+      await icon.hover({ timeout: 10000 });
+    } catch (err) {
+      throw new Error(
+        `[FlightResultsPage.hoverAgreementIconInFirstPricingOptionAndGetTooltipText] Could not hover an agreement ` +
+        `icon in the pricing options drawer (fare selector: ${SELECTORS.PRICING_OPTIONS_ITEM}, ` +
+        `icon: ${SELECTORS.AGREEMENT_ICON}). No fare in this itinerary carries an agreement, or the drawer ` +
+        `did not open. Original: ${err.message}`
+      );
+    }
+
+    try {
+      const tooltip = this.page.locator(SELECTORS.EL_POPPER_VISIBLE).first();
+      await tooltip.waitFor({ state: 'visible', timeout: 10000 });
+      return ((await tooltip.innerText()) ?? '').replace(/\s+/g, ' ').trim();
+    } catch (err) {
+      throw new Error(
+        `[FlightResultsPage.hoverAgreementIconInFirstPricingOptionAndGetTooltipText] The agreement icon was ` +
+        `hovered but no tooltip appeared (selector: ${SELECTORS.EL_POPPER_VISIBLE}). ` +
+        `The agreement may have no tooltip text configured. Original: ${err.message}`
+      );
+    }
+  }
+
   /**
    * Checks if a tooltip with the given text is visible after hovering an advisory icon.
    * Element Plus el-tooltip renders content in a .el-popper element.
