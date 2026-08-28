@@ -4040,6 +4040,128 @@ class CartPage {
   }
 
   /**
+   * One visible quote card in the cart, addressed by its 1-based position on the page
+   * (quote 1 = topmost card).
+   *
+   * `.quote-payment-card` is the shared wrapper class every quote-card variant renders
+   * (flight-quote-card.vue, car-quote-card.vue, parking-quote-card.vue, ...) and it wraps
+   * BOTH that card's status badge and that card's own "Hold flight" button. Scoping by it is
+   * what makes a per-quote hold possible: a trip carrying several holdable quotes renders one
+   * Hold button per card, so the unscoped SELECTORS.HOLD_BUTTON is a strict-mode violation
+   * there (test 61576 - a separate-PNR corp splits a round trip into two holdable quotes).
+   *
+   * @param {number} position - 1-based quote position
+   * @returns {import('playwright').Locator}
+   */
+  getQuoteCardByPosition(position) {
+    if (!Number.isInteger(position) || position < 1) {
+      throw new Error('position must be an integer >= 1 (1-based quote position), got: ' + position);
+    }
+    return this.page.locator(SELECTORS.QUOTE_PAYMENT_CARD_VISIBLE).nth(position - 1);
+  }
+
+  /**
+   * The "Hold flight" button belonging to one quote card.
+   * @param {number} position - 1-based quote position
+   * @returns {import('playwright').Locator}
+   */
+  getHoldButtonByQuotePosition(position) {
+    return this.getQuoteCardByPosition(position).locator(SELECTORS.HOLD_BUTTON);
+  }
+
+  /**
+   * The status badge belonging to one quote card (e.g. "PENDING BOOKING", "ON HOLD").
+   * @param {number} position - 1-based quote position
+   * @returns {import('playwright').Locator}
+   */
+  getQuoteStatusLabelByPosition(position) {
+    return this.getQuoteCardByPosition(position).locator(SELECTORS.QUOTE_STATUS_LABEL).first();
+  }
+
+  /**
+   * Waits for a quote card to exist at the requested position, and fails with the actual card
+   * count when it does not - "quote 3 requested but the cart renders 2 quotes" is far more
+   * actionable than a bare locator timeout.
+   * @param {number} position - 1-based quote position
+   * @param {{ timeout?: number }} options
+   * @returns {Promise<import('playwright').Locator>} the quote card locator
+   */
+  async waitForQuoteCardByPosition(position, { timeout = 30000 } = {}) {
+    const card = this.getQuoteCardByPosition(position);
+
+    try {
+      await card.waitFor({ state: 'visible', timeout });
+    } catch (err) {
+      const actual = await this.page
+        .locator(SELECTORS.QUOTE_PAYMENT_CARD_VISIBLE)
+        .count()
+        .catch(() => 0);
+      throw new Error(
+        `[CartPage.waitForQuoteCardByPosition] Quote ${position} did not become visible within ${timeout}ms. ` +
+        `The cart renders ${actual} visible quote card(s) (selector: ${SELECTORS.QUOTE_PAYMENT_CARD_VISIBLE}). ` +
+        `Original: ${err.message}`
+      );
+    }
+
+    await card.scrollIntoViewIfNeeded().catch(() => {});
+    return card;
+  }
+
+  /**
+   * Reads one quote card's status badge text.
+   * @param {number} position - 1-based quote position
+   * @param {{ timeout?: number }} options
+   * @returns {Promise<string>}
+   */
+  async getQuoteStatusByPosition(position, { timeout = 30000 } = {}) {
+    await this.waitForQuoteCardByPosition(position, { timeout });
+
+    const label = this.getQuoteStatusLabelByPosition(position);
+    await label.waitFor({ state: 'visible', timeout });
+    return normalizeText(await label.innerText());
+  }
+
+  /**
+   * Clicks the Hold button of one quote card, waiting out that button's own loading state first.
+   *
+   * The loading guard is deliberately a locator poll rather than clickHoldButton's
+   * page.waitForFunction(document.querySelector(...)): `:visible` is a Playwright pseudo-class,
+   * not CSS, so the nth VISIBLE card cannot be resolved inside the browser.
+   *
+   * @param {number} position - 1-based quote position
+   * @param {{ timeout?: number }} options
+   * @returns {Promise<void>}
+   */
+  async clickHoldButtonByQuotePosition(position, { timeout = 10000 } = {}) {
+    await this.waitForQuoteCardByPosition(position, { timeout });
+
+    const button = this.getHoldButtonByQuotePosition(position).first();
+    try {
+      await button.waitFor({ state: 'visible', timeout });
+    } catch (err) {
+      throw new Error(
+        `[CartPage.clickHoldButtonByQuotePosition] Quote ${position} has no visible "Hold flight" button within ` +
+        `${timeout}ms (selector: ${SELECTORS.HOLD_BUTTON} inside ${SELECTORS.QUOTE_PAYMENT_CARD_VISIBLE}). ` +
+        `Likely causes: this quote is not holdable (already booked/confirmed, or the user lacks the hold ` +
+        `permission), or Terms & Conditions have not been accepted on this card yet. Original: ${err.message}`
+      );
+    }
+    await button.scrollIntoViewIfNeeded().catch(() => {});
+
+    const deadline = Date.now() + timeout;
+    while (Date.now() < deadline) {
+      const [className, disabled] = await Promise.all([
+        button.getAttribute('class').catch(() => null),
+        button.getAttribute('disabled').catch(() => null),
+      ]);
+      if (!(className || '').includes('is-loading') && disabled === null) break;
+      await this.page.waitForTimeout(250);
+    }
+
+    await button.click({ timeout });
+  }
+
+  /**
    * Reports whether the cart's "Proceed to Checkout" CTA is disabled. app-btn renders a native
    * <button class="btn" :disabled="isCheckoutDisabled">, so the native disabled state is the
    * source of truth (true for a look-but-not-book role — trip-cart.vue). A `.disabled`/`.is-disabled`

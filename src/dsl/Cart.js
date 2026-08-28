@@ -3000,6 +3000,154 @@ const Cart = {
   },
 
   /**
+   * Holds ONE quote in the cart, addressed by its 1-based position, and waits for THAT quote's
+   * status badge to read "on hold".
+   *
+   * Why this exists alongside {@link holdTrip}: holdTrip drives the unscoped
+   * SELECTORS.HOLD_BUTTON and detects success by watching the COUNT of on-hold badges grow.
+   * Both break down when a trip carries more than one holdable quote at the same time - the
+   * click is a strict-mode violation, and a count that grows tells you *a* quote was held, not
+   * *which* one. A separate-PNR corp splits a round trip into two independently holdable
+   * quotes (test 61576), so the caller has to say which quote it means.
+   *
+   * The booking-error and price-change handling is intentionally identical to holdTrip's: both
+   * dialogs are page-level, not per-card.
+   *
+   * @param {import('playwright').Page} page
+   * @param {number} position - 1-based quote position (1 = topmost quote card)
+   * @param {{ product?: string, subProduct?: string }} [bookingContext]
+   * @returns {Promise<{held: boolean, status: string|null, position: number, clickedModal: boolean, bookingError: boolean, knownBookingError: boolean, shouldSkip: boolean, supplier: string|null, bookingErrorText: string|null}>}
+   */
+  async holdQuoteByPosition(page, position, bookingContext = {}) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+    if (!Number.isInteger(position) || position < 1) {
+      throw new Error('position must be an integer >= 1 (1-based quote position), got: ' + position);
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+    const checkoutPage = getPageObject(page, CheckoutPage);
+    const bookingErrorDialog = page.locator(CheckoutSelectors.BOOKING_ERROR_DIALOG).first();
+    const timeout = process.env.CI ? 120000 : 90000;
+    const deadline = Date.now() + timeout;
+
+    let clickedModal = false;
+
+    const resolveBookingErrorResult = async () => {
+      const supplier = await checkoutPage.getBookingErrorSupplierName();
+      const bookingErrorText = await checkoutPage.getBookingErrorDialogText();
+      const supplierMessage = await checkoutPage.getBookingErrorSupplierMessage();
+      const knownBySupplier = supplier
+        ? BookingErrorHandler.isKnownBookingError(bookingContext.product, bookingContext.subProduct, supplier)
+        : false;
+      const knownByMessage = bookingErrorText
+        ? BookingErrorHandler.isKnownBookingError(bookingContext.product, bookingContext.subProduct, bookingErrorText)
+        : false;
+      const knownBookingError = knownBySupplier || knownByMessage;
+      const shouldSkip = knownBookingError
+        ? BookingErrorHandler.getSkipOnErrorConfig(bookingContext.product, bookingContext.subProduct)
+        : false;
+
+      BookingErrorHandler.handleBookingError(
+        bookingContext.product,
+        supplierMessage || bookingErrorText || supplier || 'UNKNOWN',
+        bookingContext.subProduct,
+      );
+
+      return {
+        held: false,
+        status: null,
+        position,
+        clickedModal,
+        bookingError: true,
+        knownBookingError,
+        shouldSkip,
+        supplier: supplier || null,
+        bookingErrorText: bookingErrorText || null,
+      };
+    };
+
+    const statusBefore = await cartPage.getQuoteStatusByPosition(position).catch(() => null);
+    logger.info('Holding a single quote', { position, statusBefore });
+
+    await cartPage.clickHoldButtonByQuotePosition(position);
+
+    // Success is read off THIS card's own badge, so it is unaffected by any quote that was
+    // already on hold before this call - no before/after counting needed.
+    const onHoldLabel = cartPage
+      .getQuoteCardByPosition(position)
+      .locator(CART_SELECTORS.QUOTE_STATUS_LABEL, { hasText: /on hold/i })
+      .first();
+
+    while (Date.now() < deadline) {
+      if (await onHoldLabel.isVisible().catch(() => false)) {
+        const status = await cartPage.getQuoteStatusByPosition(position);
+        logger.info('Quote held', { position, status });
+        return {
+          held: true,
+          status,
+          position,
+          clickedModal,
+          bookingError: false,
+          knownBookingError: false,
+          shouldSkip: false,
+          supplier: null,
+          bookingErrorText: null,
+        };
+      }
+
+      if (await bookingErrorDialog.isVisible().catch(() => false)) {
+        // Price-change dialogs share .booking-response-errors with real booking errors, so a
+        // successful "Proceed with change" click is what distinguishes the two.
+        const priceChangeClicked = await cartPage.clickProceedWithChangeIfVisible(500).catch(() => false);
+        if (priceChangeClicked) {
+          clickedModal = true;
+          await bookingErrorDialog.waitFor({ state: 'hidden', timeout: 5000 }).catch(() => {});
+        } else {
+          return resolveBookingErrorResult();
+        }
+      }
+
+      await page.waitForTimeout(1000);
+    }
+
+    const statusNow = await cartPage.getQuoteStatusByPosition(position).catch(() => 'unknown');
+    throw new Error(
+      `Quote ${position} did not reach "on hold" within ${timeout}ms - its status badge still reads ` +
+      `"${statusNow}", and neither a booking-error modal nor a price-change recovery completed.`
+    );
+  },
+
+  /**
+   * Verifies one quote's status badge, addressed by its 1-based position in the cart.
+   * Use this (not verifyBookingStatus) when several quotes carry DIFFERENT statuses at the
+   * same time - verifyBookingStatus only ever reads the first card.
+   *
+   * @param {import('playwright').Page} page
+   * @param {number} position - 1-based quote position
+   * @param {string} expectedStatus - e.g. "On hold", "Pending booking"
+   */
+  async verifyQuoteStatusByPosition(page, position, expectedStatus) {
+    if (!page) throw new Error('page is required');
+    if (typeof expectedStatus !== 'string' || !expectedStatus.trim()) {
+      throw new Error('expectedStatus must be a non-empty string, got: ' + expectedStatus);
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+    const label = cartPage.getQuoteStatusLabelByPosition(position);
+
+    await cartPage.waitForQuoteCardByPosition(position);
+    // The badge settles asynchronously after a hold/booking round-trip, so poll rather than
+    // single-read (a bare read races the Vue re-render and reports the pre-hold status).
+    await expect(label).toContainText(new RegExp(escapeRegex(expectedStatus.trim()), 'i'), { timeout: 30000 });
+
+    const actual = await cartPage.getQuoteStatusByPosition(position);
+    logger.info('Quote status verified', { position, expectedStatus, actual });
+    return actual;
+  },
+
+  /**
    * Selects a random preferred seat from the seat map.
    * Targets .plane-seat.preferred elements and clicks a random one via the .is-flex ancestor
    * which carries the Vue handleSeatSelect click handler (same pattern as selectFirstAvailableFlightSeat).

@@ -189,6 +189,50 @@ When("I hold the trip", { timeout: CHECKOUT_STEP_TIMEOUT_MS }, async function ()
   expect(result.status.toLowerCase()).toContain(tripStatus.label.onHold.status.toLowerCase());
 });
 
+// Holds ONE quote by its 1-based position in the cart ("I hold quote 1" = topmost card), and
+// asserts THAT quote reached "On hold". Use instead of "I hold the trip" whenever a trip carries
+// more than one holdable quote at the same time: the unscoped hold button is a strict-mode
+// violation there, and "the trip is on hold" cannot say which quote was actually held.
+When("I hold quote {int}", { timeout: CHECKOUT_STEP_TIMEOUT_MS }, async function (position) {
+  logger.info("Holding a single quote by position", { position });
+
+  const scenarioTags = Array.isArray(this.scenarioTags) ? this.scenarioTags : [];
+  const bookingContext = {
+    product: scenarioTags.includes('@transportation') ? 'transportation' : scenarioTags.includes('@hotels') ? 'hotels' : scenarioTags.includes('@flights') ? 'flights' : null,
+    subProduct: scenarioTags.includes('@cars')
+      ? 'cars'
+      : scenarioTags.includes('@rails')
+        ? 'rails'
+        : scenarioTags.includes('@parking')
+          ? 'parking'
+          : scenarioTags.includes('@groundtransport')
+            ? 'groundTransport'
+            : null,
+  };
+
+  const result = await Cart.holdQuoteByPosition(this.page, position, bookingContext);
+  this.bookingOutcome = result;
+
+  if (result?.knownBookingError && result.shouldSkip) {
+    await Checkout.verifyBookingErrorMessage(this.page, result.bookingErrorText || result.supplier || null);
+    await Checkout.clickBackToTripButton(this.page);
+    return 'pending';
+  }
+
+  if (result?.bookingError && !(result.knownBookingError && result.shouldSkip)) {
+    const errorSummary = result.supplier
+      ? `supplier: ${result.supplier}`
+      : `message: ${result.bookingErrorText || 'unknown booking error'}`;
+    throw new Error(`Unexpected booking error detected while holding quote ${position} (${errorSummary})`);
+  }
+
+  if (!result?.status) {
+    throw new Error(`Hold did not return a booking status for quote ${position}.`);
+  }
+
+  expect(result.status.toLowerCase()).toContain(tripStatus.label.onHold.status.toLowerCase());
+});
+
 When("I click hold flight button", async function () {    
   logger.info("Clicking hold flight button");
   const cartPage = getPageObject(this.page, CartPage);
@@ -1816,6 +1860,15 @@ When("I click to add an EU rail to my trip from cart", async function () {
 When("I navigate to the manual quote search page from the cart", async function () {
   logger.info("Navigating to manual quote search page from cart product carousel");
   await Cart.navigateToManualQuoteFromCart(this.page);
+});
+
+// Per-quote status assertion, addressed by 1-based cart position. Distinct from
+// "the booking status should be {string}" (always reads the FIRST quote card) and from
+// "the last quote status should be {string}" (always the last) - this one is the only way to
+// assert that quote 1 is "On hold" while quote 2 is still "Pending booking".
+Then("quote {int} status should be {string}", async function (position, expectedStatus) {
+  logger.info("Verifying quote status by position", { position, expectedStatus });
+  await Cart.verifyQuoteStatusByPosition(this.page, position, expectedStatus);
 });
 
 Then("the last quote status should be {string}", async function (expectedStatus) {
