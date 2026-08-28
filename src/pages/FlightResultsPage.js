@@ -86,6 +86,13 @@ const SELECTORS = {
   // radio button that displays its resulting top price in a `.price` element.
   QUICK_SORT_RADIO_BUTTON: '.flight-list-sort .quick-sort .el-radio-button',
   QUICK_SORT_OPTION_PRICE: '.price',
+  // State-modifier class Element Plus stamps on the selected el-radio-button of the quick-sort
+  // group. The flight store defaults `filterBy.sortBy` to 'best', so on a freshly loaded results
+  // page this is the "Best" option.
+  QUICK_SORT_ACTIVE_BUTTON: '.flight-list-sort .quick-sort .el-radio-button.is-active',
+  // Each quick-sort option renders three <p> elements inside its inner wrapper: the label, the
+  // price (`.price`) and the average duration. The first one carries the option label.
+  QUICK_SORT_OPTION_LABEL: '.el-radio-button__inner p',
 
   // Carriers checkbox filter (flight-filter.vue → .carriers-filter). Element Plus marks a checked
   // checkbox with the `is-checked` class on its `.el-checkbox__input`.
@@ -1009,6 +1016,29 @@ class FlightResultsPage {
     await priceElement.waitFor({ state: 'visible', timeout });
 
     return extractNumber(sortButton, SELECTORS.QUICK_SORT_OPTION_PRICE, 0);
+  }
+
+  /**
+   * Reads the label of the quick-sort option that is currently selected. Element Plus marks the
+   * selected el-radio-button with `is-active`, so this reports which sort the results are actually
+   * ordered by without clicking anything -- used to assert the default sort on a freshly loaded
+   * results page.
+   *
+   * Covers the three labelled options (Best / Cheapest / Quickest) only. The trailing extended
+   * "Sort by" radio button renders a `.extended-sort-container` instead of the label/price/duration
+   * paragraphs, so it carries no matching label element; read `SORT_BY_BUTTON` for that one.
+   *
+   * @param {number} timeout - Max wait time in ms (default: 30000)
+   * @returns {Promise<string>} The active sort option label, trimmed
+   */
+  async getActiveQuickSortLabel(timeout = 30000) {
+    const activeButton = this.page.locator(SELECTORS.QUICK_SORT_ACTIVE_BUTTON).first();
+    await activeButton.waitFor({ state: 'visible', timeout });
+
+    const label = activeButton.locator(SELECTORS.QUICK_SORT_OPTION_LABEL).first();
+    await label.waitFor({ state: 'visible', timeout });
+
+    return (await label.textContent()).trim();
   }
 
   /**

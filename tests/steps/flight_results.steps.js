@@ -1181,6 +1181,11 @@ When('I sort flight results by {string}', async function (label) {
   await FlightResults.sortBy(this.page, label);
 });
 
+Then('the {string} sort option should be selected by default', async function (label) {
+  logger.info('Verifying the default quick-sort option on the flight results page', { label });
+  await FlightResults.verifyActiveQuickSortOption(this.page, label);
+});
+
 // ========================================
 // AIRPORT FILTER
 // ========================================

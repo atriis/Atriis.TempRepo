@@ -3076,6 +3076,40 @@ async verifyFareComponentTextColorInPricingOptions(page, expectedColor, index = 
     return { sorted: true, label };
   },
 
+  /**
+   * Verifies which quick-sort option the flight results are currently sorted by, without
+   * applying a sort first. Used to assert the default sort of a freshly loaded results page
+   * (the flight store defaults to "Best").
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} expectedLabel - Expected sort option label as shown in the UI (e.g. "Best")
+   * @returns {Promise<{ activeLabel: string }>}
+   */
+  async verifyActiveQuickSortOption(page, expectedLabel) {
+    if (!page) throw new Error('[FlightResults.verifyActiveQuickSortOption] "page" is required');
+    if (!expectedLabel || typeof expectedLabel !== 'string') {
+      throw new Error(
+        `[FlightResults.verifyActiveQuickSortOption] "expectedLabel" must be a non-empty string, got: ${typeof expectedLabel}`,
+      );
+    }
+
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    const activeLabel = await flightResultsPage.getActiveQuickSortLabel();
+
+    logger.debug('Verifying the active quick-sort option', { expectedLabel, activeLabel });
+
+    // A plain throw, not expect(): Playwright drops the custom message argument, so the only way
+    // to surface the actual selected sort in the report is to build the error message here.
+    if (!activeLabel.toLowerCase().includes(expectedLabel.toLowerCase())) {
+      throw new Error(
+        `[FlightResults.verifyActiveQuickSortOption] Expected the flight results to be sorted by ` +
+        `"${expectedLabel}", but "${activeLabel}" was the selected quick-sort option`,
+      );
+    }
+
+    return { activeLabel };
+  },
+
   // ===== NEW FLIGHT FLOW =====
 
   /**
