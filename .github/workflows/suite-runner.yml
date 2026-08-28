@@ -63,7 +63,17 @@ jobs:
         timeout-minutes: ${{ matrix.step_timeout_minutes }}
         # Lower parallelism than the legacy Test Suite (contention is a top flake
         # source) and --retry 3 (one more attempt than before) for stability.
-        run: npx cucumber-js ${{ matrix.test_path }} --profile ci --parallel ${{ matrix.parallel }} --retry ${{ matrix.retry }}
+        #
+        # Optional `shard: "<i>/<n>"` splits one test_path across n matrix legs
+        # (cucumber keeps pickle i, i+n, i+2n… of the path's full pickle list, so
+        # the legs are a clean partition). Use it when a single directory can no
+        # longer finish inside step_timeout_minutes: raising parallel instead
+        # would bring back the contention flakes this suite was built to avoid,
+        # and a step timeout is not a partial result — cucumber writes its JSON
+        # and JUnit formatters only at the very end, so a killed leg uploads an
+        # EMPTY report and every one of its scenarios silently disappears from
+        # the domain totals. Legs without this key run the whole path.
+        run: npx cucumber-js ${{ matrix.test_path }} --profile ci --parallel ${{ matrix.parallel }} --retry ${{ matrix.retry }}${{ matrix.shard && format(' --shard {0}', matrix.shard) || '' }}
         env:
           CI: "true"
 
