@@ -57,9 +57,9 @@ slide.addShape(pptx.ShapeType.line, {
 });
 
 // === LEFT COLUMN: Next steps ===
-// Replaced the "AI Agents accelerating migration" panel: with the migration at
-// 100% the how-we-got-here story has served its purpose, and the question the
-// slide now has to answer is what the team does next.
+// Replaced the "AI Agents accelerating migration" panel: with the migration in
+// its last few percent the how-we-got-here story has served its purpose, and the
+// question the slide now has to answer is what the team does next.
 const LX = 0.4;
 let ly = 1.35;
 
@@ -139,7 +139,7 @@ slide.addText('100%', {
   x: CX, y: 1.7, w: 3.7, h: 0.95,
   fontSize: 64, bold: true, color: COLORS.green, align: 'center', fontFace: 'Calibri',
 });
-slide.addText('713 / 713 tests migrated', {
+slide.addText('719 / 719 tests migrated', {
   x: CX, y: 2.65, w: 3.7, h: 0.35,
   fontSize: 13, color: COLORS.ink, align: 'center', fontFace: 'Calibri',
 });
@@ -154,19 +154,41 @@ slide.addText('Domain Breakdown', {
 // `blocked` is a SUBSET of `done`: the test was converted and lives in the repo,
 // but cannot run (supplier error / known bug / awaiting review). It is drawn as
 // an orange segment following the green one, and its count comes from the
-// *_blocked folders under tests/features/<domain>.
-// As of sprint 17 conversion is complete in ALL FOUR domains — Transportation
-// closed its last 40-test backlog — so every total IS that domain's converted
-// scope and the blocked slice is all that is outstanding. No domain sets
-// `showRemainder` any more; the flag (and the grey track, grey number and grey
-// legend swatch it drives) is kept because a future in-scope backlog would need
-// it again, and the legend below only prints "Not migrated" when some domain
-// actually has one.
+// *_blocked FOLDERS under tests/features/<domain> - a file merely NAMED
+// *_blocked.feature outside such a folder is not blocked (72547 is one).
+//
+// RECOUNT PROCEDURE - both sides are FILE counts, never scenario counts:
+//   total = .js files in tests/testim/active/regression_set_new_front/<domain>
+//   done  = those whose ADO id appears in a tests/features/**/*.feature name,
+//           PLUS the ones re-raised under a NEW id during conversion, matched by
+//           title (testim search_flights_by_preferred_carrier ->
+//           69605_search_by_preferred_carrier.feature). 15 of the 17 id-less
+//           Testim exports are such renames, so an id-only join under-reports
+//           done by 15 tests - do not stop at the id join.
+//   A _merged_ / hybrid_merge file counts as 1 on BOTH sides; never expand it
+//   into the tests it absorbed (that would put Testim at ~783 instead of 721).
+//   Some exports lead with a BUG number rather than the test id
+//   (_blocked_by_bug_66546_38619_exchange_in_ib.js is test 38619), so try EVERY
+//   4-6 digit run in the name before calling a test unmigrated.
+//
+// Recounted 2026-08-28: 719 / 719 = 100%, and this one is MEASURED - every
+// remaining Testim export joins to a .feature, by id or by title.
+// Testim reads 719 and no longer 738 because the exports with no counterpart
+// were deleted rather than carried as permanent debt: 09c15a18 removed 16, then
+// 73542 [cars][sabre] fare rules popup, then the 2 corporate-booker
+// 'Use New Flight Booking Flow' pricing-view tests (new pricing screen with both
+// privileges / legacy pricing view with only the booking-flow privilege). Those
+// last 2 were never converted - nothing under tests/features/ mentions a legacy
+// or a new pricing screen - so they are lost coverage, not migrated coverage.
+// Re-raise them as manual tests if that gap ever needs closing.
+// This supersedes the 713 / 713 carried since sprint 15: that figure had been
+// forced to total = done by rewriting Hotels 133->121 and Shell 204->189, so it
+// reported a mechanical 100% rather than a measured one.
 const domains = [
-  { name: 'Hotels',         total: 121, done: 121, blocked: 3,  pct: 100, showRemainder: false },
-  { name: 'Flights',        total: 254, done: 254, blocked: 17, pct: 100, showRemainder: false },
-  { name: 'Transportation', total: 148, done: 148, blocked: 11, pct: 100, showRemainder: false },
-  { name: 'Shell',          total: 190, done: 190, blocked: 23, pct: 100, showRemainder: false },
+  { name: 'Hotels',         total: 114, done: 114, blocked: 4,  pct: 100, showRemainder: false },
+  { name: 'Flights',        total: 246, done: 246, blocked: 17, pct: 100, showRemainder: false },
+  { name: 'Transportation', total: 144, done: 144, blocked: 13, pct: 100, showRemainder: false },
+  { name: 'Shell',          total: 215, done: 215, blocked: 24, pct: 100, showRemainder: false },
 ];
 
 const barX = CX;
@@ -184,10 +206,10 @@ domains.forEach((d, i) => {
   });
   // numbers on top of the bar: total (black) / migrated & running (green) /
   // then one figure per outstanding segment this domain actually has, each
-  // coloured to match its own bar segment — grey for a still-to-do backlog
-  // (Transportation only) and amber for converted-but-blocked tests. A domain
-  // can carry both, so the two are separate runs rather than one either/or
-  // figure: Transportation shows its grey backlog followed by its amber blocked.
+  // coloured to match its own bar segment — grey for a still-to-do backlog and
+  // amber for converted-but-blocked tests. No domain carries a grey backlog any
+  // more, so that run is skipped and a row reads total, running, amber blocked.
+  // The backlog run stays wired up for when new Testim tests land unmigrated.
   const running = Math.max(0, d.done - d.blocked);
   const gap = { text: '  ', options: { color: COLORS.sub } };
   const numbers = [
@@ -257,8 +279,7 @@ slide.addText(`\uD83D\uDEA7 ${blockedTotal} tests blocked (supplier errors / kno
 const legY = blockedY + 0.55;
 // Each item advances by its OWN width — a single fixed pitch crowded the amber
 // swatch right up against the long 'Done & running' label.
-// 'Not migrated' is only listed while some domain still paints a grey track —
-// with every domain at 100% there is no grey segment for it to explain.
+// 'Not migrated' is only listed while some domain still paints a grey track.
 const legendItems = [
   { label: 'Done & running', color: COLORS.green,  w: 1.50 },
   { label: 'Blocked',        color: COLORS.yellow, w: 0.95 },
@@ -303,7 +324,8 @@ slide.addText(
 
 // Feature-file counts for every test_path in the nightly chain
 // (suite-flights → suite-hotels → suite-shell → suite-transportation):
-// Flights 23 suites, Hotels 2, Shell 28, Transportation 13 = 66 suites.
+// Flights 23 unique paths (24 suites - one is sharded across two legs), Hotels
+// 2, Shell 28, Transportation 13 = 66 suites over 66 unique paths.
 // One .feature file is one test, which is why these are FILE counts and not
 // cucumber pickle counts — the handful of Scenario Outlines in the suites expand
 // into several runs each, which would overstate the test count.
@@ -313,11 +335,13 @@ slide.addText(
 // suite-flights.yml because it is sharded across two legs, so its 60 features
 // must be counted once, not twice; and a test_path ending in "*.feature" is a
 // non-recursive glob (that is how the rail suites keep their _blocked subfolder
-// out), so do not recurse into it.
+// out), so do not recurse into it. A DIRECTORY test_path does recurse, which is
+// why Transportation reads 155 and not 154: sunny_cars/ pulls in its own
+// sunny_cars_blocked/ subfolder, so 66119 does run nightly.
 const comp = [
-  { name: 'Flights', value: 300 },
+  { name: 'Flights', value: 303 },
   { name: 'Hotels',  value: 119 },
-  { name: 'Transportation',    value: 154 },
+  { name: 'Transportation',    value: 155 },
   { name: 'Shell',   value: 199 },
 ];
 const compTotal = comp.reduce((a, b) => a + b.value, 0);
