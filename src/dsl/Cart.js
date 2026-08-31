@@ -8810,8 +8810,7 @@ const Cart = {
     await cartPage.selectNewLoyaltyRadio();
     await cartPage.selectLoyaltyChain(chainText);
     await cartPage.fillLoyaltyNumber(loyaltyNumber);
-    await cartPage.clickLoyaltySaveButton();
-    await cartPage.waitForLoyaltySuccessIcon();
+    await cartPage.saveLoyaltyNumberAndVerify();
   },
 
   /**
@@ -8844,8 +8843,7 @@ const Cart = {
     await cartPage.selectNewLoyaltyRadio();
     const chainText = await cartPage.selectFirstLoyaltyChain();
     await cartPage.fillLoyaltyNumber(loyaltyNumber);
-    await cartPage.clickLoyaltySaveButton();
-    await cartPage.waitForLoyaltySuccessIcon();
+    await cartPage.saveLoyaltyNumberAndVerify();
     return chainText;
   },
 

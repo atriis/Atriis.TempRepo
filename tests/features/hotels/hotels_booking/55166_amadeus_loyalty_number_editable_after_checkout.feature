@@ -1,13 +1,13 @@
-﻿# Test Name: HYBRID for 55166 Amadeus hotel - can edit loyalty number after checkout
+﻿# Test Name: 55166 Amadeus hotel - can edit loyalty number after checkout
 # Description: 
 # Status: Active
-# Labels: Hotel loyalty number,Regression,Amadeus,Full Purchase,Hotel,hybrid,progress page,2026 plan 2
+# Labels: Hotel loyalty number,Regression,Amadeus,Full Purchase,Hotel,progress page,2026 plan 2
 # Owner: Shani Hadar
 # Created: 2024-12-08T05:24:02Z
 # Updated: 2025-09-17T12:25:52Z
 
 @regression @provider:amadeus
-Feature: 55166 HYBRID Amadeus - Loyalty number can be edited after hotel checkout
+Feature: 55166 Amadeus - Loyalty number can be edited after hotel checkout
   As a corporate traveler
   I want to add or edit my loyalty number after completing an Amadeus hotel checkout
   So that my loyalty points are tracked even if I enter the number after booking
@@ -27,3 +27,9 @@ Feature: 55166 HYBRID Amadeus - Loyalty number can be edited after hotel checkou
     Then the booking status should be "Confirmed"
     When I click the extras arrow button
     And I add loyalty number "565656" using the first available chain
+    And I capture the "request" payload for request type "Amadeus4.Command_Cryptic (Update Frequent Program)" from Storage
+    Then the captured "request" payload for request type "Amadeus4.Command_Cryptic (Update Frequent Program)" should contain the XML:
+      """
+					<textStringDetails>2/ID-565656</textStringDetails>
+      """
+    And I successfully cancel the trip

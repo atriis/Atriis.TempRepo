@@ -140,6 +140,12 @@ const config = {
     return getOptionalEnv("FLIGHT_SEARCH_API_PATH", "/flightSearch");
   },
 
+  // Loyalty-number extras save endpoint (loyalty-number.ts -> hotelService.addFrequentGuest).
+  // POST only: the same route is read back with GET /FrequentPrograms?quoteId=... when the panel opens.
+  get frequentProgramsApiPath() {
+    return getOptionalEnv("FREQUENT_PROGRAMS_API_PATH", "/frequentprograms");
+  },
+
   // Trip related-files upload response endpoint and download request endpoint.
   get tripFilesUploadApiPath() {
     return getOptionalEnv("TRIP_FILES_UPLOAD_API_PATH", "/TripFiles");

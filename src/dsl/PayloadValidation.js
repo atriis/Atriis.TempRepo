@@ -1533,9 +1533,6 @@ const PayloadValidation = {
       throw new Error("expectedXmlBlock must be a non-empty XML string");
     }
 
-    const payloadRecord = this.getCapturedPayload(world, source, requestType);
-    const payload = payloadRecord.payload;
-
     // Extract all tag values from expected XML
     const expectedPairs = extractXmlKeyValuePairs(expectedXmlBlock);
 
@@ -1545,20 +1542,92 @@ const PayloadValidation = {
       );
     }
 
-    // Check each expected value exists in the payload
-    const missingValues = [];
-    for (const pair of expectedPairs) {
-      if (!payload.includes(pair.value)) {
-        missingValues.push({ tag: pair.tag, value: pair.value });
+    // Inner assertion runner — receives a raw payload string, throws if any expected value is absent.
+    const runAssertion = (payload) => {
+      const missingValues = [];
+      for (const pair of expectedPairs) {
+        if (!payload.includes(pair.value)) {
+          missingValues.push({ tag: pair.tag, value: pair.value });
+        }
+      }
+
+      if (missingValues.length > 0) {
+        const missing = missingValues.map((m) => `<${m.tag}>${m.value}</${m.tag}>`).join(", ");
+        throw new Error(
+          `Expected XML values not found in captured ${source} payload for request type "${requestType}". Missing: ${missing}`
+        );
+      }
+    };
+
+    // Try the currently captured (latest) payload first — fast path.
+    let firstError = null;
+    let pinnedRecord = null;
+    try {
+      const payloadRecord = this.getCapturedPayload(world, source, requestType);
+      if (payloadRecord.pinned) {
+        pinnedRecord = payloadRecord;
+      }
+      runAssertion(payloadRecord.payload);
+      return;
+    } catch (err) {
+      firstError = err;
+      logger.debug(`Fast-path XML block assertion failed: ${err.message}`);
+    }
+
+    // A pinned payload was captured as the counterpart of ONE specific call. Scanning sibling
+    // calls of the same request type is exactly what pinning exists to prevent, so fail here.
+    if (pinnedRecord) {
+      throw new Error(
+        `Assertion failed on the pinned ${source} payload for request type "${requestType}" ` +
+        `(rowKey ${pinnedRecord.rowKey}). Other calls of this request type were NOT checked, ` +
+        `because this payload was captured from a specific previous capture. ` +
+        `Error: ${firstError.message}`
+      );
+    }
+
+    // Fallback: the same request type can cover several distinct calls, and the capture always
+    // takes the latest one. Amadeus cryptic commands are the clearest case — one save fires
+    // RFATRIIS, the 2/ID-<number> update, ER and IG under a single request type, all within the
+    // same second. Scan every recent matching entry and pass if any satisfies the assertion.
+    const identifiers = getScenarioIdentifiers(world);
+    let multiMatchResult;
+    try {
+      multiMatchResult = await fetchPayloadFromStorage({
+        source,
+        requestType,
+        tripId: identifiers.tripId,
+        transactionId: identifiers.transactionId,
+        sid: identifiers.sid,
+        returnAllMatches: true,
+      });
+    } catch {
+      // Storage fallback unavailable — surface the original assertion error.
+      throw firstError;
+    }
+
+    logger.debug(`Multi-match fallback: scanning ${multiMatchResult.metadata.returnedMatches} candidate(s) for requestType="${requestType}"`);
+
+    for (const match of multiMatchResult.matches) {
+      try {
+        runAssertion(match.payload);
+        // Found a matching candidate — promote it to the cached payload.
+        this.setCapturedPayload(world, source, requestType, match.payload, {
+          tripId: match.metadata.tripId,
+          transactionId: match.metadata.transactionId,
+          sid: match.metadata.sid,
+          rowKey: match.metadata.rowKey,
+        });
+        logger.info(`Multi-match fallback succeeded: found matching XML block among ${multiMatchResult.metadata.returnedMatches} candidate(s) for requestType="${requestType}"`);
+        return;
+      } catch {
+        // This candidate does not match — try the next.
       }
     }
 
-    if (missingValues.length > 0) {
-      const missing = missingValues.map((m) => `<${m.tag}>${m.value}</${m.tag}>`).join(", ");
-      throw new Error(
-        `Expected XML values not found in captured ${source} payload for request type "${requestType}". Missing: ${missing}`
-      );
-    }
+    throw new Error(
+      `Expected XML values not found in any of the ${multiMatchResult.metadata.returnedMatches} captured ${source} payload(s) for request type "${requestType}". ` +
+      `Last error on fast path: ${firstError.message}`
+    );
   },
 
   async expectCapturedPayloadContainsJsonBlock(page, world, source, requestType, expectedJsonBlock) {

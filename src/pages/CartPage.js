@@ -10188,6 +10188,66 @@ class CartPage {
   }
 
   /**
+   * Arms a wait for the loyalty save POST (`POST /frequentprograms`, hotelService.addFrequentGuest).
+   * Arm it BEFORE clicking Save: loyalty-number.ts's saveLoyaltyNumber() calls close() first and
+   * only awaits the POST afterwards, so the panel is already collapsed by the time it lands.
+   *
+   * @param {number} [timeout=30000]
+   * @returns {Promise<import('playwright').Response>}
+   */
+  armLoyaltySaveWait(timeout = 30000) {
+    return getNetworkInterceptor(this.page).waitForResponse(
+      { urlIncludes: config.frequentProgramsApiPath, method: 'POST', caseInsensitive: true },
+      { timeout }
+    );
+  }
+
+  /**
+   * Saves the open loyalty panel and proves the number actually persisted.
+   *
+   * The green check in extras-layout.vue renders on `isValid && hasValue`, and both read the
+   * quote's FrequentGuest trip validation — a PRE-booking nag ("Complete this task now. You won't
+   * be able to add it after the booking is confirmed."). Once the quote is booked that validation
+   * is no longer returned, so the icon never paints even though the save succeeded. The save POST
+   * is therefore the success signal that holds in both states; the icon is additionally asserted
+   * while the quote is still pending, which is where the app does render it.
+   *
+   * @param {object} [options]
+   * @param {number} [options.timeout=30000] - Wait for the save POST response
+   * @returns {Promise<void>}
+   */
+  async saveLoyaltyNumberAndVerify({ timeout = 30000 } = {}) {
+    // Read the status BEFORE saving: the panel is open and the quote card is already rendered.
+    const status = await this.getBookingStatus();
+    const isPending = status.toLowerCase().includes('pending');
+
+    const responsePromise = this.armLoyaltySaveWait(timeout);
+    await this.clickLoyaltySaveButton();
+
+    let response;
+    try {
+      response = await responsePromise;
+    } catch (err) {
+      throw new Error(
+        `[CartPage.saveLoyaltyNumberAndVerify] No "POST ${config.frequentProgramsApiPath}" response ` +
+        `within ${timeout}ms of clicking Save. The Save button may have been disabled (loyalty-number.ts ` +
+        `disables it until both a chain and a number are set). Original: ${err.message}`
+      );
+    }
+
+    if (!response.ok()) {
+      throw new Error(
+        `[CartPage.saveLoyaltyNumberAndVerify] The loyalty save was rejected: ` +
+        `POST ${response.url()} returned ${response.status()}.`
+      );
+    }
+
+    if (isPending) {
+      await this.waitForLoyaltySuccessIcon();
+    }
+  }
+
+  /**
    * Scrolls to the loyalty section and waits for the green success icon to appear.
    * Used for pre-populated scenarios where loyalty is fetched from API after room is added.
    */
