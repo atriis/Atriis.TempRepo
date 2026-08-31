@@ -23,4 +23,3 @@ Feature: 30624 HYBRID Evolvi - Booking, copy trip disabled, cancellation and ico
     And I complete the booking
     And the booking status should be "Ticketing Complete"
     Then the trip should not be eligible for copy trip
-    And I successfully cancel the trip
