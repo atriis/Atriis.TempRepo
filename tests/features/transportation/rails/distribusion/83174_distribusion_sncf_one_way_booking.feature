@@ -10,7 +10,7 @@ Feature: 83174 Distribusion - One way SNCF booking is created end to end
   Scenario: One way Distribusion SNCF booking is finalized successfully
     Given I am logged in as "tanya@dist.corp" booking a new trip
     And I have added myself as the traveler
-    When I search for a one way Benerail train from "fratwToFrnte" on the 1 "friday" of next month
+    When I search for a one way Benerail train from "frpmoToFrnte" on the 1 "friday" of next month
     And I wait for select text to be visible
     And I select the first Benerail option
     And I add the first result to trip

@@ -91,6 +91,10 @@
     "fratwToFrnte": {
       "from": "FRATW",
       "to": "FRNTE"
+    },
+    "frpmoToFrnte": {
+      "from": "FRPMO",
+      "to": "FRNTE"
     }
   },
   "defaultRoute": "beleuToBeabc"
