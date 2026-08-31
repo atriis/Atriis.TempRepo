@@ -2022,6 +2022,22 @@ When("I close the notification center", async function () {
   await Cart.closeNotificationCenter(this.page);
 });
 
+// Asserts the cart is showing the banner that BLOCKS checkout while mandatory notifications are still
+// unread (trip-cart.vue → .unread-messages). Pair it with "I click the proceed to checkout button" —
+// NOT with "I proceed to checkout", which waits for the checkout page this step expects never to load.
+Then("the mandatory unread notifications message should be displayed", async function () {
+  logger.info("Verifying the mandatory unread notifications message blocks checkout");
+  await Cart.verifyMandatoryUnreadMessageDisplayed(this.page);
+});
+
+// Clicks the per-message "Mark as read" link on every unread notification in the OPEN notification
+// center, clearing the flag that keeps Proceed to Checkout disabled. Requires "I open the
+// notification center" first.
+When("I mark all unread notifications as read", async function () {
+  logger.info("Marking all unread notifications as read");
+  await Cart.markAllUnreadNotificationsAsRead(this.page);
+});
+
 // Verifies the open notification center lists each expected message. Values are substring-matched
 // because the panel truncates long messages (feature values end in "…").
 Then("the notification center should display the following notifications:", async function (dataTable) {

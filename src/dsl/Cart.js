@@ -20,6 +20,20 @@ const { normalizeText, extractDateTokens, escapeRegex, stripWhitespaceAndLowerca
 const { extractPdfText, countLetters, assertPdfTextIsReadable, containsAmount, findCurrencyAmounts } = require("@utils/pdf");
 const logger = require("@utils/logger").child("Cart-DSL");
 
+// Every translation the app ships for `validation.unReadMessages1` (Atriis.OBT/src/assets/locale/*.json)
+// — the distinctive half of the checkout-blocking unread-notifications banner in trip-cart.vue. Listed
+// in full so the assertion stays language-independent, matching how CommonPage treats the notification
+// popup titles and the "Mark as read" link.
+const UNREAD_MESSAGES_BANNER_TEXTS = [
+  "In order to proceed, please review all unread",
+  "Um fortzufahren, überprüfen Sie bitte alle ungelesenen",
+  "Para continuar, revise todo lo que no ha leído",
+  "Pour continuer, veuillez consulter tous les messages non lus",
+  "Per procedere, controlla tutto ciò che non è stato letto",
+  "Controleer alle ongelezen berichten om door te gaan",
+  "Para prosseguir, reveja todas as mensagens não lidas",
+];
+
 // Journey legs of a round-trip rail quote, in the order eu-rail-seats.vue renders them: the API
 // returns the outbound leg first and the return leg second, matching the journey stepper's order.
 const RAIL_SEATING_LEG_INDEXES = [
@@ -6842,6 +6856,81 @@ const Cart = {
     logger.debug('Closing the notification center');
     const commonPage = getPageObject(page, CommonPage);
     await commonPage.closeNotificationPanel();
+  },
+
+  /**
+   * Verifies the cart shows the mandatory-unread banner that BLOCKS checkout while the traveler still
+   * has unread mandatory notifications (trip-cart.vue renders `.unread-messages` in the checkout
+   * error slot whenever `hasUnreadMandatoryNotifications` is true).
+   *
+   * The banner text is split across two i18n keys — `validation.unReadMessages1` and
+   * `validation.unReadMessages2`, the second rendered as the clickable `.open-notifications` span.
+   * Only the FIRST is asserted: it is the distinctive sentence, whereas unReadMessages2 is the single
+   * generic word "messages", which adds no discrimination. Substring, not equality, because the app
+   * inserts markup-driven whitespace and a leading "info" icon ligature into the banner.
+   *
+   * Matched against every shipped translation of that key rather than the English one alone, so a
+   * language-switch scenario reusing this step does not fail with a misleading "wording changed".
+   *
+   * @param {import('playwright').Page} page
+   * @returns {Promise<{displayed: boolean, bannerText: string}>}
+   */
+  async verifyMandatoryUnreadMessageDisplayed(page) {
+    if (!page) throw new Error('[Cart.verifyMandatoryUnreadMessageDisplayed] "page" is required.');
+    logger.debug('Verifying the mandatory-unread notifications banner blocks checkout');
+
+    const commonPage = getPageObject(page, CommonPage);
+    const bannerText = await commonPage.getMandatoryUnreadMessageText();
+
+    const normalized = bannerText.toLowerCase();
+    const matched = UNREAD_MESSAGES_BANNER_TEXTS.some((text) => normalized.includes(text.toLowerCase()));
+
+    expect(
+      matched,
+      `[Cart.verifyMandatoryUnreadMessageDisplayed] Expected the checkout-blocking banner to contain ` +
+      `validation.unReadMessages1 in any shipped language, but the visible banner read "${bannerText}". ` +
+      `Either the wording changed, or a different checkout validation error is showing.`
+    ).toBe(true);
+
+    logger.info('Mandatory-unread notifications banner is displayed', { bannerText });
+    return { displayed: true, bannerText };
+  },
+
+  /**
+   * Marks every unread notification in the OPEN notification center as read, by clicking each
+   * message's own "Mark as read" link (app-notification.vue). Clears the
+   * `hasUnreadMandatoryNotifications` flag that keeps the cart's Proceed to Checkout disabled.
+   *
+   * Requires the notification center to already be open — call `openNotificationCenter` first.
+   *
+   * @param {import('playwright').Page} page
+   * @returns {Promise<{marked: number}>} How many notifications were marked as read.
+   */
+  async markAllUnreadNotificationsAsRead(page) {
+    if (!page) throw new Error('[Cart.markAllUnreadNotificationsAsRead] "page" is required.');
+    logger.debug('Marking every unread notification in the notification center as read');
+
+    const commonPage = getPageObject(page, CommonPage);
+    const panelVisible = await commonPage.isNotificationPanelVisible({ timeout: 15000 });
+    if (!panelVisible) {
+      throw new Error(
+        '[Cart.markAllUnreadNotificationsAsRead] The notification center is not open, so no "Mark as read" ' +
+        'link can be clicked. Run the "I open the notification center" step before this one.'
+      );
+    }
+
+    const marked = await commonPage.clickAllMarkAsReadLinks();
+    if (marked === 0) {
+      throw new Error(
+        '[Cart.markAllUnreadNotificationsAsRead] The notification center is open but shows no unread ' +
+        'messages to mark as read. The traveler may have no mandatory notifications pending, or a ' +
+        'previous step already dismissed them (e.g. by acknowledging the reminder popup instead of ' +
+        'refreshing the browser).'
+      );
+    }
+
+    logger.info('Marked unread notifications as read', { marked });
+    return { marked };
   },
 
   /**

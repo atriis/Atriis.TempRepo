@@ -83,6 +83,22 @@ const SELECTORS = {
   // Message body text inside each notification row (app-notification.vue → .notification-text). Long
   // messages render truncated (item.ShortText), so callers must substring-match, never compare exact.
   NOTIFICATION_MESSAGE_TEXT: '.notification-message .notification-text',
+  // Per-message "Mark as read" link in the NEW-messages section of the panel (app-notification.vue
+  // renders `<span class="link-color" @click="markAsRead(item.Id)">` per unread message). `.link-color`
+  // is shared with the Show more / Show less toggles inside the same block, so callers MUST filter it
+  // by the link's own text (NOTIFICATION_MARK_AS_READ_TEXTS) instead of relying on its position.
+  NOTIFICATION_MARK_AS_READ: '.notification-message .notification-text .link-color',
+  // Every translation the app ships for `notificationCenter.markAsRead`
+  // (Atriis.OBT/src/assets/locale/*.json), so the text filter above stays language-independent.
+  NOTIFICATION_MARK_AS_READ_TEXTS: [
+    'Mark as read',
+    'Als gelesen markieren',
+    'Marcar como leído',
+    'Marquer comme lu',
+    'Segna come letto',
+    'Markeren als gelezen',
+    'Marcar como lido',
+  ],
 
   // Titles of the mandatory-notifications reminder popup (app-reminder-popup.vue → $t('common.mandatoryNotification')).
   // Both the reference-fields popup and this reminder popup render as `.el-dialog.app-dialog`, so the
@@ -121,6 +137,17 @@ const SELECTORS = {
 const MANDATORY_NOTIFICATIONS_TITLE_SELECTOR = SELECTORS.MANDATORY_NOTIFICATIONS_TITLES
   .map((title) => `.el-dialog__title:has-text("${title}")`)
   .join(', ');
+
+// Exact-text pattern matching any shipped "Mark as read" translation, built once rather than per
+// call. Anchored so it cannot also match "Mark all as read" (a different control, .mark-all, which
+// only renders when the "new" section is already empty).
+const MARK_AS_READ_TEXT_PATTERN = new RegExp(
+  '^\\s*(' +
+    SELECTORS.NOTIFICATION_MARK_AS_READ_TEXTS
+      .map((text) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+      .join('|') +
+    ')\\s*$',
+);
 
 /**
  * Parses the primary (account-currency) amount from a shared email offer's
@@ -598,6 +625,83 @@ class CommonPage {
     const link = this.page.locator(SELECTORS.MANDATORY_NOTIFICATION_LINK).first();
     await link.waitFor({ state: 'visible', timeout: 15000 });
     await link.click();
+  }
+
+  /**
+   * Reads the text of the mandatory-unread banner that replaces the cart checkout error slot while
+   * the traveler still has unread mandatory notifications (trip-cart.vue -> `.unread-messages`,
+   * $t('validation.unReadMessages1') + $t('validation.unReadMessages2')). Whitespace is collapsed to
+   * a single space because the banner is split across two elements and rendered over several lines.
+   * @param {object} [options]
+   * @param {number} [options.timeout=15000]
+   * @returns {Promise<string>} The banner text, whitespace-collapsed and trimmed.
+   */
+  async getMandatoryUnreadMessageText({ timeout = 15000 } = {}) {
+    const banner = this.page.locator(SELECTORS.MANDATORY_NOTIFICATION).first();
+    try {
+      await banner.waitFor({ state: 'visible', timeout });
+    } catch (error) {
+      throw new Error(
+        `[CommonPage.getMandatoryUnreadMessageText] The mandatory-unread banner (${SELECTORS.MANDATORY_NOTIFICATION}) ` +
+        `never became visible within ${timeout}ms. Checkout is probably NOT blocked — either the traveler has no ` +
+        `unread mandatory notifications, or the cart never reached the disabled-checkout state. Original: ${error.message}`,
+      );
+    }
+    const text = await banner.innerText();
+    return (text || '').replace(/\s+/g, ' ').trim();
+  }
+
+  /**
+   * Clicks every per-message "Mark as read" link in the currently open notification panel, one at a
+   * time. Each click removes that message from the "new" section and re-renders the list, so the
+   * links are re-resolved on every pass rather than collected up front.
+   * @param {object} [options]
+   * @param {number} [options.timeout=10000] Max time to wait for each link to become clickable.
+   * @param {number} [options.maxLinks=20] Safety bound, so a list that never shrinks cannot loop forever.
+   * @returns {Promise<number>} How many links were clicked.
+   */
+  async clickAllMarkAsReadLinks({ timeout = 10000, maxLinks = 20 } = {}) {
+    const markAsRead = this.page
+      .locator(`${SELECTORS.NOTIFICATION_PANEL}:visible ${SELECTORS.NOTIFICATION_MARK_AS_READ}`)
+      .filter({ hasText: MARK_AS_READ_TEXT_PATTERN });
+
+    // The panel lazy-renders its rows after `.app-notification` itself is visible, and count() does
+    // NOT wait — reading it pre-paint returns 0 and would skip the loop entirely, surfacing as a
+    // bogus "no unread messages" error upstream. Wait for the first link, but tolerate a genuinely
+    // empty notification center: the caller decides whether zero clicked is an error.
+    await markAsRead.first().waitFor({ state: 'visible', timeout }).catch(() => {});
+
+    let clicked = 0;
+    while (clicked < maxLinks) {
+      const remaining = await markAsRead.count();
+      if (remaining === 0) break;
+
+      try {
+        await markAsRead.first().click({ timeout });
+      } catch (error) {
+        throw new Error(
+          `[CommonPage.clickAllMarkAsReadLinks] Failed to click "Mark as read" link #${clicked + 1} in the ` +
+            `notification panel. The panel may have closed or re-rendered mid-click. Original: ${error.message}`,
+        );
+      }
+      clicked += 1;
+
+      // markAsRead(item.Id) re-renders the "new" section; wait for the list to actually SHRINK before
+      // re-reading it. Waiting on first() to detach would not work — it re-resolves to the next
+      // surviving link and so never reports detached while others remain, burning the full timeout
+      // on every pass but the last. The last index must disappear once any one row is removed.
+      await markAsRead.nth(remaining - 1).waitFor({ state: 'detached', timeout }).catch(() => {});
+    }
+
+    if (clicked >= maxLinks && (await markAsRead.count()) > 0) {
+      throw new Error(
+        `[CommonPage.clickAllMarkAsReadLinks] Clicked ${maxLinks} "Mark as read" links but unread messages ` +
+          `still remain. The list is not shrinking — markAsRead may be failing server-side, or the panel ` +
+          `is re-rendering the same message.`,
+      );
+    }
+
+    return clicked;
   }
 
   /**
