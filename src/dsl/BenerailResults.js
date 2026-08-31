@@ -54,9 +54,9 @@ function parseRgbToHex(rgb) {
 const CHANGES_COLOR_HEX = "#ef4438";
 const DIRECT_COLOR_HEX = "#4caf4e";
 
-// eu-rail-stepper.ts's getStepperText(): "MMM dd " + the leg's HH:mm/h:mm AM/PM time, e.g.
-// "Jan 05 14:30" or "Jan 05 2:30 PM".
-const STEPPER_DATE_TIME_PATTERN = /[A-Za-z]{3}\s+\d{1,2}\s+\d{1,2}:\d{2}(\s*[AP]M)?/i;
+// eu-rail-stepper.ts's getStepperText(): "dd MMM " + the leg's HH:mm/h:mm AM/PM time, e.g.
+// "05 Jan 14:30" or "05 Jan 2:30 PM".
+const STEPPER_DATE_TIME_PATTERN = /\d{1,2}\s+[A-Za-z]{3}\s+\d{1,2}:\d{2}(\s*[AP]M)?/i;
 
 // The time half of that same text — the date prefix is fixed-width but the time is what the
 // search was actually run for, so it is pulled off the end in either notation.
@@ -113,12 +113,28 @@ function stepperSegmentMatchesState(state, expected) {
  */
 async function waitForStepperSegmentState(benerailResultsPage, index, legLabel, expected, timeout = 30000) {
   let lastState;
+  let lastError;
   await expect.poll(
     async () => {
-      lastState = await benerailResultsPage.getJourneyStepperSegmentState(index, 3000);
+      // Selecting a leg tears the whole results view down while the next leg is fetched ("Calculating
+      // the best offers"), taking the stepper out of the DOM with it — a read landing in that window
+      // throws, and expect.poll propagates a thrown callback rather than retrying it, so swallow it
+      // here and let the poll keep going until the stepper comes back with the results.
+      try {
+        lastState = await benerailResultsPage.getJourneyStepperSegmentState(index, 3000);
+        lastError = undefined;
+      } catch (error) {
+        lastError = error;
+        return false;
+      }
       return stepperSegmentMatchesState(lastState, expected);
     },
-    { timeout, message: () => `Timed out waiting for the ${legLabel} stepper step to reach its "${expected}" state, last read: ${JSON.stringify(lastState)}` },
+    {
+      timeout,
+      message: () => lastError
+        ? `Timed out reading the ${legLabel} stepper step while waiting for its "${expected}" state, last error: ${lastError.message}`
+        : `Timed out waiting for the ${legLabel} stepper step to reach its "${expected}" state, last read: ${JSON.stringify(lastState)}`,
+    },
   ).toBe(true);
 
   if (!STEPPER_DATE_TIME_PATTERN.test(lastState.stepText)) {
