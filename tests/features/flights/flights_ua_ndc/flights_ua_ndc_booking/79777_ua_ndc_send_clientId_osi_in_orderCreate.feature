@@ -6,7 +6,7 @@
 
 # ADO Test Case ID: 79777
 @ado:79777 @regression @flights @ndc @united @hybrid @hold-flight @payload @clientid
-Feature: United NDC - ClientId AugmentationPoint is sent in OrderCreate request
+Feature: 79777 United NDC - ClientId AugmentationPoint is sent in OrderCreate request
   As a corporate traveler
   I want to hold a United NDC round trip flight with a guest traveler
   So that the ClientId AugmentationPoint (OSI1/QCI/UA0001) is correctly sent in the OrderCreate request
