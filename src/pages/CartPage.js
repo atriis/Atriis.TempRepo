@@ -19,6 +19,17 @@ const CANCELLATION_CONFIRMED_TEXT = "Cancellation confirmed!";
 // fillAllMandatoryEvolviExtras. Sized for the slowest row, the seat reservation.
 const EVOLVI_EXTRAS_SAVE_TIMEOUT_MS = 45000;
 
+// AB#82538 — the seat-map category fills, as the browser reports them. Kept as one map so the
+// three literals are written once and the "which colour won" assertions can name a category
+// instead of an rgb() string. Source: Atriis.OBT plane-seat.scss + assets/style/abstracts/
+// _variables.scss ($magenta-500 / $green-500 / $primary-400). A seat that is `occupied` or
+// `selected` is painted by a different rule and is excluded from every colour assertion.
+const SEAT_CATEGORY_COLORS = {
+  economyComfort: 'rgb(191, 16, 159)', // $magenta-500 #bf109f
+  preferred: 'rgb(129, 199, 133)',     // $green-500  #81c785
+  extraLegRoom: 'rgb(31, 166, 255)',   // $primary-400 #1fa6ff
+};
+
 /**
  * Collapses a cross-sell suggestion sentence to a comparable form — see
  * clickCrossSellSuggestionByTitle.
@@ -1023,6 +1034,14 @@ const SELECTORS = {
   SEAT_TOOLTIP_RED_MESSAGE: '.el-popper.is-light .tooltip-item.red',
   // Preferred + Extra Legroom seat (plane-seat.vue — both classes applied via seatImageClass computed)
   PREFERRED_EXTRA_LEGROOM_SEAT: '.deck-wrapper .plane-seat.preferred.extra-leg-room .seat',
+  // AB#82538 seat CATEGORY classes. plane-seat.vue renders two nested elements that both carry
+  // `plane-seat`: an outer wrapper div (class passed down by flight-deck.vue) and the inner
+  // <section> that seatImageClass decorates. Only the inner one ever carries a category class, so
+  // every selector below resolves to exactly one element per seat.
+  ECONOMY_COMFORT_SEAT: '.deck-wrapper .plane-seat.economy-comfort',
+  // Any seat carrying at least one of the three coloured categories — the population the
+  // colour-precedence assertions read.
+  CATEGORY_SEAT: '.deck-wrapper .plane-seat.economy-comfort, .deck-wrapper .plane-seat.preferred, .deck-wrapper .plane-seat.extra-leg-room',
   // Visible seat tooltip container (Element Plus el-popper with light effect, visible state)
   SEAT_TOOLTIP_VISIBLE: '.el-popper.is-light:not([aria-hidden="true"])',
   // First available seat in the deck (has a seat number visible)
@@ -6404,6 +6423,78 @@ class CartPage {
       }
     }
     return false;
+  }
+
+  /**
+   * AB#82538 — reads every seat on the currently-rendered deck that carries at least one coloured
+   * category class, together with the background colour the browser actually computed for it.
+   *
+   * The colour is read, not inferred from the class list, because the whole story is a CSS cascade
+   * change: `.plane-seat.economy-comfort:not(.occupied)` is one specificity step above
+   * `.plane-seat.extra-leg-room` and `.plane-seat .preferred`, and only a computed style can prove
+   * which rule won on a seat that carries two categories at once.
+   *
+   * @param {object} [options]
+   * @param {number} [options.timeout=30000] - Max wait for the deck to render
+   * @returns {Promise<Array<{seatLabel: string, economyComfort: boolean, preferred: boolean,
+   *   extraLegRoom: boolean, occupied: boolean, selected: boolean, backgroundColor: string}>>}
+   */
+  async readSeatMapCategorySeats({ timeout = 30000 } = {}) {
+    await this.page
+      .locator(SELECTORS.SEAT_MAP_CONTAINER)
+      .first()
+      .waitFor({ state: 'visible', timeout });
+
+    return this.page.evaluate(() => {
+      const CATEGORIES = ['economy-comfort', 'preferred', 'extra-leg-room'];
+      const seats = Array.from(document.querySelectorAll('.deck-wrapper .plane-seat'));
+
+      return seats
+        .filter((node) => CATEGORIES.some((cls) => node.classList.contains(cls)))
+        .map((node) => ({
+          seatLabel: (node.textContent || '').replace(/\s+/g, ' ').trim(),
+          economyComfort: node.classList.contains('economy-comfort'),
+          preferred: node.classList.contains('preferred'),
+          extraLegRoom: node.classList.contains('extra-leg-room'),
+          occupied: node.classList.contains('occupied'),
+          selected: node.classList.contains('selected'),
+          backgroundColor: window.getComputedStyle(node).backgroundColor,
+        }));
+    });
+  }
+
+  /**
+   * AB#82538 — hovers the first Economy Comfort seat that is neither occupied nor already selected,
+   * to trigger its Element Plus tooltip.
+   *
+   * Deliberately NOT hoverPreferredExtraLegroomSeat: that one requires a price symbol in the seat
+   * label, and an Economy Comfort seat can be free.
+   *
+   * @param {object} [options]
+   * @param {number} [options.timeout=30000] - Max wait for the first candidate seat
+   * @returns {Promise<string>} The hovered seat's label
+   * @throws {Error} If the deck holds no selectable Economy Comfort seat
+   */
+  async hoverEconomyComfortSeat({ timeout = 30000 } = {}) {
+    const seats = this.page.locator(
+      `${SELECTORS.ECONOMY_COMFORT_SEAT}:not(.occupied):not(.selected)`,
+    );
+
+    try {
+      await seats.first().waitFor({ state: 'visible', timeout });
+    } catch (error) {
+      throw new Error(
+        '[CartPage.hoverEconomyComfortSeat] The deck rendered no selectable Economy Comfort seat '
+        + `(selector: ${SELECTORS.ECONOMY_COMFORT_SEAT}:not(.occupied):not(.selected)) within `
+        + `${timeout}ms. This flight's seat map may carry no EK-coded seats. Original: ${error.message}`,
+      );
+    }
+
+    const seat = seats.first();
+    const label = (await seat.innerText().catch(() => '')).replace(/\s+/g, ' ').trim();
+    await seat.scrollIntoViewIfNeeded();
+    await seat.hover();
+    return label;
   }
 
   /**
@@ -13239,4 +13330,5 @@ module.exports = {
   CartPage,
   SELECTORS,
   CANCELLATION_CONFIRMED_TEXT,
+  SEAT_CATEGORY_COLORS,
 };

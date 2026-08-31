@@ -1,7 +1,7 @@
 const fs = require("fs");
 const { expect } = require("@playwright/test");
 const { getPageObject } = require("@utils/pageObjectCache");
-const { CartPage, SELECTORS: CART_SELECTORS, CANCELLATION_CONFIRMED_TEXT } = require("@pages/CartPage");
+const { CartPage, SELECTORS: CART_SELECTORS, CANCELLATION_CONFIRMED_TEXT, SEAT_CATEGORY_COLORS } = require("@pages/CartPage");
 const { CheckoutPage, SELECTORS: CheckoutSelectors } = require("@pages/CheckoutPage");
 const { CommonPage, SELECTORS: COMMON_SELECTORS } = require("@pages/CommonPage");
 const { ResultsPage } = require("@pages/ResultsPage");
@@ -3194,6 +3194,264 @@ const Cart = {
 
     logger.debug('Successfully hovered preferred extra legroom seat');
     return { hovered: true };
+  },
+
+  /**
+   * AB#82538 expectation 1 - every selectable Economy Comfort (PADIS EK) seat on the deck is
+   * painted the Economy Comfort magenta.
+   *
+   * Occupied and already-selected seats are excluded: plane-seat.scss paints those from
+   * `&.occupied` / `&.selected` by design, and `&.economy-comfort:not(.occupied)` deliberately
+   * yields to the occupied fill.
+   *
+   * The count is logged, never asserted against a fixed number - how many EK seats a cabin holds
+   * is airline data, not behaviour. What IS asserted is that at least one exists, otherwise the
+   * colour claim would pass vacuously on a flight with no EK seats.
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @returns {Promise<{economyComfortCount: number, seatLabels: string[]}>}
+   * @throws {Error} If the deck holds no Economy Comfort seat, or one is not magenta
+   */
+  async verifyEconomyComfortSeatsColor(page) {
+    if (!page) throw new Error('[Cart.verifyEconomyComfortSeatsColor] "page" is required.');
+    logger.info('Verifying Economy Comfort seats are painted the Economy Comfort colour', {
+      expectedColor: SEAT_CATEGORY_COLORS.economyComfort,
+    });
+
+    const cartPage = getPageObject(page, CartPage);
+    const seats = await cartPage.readSeatMapCategorySeats();
+    const paintable = seats.filter((seat) => seat.economyComfort && !seat.occupied && !seat.selected);
+
+    logger.info('Seat map category breakdown', {
+      categorySeats: seats.length,
+      economyComfort: seats.filter((s) => s.economyComfort).length,
+      economyComfortSelectable: paintable.length,
+      preferred: seats.filter((s) => s.preferred).length,
+      extraLegRoom: seats.filter((s) => s.extraLegRoom).length,
+    });
+
+    if (paintable.length === 0) {
+      throw new Error(
+        '[Cart.verifyEconomyComfortSeatsColor] This seat map has no selectable Economy Comfort '
+        + 'seat, so the Economy Comfort colour cannot be verified. Either the flight returns no '
+        + 'seat with the EK characteristic (38 in the FlightSeats response), or the source system '
+        + 'is not yet sending it. Category seats found: '
+        + `${JSON.stringify(seats.map((s) => s.seatLabel))}`,
+      );
+    }
+
+    const wrongColor = paintable.filter(
+      (seat) => seat.backgroundColor !== SEAT_CATEGORY_COLORS.economyComfort,
+    );
+    if (wrongColor.length > 0) {
+      throw new Error(
+        `[Cart.verifyEconomyComfortSeatsColor] ${wrongColor.length} of ${paintable.length} Economy `
+        + `Comfort seats are not painted ${SEAT_CATEGORY_COLORS.economyComfort}: `
+        + `${JSON.stringify(wrongColor.map((s) => ({ seat: s.seatLabel, color: s.backgroundColor })))}`,
+      );
+    }
+
+    logger.info('All Economy Comfort seats are painted the Economy Comfort colour', {
+      economyComfortCount: paintable.length,
+    });
+    return {
+      economyComfortCount: paintable.length,
+      seatLabels: paintable.map((seat) => seat.seatLabel),
+    };
+  },
+
+  /**
+   * AB#82538 expectation 2a - hovers an Economy Comfort seat so its tooltip renders.
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @returns {Promise<{seatLabel: string}>}
+   */
+  async hoverEconomyComfortSeat(page) {
+    if (!page) throw new Error('[Cart.hoverEconomyComfortSeat] "page" is required.');
+    logger.info('Hovering an Economy Comfort seat in the seat map');
+
+    const cartPage = getPageObject(page, CartPage);
+    const seatLabel = await cartPage.hoverEconomyComfortSeat();
+
+    logger.debug('Hovered Economy Comfort seat', { seatLabel });
+    return { seatLabel };
+  },
+
+  /**
+   * AB#82538 expectation 2b - the hovered seat's tooltip names the Economy Comfort category.
+   *
+   * The label comes from the tooltip's STATUS line, where seat-status.ts ranks EconomyComfort above
+   * PreferredSeat - so an EK seat that is also preferred must read "Economy Comfort", not
+   * "Preferred".
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @returns {Promise<{tooltipText: string}>}
+   */
+  async verifyEconomyComfortTooltipLabel(page) {
+    if (!page) throw new Error('[Cart.verifyEconomyComfortTooltipLabel] "page" is required.');
+    logger.info('Verifying the seat tooltip reads Economy Comfort');
+
+    const cartPage = getPageObject(page, CartPage);
+    const tooltipText = await cartPage.getVisibleSeatTooltipText();
+
+    if (!tooltipText.toLowerCase().includes('economy comfort')) {
+      throw new Error(
+        '[Cart.verifyEconomyComfortTooltipLabel] The Economy Comfort seat tooltip does not name the '
+        + `category. Expected it to contain "Economy Comfort", got: "${tooltipText}"`,
+      );
+    }
+
+    logger.info('Seat tooltip reads Economy Comfort', { tooltipText });
+    return { tooltipText };
+  },
+
+  /**
+   * AB#82538 expectations 3 and 4 - Economy Comfort outranks every other characteristic, so a seat
+   * carrying EK **and** Preferred, or EK **and** Extra legroom, is still painted magenta.
+   *
+   * This is the assertion the story's precedence requirement lives or dies on, so it reads the
+   * computed colour of the overlap seats rather than their classes: the seat keeps carrying
+   * `preferred` / `extra-leg-room` either way, and only the resolved fill says which rule won.
+   *
+   * Each overlap is only asserted when the flight actually offers it - a cabin where no EK seat is
+   * also preferred proves nothing either way - but at least one of the two must exist, otherwise
+   * the step would report success without having tested precedence at all.
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @returns {Promise<{withPreferred: number, withExtraLegRoom: number}>}
+   * @throws {Error} If an overlap seat is painted the preferred green or the extra legroom blue
+   */
+  async verifyEconomyComfortColorOverridesOtherCategories(page) {
+    if (!page) {
+      throw new Error('[Cart.verifyEconomyComfortColorOverridesOtherCategories] "page" is required.');
+    }
+    logger.info('Verifying Economy Comfort outranks the preferred and extra legroom colours');
+
+    const cartPage = getPageObject(page, CartPage);
+    const seats = await cartPage.readSeatMapCategorySeats();
+    const selectable = seats.filter((seat) => !seat.occupied && !seat.selected);
+
+    const withPreferred = selectable.filter((seat) => seat.economyComfort && seat.preferred);
+    const withExtraLegRoom = selectable.filter((seat) => seat.economyComfort && seat.extraLegRoom);
+
+    logger.info('Economy Comfort overlap seats found', {
+      withPreferred: withPreferred.length,
+      withExtraLegRoom: withExtraLegRoom.length,
+    });
+
+    if (withPreferred.length === 0 && withExtraLegRoom.length === 0) {
+      throw new Error(
+        '[Cart.verifyEconomyComfortColorOverridesOtherCategories] No seat on this deck carries '
+        + 'Economy Comfort together with Preferred or Extra legroom, so colour precedence cannot be '
+        + 'verified on this flight. Category seats: '
+        + `${JSON.stringify(selectable.map((s) => ({
+          seat: s.seatLabel,
+          economyComfort: s.economyComfort,
+          preferred: s.preferred,
+          extraLegRoom: s.extraLegRoom,
+        })))}`,
+      );
+    }
+
+    const offenders = [...withPreferred, ...withExtraLegRoom].filter(
+      (seat) => seat.backgroundColor !== SEAT_CATEGORY_COLORS.economyComfort,
+    );
+    if (offenders.length > 0) {
+      throw new Error(
+        '[Cart.verifyEconomyComfortColorOverridesOtherCategories] Economy Comfort did not win the '
+        + `cascade on ${offenders.length} seat(s). Expected ${SEAT_CATEGORY_COLORS.economyComfort} `
+        + `(magenta), preferred green is ${SEAT_CATEGORY_COLORS.preferred} and extra legroom blue is `
+        + `${SEAT_CATEGORY_COLORS.extraLegRoom}. Offending seats: `
+        + `${JSON.stringify(offenders.map((s) => ({
+          seat: s.seatLabel,
+          color: s.backgroundColor,
+          preferred: s.preferred,
+          extraLegRoom: s.extraLegRoom,
+        })))}`,
+      );
+    }
+
+    logger.info('Economy Comfort outranks both the preferred and the extra legroom colour', {
+      withPreferred: withPreferred.length,
+      withExtraLegRoom: withExtraLegRoom.length,
+    });
+    return { withPreferred: withPreferred.length, withExtraLegRoom: withExtraLegRoom.length };
+  },
+
+  /**
+   * AB#82538 expectation 5 - the new category changed nothing else: a seat that is Preferred or
+   * Extra legroom WITHOUT the EK characteristic still paints its own established colour (preferred
+   * green, extra legroom blue).
+   *
+   * This is the regression half of the precedence rule. Each category is only asserted when the
+   * flight offers it, and at least one of the two must exist so the step cannot pass on an empty
+   * population.
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @returns {Promise<{preferredOnly: number, extraLegRoomOnly: number}>}
+   * @throws {Error} If a non-EK preferred or extra legroom seat lost its own colour
+   */
+  async verifyNonEconomyComfortSeatsKeepColors(page) {
+    if (!page) throw new Error('[Cart.verifyNonEconomyComfortSeatsKeepColors] "page" is required.');
+    logger.info('Verifying seats without the Economy Comfort characteristic keep their own colours');
+
+    const cartPage = getPageObject(page, CartPage);
+    const seats = await cartPage.readSeatMapCategorySeats();
+    const selectable = seats.filter(
+      (seat) => !seat.occupied && !seat.selected && !seat.economyComfort,
+    );
+
+    // Extra legroom is grouped first: plane-seat.scss gives `.plane-seat.extra-leg-room` and
+    // `.plane-seat .preferred` the same specificity, so on a seat carrying BOTH, the later rule in
+    // the sheet - extra legroom - is the one that paints. Grouping the other way round would assert
+    // green on a seat the app legitimately paints blue.
+    const extraLegRoomOnly = selectable.filter((seat) => seat.extraLegRoom);
+    const preferredOnly = selectable.filter((seat) => seat.preferred && !seat.extraLegRoom);
+
+    logger.info('Non-Economy-Comfort category seats found', {
+      preferredOnly: preferredOnly.length,
+      extraLegRoomOnly: extraLegRoomOnly.length,
+    });
+
+    if (preferredOnly.length === 0 && extraLegRoomOnly.length === 0) {
+      throw new Error(
+        '[Cart.verifyNonEconomyComfortSeatsKeepColors] This deck has no preferred or extra legroom '
+        + 'seat without the Economy Comfort characteristic, so there is nothing to prove the other '
+        + 'categories were left alone.',
+      );
+    }
+
+    const offenders = [
+      ...preferredOnly
+        .filter((seat) => seat.backgroundColor !== SEAT_CATEGORY_COLORS.preferred)
+        .map((seat) => ({
+          seat: seat.seatLabel,
+          category: 'preferred',
+          color: seat.backgroundColor,
+          expected: SEAT_CATEGORY_COLORS.preferred,
+        })),
+      ...extraLegRoomOnly
+        .filter((seat) => seat.backgroundColor !== SEAT_CATEGORY_COLORS.extraLegRoom)
+        .map((seat) => ({
+          seat: seat.seatLabel,
+          category: 'extraLegRoom',
+          color: seat.backgroundColor,
+          expected: SEAT_CATEGORY_COLORS.extraLegRoom,
+        })),
+    ];
+    if (offenders.length > 0) {
+      throw new Error(
+        `[Cart.verifyNonEconomyComfortSeatsKeepColors] ${offenders.length} seat(s) without the `
+        + 'Economy Comfort characteristic lost their own colour: '
+        + `${JSON.stringify(offenders)}`,
+      );
+    }
+
+    logger.info('Seats without Economy Comfort keep their own colours', {
+      preferredOnly: preferredOnly.length,
+      extraLegRoomOnly: extraLegRoomOnly.length,
+    });
+    return { preferredOnly: preferredOnly.length, extraLegRoomOnly: extraLegRoomOnly.length };
   },
 
   /**

@@ -641,6 +641,36 @@ Then("the seat tooltip should contain preferred and extra legroom labels", async
   logger.info("Seat tooltip verified", { tooltipText: result.tooltipText });
 });
 
+Then("the economy comfort seats should be shown in the economy comfort color", async function () {
+  logger.info("Verifying economy comfort seats are painted the economy comfort color");
+  const result = await Cart.verifyEconomyComfortSeatsColor(this.page);
+  logger.info("Economy comfort seat color verified", result);
+});
+
+When("I hover over an economy comfort seat", async function () {
+  logger.info("Hovering over an economy comfort seat in the seat map");
+  const result = await Cart.hoverEconomyComfortSeat(this.page);
+  logger.info("Hovered economy comfort seat", result);
+});
+
+Then("the seat tooltip should contain the economy comfort label", async function () {
+  logger.info("Verifying the seat tooltip reads Economy Comfort");
+  const result = await Cart.verifyEconomyComfortTooltipLabel(this.page);
+  logger.info("Seat tooltip verified", result);
+});
+
+Then("the economy comfort color should override the preferred and extra legroom colors", async function () {
+  logger.info("Verifying economy comfort outranks the preferred and extra legroom colors");
+  const result = await Cart.verifyEconomyComfortColorOverridesOtherCategories(this.page);
+  logger.info("Economy comfort color precedence verified", result);
+});
+
+Then("the seats without the economy comfort characteristic should keep their existing colors", async function () {
+  logger.info("Verifying non-economy-comfort seats keep their own colors");
+  const result = await Cart.verifyNonEconomyComfortSeatsKeepColors(this.page);
+  logger.info("Non-economy-comfort seat colors verified", result);
+});
+
 When("I click next flight button", async function () {
   logger.info("Clicking next flight button to advance to the next segment");
   const cartPage = getPageObject(this.page, CartPage);
