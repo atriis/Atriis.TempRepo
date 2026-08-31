@@ -16,8 +16,8 @@ Feature: 66386 Hotels - Amadeus - Agreement results are visible in hotel level
   Scenario: Agreement results are visible in hotel level
     Given I am logged in as "pwc@pec.com" booking a new trip
     And I have added myself as the traveler
-    When I search for a hotel in "Cardiff Lane Dublin" for 1 night
+    When I search for a hotel in "Cardiff Lane, Grand Canal Dock, Dub" for 1 night
     And I wait to see view rates text in results page
-    Then the first hotel result should display the "Corporate rate" agreement
-    Then hovering over the "Corporate rate" agreement should show "pcw" in the tooltip
+    Then the first hotel result should display the "Corporate & Agency Rates" agreement
+    Then hovering over the "Corporate & Agency Rates" agreement should show "pcw" in the tooltip
     
