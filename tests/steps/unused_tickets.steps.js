@@ -43,6 +43,26 @@ Then('MCO unused tickets should be hidden on checkout', async function () {
   await UnusedTickets.verifyMcoHiddenOnCheckout(this.page);
 });
 
+Then('the checkout unused tickets list should include a ticket with record locator containing {string}', async function (recordLocatorText) {
+  logger.info('Verifying the checkout unused tickets list includes a record locator', { recordLocatorText });
+  await UnusedTickets.verifyCheckoutTicketWithRecordLocator(this.page, recordLocatorText);
+});
+
+When('I select the unused ticket with record locator containing {string} on checkout', async function (recordLocatorText) {
+  logger.info('Selecting an unused ticket on checkout', { recordLocatorText });
+  await UnusedTickets.selectCheckoutTicketByRecordLocator(this.page, recordLocatorText);
+});
+
+Then('the unused tickets action button on checkout should be {string}', async function (expectedLabel) {
+  logger.info('Verifying the checkout unused tickets action button label', { expectedLabel });
+  await UnusedTickets.verifyCheckoutActionButtonLabel(this.page, expectedLabel);
+});
+
+When('I apply the selected unused ticket on checkout', async function () {
+  logger.info('Applying the selected unused ticket on checkout');
+  await UnusedTickets.applySelectedCheckoutTicket(this.page);
+});
+
 Then('the unused tickets banner should be visible in results', async function () {
   logger.info('Verifying unused tickets banner is visible in results');
   await UnusedTickets.verifyBannerVisible(this.page);

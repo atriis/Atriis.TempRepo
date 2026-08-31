@@ -15,8 +15,11 @@
 const { payloadValidation } = require("@config/config");
 const logger = require("@utils/logger").child("PayloadValidationClient");
 
-const DEFAULT_LOOKUP_ATTEMPTS = 3;
-const DEFAULT_LOOKUP_RETRY_MS = 1000;
+// A payload is written to storage after the app call it belongs to returns, so a step that captures
+// right after an action races the write. Post-booking payloads (QueuePlaceRQ and friends) have been
+// seen landing ~18s after the booking completes, which 3 attempts 1s apart could never reach.
+const DEFAULT_LOOKUP_ATTEMPTS = 8;
+const DEFAULT_LOOKUP_RETRY_MS = 3000;
 
 /**
  * Timeout wrapper to prevent indefinite iteration in asynchronous flows.
@@ -314,7 +317,11 @@ async function fetchPayloadFromStorage({ source, requestType, tripId, transactio
   const operationDeadline = Date.now() + operationTimeoutMs;
 
   const tripIdString = String(tripId).trim();
-  let firstListCallIncludeAuth = Boolean(token);
+  // /api/distributor-requests rejects anonymous callers with 400 "Restart login cookie not found",
+  // so the token goes on every list call, not just the first. Sending it once and dropping it made
+  // every retry a guaranteed 400 — the first attempt would 200 with the payload not yet written to
+  // storage, and every attempt after it failed on auth rather than on the row being absent.
+  const listCallIncludeAuth = Boolean(token);
 
   function remainingTimeoutMs(operationName) {
     const remaining = operationDeadline - Date.now();
@@ -377,21 +384,15 @@ async function fetchPayloadFromStorage({ source, requestType, tripId, transactio
   }
 
   async function queryEntries(criteria) {
-    let includeAuth = false;
-    if (firstListCallIncludeAuth) {
-      includeAuth = true;
-      firstListCallIncludeAuth = false;
-    }
+    const includeAuth = listCallIncludeAuth;
 
     let rawEntries;
     try {
       rawEntries = await listTripEntries(includeAuth, "list distributor requests");
     } catch (error) {
-      if (!includeAuth && token && error instanceof HttpError && error.statusCode === 401) {
-        rawEntries = await listTripEntries(true, "list distributor requests retry with auth");
-      } else if (token && error instanceof HttpError && error.statusCode === 400) {
-        // The API can return 400 "Restart login cookie not found" transiently.
-        // Wait briefly and retry with auth to recover.
+      if (token && error instanceof HttpError && error.statusCode === 400) {
+        // A 400 with the token attached is a genuinely expired/rejected token, not the anonymous-
+        // caller case above. Retried once anyway in case it was transient.
         await sleepWithinBudget(2000, "list distributor requests retry after 400");
         rawEntries = await listTripEntries(true, "list distributor requests retry after 400");
       } else {

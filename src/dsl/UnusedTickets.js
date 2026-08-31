@@ -116,6 +116,123 @@ const UnusedTickets = {
     return { content };
   },
 
+  async verifyCheckoutTicketWithRecordLocator(page, recordLocatorText) {
+    if (!page) throw new Error('page parameter is required');
+    if (!recordLocatorText || typeof recordLocatorText !== 'string') {
+      throw new Error(`recordLocatorText must be a non-empty string, got: ${typeof recordLocatorText}`);
+    }
+    logger.info('Verifying the checkout unused tickets list offers a record locator', { recordLocatorText });
+
+    const unusedTicketsPage = getPageObject(page, UnusedTicketsPage);
+    await unusedTicketsPage.waitForCheckoutTicketRows();
+
+    const matches = await unusedTicketsPage.getCheckoutTicketRowsByRecordLocator(recordLocatorText).count();
+    if (matches === 0) {
+      const offered = await unusedTicketsPage.getCheckoutRecordLocatorTexts();
+      throw new Error(
+        `Expected the checkout unused tickets list to offer a ticket whose record locator contains ` +
+        `"${recordLocatorText}", but none matched. Record locators offered: ${JSON.stringify(offered)}`
+      );
+    }
+
+    logger.info('Verified: checkout unused tickets list offers a matching record locator', {
+      recordLocatorText,
+      matches,
+    });
+    return { recordLocatorText, matches };
+  },
+
+  async selectCheckoutTicketByRecordLocator(page, recordLocatorText) {
+    if (!page) throw new Error('page parameter is required');
+    if (!recordLocatorText || typeof recordLocatorText !== 'string') {
+      throw new Error(`recordLocatorText must be a non-empty string, got: ${typeof recordLocatorText}`);
+    }
+    logger.info('Selecting an unused ticket on checkout', { recordLocatorText });
+
+    const unusedTicketsPage = getPageObject(page, UnusedTicketsPage);
+    await unusedTicketsPage.waitForCheckoutTicketRows();
+
+    const rows = unusedTicketsPage.getSelectableCheckoutTicketRowsByRecordLocator(recordLocatorText);
+    const matches = await rows.count();
+
+    if (matches === 0) {
+      const offered = await unusedTicketsPage.getCheckoutRecordLocatorTexts();
+      const listedButDisabled = await unusedTicketsPage
+        .getCheckoutTicketRowsByRecordLocator(recordLocatorText)
+        .count();
+      throw new Error(
+        listedButDisabled > 0
+          ? `All ${listedButDisabled} unused ticket(s) whose record locator contains "${recordLocatorText}" ` +
+            `are disabled on checkout, so none can be selected. Record locators offered: ${JSON.stringify(offered)}`
+          : `No unused ticket on checkout has a record locator containing "${recordLocatorText}". ` +
+            `Record locators offered: ${JSON.stringify(offered)}`
+      );
+    }
+
+    // A record locator carries the ticket type in its middle letters (UANDC1, UAMCO2, UATKT4), so
+    // addressing a ticket that way keeps the step usable on any account - ticket numbers differ per
+    // account, record locator types do not. An account can hold several tickets of one type and any
+    // of them exercises that type equally, so one of the matches is taken at random rather than
+    // always the first, which would leave the others permanently untested.
+    const selectedIndex = Math.floor(Math.random() * matches);
+    const row = rows.nth(selectedIndex);
+    const selectedTicket = (await row.innerText()).replace(/\s+/g, ' ').trim();
+
+    logger.info('Selecting an unused ticket from the matching options', {
+      recordLocatorText,
+      matches,
+      selectedIndex,
+      selectedTicket,
+    });
+
+    await row.click();
+    await expect(
+      row,
+      `The unused ticket whose record locator contains "${recordLocatorText}" should be selected on checkout`
+    ).toHaveClass(/is-checked/, { timeout: PRESENCE_TIMEOUT });
+
+    logger.info('Selected unused ticket on checkout', { recordLocatorText, selectedTicket });
+    return { recordLocatorText, matches, selectedIndex, selectedTicket };
+  },
+
+  async verifyCheckoutActionButtonLabel(page, expectedLabel) {
+    if (!page) throw new Error('page parameter is required');
+    if (!expectedLabel || typeof expectedLabel !== 'string') {
+      throw new Error(`expectedLabel must be a non-empty string, got: ${typeof expectedLabel}`);
+    }
+    logger.info('Verifying the checkout unused tickets action button label', { expectedLabel });
+
+    const unusedTicketsPage = getPageObject(page, UnusedTicketsPage);
+    const button = unusedTicketsPage.getCheckoutActionButton();
+
+    await expect(button, 'The unused tickets action button should be visible on checkout')
+      .toBeVisible({ timeout: PRESENCE_TIMEOUT });
+    await expect(button, `The unused tickets action button should read "${expectedLabel}"`)
+      .toContainText(expectedLabel, { timeout: PRESENCE_TIMEOUT });
+
+    logger.info('Verified: checkout unused tickets action button label', { expectedLabel });
+  },
+
+  async applySelectedCheckoutTicket(page) {
+    if (!page) throw new Error('page parameter is required');
+    logger.info('Applying the selected unused ticket on checkout');
+
+    const unusedTicketsPage = getPageObject(page, UnusedTicketsPage);
+    const button = unusedTicketsPage.getCheckoutActionButton();
+
+    await expect(button, 'The unused tickets action button should be enabled before applying')
+      .toBeEnabled({ timeout: PRESENCE_TIMEOUT });
+    await button.click();
+
+    await unusedTicketsPage.waitForCalculationToSettle();
+    await expect(
+      unusedTicketsPage.getCheckoutAppliedConfirmation(),
+      'The unused ticket credit confirmation should be displayed after applying'
+    ).toBeVisible({ timeout: PRESENCE_TIMEOUT });
+
+    logger.info('Applied the selected unused ticket on checkout');
+  },
+
   async closeUnusedTicketsModal(page) {
     if (!page) throw new Error('page parameter is required');
     logger.info('Closing unused tickets modal');

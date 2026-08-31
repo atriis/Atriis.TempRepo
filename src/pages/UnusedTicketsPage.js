@@ -26,6 +26,27 @@ const SELECTORS = {
   UNUSED_TICKETS_CHECKOUT_SECTION: '.reference-form-contact-details:has(.unused-tickets-checkbox)',
   UNUSED_TICKETS_CHECKBOX: '.unused-tickets-checkbox',
 
+  // Checkout: the <reference-form-unused-ticket-layout> component, one per flight in the quote.
+  UNUSED_TICKETS_CHECKOUT_LAYOUT: '.reference-form-unused-ticket-layout',
+  // One el-radio per offered ticket; its text carries the ticket number and the record locator,
+  // which is how a single ticket is addressed - the rows expose no per-ticket test id.
+  UNUSED_TICKETS_CHECKOUT_ROW: '.unused-ticket-radio',
+  // A ticket already in use, or one the supplier will not put towards a residual, still renders -
+  // it is listed but cannot be picked, so selection has to skip it.
+  UNUSED_TICKETS_CHECKOUT_ROW_SELECTABLE: '.unused-ticket-radio:not(.is-disabled)',
+  // The record locator span within a ticket row ("UANDC1", "UAMCO2", "UATKT4"). Its middle letters
+  // carry the ticket type, which is how a ticket is addressed - matching the whole row instead
+  // would let a ticket number or a fare digit satisfy a type match.
+  UNUSED_TICKETS_RECORD_LOCATOR: '.record-locator',
+  // The single action button under the ticket list, matched structurally: the component carries a
+  // data-testid of "...apply-btn" in source but it does not reach the rendered DOM on every build,
+  // and its label swaps between "Calculate" and "Apply", so neither is safe to select on.
+  UNUSED_TICKETS_ACTION_BTN: '.calculation-results button',
+  // Same reason as the action button: matched by class, not by the source data-testid.
+  UNUSED_TICKETS_APPLIED_CONFIRMATION: '.unused-ticket-applied',
+  // Skeleton rows shown while the calculation round-trip is in flight.
+  UNUSED_TICKETS_CALCULATION_SKELETON: '.skeletons',
+
   // Element Plus dialog close button (visible only)
   DIALOG_CLOSE_BTN: '.el-dialog__headerbtn:visible',
 };
@@ -92,6 +113,50 @@ class UnusedTicketsPage {
     const section = this.page.locator(SELECTORS.UNUSED_TICKETS_CHECKOUT_SECTION).first();
     await section.waitFor({ state: 'visible', timeout });
     return section.innerText();
+  }
+
+  getCheckoutTicketLayout() {
+    return this.page.locator(SELECTORS.UNUSED_TICKETS_CHECKOUT_LAYOUT).first();
+  }
+
+  getCheckoutTicketRows() {
+    return this.getCheckoutTicketLayout().locator(SELECTORS.UNUSED_TICKETS_CHECKOUT_ROW);
+  }
+
+  getCheckoutTicketRowsByRecordLocator(text) {
+    return this.getCheckoutTicketRows().filter({ has: this.getRecordLocatorMatching(text) });
+  }
+
+  getSelectableCheckoutTicketRowsByRecordLocator(text) {
+    return this.getCheckoutTicketLayout()
+      .locator(SELECTORS.UNUSED_TICKETS_CHECKOUT_ROW_SELECTABLE)
+      .filter({ has: this.getRecordLocatorMatching(text) });
+  }
+
+  getRecordLocatorMatching(text) {
+    return this.page.locator(SELECTORS.UNUSED_TICKETS_RECORD_LOCATOR, { hasText: text });
+  }
+
+  async getCheckoutRecordLocatorTexts() {
+    return this.getCheckoutTicketRows().locator(SELECTORS.UNUSED_TICKETS_RECORD_LOCATOR).allInnerTexts();
+  }
+
+  getCheckoutActionButton() {
+    return this.getCheckoutTicketLayout().locator(SELECTORS.UNUSED_TICKETS_ACTION_BTN).first();
+  }
+
+  getCheckoutAppliedConfirmation() {
+    return this.getCheckoutTicketLayout().locator(SELECTORS.UNUSED_TICKETS_APPLIED_CONFIRMATION).first();
+  }
+
+  async waitForCheckoutTicketRows({ timeout = DEFAULT_TIMEOUT } = {}) {
+    await this.getCheckoutTicketRows().first().waitFor({ state: 'visible', timeout });
+  }
+
+  async waitForCalculationToSettle({ timeout = DEFAULT_TIMEOUT } = {}) {
+    await this.getCheckoutTicketLayout()
+      .locator(SELECTORS.UNUSED_TICKETS_CALCULATION_SKELETON)
+      .waitFor({ state: 'hidden', timeout });
   }
 
   async closeUnusedTicketsModal({ timeout = 10000 } = {}) {

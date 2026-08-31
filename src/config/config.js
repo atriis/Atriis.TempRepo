@@ -163,7 +163,10 @@ const config = {
       return Number(getOptionalEnv("PAYLOAD_VALIDATION_LOOKBACK_MINUTES", "60"));
     },
     get timeoutMs() {
-      return Number(getOptionalEnv("PAYLOAD_VALIDATION_TIMEOUT_MS", "20000"));
+      // Whole-operation budget for one capture: every lookup attempt, retry delay and payload
+      // download shares it. 20s was under the time a post-booking payload takes to reach storage,
+      // so the budget expired before the row it was waiting for existed.
+      return Number(getOptionalEnv("PAYLOAD_VALIDATION_TIMEOUT_MS", "60000"));
     },
     get maxRequestsMatches() {
       return Number(getOptionalEnv("PAYLOAD_VALIDATION_MAX_REQUESTS_MATCHES", "10"));
