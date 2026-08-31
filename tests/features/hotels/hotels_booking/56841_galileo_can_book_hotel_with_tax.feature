@@ -16,7 +16,7 @@ Feature: 56841 Galileo - Hotel - can book hotel with tax
   Scenario: Can book hotel with tax
     Given I am logged in as "galileogaliei@gdggalileo.com" booking a new trip
     And I have added a random guest traveler
-    When I search for a hotel in "The Ritz-Carlton, Dubai International Financial Centre" for 1 night
+    When I search for a hotel in "Dubai - United Arab Emirates" for 1 night
     And I select the first hotel result
     And I wait for the first add to trip button to be visible in room level results
     And I click on price details button in room level results
