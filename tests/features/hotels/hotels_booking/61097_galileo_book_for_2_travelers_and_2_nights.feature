@@ -17,9 +17,7 @@ Feature: 61097 Galileo - Book hotel for 2 travelers 2 nights
     Given I am logged in as "gal@leo.com" booking a new trip
     And I have added myself as the traveler
     And I have added a random guest traveler
-    When I search for a hotel in "Amsterdam" for 2 nights
-    And I wait to see view rates text in results page
-    When I sort hotel results by "Price"
+    When I search for a hotel in "London" for 2 nights
     And I select the first hotel result
     And I add a refundable room to my cart
     Then the cart should show 2 rooms badge
