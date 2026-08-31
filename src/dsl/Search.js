@@ -391,7 +391,7 @@ const Search = {
    * @param {Object} [nameOverrides={}] - Fixes the guest's name; anything omitted stays random.
    * @param {string} [nameOverrides.firstName]
    * @param {string} [nameOverrides.lastName]
-   * @returns {Promise<Object>} added / starIconVisible / isPrimary / selectedTravelerCount / guestData
+   * @returns {Promise<Object>} added / via / starIconVisible / isPrimary / selectedTravelerCount / guestData
    */
   async addRandomGuestViaSelectTravelerSlot(page, label = 'Select traveller', userGroupName = null, nameOverrides = {}) {
     if (!page) {
@@ -412,8 +412,17 @@ const Search = {
     const lastName = nameOverrides.lastName || random.lastName;
     const { dateOfBirth, email, phone } = random;
 
+    let via;
     try {
-      await searchPage.clickSelectTravelerSlot(label);
+      // openEmptyTravelerSlotDialog, not clickSelectTravelerSlot: removing the trip's LAST
+      // traveller takes trip-travelers-list.vue's own `isTravelerAdded` flag back to false
+      // (removeTraveler does that at passengers.length === 0), which satisfies
+      // `isSingleEmptyTraveler` and unmounts the whole tag list -- so there is no "Select
+      // traveller" placeholder left to click, only the "Add traveller"/"Add me" buttons. In that
+      // state addEmptyTraveler reveals the empty slot that is already there instead of appending
+      // one, so the guest still lands in the primary slot. Same routing as
+      // addTravelerAsPrimaryViaSelectTravelerSlot.
+      ({ via } = await searchPage.openEmptyTravelerSlotDialog(label));
       await searchPage.clickAddGuestTravelerButton();
       if (userGroupName) {
         await searchPage.selectCopySettingsFromUsersGroup();
@@ -442,6 +451,7 @@ const Search = {
 
     return {
       added: true,
+      via,
       starIconVisible,
       isPrimary,
       selectedTravelerCount,
