@@ -19,6 +19,7 @@ Feature: 35703 - Per-Diem days off (new method) quote after booking
     And I filter results by carrier "BA"
     And I add the first flight to cart
     When I proceed to checkout
+    And I wait for booking details in checkout
     And I enable per-diem days off
     And I set the per-diem days off dates spanning 2 days
     Then the first per-diem days off counter should be "2"

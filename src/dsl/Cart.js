@@ -1601,8 +1601,8 @@ const Cart = {
 
     const cartPage = getPageObject(page, CartPage);
     try {
-      // Range 0: 1st available start → 1st available end (same day) = 1 day off.
-      await cartPage.pickPerDiemDaysOffRangeDates(0, 0, 0);
+      // Range 0: start on the trip's 1st selectable day, spanning a single day = 1 day off.
+      await cartPage.pickPerDiemDaysOffRangeSpanningDays(0, 0, 1);
     } catch (err) {
       throw new Error(
         `[Cart.setPerDiemDaysOffDates] Could not set the per-diem days-off dates. The date pickers may ` +
@@ -1612,9 +1612,9 @@ const Cart = {
   },
 
   /**
-   * Sets a single per-diem days-off range spanning `dayCount` calendar days (35703). Picks the first
-   * selectable start day and the `(dayCount-1)`-th following day as the end, so `dayCount` 2 selects the
-   * first and second available dates → an inclusive 2-day range → counter "2". Unlike combining
+   * Sets a single per-diem days-off range spanning `dayCount` calendar days (35703). Starts on the
+   * trip's first selectable day and ends `dayCount - 1` days later, so `dayCount` 2 gives an
+   * inclusive 2-day range → counter "2". Unlike combining
    * `setPerDiemDaysOffDates` + `addPerDiemDaysOffRange` (two separate 1-day ranges), this keeps it to
    * one range so the *first* counter reflects the full span. Requires the days-off checkbox enabled first
    * (see `enablePerDiemDaysOff`).
@@ -1635,9 +1635,9 @@ const Cart = {
 
     const cartPage = getPageObject(page, CartPage);
     try {
-      // Range 0: 1st available start → the (dayCount-1)-th following day as end (endDayIndex counts
-      // from the start day), producing an inclusive dayCount-day range → counter "dayCount".
-      await cartPage.pickPerDiemDaysOffRangeDates(0, 0, dayCount - 1);
+      // Range 0: start on the trip's 1st selectable day, spanning dayCount inclusive days →
+      // counter "dayCount".
+      await cartPage.pickPerDiemDaysOffRangeSpanningDays(0, 0, dayCount);
     } catch (err) {
       throw new Error(
         `[Cart.setPerDiemDaysOffDatesSpanning] Could not set a ${dayCount}-day per-diem days-off range. ` +
@@ -1662,8 +1662,8 @@ const Cart = {
     const cartPage = getPageObject(page, CartPage);
     try {
       await cartPage.clickAddPerDiemDaysOffRange();
-      // Range 1: 2nd available start → next selectable day as end (two consecutive days) = 2 days off.
-      await cartPage.pickPerDiemDaysOffRangeDates(1, 1, 1);
+      // Range 1: start on the trip's 2nd selectable day, spanning 2 inclusive days = 2 days off.
+      await cartPage.pickPerDiemDaysOffRangeSpanningDays(1, 1, 2);
     } catch (err) {
       throw new Error(
         `[Cart.addPerDiemDaysOffRange] Could not add a second per-diem days-off range. The "More days off" ` +

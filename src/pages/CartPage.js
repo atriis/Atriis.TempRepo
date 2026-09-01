@@ -2838,26 +2838,44 @@ class CartPage {
   }
 
   /**
-   * Picks the start and end dates of the days-off range at `rangeIndex` (0-based) by selecting the
-   * `startDayIndex`-th and `endDayIndex`-th selectable days in the respective app-datepicker panels.
-   * The end picker's minimum is the chosen start day, so `endDayIndex` counts from the start day: 0 =
-   * same day (a 1-day range), 1 = the next day (a 2-day range), etc. The days-off checkbox must be
-   * enabled first (see `enablePerDiemDaysOff`).
+   * Picks the dates of the days-off range at `rangeIndex` (0-based) so the range spans `dayCount`
+   * inclusive calendar days. `startDayIndex` selects the start day as the nth selectable cell in the
+   * start picker (0 = the trip's first day). The days-off checkbox must be enabled first (see
+   * `enablePerDiemDaysOff`).
+   *
+   * The end day CANNOT be indexed off `dayCount` alone. per-diem-days-off.vue feeds the end picker
+   * `:start="day before startDate"` as a UTC-midnight ISO string, and app-datepicker disables a cell
+   * only when `cell < new Date(start)`. Where the local UTC offset is 0 (London in winter), local
+   * midnight on that day-before equals the bound, so the day BEFORE the picked start stays
+   * selectable and every index lands one day early — the app then clamps end back to start and the
+   * counter reads "1". Under a positive offset (BST) that same cell is disabled and the index is
+   * right. So instead of second-guessing the offset: pick, read the app's own day counter, and shift
+   * the index by the shortfall — selectable cells are consecutive days, so shifting the index by N
+   * moves the end date N days.
+   *
    * @param {number} rangeIndex - 0-based index of the days-off range wrapper.
    * @param {number} startDayIndex - 0-based index of the selectable start day in the start panel.
-   * @param {number} endDayIndex - 0-based index of the selectable end day in the end panel (counts from the start day).
+   * @param {number} dayCount - Inclusive calendar days the range should span (>= 1).
    * @param {number} timeout - Maximum wait time in milliseconds
    * @returns {Promise<void>}
    */
-  async pickPerDiemDaysOffRangeDates(rangeIndex, startDayIndex = 0, endDayIndex = 0, timeout = 10000) {
-    for (const [name, value] of [['rangeIndex', rangeIndex], ['startDayIndex', startDayIndex], ['endDayIndex', endDayIndex]]) {
+  async pickPerDiemDaysOffRangeSpanningDays(rangeIndex, startDayIndex = 0, dayCount = 1, timeout = 10000) {
+    for (const [name, value] of [['rangeIndex', rangeIndex], ['startDayIndex', startDayIndex]]) {
       if (!Number.isInteger(value) || value < 0) {
         throw new Error(
-          `[CartPage.pickPerDiemDaysOffRangeDates] "${name}" must be a non-negative integer, got: ${value}`,
+          `[CartPage.pickPerDiemDaysOffRangeSpanningDays] "${name}" must be a non-negative integer, got: ${value}`,
         );
       }
     }
+    if (!Number.isInteger(dayCount) || dayCount < 1) {
+      throw new Error(
+        `[CartPage.pickPerDiemDaysOffRangeSpanningDays] "dayCount" must be an integer >= 1, got: ${dayCount}`,
+      );
+    }
+
     const wrapper = this.page.locator(SELECTORS.PER_DIEM_DAYS_OFF_RANGE_WRAPPER).nth(rangeIndex);
+    let endDayIndex = dayCount - 1;
+    let count = 0;
     try {
       await wrapper.waitFor({ state: 'visible', timeout });
       // The checkout page lazy-loads sections (contact details, reference questions) after the
@@ -2866,14 +2884,61 @@ class CartPage {
       await this.page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => {});
       const dateInputs = wrapper.locator(SELECTORS.PER_DIEM_DAYS_OFF_DATE_INPUT);
       await this.pickAvailableDayInDatepicker(dateInputs.nth(0), startDayIndex, timeout);
-      await this.pickAvailableDayInDatepicker(dateInputs.nth(1), endDayIndex, timeout);
+
+      // One corrective pass covers the +/-1 index offset above; the extra attempts are headroom.
+      for (let attempt = 0; attempt < 3; attempt += 1) {
+        await this.pickAvailableDayInDatepicker(dateInputs.nth(1), endDayIndex, timeout);
+        count = await this.readPerDiemDaysOffRangeCount(rangeIndex, { previousCount: count, timeout });
+        if (count === dayCount) return;
+        if (count < 1) break;
+        // Shifting is safe: the delta is never 0 here, so the counter is guaranteed to change.
+        endDayIndex += dayCount - count;
+        if (endDayIndex < 0) break;
+      }
     } catch (err) {
       throw new Error(
-        `[CartPage.pickPerDiemDaysOffRangeDates] Could not set the dates for days-off range ${rangeIndex} ` +
-        `(start day #${startDayIndex}, end day #${endDayIndex}; wrapper: ${SELECTORS.PER_DIEM_DAYS_OFF_RANGE_WRAPPER}). ` +
-        `The range or its date pickers did not appear within ${timeout}ms. Original: ${err.message}`,
+        `[CartPage.pickPerDiemDaysOffRangeSpanningDays] Could not set a ${dayCount}-day days-off range ` +
+        `${rangeIndex} (start day #${startDayIndex}, end day #${endDayIndex}; wrapper: ` +
+        `${SELECTORS.PER_DIEM_DAYS_OFF_RANGE_WRAPPER}). The range or its date pickers did not appear ` +
+        `within ${timeout}ms. Original: ${err.message}`,
       );
     }
+
+    throw new Error(
+      `[CartPage.pickPerDiemDaysOffRangeSpanningDays] Days-off range ${rangeIndex} spans ${count} day(s), ` +
+      `expected ${dayCount}. The end picker ran out of selectable days at index ${endDayIndex} — the trip ` +
+      `window is likely shorter than ${dayCount} days from start day #${startDayIndex}, or the range would ` +
+      `cross into a month the picker is not showing.`,
+    );
+  }
+
+  /**
+   * Reads the day counter of the days-off range at `rangeIndex` as a number, polling while it
+   * settles (per-diem-days-off.vue recalculates it on the picker's update:modelValue). Pass the
+   * previously-read value as `previousCount` so a stale read cannot be mistaken for the new one.
+   * Returns 0 if the counter never reports a usable value.
+   * @param {number} rangeIndex - 0-based index of the days-off range wrapper.
+   * @param {Object} options
+   * @param {number} options.previousCount - Value to keep polling past (0 when nothing read yet).
+   * @param {number} options.timeout - Maximum wait time in milliseconds
+   * @returns {Promise<number>}
+   */
+  async readPerDiemDaysOffRangeCount(rangeIndex, { previousCount = 0, timeout = 10000 } = {}) {
+    const counter = this.getPerDiemDaysOffRangeCounter(rangeIndex).first();
+    await counter.waitFor({ state: 'visible', timeout });
+
+    let count = 0;
+    const deadline = Date.now() + timeout;
+    do {
+      // The counter is a read-only <p> (per-diem-days-off.vue), so read its text, not an input value.
+      count = Number.parseInt((await counter.innerText().catch(() => '')).trim(), 10);
+      if (Number.isInteger(count) && count > 0 && count !== previousCount) {
+        return count;
+      }
+      await this.page.waitForTimeout(250);
+    } while (Date.now() < deadline);
+
+    return Number.isInteger(count) ? count : 0;
   }
 
   /**
