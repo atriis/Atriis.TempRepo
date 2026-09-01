@@ -140,6 +140,13 @@ const config = {
     return getOptionalEnv("FLIGHT_SEARCH_API_PATH", "/flightSearch");
   },
 
+  // Parallel EU-rail lookup fired right after a flight search commits its results
+  // (flight.store.ts -> searchEuRailOptions). Its answer gates the "Rail is available
+  // for this route" banner in flight results.
+  get flightEuRailSearchApiPath() {
+    return getOptionalEnv("FLIGHT_EU_RAIL_SEARCH_API_PATH", "/flightEURailSearchParallel");
+  },
+
   // Loyalty-number extras save endpoint (loyalty-number.ts -> hotelService.addFrequentGuest).
   // POST only: the same route is read back with GET /FrequentPrograms?quoteId=... when the panel opens.
   get frequentProgramsApiPath() {

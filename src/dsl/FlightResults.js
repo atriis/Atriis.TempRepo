@@ -17,6 +17,44 @@ const {
   normalizeCurrencyCode,
 } = require("../utils/currencyConversion");
 
+/**
+ * Explains a missing EU Rail banner from the parallel rail-search answer that gates it, so the
+ * report says whether the rail supplier returned nothing for this route/date or the options were
+ * there and the UI failed to render them.
+ *
+ * @param {object|null} railSearch - Wire outcome from FlightResultsPage.readRailSearchOutcome
+ * @param {object|null} appState - The app's own view, from FlightResultsPage.readEuRailSearchState
+ * @returns {string}
+ */
+function describeRailSearchOutcome(railSearch, appState) {
+  if (railSearch) {
+    const details = JSON.stringify(railSearch);
+    return railSearch.hasRailOptions
+      ? `The gating EU rail search DID return options, so this is a UI regression rather than a supplier miss: ${details}`
+      : 'The gating EU rail search returned no bookable rail options, so the banner could not render '
+        + `and waiting longer would not have helped (it is never retried): ${details}`;
+  }
+
+  const noResponseSeen = 'No POST /flightEURailSearchParallel response was captured on the wire, so the '
+    + 'gating EU rail search landed before this step began or was never fired (the app dispatches it '
+    + 'once, fire-and-forget, after the flight results commit).';
+
+  if (!appState?.reachable) {
+    return `${noResponseSeen} The app's euRailStore was not reachable either: ${JSON.stringify(appState)}`;
+  }
+
+  if (appState.hasAnswer) {
+    return `${noResponseSeen} The app does hold an EU rail answer, so read it to tell a supplier miss `
+      + `from a UI regression: ${JSON.stringify(appState)}`;
+  }
+
+  return `${noResponseSeen} ${appState.searchSettled
+    ? 'The search has finished and the app holds no EU rail answer (euRailStore.railsAnswer is null, which '
+      + 'is what both a failed and an empty parallel rail search commit), so the banner had nothing to render.'
+    : 'The search never settled within the wait either, so the rail lookup itself hung or was never sent.'
+  } ${JSON.stringify(appState)}`;
+}
+
 function extractDayToken(dateText) {
   if (!dateText || typeof dateText !== 'string') {
     throw new Error('dateText must be a non-empty string');
@@ -2571,13 +2609,24 @@ async verifyFareComponentTextColorInPricingOptions(page, expectedColor, index = 
 
   /**
    * Verifies the EU Rail options banner is visible in flight results.
+   *
+   * Fails with the gating EU-rail search outcome rather than a bare boolean: the banner only
+   * renders when that parallel search returns options, so an empty answer from the rail
+   * supplier and a genuine UI regression look identical from the DOM alone.
+   *
    * @param {import('playwright').Page} page
    */
   async verifyRailBannerVisible(page) {
     if (!page) throw new Error('page is required');
     const flightResultsPage = getPageObject(page, FlightResultsPage);
-    const visible = await flightResultsPage.isRailBannerVisible();
-    expect(visible, 'Rail banner should be visible in flight results').toBe(true);
+    const { visible, railSearch, appState } = await flightResultsPage.waitForRailBannerOrRailSearchMiss();
+    if (visible) return;
+
+    // Thrown, not asserted: Playwright drops custom expect() messages, so the reason would
+    // never reach the CI report through expect(visible, '...').toBe(true).
+    throw new Error(
+      `Rail banner is not visible in flight results. ${describeRailSearchOutcome(railSearch, appState)}`,
+    );
   },
 
   /**

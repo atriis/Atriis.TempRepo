@@ -2740,17 +2740,177 @@ async clickSelectForFareWithBaggagePricingOptions(baggageText) {
   // ===== RAIL BANNER =====
 
   /**
-   * Checks if the EU Rail options banner is visible in flight results.
-   * @param {number} timeout - Max wait time in ms (default: 10000)
-   * @returns {Promise<boolean>}
+   * Waits for the EU Rail options banner, racing it against the parallel EU-rail search that
+   * gates it, so a search that came back with nothing fails in seconds and with the reason
+   * instead of burning the whole banner timeout on something that can never render.
+   *
+   * The banner sits behind `v-if="euRailOptionsRes?.success && euRailOptionsRes?.results?.length"`
+   * (flight-results.vue), and the search feeding it is dispatched ONCE, fire-and-forget, right
+   * after the flight results commit (flight.store.ts -> searchEuRailOptions). A response whose
+   * `success` is false, or that carries no results, commits `railsAnswer: null` and is never
+   * retried - the banner is then unreachable for that search.
+   *
+   * Two independent miss signals are watched, because the response can land either during this
+   * wait (caught on the wire, with full supplier detail) or before it was ever called (caught in
+   * the app: the request has finished but the store holds no answer).
+   *
+   * @param {number} timeout - Max wait for the banner itself (default: 150000)
+   * @param {number} railSearchTimeout - Max wait for the gating search response (default: 60000)
+   * @returns {Promise<{visible: boolean, railSearch: object|null, appState: object|null}>}
+   *   `railSearch` is the wire outcome when one was captured; `appState` is the app's own view of
+   *   the search, read only when the banner did not appear.
    */
-  async isRailBannerVisible(timeout = 150000) {
-    try {
-      await this.page.locator(SELECTORS.EU_RAIL_OPTIONS_BANNER).first().waitFor({ state: 'visible', timeout });
-      return true;
-    } catch {
-      return false;
+  async waitForRailBannerOrRailSearchMiss(timeout = 150000, railSearchTimeout = 60000) {
+    let railSearch = null;
+
+    const wireMiss = getNetworkInterceptor(this.page)
+      .waitForResponse(
+        {
+          urlIncludes: config.flightEuRailSearchApiPath,
+          method: 'POST',
+          caseInsensitive: true,
+        },
+        { timeout: railSearchTimeout },
+      )
+      .then(async (response) => {
+        railSearch = await this.readRailSearchOutcome(response);
+        // Only a miss short-circuits the wait; when options came back the banner is about to
+        // render, so let the banner wait keep the rest of its budget.
+        return railSearch.hasRailOptions ? new Promise(() => {}) : { visible: false };
+      })
+      // Nothing captured on the wire: leave the banner wait to the other two signals.
+      .catch(() => new Promise(() => {}));
+
+    const bannerVisible = this.page
+      .locator(SELECTORS.EU_RAIL_OPTIONS_BANNER)
+      .first()
+      .waitFor({ state: 'visible', timeout })
+      .then(() => ({ visible: true }))
+      .catch(() => ({ visible: false }));
+
+    const stopPolling = { done: false };
+    const { visible } = await Promise.race([
+      bannerVisible,
+      wireMiss,
+      this.pollForRailSearchMiss(timeout, stopPolling),
+    ]);
+    stopPolling.done = true;
+
+    const appState = visible ? null : await this.readEuRailSearchState();
+
+    return { visible, railSearch, appState };
+  }
+
+  /**
+   * Resolves once the app itself shows the gating rail search as settled with no answer to
+   * render - the case the wire listener cannot catch, because the response landed before it was
+   * armed. Stays pending otherwise, so it only ever ends the wait early on a real miss.
+   *
+   * @param {number} timeout - Stop polling after this long (ms)
+   * @param {{done: boolean}} stop - Set `done` once the caller has its verdict, so the loop is
+   *   not left polling a page the test has moved on from
+   * @param {number} pollIntervalMs - Gap between polls (default: 2000)
+   * @returns {Promise<{visible: boolean}>}
+   */
+  async pollForRailSearchMiss(timeout, stop, pollIntervalMs = 2000) {
+    const deadline = Date.now() + timeout;
+
+    while (!stop.done && Date.now() < deadline) {
+      const state = await this.readEuRailSearchState();
+      if (state.searchSettled && state.reachable && !state.hasAnswer) return { visible: false };
+      await new Promise((resolve) => setTimeout(resolve, pollIntervalMs));
     }
+
+    // Stopped, or out of budget: the banner wait expires on the same deadline and owns the verdict.
+    return new Promise(() => {});
+  }
+
+  /**
+   * Reads the app's own view of the gating EU-rail search: whether the request has finished
+   * (from resource timing, which survives a response that landed before any listener) and what
+   * the euRailStore holds for it (Vue 3 exposes the app instance on its mount element).
+   *
+   * A null `railsAnswer` is the app's "no usable rail options" state - both a failed and an
+   * empty parallel rail search commit it - so it only means a miss once the request has settled.
+   *
+   * @param {number} settledForMs - How long the request must have been finished to count as
+   *   settled, leaving the store a moment to commit its answer (default: 1000)
+   * @returns {Promise<object>}
+   */
+  async readEuRailSearchState(settledForMs = 1000) {
+    try {
+      return await this.page.evaluate(
+        ({ urlFragment, settledFor }) => {
+          const lastRequest = performance
+            .getEntriesByType('resource')
+            .filter((entry) => entry.name.toLowerCase().includes(urlFragment.toLowerCase()))
+            .pop();
+          const searchSettled = Boolean(
+            lastRequest?.responseEnd && performance.now() - lastRequest.responseEnd > settledFor,
+          );
+
+          const mount = document.querySelector('#app');
+          const store = mount?.__vue_app__?.config?.globalProperties?.$store;
+          if (!store) return { reachable: false, searchSettled };
+
+          const answer = store.state?.euRailStore?.railsAnswer ?? null;
+          if (!answer) return { reachable: true, searchSettled, hasAnswer: false };
+
+          const results = Array.isArray(answer.results) ? answer.results : [];
+          return {
+            reachable: true,
+            searchSettled,
+            hasAnswer: true,
+            success: answer.success,
+            sourceSystem: answer.sourceSystem,
+            resultsCount: results.length,
+            railSegmentCounts: results.map((result) => (Array.isArray(result?.railSegments) ? result.railSegments.length : null)),
+            origin: answer.railRequest?.Origin,
+            destination: answer.railRequest?.Destination,
+            departDate: answer.railRequest?.DepartDate,
+            returnDate: answer.railRequest?.ReturnDate,
+          };
+        },
+        { urlFragment: config.flightEuRailSearchApiPath, settledFor: settledForMs },
+      );
+    } catch (error) {
+      return { reachable: false, searchSettled: false, error: error.message };
+    }
+  }
+
+  /**
+   * Summarises a parallel EU-rail search response into the fields that decide whether the
+   * banner can render, plus the request context needed to tell a supplier miss (no trains
+   * sold for that route/date) from a search that never asked for what the test expected.
+   *
+   * @param {import('@playwright/test').Response} response
+   * @returns {Promise<object>}
+   */
+  async readRailSearchOutcome(response) {
+    let body;
+    try {
+      body = await response.json();
+    } catch (error) {
+      return { status: response.status(), hasRailOptions: false, parseError: error.message };
+    }
+
+    const results = Array.isArray(body?.results) ? body.results : [];
+
+    return {
+      status: response.status(),
+      // Mirrors the banner's own v-if in flight-results.vue.
+      hasRailOptions: Boolean(body?.success && results.length),
+      success: body?.success,
+      sourceSystem: body?.sourceSystem,
+      resultsCount: results.length,
+      railSegmentCounts: results.map((result) => (Array.isArray(result?.railSegments) ? result.railSegments.length : null)),
+      lowestFare: body?.lowestFare,
+      distributorSummary: body?.distributorSummary,
+      origin: body?.railRequest?.Origin,
+      destination: body?.railRequest?.Destination,
+      departDate: body?.railRequest?.DepartDate,
+      returnDate: body?.railRequest?.ReturnDate,
+    };
   }
 
   /**
