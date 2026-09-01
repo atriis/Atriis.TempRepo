@@ -27,9 +27,19 @@ const SELECTORS = {
   // profile-menu option assertions instead of holding a second copy.
   LOGOUT_ICON: "[data-testid=\"profile-menu.logout\"], .profile-menu-item.logout-item",
   TRIPS_ICON: "a[href=\"/trips\"]",
-  // Language switcher (app-header.vue): the globe icon reveals a hover tooltip
-  // listing each enabled language as a ".language-item" row labelled by name.
-  LANGUAGE_ICON: ".support-icon",
+  // Language switcher (app-header.vue): hovering it reveals a tooltip listing each enabled
+  // language as a ".language-item" row labelled by name.
+  //
+  // Matches EITHER shape the header renders, because the trigger depends on account state
+  // (`v-if="!languageIcon"` / `v-else`, AB#83148):
+  //   * `.support-icon`     — the material-symbols globe, shown until a display language has been
+  //                           explicitly selected (or when that language has no flag mapping);
+  //   * `.header-lang-flag` — the app-img flag of the active display language, shown afterwards.
+  // The display language is persisted on the user profile, so any user who has ever switched keeps
+  // the flag on every later run — pinning this to the globe made 33152 fail on its own second run.
+  // Resolve with .first(): the two are mutually exclusive, and .first() keeps a hypothetical build
+  // rendering both from tripping Playwright strict mode.
+  LANGUAGE_ICON: ".support-icon, .header-lang-flag",
   LANGUAGE_ITEM: ".language-item",
   // Corporate expenses entry in the LEFT side-nav (app-side-nav.vue): a clickable
   // ".icon-container" div labelled "<expenseDisplayName> - Expenses" whose only glyph is the
@@ -123,15 +133,16 @@ class MenuPage {
   }
 
   /**
-   * Hovers the language (globe) icon to reveal the language list tooltip.
+   * Hovers the header language switcher (globe icon, or the active language's flag) to reveal
+   * the language list tooltip.
    */
   async hoverLanguageIcon() {
-    const icon = this.page.locator(SELECTORS.LANGUAGE_ICON);
+    const icon = this.page.locator(SELECTORS.LANGUAGE_ICON).first();
     try {
       await icon.waitFor({ state: "visible", timeout: 10000 });
       await icon.hover();
     } catch (err) {
-      throw new Error(`[MenuPage.hoverLanguageIcon] Could not hover the language globe icon (${SELECTORS.LANGUAGE_ICON}). It may be hidden on mobile viewports or the header has not loaded. Original: ${err.message}`);
+      throw new Error(`[MenuPage.hoverLanguageIcon] Could not hover the header language switcher (${SELECTORS.LANGUAGE_ICON}). It renders as the globe icon until a display language has been selected and as that language's flag afterwards; neither is rendered on mobile viewports. Original: ${err.message}`);
     }
   }
 

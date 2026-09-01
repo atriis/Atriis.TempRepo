@@ -16,5 +16,5 @@ Feature: 33152 - Moving between language works as expected
     Given I am logged in as "bsafkl@bsafkl.com" booking a new trip
     When I switch the application language to "Italian"
     Then the welcome heading should contain "Bentornato Bruna"
-    When I switch the application language to "English"
+    When I switch the application language to "English (UK)"
     Then the welcome heading should contain "Welcome back Bruna"
