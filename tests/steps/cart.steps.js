@@ -3630,9 +3630,12 @@ Then("the copied trip should not contain the EU rail product", async function ()
   await Cart.verifyTripHasNoEuRailQuote(requireCopiedTripPage(this));
 });
 
-Then("the copied trip should show a to pay amount", async function () {
-  logger.info("Verifying the copied trip's flight quote shows a to pay amount");
-  await Cart.verifyFlightQuoteShowsToPayAmount(requireCopiedTripPage(this));
+// A copied flight quote comes back as QuoteStatus.Copied, which renders "Copied Offer" in place of
+// "To pay" and gates the quote behind a price check before it can be booked (Atriis.App 2e451a60,
+// AB#82069) — so "To pay" is the one label this assertion must NOT accept here.
+Then("the copied trip flight should show a copied offer amount", async function () {
+  logger.info("Verifying the copied trip's flight quote shows a copied offer amount");
+  await Cart.verifyFlightQuoteShowsToPayAmount(requireCopiedTripPage(this), "Copied Offer");
 });
 
 // Only ever used after "I confirm the copy trip" (40030, 29785), so it targets the copied tab —

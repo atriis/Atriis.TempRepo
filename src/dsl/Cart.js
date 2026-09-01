@@ -13092,8 +13092,10 @@ const Cart = {
   },
 
   /**
-   * Verifies the trip's flight quote shows a live "To pay" total: the expected label text (rather
-   * than "Expired offer" or the results-page "Price starts from") plus a price containing digits.
+   * Verifies the trip's flight quote shows the expected price-state label plus a price containing
+   * digits. The four states share one span, so the label is what tells them apart: "To pay" for a
+   * live cart quote, "Copied Offer" for one produced by Copy Trip (payable only after a price
+   * check), "Expired offer" for a lapsed quote, and "Price starts from" outside the cart.
    *
    * @param {import('playwright').Page} page
    * @param {string} [expectedLabel='To pay'] - Text the price-state label must contain
@@ -13115,7 +13117,8 @@ const Cart = {
     expect(
       label,
       `Expected the flight quote's price label to read "${expectedLabel}" but it read "${label}". ` +
-      `"Expired offer" means the quote lapsed; "Price starts from" means this is not a cart view.`,
+      `"Expired offer" means the quote lapsed; "Copied Offer" means it came from Copy Trip and ` +
+      `needs a price check; "Price starts from" means this is not a cart view.`,
     ).toContain(expectedLabel);
 
     expect(
@@ -13123,7 +13126,7 @@ const Cart = {
       `Expected the flight quote's "${expectedLabel}" total to show an amount but it read "${price}".`,
     ).toMatch(/\d/);
 
-    logger.info('Flight quote shows a to-pay amount', { label, price });
+    logger.info('Flight quote shows the expected price-state label and amount', { label, price });
     return { label, price };
   },
 

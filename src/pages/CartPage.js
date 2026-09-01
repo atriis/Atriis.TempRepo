@@ -431,9 +431,10 @@ const SELECTORS = {
   FLIGHT_QUOTE_RETURN_DEPARTURE_TIME: '.flight-quote-card .flight-info.cart-format:not(.not-last-segment) .flight-duration .flight-time',
 
   // "To pay" price block on the flight quote card (flight-extra-info.vue, isCart=true). The .to-pay
-  // span is shared with two other states — "Price starts from" outside the cart and "Expired offer"
-  // for a lapsed quote — so reading its text is what proves the quote is live and payable. ':visible'
-  // skips the hidden responsive duplicates the cart keeps mounted.
+  // span is shared with three other states — "Price starts from" outside the cart, "Expired offer"
+  // for a lapsed quote, and "Copied Offer" for a Copy Trip quote awaiting a price check — and they
+  // are branches of one v-if chain, so reading its text is what proves the quote is live and
+  // payable. ':visible' skips the hidden responsive duplicates the cart keeps mounted.
   FLIGHT_QUOTE_TO_PAY_LABEL: '.flight-quote-card .flight-extra-info .to-pay:visible',
   FLIGHT_QUOTE_TO_PAY_PRICE: '.flight-quote-card .flight-extra-info .price-wrapper .price:visible',
 

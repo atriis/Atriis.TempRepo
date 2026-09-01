@@ -35,7 +35,7 @@ Feature: 40030 - Copy trip for multiple travelers with mixed eligible and non-el
     # Validate the copied trip: flight copied, rail excluded. The copy opens in a new browser tab;
     # every "copied trip" step below addresses that tab itself, so no tab switch is needed here.
     When I confirm the copy trip
-    Then the copied trip should show a to pay amount
+    Then the copied trip flight should show a copied offer amount
     And the copied trip should not contain the EU rail product
     And the trip is created successfully with the same flight
     And the copied trip flight details should match the stored outbound and return details
