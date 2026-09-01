@@ -22,6 +22,11 @@ Feature: 37921 - See all dependencies when deactivating a user and deactivate a 
     And I open the Users tab in the administration
     Then the administration users table should display the "First Name" column header
 
+    # Precondition - this scenario deactivates a real staging user and only reactivates it in its
+    # tail, so a run that died mid-scenario leaves "penni dep" Inactive and hidden from the default
+    # active-only list. Restore it first, otherwise every later run fails on the Part A filter.
+    When I ensure the administration user "Penni dep" is active
+
     # Part A - deactivate "penni dep", a user that has a single dependency
     When I filter the administration users by "Penni dep"
     Then the administration user results should contain "penni"

@@ -365,6 +365,11 @@ Then("the administration users table should display the {string} column header",
   await Administration.verifyUsersTableColumnHeader(this.adminPage, expectedHeader);
 });
 
+When("I ensure the administration user {string} is active", async function (userName) {
+  logger.info("Ensuring the administration user is active before the deactivation flow", { userName });
+  await Administration.ensureUserIsActive(this.adminPage, userName);
+});
+
 When("I filter the administration users by {string}", async function (userName) {
   logger.info("Filtering administration users", { userName });
   await Administration.filterUsersInAdmin(this.adminPage, userName);

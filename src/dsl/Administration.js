@@ -1972,6 +1972,71 @@ const Administration = {
   },
 
   /**
+   * Precondition guard: leaves the given user Active before a deactivation flow runs.
+   *
+   * A deactivation scenario deactivates a real staging user and only reactivates it in its tail, so a
+   * run that dies mid-scenario leaves the user Inactive. The users list defaults to active-only, so
+   * every later run's filter then legitimately returns zero rows and the scenario can never recover
+   * on its own. This reactivates the user when needed, then restores the default active-only view so
+   * the scenario's own assertions still exercise the real filter.
+   *
+   * @param {import('playwright').Page} adminPage - The administration page
+   * @param {string} userName - The user to filter by (as typed into the users search box)
+   */
+  async ensureUserIsActive(adminPage, userName) {
+    if (!adminPage) {
+      throw new Error('[Administration.ensureUserIsActive] "adminPage" is required.');
+    }
+    if (!userName || typeof userName !== 'string') {
+      throw new Error(
+        `[Administration.ensureUserIsActive] "userName" must be a non-empty string, got: ${typeof userName} (${JSON.stringify(userName)})`
+      );
+    }
+
+    logger.debug(`[Administration.ensureUserIsActive] Ensuring "${userName}" is active`);
+
+    const page = getPageObject(adminPage, AdministrationPage);
+
+    try {
+      // Inactive users are hidden by default — the user must be visible before its status can be read
+      await page.checkShowInactive();
+      await page.fillUserSearch(userName);
+
+      const status = await page.getFirstUserStatusOrNull();
+
+      if (status === null) {
+        throw new Error(
+          `no user row matched "${userName}" even with inactive users shown — the staging user may ` +
+          `have been renamed or deleted.`
+        );
+      }
+
+      if (status.toLowerCase() === 'active') {
+        logger.info(`[Administration.ensureUserIsActive] "${userName}" is already active — nothing to restore`);
+      } else {
+        logger.warn(
+          `[Administration.ensureUserIsActive] "${userName}" was left "${status}" by an earlier run — reactivating it`
+        );
+        await page.checkFirstUserRow();
+        await page.clickActivateUser();
+        await page.waitForFirstUserStatus('Active');
+        // Clear the selection while the healed user is still the only filtered row, so it cannot leak
+        // into the scenario's own deactivate action
+        await page.uncheckFirstUserRow();
+        logger.info(`[Administration.ensureUserIsActive] "${userName}" reactivated`);
+      }
+
+      // Restore the default view the scenario expects: search cleared, inactive users hidden
+      await page.clearUserSearch();
+      await page.uncheckShowInactive();
+    } catch (err) {
+      throw new Error(
+        `[Administration.ensureUserIsActive] Failed to ensure "${userName}" is active: ${err.message}`
+      );
+    }
+  },
+
+  /**
    * Verifies the first filtered user result contains the expected text (case-insensitive).
    *
    * @param {import('playwright').Page} adminPage - The administration page

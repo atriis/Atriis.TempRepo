@@ -2065,6 +2065,62 @@ class AdministrationPage {
   }
 
   /**
+   * Disables the "show inactive users" filter, restoring the list to its default active-only view.
+   */
+  async uncheckShowInactive() {
+    try {
+      const box = this.page.locator(SELECTORS.ADMIN_SHOW_INACTIVE_CHECKBOX).first();
+      await box.waitFor({ state: 'visible', timeout: 15000 });
+      await box.uncheck({ timeout: 10000 });
+      await this.page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
+    } catch (err) {
+      throw new Error(
+        `[AdministrationPage.uncheckShowInactive] Could not disable the "show inactive users" filter ` +
+        `(selector: ${SELECTORS.ADMIN_SHOW_INACTIVE_CHECKBOX}). Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Clears (unchecks) the first user row's selection checkbox, so a row selected for a housekeeping
+   * action does not leak into the next deactivate/activate action's selectedUsers set.
+   */
+  async uncheckFirstUserRow() {
+    try {
+      const checkbox = this.page.locator(SELECTORS.USER_ROW_CHECKBOX).first();
+      await checkbox.waitFor({ state: 'visible', timeout: 15000 });
+      await checkbox.uncheck({ timeout: 10000 });
+    } catch (err) {
+      throw new Error(
+        `[AdministrationPage.uncheckFirstUserRow] Could not clear the first user row checkbox ` +
+        `(selector: ${SELECTORS.USER_ROW_CHECKBOX}). Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Reads the first filtered user row's status, returning null instead of throwing when the filter
+   * matched no row at all. Used by precondition checks that must distinguish "the user is inactive"
+   * from "the user does not exist", where a missing row is an answer rather than a failure.
+   *
+   * @param {object} [options]
+   * @param {number} [options.timeout=15000] - How long to wait for a filtered row to render
+   * @returns {Promise<string|null>} The leading status token, or null when no row matched
+   */
+  async getFirstUserStatusOrNull({ timeout = 15000 } = {}) {
+    const appeared = await this.page
+      .locator(SELECTORS.ADMIN_USER_ROWS)
+      .first()
+      .waitFor({ state: 'visible', timeout })
+      .then(() => true)
+      .catch(() => false);
+
+    if (!appeared) return null;
+
+    return this.getUserStatusBadge();
+  }
+
+  /**
    * Reads the status of the first visible user row (expected "Active" / "Inactive"). Uses the users-
    * list status column (9th cell) rather than the row's ng-hide "Active" label: an ng-hide element
    * keeps its text in the DOM when hidden, so reading it would always return "Active" regardless of
