@@ -942,6 +942,52 @@ class CheckoutPage {
   }
 
   /**
+   * Reads every summary line title currently rendered in the checkout trip-summary
+   * sidebar. Diagnostic only — used to explain a missing line instead of reporting a
+   * bare "element(s) not found".
+   *
+   * @returns {Promise<string[]>}
+   */
+  async getCheckoutSummaryLineTitles() {
+    try {
+      const titles = await this.page.locator(SELECTORS.CHECKOUT_SUMMARY_QUOTE_TITLE).allInnerTexts();
+      return titles.map((t) => t.replace(/\s+/g, ' ').trim()).filter(Boolean);
+    } catch {
+      return [];
+    }
+  }
+
+  /**
+   * Reads the compensation pricing the app holds in Vuex (tripStore/compensationPricing).
+   *
+   * general-quote-summary.vue only renders the Compensation line once that quote has a
+   * price, and that price arrives from a POST /compensationPricing which trip-cart.ts fires
+   * WITHOUT awaiting before routing to checkout — and whose failures trip.store.ts swallows.
+   * So an empty map here separates "Squake never priced it" (an app/integration problem)
+   * from "the label or selector is wrong" (a test problem).
+   *
+   * Diagnostic only — never gate an assertion on this.
+   *
+   * @returns {Promise<{ entries: number, priced: boolean } | { error: string }>}
+   */
+  async getCompensationPricingDebug() {
+    try {
+      return await this.page.evaluate(() => {
+        const store = document.querySelector('#app')?.__vue_app__?.config?.globalProperties?.$store;
+        if (!store) return { error: 'Vuex store not reachable from #app.__vue_app__' };
+        const pricing = store.getters['tripStore/compensationPricing'] || {};
+        const values = Object.values(pricing);
+        return {
+          entries: values.length,
+          priced: values.some((v) => v && v.total > 0),
+        };
+      });
+    } catch (err) {
+      return { error: err.message };
+    }
+  }
+
+  /**
    * Reads a price from the checkout trip-summary sidebar.
    *
    * Uses parseAmountText rather than getCheckoutTotalPrice's inline normalizer so

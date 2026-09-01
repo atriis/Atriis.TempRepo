@@ -16,6 +16,14 @@ const CONTACT_PHONE_EDIT_ATTEMPTS = 3;
 const CONTACT_SHARING_SETTLE_TIMEOUT = 5000;
 const CONTACT_PHONE_FILL_TIMEOUT = 10000;
 
+// The compensation ("Carbon offset") line in the checkout trip-summary is gated on the quote having
+// a price, and that price comes from a POST /compensationPricing to Squake that trip-cart.ts fires
+// fire-and-forget in handleCheckout() before routing to checkout. The step that precedes this
+// assertion only waits for the booking-details heading, which renders independently of that call, so
+// the clock can start before Squake has answered. 30s left no headroom for a slow third-party
+// round trip; 90s does, and a genuine Squake failure still fails - just with the diagnostic below.
+const SUMMARY_LINE_TIMEOUT = 90000;
+
 
 /**
  * Checkout DSL
@@ -1027,11 +1035,44 @@ const Checkout = {
 
     const checkoutPage = getPageObject(page, CheckoutPage);
 
-    await expect(
-      checkoutPage.getCheckoutSummaryLineTitle(lineLabel),
-      `[Checkout.verifySummaryLineVisible] Expected a "${lineLabel}" line in the checkout trip summary, but it was ` +
-      `not visible. For "Carbon offset" this means the compensation quote is not part of the trip being checked out.`,
-    ).toBeVisible({ timeout: 30000 });
+    try {
+      await expect(checkoutPage.getCheckoutSummaryLineTitle(lineLabel)).toBeVisible({
+        timeout: SUMMARY_LINE_TIMEOUT,
+      });
+    } catch (err) {
+      // Playwright drops expect()'s custom message, so build the diagnostic here: which lines DID
+      // render, and (for the compensation line) whether the app ever received a price for it.
+      const renderedTitles = await checkoutPage.getCheckoutSummaryLineTitles();
+      const rendered = renderedTitles.length
+        ? renderedTitles.map((t) => `"${t}"`).join(', ')
+        : '(none — the trip-summary sidebar rendered no quote lines at all)';
+
+      let pricingNote = '';
+      if (/carbon offset/i.test(lineLabel)) {
+        const pricing = await checkoutPage.getCompensationPricingDebug();
+        if (pricing.error) {
+          pricingNote = ` Could not read tripStore/compensationPricing: ${pricing.error}.`;
+        } else if (!pricing.priced) {
+          pricingNote =
+            ` tripStore/compensationPricing holds no priced entry (${pricing.entries} entr` +
+            `${pricing.entries === 1 ? 'y' : 'ies'}), so this is the APP side, not the selector: the ` +
+            `POST /compensationPricing that trip-cart.ts fires without awaiting before routing to ` +
+            `checkout either never returned or failed (trip.store.ts swallows its errors), and ` +
+            `general-quote-summary.vue hides the Compensation line until it has a price.`;
+        } else {
+          pricingNote =
+            ` tripStore/compensationPricing DOES hold a priced entry, so the price arrived but the ` +
+            `line still did not render under this label — check the label text (it is translated via ` +
+            `compensation.carbonOffset, so a non-English profile language would break this match).`;
+        }
+      }
+
+      throw new Error(
+        `[Checkout.verifySummaryLineVisible] Expected a "${lineLabel}" line in the checkout trip ` +
+        `summary, but it was not visible within ${SUMMARY_LINE_TIMEOUT}ms. Lines present: ${rendered}.` +
+        `${pricingNote} Original: ${err.message}`
+      );
+    }
   },
 
   /**
