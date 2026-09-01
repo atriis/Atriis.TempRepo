@@ -15,7 +15,7 @@ Feature: 35726 - Per-Diem days off (old method) quote after booking
   Scenario: Selecting days off shows personal days deducted on the Per-Diem quote
     Given I am logged in as "per@hasus.off" booking a new trip
     And I have added myself as the traveler
-    When I search for a round trip flight from "lis" to "auh"
+    When I search for a round trip flight from "lis" to "zrh" with preferred carrier "Tap Air Portugal (TP)"
     And I add the first flight to cart
     Then the booking status should be "Pending booking"
     When I proceed to checkout
