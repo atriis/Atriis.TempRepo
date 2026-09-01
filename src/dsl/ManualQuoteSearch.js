@@ -3,7 +3,7 @@ const ManualQuoteSearchPage = require("@pages/ManualQuoteSearchPage");
 const FlightSearchPage = require("@pages/FlightSearchPage");
 const { SearchPage } = require("@pages/SearchPage");
 const flightRoutes = require("@data/flights.json");
-const { selectDatesByNthAvailable, selectDateAfterAdvancingMonths, advanceSinglePickerCalendarUntilMonthVisible } = require("@utils/calendar.helper");
+const { selectDatesByNthAvailable, selectDateAfterAdvancingMonths } = require("@utils/calendar.helper");
 const { resolveRoute } = require("@utils/route.helper");
 const { SEARCH_DEFAULTS } = require("@utils/search.constants");
 const logger = require("@utils/logger").child("ManualQuoteSearch-DSL");
@@ -88,7 +88,7 @@ const ManualQuoteSearch = {
    * {@link searchAndAddFlightManualQuote}, which fills a single segment.
    *
    * Each leg departs and ARRIVES on the same calendar day (a realistic same-day flight, not
-   * a multi-day gap), and the return leg departs exactly one week after the outbound.
+   * a multi-day gap), and the return leg departs 3 days after the outbound.
    *
    * @param {Object} page - Playwright page instance
    * @param {string|Object} routeInput - Route identifier or inline { from, to }
@@ -96,39 +96,55 @@ const ManualQuoteSearch = {
   async searchAndAddFlightManualQuoteRoundTrip(page, routeInput = flightRoutes.defaultRoute) {
     const { from, to } = resolveRoute(routeInput, flightRoutes.routes, "flight");
 
-    // Exact dates (not "nth available"): outbound ~a month out, arriving the same day; the
-    // return leg one week later, also same-day. This keeps each flight's duration realistic
-    // instead of the arrival landing weeks after departure.
+    // Exact dates (not "nth available"): the outbound leg ~a month out and the inbound leg 3 days
+    // later, each arriving on its own departure day. Same-day legs keep the flight durations
+    // realistic; the 3-day gap between them is what the per-diem is computed over.
     const toIsoDate = (d) =>
       `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-    const outboundDay = new Date();
-    outboundDay.setDate(outboundDay.getDate() + 30);
-    const returnDay = new Date(outboundDay);
-    returnDay.setDate(returnDay.getDate() + 7);
-    const outboundDate = toIsoDate(outboundDay);
-    const returnDate = toIsoDate(returnDay);
+    const addDays = (d, days) => {
+      const next = new Date(d);
+      next.setDate(next.getDate() + days);
+      return next;
+    };
+    const TRIP_LENGTH_DAYS = 3;
+    const outboundDay = addDays(new Date(), 30);
+    const returnDay = addDays(outboundDay, TRIP_LENGTH_DAYS);
 
-    logger.info("Starting round-trip manual quote flight search", { from, to, outboundDate, returnDate });
+    logger.info("Starting round-trip manual quote flight search", {
+      from,
+      to,
+      outboundDate: toIsoDate(outboundDay),
+      returnDate: toIsoDate(returnDay),
+    });
 
     const flightSearchPage = getPageObject(page, FlightSearchPage);
     const manualQuoteSearchPage = getPageObject(page, ManualQuoteSearchPage);
 
-    // Sets a segment leg's date to an exact day. The picker's header splits year/month, so we
-    // navigate with the single-month helper and force-click the day; then we read the field back
-    // and retry — the app pre-fills segment dates from the previous leg and the lower picker can
-    // drop a click, so verification is what keeps the legs same-day and one week apart.
+    // Sets a segment leg's date to an exact day: navigate the open picker to the target month and
+    // force-click the day, then read the field back and retry — the app pre-fills segment dates
+    // from the previous leg and the lower picker can drop a click, so verification is what keeps
+    // the legs the intended days apart.
     const MONTH_ABBR = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
     const setSegmentDate = async (segmentIndex, kind, dateObj) => {
       const day = dateObj.getDate();
       const monthAbbr = MONTH_ABBR[dateObj.getMonth()];
+      // The field renders the day zero-padded ("Thu, 01 Oct"), so \b<day>\b never matches a
+      // single-digit day. Allow the optional leading zero and bound on non-digits instead, which
+      // still keeps 1 from matching the 1 inside 11/21/31.
+      const dayPattern = new RegExp(`(?:^|\\D)0?${day}(?:\\D|$)`);
       for (let attempt = 1; attempt <= 3; attempt++) {
+        // Close whatever is open BEFORE opening this leg's picker, and let the new panel settle:
+        // while two pickers overlap, "the open picker" resolves to one panel for the header read
+        // and the other for the arrow click, which sends the month nowhere or years past target.
+        await manualQuoteSearchPage.closeAllOpenDatePickers();
         await manualQuoteSearchPage.clickSegmentDate(segmentIndex, kind);
-        await advanceSinglePickerCalendarUntilMonthVisible(page, dateObj);
+        await manualQuoteSearchPage.waitForSingleOpenDatePicker();
+        await manualQuoteSearchPage.navigateOpenPickerToMonth(dateObj);
         await manualQuoteSearchPage.clickDayInOpenPicker(day);
-        await manualQuoteSearchPage.closeOpenDatePicker();
+        await manualQuoteSearchPage.closeAllOpenDatePickers();
 
         const value = await manualQuoteSearchPage.getSegmentDateValue(segmentIndex, kind);
-        if (value.includes(monthAbbr) && new RegExp(`\\b${day}\\b`).test(value)) {
+        if (value.includes(monthAbbr) && dayPattern.test(value)) {
           return;
         }
         logger.debug("Segment date did not stick; retrying", {
@@ -160,7 +176,7 @@ const ManualQuoteSearch = {
     await manualQuoteSearchPage.clickStartTime();
     await manualQuoteSearchPage.clickEndTime();
 
-    // ===== Segment 1 — inbound leg (to -> from), same-day, one week later =====
+    // ===== Segment 1 — inbound leg (to -> from), same-day, 3 days after the outbound =====
     await manualQuoteSearchPage.clickAddAnotherFlight();
 
     await manualQuoteSearchPage.fillSegmentDepartingFromField(1, to);

@@ -8,6 +8,13 @@ const {
  * Contains only UI-level interactions.
  */
 
+// Element-Plus renders the picker header month as an abbreviation ("Oct"); keyed on the first
+// three letters so a full month name ("October") resolves too.
+const MONTH_ABBR_TO_INDEX = {
+  jan: 0, feb: 1, mar: 2, apr: 3, may: 4, jun: 5,
+  jul: 6, aug: 7, sep: 8, oct: 9, nov: 10, dec: 11,
+};
+
 const SELECTORS = {
   MANUAL_QUOTE_TAB: "#tab-manual",
   ENTER_AIRPORT_LOCATION_PLACEHOLDER: "[placeholder=\"Enter airport location\"]",
@@ -48,6 +55,12 @@ const SELECTORS = {
   // its selectable day cells.
   DATE_PICKER_PANEL_VISIBLE: ".el-picker-panel:visible",
   DATE_PICKER_AVAILABLE_DAY: "td.available .el-date-table-cell__text",
+  // Header/arrows, resolved INSIDE one panel — the shared calendar helper reads the last
+  // visible panel but clicks the first visible arrow, which drives the wrong picker while a
+  // closing one is still on screen.
+  DATE_PICKER_HEADER_LABEL: ".el-date-picker__header-label",
+  DATE_PICKER_NEXT_MONTH_ARROW: "button.el-picker-panel__icon-btn.arrow-right[aria-label='Next Month']",
+  DATE_PICKER_PREV_MONTH_ARROW: "button.el-picker-panel__icon-btn.arrow-left[aria-label='Previous Month']",
 
   // ===== HOTEL MANUAL QUOTE =====
   // Sub-tab inside the manual-quote-page (Element-Plus el-tabs, the Hotel pane label)
@@ -524,6 +537,122 @@ class ManualQuoteSearchPage {
   }
 
   /**
+   * Closes every open Element-Plus picker panel, so the next one opened is unambiguously the
+   * only panel on screen.
+   *
+   * EP keeps a closing picker in the DOM while its fade-out runs, so a freshly opened picker
+   * briefly coexists with the previous one. Anything that resolves "the open picker" during
+   * that overlap can read one panel and click the other's arrow, or grab a panel that is about
+   * to vanish mid-click. Escape is re-sent until nothing is visible.
+   */
+  async closeAllOpenDatePickers(timeout = 10000) {
+    const panels = this.page.locator(SELECTORS.DATE_PICKER_PANEL_VISIBLE);
+    const deadline = Date.now() + timeout;
+    while (Date.now() < deadline) {
+      if (await panels.count() === 0) return;
+      await this.page.keyboard.press("Escape");
+      await this.page.waitForTimeout(200);
+    }
+    throw new Error(
+      `[ManualQuoteSearchPage.closeAllOpenDatePickers] ${await panels.count()} date picker(s) were `
+      + `still visible after ${timeout}ms of Escape presses.`,
+    );
+  }
+
+  /**
+   * Waits until exactly one Element-Plus picker panel is visible AND has stopped animating, so
+   * the panel a caller resolves next is stable. Requires two consecutive agreeing reads —
+   * a single count of 1 can be caught mid-crossfade between two pickers.
+   * Pair with closeAllOpenDatePickers before opening the picker.
+   */
+  async waitForSingleOpenDatePicker(timeout = 10000) {
+    const panels = this.page.locator(SELECTORS.DATE_PICKER_PANEL_VISIBLE);
+    const deadline = Date.now() + timeout;
+    let settledReads = 0;
+    while (Date.now() < deadline) {
+      settledReads = await panels.count() === 1 ? settledReads + 1 : 0;
+      if (settledReads >= 2) return;
+      await this.page.waitForTimeout(250);
+    }
+    throw new Error(
+      "[ManualQuoteSearchPage.waitForSingleOpenDatePicker] Expected exactly one settled visible "
+      + `date picker after ${timeout}ms, found ${await panels.count()}.`,
+    );
+  }
+
+  /**
+   * Reads the month/year the currently-open picker is showing. Element-Plus splits the header
+   * into a year label and a month label, so both are joined before parsing.
+   * @returns {Promise<{year: number, monthIndex: number}>}
+   */
+  async getOpenPickerMonthAndYear() {
+    const panel = this.page.locator(SELECTORS.DATE_PICKER_PANEL_VISIBLE).last();
+    await panel.waitFor({ state: "visible", timeout: 10000 });
+
+    const headerTexts = (await panel.locator(SELECTORS.DATE_PICKER_HEADER_LABEL).allTextContents())
+      .map((text) => text.trim())
+      .filter((text) => text.length > 0);
+    const combined = headerTexts.join(" ");
+
+    const yearMatch = combined.match(/\d{4}/);
+    const monthToken = headerTexts.find((text) => /^[A-Za-z]{3,9}\.?$/.test(text));
+    if (!yearMatch || !monthToken) {
+      throw new Error(
+        "[ManualQuoteSearchPage.getOpenPickerMonthAndYear] Could not read a month and year from "
+        + `the open picker header: "${combined}"`,
+      );
+    }
+
+    const monthIndex = MONTH_ABBR_TO_INDEX[monthToken.toLowerCase().replace(/\./g, "").slice(0, 3)];
+    if (monthIndex === undefined) {
+      throw new Error(
+        `[ManualQuoteSearchPage.getOpenPickerMonthAndYear] Unrecognised month "${monthToken}" in `
+        + "the open picker header.",
+      );
+    }
+
+    return { year: Number(yearMatch[0]), monthIndex };
+  }
+
+  /**
+   * Navigates the currently-open picker to a target month.
+   *
+   * Resolves the header and the month arrows inside the SAME panel, and re-reads the header
+   * after every click so an overshoot corrects itself — a closing picker briefly coexists with
+   * the one just opened, and the shared calendar helper reads one while clicking the other's
+   * arrow, which either stalls the month or runs it years past the target.
+   *
+   * @param {Date} targetDate
+   * @param {number} [maxSteps=24] Max arrow clicks before giving up
+   */
+  async navigateOpenPickerToMonth(targetDate, maxSteps = 24) {
+    for (let step = 0; step <= maxSteps; step++) {
+      const { year, monthIndex } = await this.getOpenPickerMonthAndYear();
+      const monthDiff =
+        ((targetDate.getFullYear() - year) * 12) + (targetDate.getMonth() - monthIndex);
+      if (monthDiff === 0) return;
+      if (step === maxSteps) break;
+
+      const panel = this.page.locator(SELECTORS.DATE_PICKER_PANEL_VISIBLE).last();
+      const arrow = panel.locator(
+        monthDiff > 0 ? SELECTORS.DATE_PICKER_NEXT_MONTH_ARROW : SELECTORS.DATE_PICKER_PREV_MONTH_ARROW,
+      ).first();
+      await arrow.waitFor({ state: "visible", timeout: 10000 });
+      // The panel repositions itself as it opens, so the arrow reports "not stable"; a forced
+      // click skips the actionability wait. The header re-read on the next iteration is what
+      // confirms the click landed.
+      await arrow.click({ force: true });
+    }
+
+    const { year, monthIndex } = await this.getOpenPickerMonthAndYear();
+    throw new Error(
+      "[ManualQuoteSearchPage.navigateOpenPickerToMonth] Could not reach "
+      + `${targetDate.getMonth() + 1}/${targetDate.getFullYear()} within ${maxSteps} arrow clicks — `
+      + `the picker is showing ${monthIndex + 1}/${year}.`,
+    );
+  }
+
+  /**
    * Force-clicks a specific day number in the currently-open Element-Plus date picker.
    * The picker for a lower flight segment can report a transient "not stable/visible" state
    * during its open animation/repositioning; a forced click on the resolved day cell avoids
@@ -540,21 +669,6 @@ class ManualQuoteSearchPage {
     await cell.waitFor({ state: "attached", timeout: 10000 });
     await cell.scrollIntoViewIfNeeded().catch(() => {});
     await cell.click({ force: true });
-  }
-
-  /**
-   * Closes any open Element-Plus date-picker popup. EP can leave a single-date picker open
-   * after selection; its overlay then blocks the next field and leaves an ambiguous visible
-   * panel. Press Escape and wait (best-effort) for the visible panel to disappear. Safe no-op
-   * when no picker is open.
-   */
-  async closeOpenDatePicker() {
-    await this.page.keyboard.press("Escape");
-    await this.page
-      .locator(SELECTORS.DATE_PICKER_PANEL_VISIBLE)
-      .first()
-      .waitFor({ state: "hidden", timeout: 5000 })
-      .catch(() => {});
   }
 
   // ===== HOTEL MANUAL QUOTE =====
