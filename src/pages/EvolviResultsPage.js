@@ -217,6 +217,21 @@ const SELECTORS = {
   // at least one fare in the grid, and a label in a collapsed group's second row is still the app
   // having priced a travel-together fare.
   TRAVEL_TOGETHER_DISCOUNT_LABEL: ".results .price-cell .discount-label",
+
+  // ===== Group / GroupSave fare confirmation dialog (US 52510) =====
+  //
+  // handleAddToTrip() does NOT add the quote when the selected fare is a group fare: it raises this
+  // dialog and returns, and only confirmGroupFare() — behind the dialog's "Continue" button — goes
+  // on to addToTrip(). The app gates the dialog on isGroupFareSelected, which is false for a single
+  // passenger (numberOfPassengers <= 1), so this only ever stands in the way of a MULTI-TRAVELLER
+  // Evolvi booking; a one-traveller run never raises it and never waits on it.
+  //
+  // A fourth dialog sharing .uk-rail-results-dialog, so it is pinned by its own body class rather
+  // than the shared one (journey details, SplitTix and flexible policy carry that too).
+  GROUP_FARE_DIALOG: ".uk-rail-results-dialog:visible:has(.group-fare-content)",
+  // app-btn type="primary" renders <button class="btn btn--primary">. The footer's other button is
+  // the default-typed Cancel, which closes the dialog WITHOUT taking the fare.
+  GROUP_FARE_DIALOG_CONTINUE_BUTTON: ".group-fare-btns .btn--primary",
 };
 
 /**
@@ -284,6 +299,39 @@ class EvolviResultsPage {
       .locator(SELECTORS.CHEAPEST_SUGGESTED_FARE)
       .first()
       .click();
+  }
+
+  /**
+   * Confirms the group / GroupSave fare dialog when "Add to trip" raised one, and reports whether
+   * it had to.
+   *
+   * The dialog is opened synchronously inside handleAddToTrip() — nothing is awaited before
+   * `groupFareDialogVisible = true` — so it is on screen within a render tick of the click, and a
+   * short bounded wait is enough to tell the two paths apart. On the path that does not raise it
+   * (single traveller, or a fare Evolvi did not flag isTravelTogether) the app has already gone on
+   * to addToTrip(), the wait expires against a dialog that will never exist, and the caller carries
+   * on unchanged.
+   *
+   * @param {number} [timeout=5000] - How long to give the dialog to appear before concluding the
+   *   fare was not a group fare.
+   * @returns {Promise<boolean>} True when the dialog appeared and Continue was clicked.
+   */
+  async confirmGroupFareDialogIfPresent(timeout = 5000) {
+    const dialog = this.page.locator(SELECTORS.GROUP_FARE_DIALOG).first();
+
+    const appeared = await dialog
+      .waitFor({ state: "visible", timeout })
+      .then(() => true)
+      .catch(() => false);
+
+    if (!appeared) return false;
+
+    await dialog.locator(SELECTORS.GROUP_FARE_DIALOG_CONTINUE_BUTTON).first().click();
+    // confirmGroupFare() closes the dialog before awaiting addToTrip(), so the dialog going away is
+    // the app's signal that the quote request is actually on its way.
+    await dialog.waitFor({ state: "hidden", timeout: 30000 });
+
+    return true;
   }
 
   // ===== Greenest (lowest carbon) suggested fare =====

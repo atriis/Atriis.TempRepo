@@ -116,8 +116,13 @@ const EvolviResults = {
     await resultsPage.waitForSuggestedFaresText();
     await resultsPage.clickCheapestSuggestedFareOption();
     await Results.waitAndClickAddToTripButton(page);
+    // US 52510: on a MULTI-TRAVELLER search the cheapest suggested fare is often a group /
+    // GroupSave one, and for those "Add to trip" only opens a confirmation dialog — the quote is
+    // created by its "Continue" button, not by the click above. A single-traveller run never
+    // raises the dialog (the app gates it on numberOfPassengers > 1), so this is a no-op there.
+    const confirmedGroupFare = await resultsPage.confirmGroupFareDialogIfPresent();
 
-    return { selected: true };
+    return { selected: true, confirmedGroupFare };
   },
 
   /**
