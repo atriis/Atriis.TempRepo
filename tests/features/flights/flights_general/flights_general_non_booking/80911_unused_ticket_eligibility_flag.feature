@@ -15,11 +15,12 @@ Feature: 80911 Unused ticket eligibility flag on matching flights
   # (ignoring booking system / SourceSystem), so valid tickets never got flagged on matching
   # search results. A traveler holding an unused ticket for a carrier must see that carrier's
   # flights flagged as eligible on the results page.
+  # unusedTkt@corp.frosch holds AA/UA/DL tickets across NDC/MCO/TKT — the same per-booking-system
+  # mix this bug was about. It has no reference fields, so no trip purpose.
   Scenario Outline: <carrier> flights are flagged as eligible for the traveler's unused ticket
-    Given I am logged in as "tree@tree.com" booking a new trip
+    Given I am logged in as "unusedTkt@corp.frosch" booking a new trip
     And I have added myself as the traveler
     When I search for a round trip flight from "<from>" to "<to>"
-    And I select the trip purpose as "Conference" and proceed
     Then flight results should be available
     When I click the airplane icon in the results header to view unused tickets
     Then the unused tickets list should include a ticket for carrier "<carrier>"
@@ -30,8 +31,7 @@ Feature: 80911 Unused ticket eligibility flag on matching flights
     Then the booking status should be "Pending booking"
 
     Examples:
-      | carrier | from | to  |
-      | El Al   | NYC  | TLV |
-      | Delta   | LAS  | LAX |
-      | KLM     | CDG  | AMS |
-      | Alaska  | SEA  | LAX |
+      | carrier           | from | to  |
+      | American Airlines | LAX  | ORD |
+      | United            | LAX  | ORD |
+      | Delta             | LAX  | ORD |

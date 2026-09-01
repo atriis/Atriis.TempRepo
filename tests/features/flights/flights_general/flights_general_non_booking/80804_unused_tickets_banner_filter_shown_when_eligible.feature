@@ -9,13 +9,14 @@ Feature: 80804 Flights - Unused Tickets banner and filter shown when a result is
   I want the Unused Tickets banner and filter to appear when a search result can use my unused tickets
   So that I know my unused tickets can be applied to this trip
 
+  # The traveler must actually hold unused tickets or every assertion below passes vacuously.
+  # unusedTkt@corp.frosch holds AA/United/Delta tickets; it has no reference fields, so no trip purpose.
   @priority:high
-  Scenario: Banner and filter are shown when a result is eligible for unused tickets (JFK-TLV)
-    Given I am logged in as "tree@tree.com" booking a new trip
+  Scenario: Banner and filter are shown when a result is eligible for unused tickets (LAX-ORD)
+    Given I am logged in as "unusedTkt@corp.frosch" booking a new trip
     And I have added myself as the traveler
     And I start intercepting the "flightSearch" API response
-    When I search for a round trip flight from "JFK" to "TLV"
-    And I select the trip purpose as "Conference" and proceed
+    When I search for a round trip flight from "LAX" to "ORD"
     And flight results should be available
     Then the intercepted response should have at least one result where "hasUnusedTicket" is "true"
     And the unused tickets banner should be visible in results
