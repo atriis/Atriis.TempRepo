@@ -16,7 +16,7 @@ Feature: 49309 Evolvi - Results match search criteria when system language is no
     # The display language is persisted on the user profile, so a run that ended before switching
     # back leaves the account in German. Reset it here, while the trip is still empty — switching
     # reloads the app, and a reload after the traveller is added drops the search form.
-    And I switch the application language to "English"
+    And I switch the application language to "English (UK)"
     # The reload the switch triggers drops the trip back to its default product, whose form has no
     # traveller field — pick UK Rail first so the traveller can be added.
     And I select UK Rail in the search form
@@ -36,7 +36,7 @@ Feature: 49309 Evolvi - Results match search criteria when system language is no
     And outbound times start at "07:00" and inbound times start at "16:00"
     When I dismiss the mandatory notifications popup if displayed
     And I go back to the homepage
-    And I switch the application language to "English"
+    And I switch the application language to "English (UK)"
     Then the welcome heading should contain "Welcome Thiago Santos"
     When I capture the "request" payload for request type "otaRailAvail" from Storage
     Then exactly 2 "otaRailAvail" requests should have been sent
