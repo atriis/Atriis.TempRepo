@@ -54,6 +54,21 @@ const SELECTORS = {
   ADDED_INDICATOR:
     '[ng-hide="bookingInProgress || bookingSucceeded || bookingFailed"] .ng-binding, ' +
     '[ng-class="{altertnativePackage:packageModel.IsAlternativePackageWasSelected}"]',
+  // ===== "Conflicting Quote Warning" modal =====
+  // The legacy front raises this jQuery-UI modal when the product being added duplicates a quote
+  // held by ANOTHER trip for the same traveller — which is exactly what a re-run of this test
+  // produces, since the previous run's trip still holds the same flight/car/hotel. It is modal:
+  // its .ui-widget-overlay backdrop swallows every click until the dialog is answered.
+  // Scoped by title because the page also keeps other dialogs (e.g. "Out of Policy Alert") in the
+  // DOM with display:none, and :visible is required so a hidden one never matches.
+  CONFLICT_DIALOG:
+    '.ui-dialog:visible:has(.ui-dialog-title:text-is("Conflicting Quote Warning"))',
+  // "Add to cart" answers the warning and completes the add; "Remove selection" abandons it.
+  CONFLICT_DIALOG_CONFIRM_BUTTON: '.ui-dialog-buttonset button',
+  // Any jQuery-UI modal backdrop. Present only while a modal dialog is open.
+  JQUERY_MODAL_OVERLAY: ".ui-widget-overlay",
+  // Title of any currently open jQuery-UI dialog — used to explain a stuck backdrop.
+  JQUERY_DIALOG_TITLE: ".ui-dialog:visible .ui-dialog-title",
   // Closes the re-search overlay and returns to the requested-trip view.
   BACK_TO_TRIP_BUTTON: "#ss",
 };
@@ -390,9 +405,74 @@ class LegacyGtpPage {
     }
   }
 
+  /**
+   * Answers the "Conflicting Quote Warning" modal with "Add to cart" if the legacy front raised
+   * one, completing the add. Safe to call when no dialog appears — that is the normal path on a
+   * first run against a fresh traveller, so absence is resolved as "nothing to do", not an error.
+   *
+   * @param {object} [options]
+   * @param {number} [options.timeout=5000] - How long to give the dialog to appear.
+   * @returns {Promise<boolean>} true if a conflict warning was answered.
+   */
+  async handleConflictingQuoteWarningIfVisible({ timeout = 5000 } = {}) {
+    const dialog = this.page.locator(SELECTORS.CONFLICT_DIALOG).first();
+    try {
+      await dialog.waitFor({ state: "visible", timeout });
+    } catch {
+      return false;
+    }
+    try {
+      const confirm = dialog
+        .locator(SELECTORS.CONFLICT_DIALOG_CONFIRM_BUTTON)
+        .filter({ hasText: /^\s*Add to cart\s*$/ })
+        .first();
+      await confirm.click({ timeout: 10000 });
+      // The add only completes once the modal — and with it the click-blocking backdrop — is gone.
+      await dialog.waitFor({ state: "hidden", timeout: 30000 });
+      return true;
+    } catch (err) {
+      throw new Error(
+        `[LegacyGtpPage.handleConflictingQuoteWarningIfVisible] The "Conflicting Quote Warning" ` +
+        `modal was open but could not be confirmed with its "Add to cart" button. The add-to-cart ` +
+        `is incomplete and the modal backdrop will block every later click. Original: ${err.message}`
+      );
+    }
+  }
+
+  /** Reads the titles of every jQuery-UI dialog currently open — diagnostics for a stuck backdrop. */
+  async getOpenDialogTitles() {
+    try {
+      return await this.page.locator(SELECTORS.JQUERY_DIALOG_TITLE).allTextContents();
+    } catch {
+      return [];
+    }
+  }
+
   /** Clicks the button that closes the re-search overlay and returns to the requested-trip view. */
   async clickBackToTrip() {
     try {
+      // The legacy front raises the conflicting-quote warning a few seconds AFTER the "Added"
+      // binding updates, so by the time the flow reaches this click the modal — and its
+      // click-swallowing backdrop — is up. Answer it here rather than at the add-to-cart click,
+      // which is too early to see it. All three add flows funnel through this method.
+      await this.handleConflictingQuoteWarningIfVisible();
+      // #ss can be visible, enabled and stable while a modal backdrop still covers it, so a click
+      // here would silently burn its whole retry budget on an intercepted target. Wait the
+      // backdrop out first; if one is stuck, name the dialog holding it rather than failing blind.
+      try {
+        await this.page
+          .locator(SELECTORS.JQUERY_MODAL_OVERLAY)
+          .first()
+          .waitFor({ state: "hidden", timeout: 30000 });
+      } catch (overlayErr) {
+        const titles = await this.getOpenDialogTitles();
+        throw new Error(
+          `a jQuery-UI modal backdrop (${SELECTORS.JQUERY_MODAL_OVERLAY}) never cleared, so the ` +
+          `control was unclickable. Open dialog(s): ` +
+          `${titles.length ? titles.map((t) => `"${t.trim()}"`).join(", ") : "none readable"}. ` +
+          `Original: ${overlayErr.message}`
+        );
+      }
       const button = this.page.locator(SELECTORS.BACK_TO_TRIP_BUTTON).first();
       await button.waitFor({ state: "visible", timeout: 20000 });
       await button.click({ timeout: 10000 });
