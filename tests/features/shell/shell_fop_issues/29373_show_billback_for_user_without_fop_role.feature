@@ -16,7 +16,7 @@ Feature: 29373 Show billback for user without FOP role
   Scenario: Payment restriction values are displayed for user without FOP role
     Given I am logged in as "billback@nofoprole.com" booking a new trip
     And I have added myself as the traveler
-    When I search for a hotel in "LHR" for 1 night
+    When I search for a hotel in "London" for 1 night
     And I select the first hotel result
     And I add a refundable room to my cart
     And the booking status should be "Pending booking"
