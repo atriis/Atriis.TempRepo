@@ -97,6 +97,14 @@ const SELECTORS = {
   // Carriers checkbox filter (flight-filter.vue → .carriers-filter). Element Plus marks a checked
   // checkbox with the `is-checked` class on its `.el-checkbox__input`.
   CARRIERS_FILTER_CHECKBOX_LABEL: '.carriers-filter label.el-checkbox',
+  // Every app-checkbox-group.vue filter row renders the option name and, when a results map is
+  // supplied, a trailing value in `p.option-count`. For the carriers ("Preferred airlines") group
+  // that value is NOT a count: flight.service.ts `_getLowestPriceMapData()` builds
+  // resultMap[resultsIndex].carriers through getFormattedAbbreviatedPrice, so the row shows the
+  // LOWEST price for that carrier, abbreviated ("$1.2K", "EUR 450"). Read it as text -- parsing the
+  // digits out of an abbreviated price loses the magnitude.
+  FILTER_OPTION_PRICE: '.option-count',
+  FILTER_OPTION_NAME: '.el-checkbox__label p.filter-title',
   CHECKBOX_CHECKED_INPUT: '.el-checkbox__input.is-checked',
   // State-modifier class Element Plus stamps on a checked el-checkbox label/input.
   CHECKBOX_CHECKED_CLASS: 'is-checked',
@@ -1090,6 +1098,83 @@ class FlightResultsPage {
       `[FlightResultsPage.clickComparisonCarrierLogo] Could not find a comparison-table carrier logo ` +
       `with tooltip "${carrierName}". Verify the carrier appears as a column in the comparison table for this search.`
     );
+  }
+
+  /**
+   * Reads one row of the "Preferred airlines" results filter (`.carriers-filter`) by its 1-based
+   * position, returning the airline name and the lowest-price text shown on that row.
+   *
+   * The panel is rendered once and re-fed per displayed leg -- flight-filter.vue passes
+   * `resultMap[resultsIndex].carriers` as the row values -- so the same position reads the current
+   * leg's prices with no leg argument needed. app-checkbox-group.vue slices the group to
+   * CHECKBOX_DISPLAY_COUNT (5) rows until "View more" is clicked, so positions 1-5 are readable
+   * as-is; a position beyond the rendered rows throws rather than returning an empty value.
+   *
+   * @param {number} position - 1-based row position in the Preferred airlines filter
+   * @param {number} timeout - Max wait time in ms (default: 30000)
+   * @returns {Promise<{airline: string, price: string}>} Row airline name and price text as shown
+   */
+  async getPreferredAirlinesFilterOptionByPosition(position, timeout = 30000) {
+    if (!Number.isInteger(position) || position < 1) {
+      throw new Error(
+        `[FlightResultsPage.getPreferredAirlinesFilterOptionByPosition] "position" must be an integer >= 1, got: ${position}`
+      );
+    }
+
+    const rows = this.page.locator(SELECTORS.CARRIERS_FILTER_CHECKBOX_LABEL);
+
+    try {
+      await rows.first().waitFor({ state: 'visible', timeout });
+    } catch (err) {
+      throw new Error(
+        `[FlightResultsPage.getPreferredAirlinesFilterOptionByPosition] The "Preferred airlines" filter ` +
+        `(${SELECTORS.CARRIERS_FILTER_CHECKBOX_LABEL}) rendered no rows within ${timeout}ms. The results ` +
+        `filters are probably still loading, or this result set has no carriers to filter by. ` +
+        `Original: ${err.message}`
+      );
+    }
+
+    const renderedCount = await rows.count();
+    if (position > renderedCount) {
+      throw new Error(
+        `[FlightResultsPage.getPreferredAirlinesFilterOptionByPosition] Requested row ${position} but the ` +
+        `"Preferred airlines" filter renders only ${renderedCount} row(s). app-checkbox-group.vue shows at ` +
+        `most 5 rows before "View more", so ask for a position within the visible rows or expand the group first.`
+      );
+    }
+
+    const row = rows.nth(position - 1);
+    await row.scrollIntoViewIfNeeded({ timeout });
+
+    const priceElement = row.locator(SELECTORS.FILTER_OPTION_PRICE).first();
+    try {
+      await priceElement.waitFor({ state: 'visible', timeout });
+    } catch (err) {
+      throw new Error(
+        `[FlightResultsPage.getPreferredAirlinesFilterOptionByPosition] Row ${position} of the ` +
+        `"Preferred airlines" filter shows no price element (${SELECTORS.FILTER_OPTION_PRICE}) within ` +
+        `${timeout}ms. app-checkbox-group.vue only renders it when a results map is supplied, so the ` +
+        `filter was likely re-fed with no carrier price data for the displayed leg. Original: ${err.message}`
+      );
+    }
+
+    const price = (await priceElement.textContent() || '').replace(/\s+/g, ' ').trim();
+    if (!price) {
+      throw new Error(
+        `[FlightResultsPage.getPreferredAirlinesFilterOptionByPosition] Row ${position} of the ` +
+        `"Preferred airlines" filter has an empty price. The row rendered before its price value ` +
+        `arrived from resultMap[resultsIndex].carriers.`
+      );
+    }
+
+    // The name is diagnostic only (it labels the row in the comparison error), so a row that
+    // renders a carrier logo instead of a name reports an empty name rather than failing the read.
+    const nameElement = row.locator(SELECTORS.FILTER_OPTION_NAME).first();
+    const airline = (await nameElement.count())
+      ? (await nameElement.textContent() || '').replace(/\s+/g, ' ').trim()
+      : '';
+
+    return { airline, price };
   }
 
   /**

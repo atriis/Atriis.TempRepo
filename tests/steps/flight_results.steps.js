@@ -185,6 +185,31 @@ Then('the CO2 Squake tooltip should be visible in flight results', async functio
 // WHEN STEPS - PRICING OPTIONS
 // ========================================
 
+When("I extract the {int} price in preferred airlines {string} filter", async function (position, leg) {
+  logger.info("Extracting a Preferred airlines filter price", { position, leg });
+
+  const option = await FlightResults.extractPreferredAirlinesFilterPrice(this.page, position);
+
+  // Keyed by leg then position so the assertion can compare the same rows across legs. The filter
+  // panel itself is not leg-aware -- the app re-feeds it per displayed leg -- so the leg name only
+  // labels which capture this is.
+  if (!this.preferredAirlinesFilterPrices) this.preferredAirlinesFilterPrices = {};
+  if (!this.preferredAirlinesFilterPrices[leg]) this.preferredAirlinesFilterPrices[leg] = {};
+  this.preferredAirlinesFilterPrices[leg][position] = option;
+
+  logger.info("Extracted Preferred airlines filter price", { position, leg, ...option });
+});
+
+Then("prices in outbound results and return results filters filters are not same", async function () {
+  logger.info("Verifying the Preferred airlines filter prices differ between the outbound and inbound legs");
+
+  await FlightResults.verifyPreferredAirlinesFilterPricesDifferBetweenLegs(
+    this.preferredAirlinesFilterPrices,
+    "outbound",
+    "inbound"
+  );
+});
+
 When("I extract the price from first flight result", async function () {
   logger.info("Extracting price from first flight result card");
   const flightResultsPage = getPageObject(this.page, FlightResultsPage);

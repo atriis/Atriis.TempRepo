@@ -4206,6 +4206,137 @@ async verifyFareComponentTextColorInPricingOptions(page, expectedColor, index = 
   },
 
   /**
+   * Reads one row of the "Preferred airlines" results filter by its 1-based position and returns
+   * the airline plus its lowest-price text.
+   *
+   * The filter panel is fed from `resultMap[resultsIndex]`, which the app swaps as the displayed
+   * leg changes, so a single call serves every leg -- the caller only decides which leg's values it
+   * is storing. The price is read as displayed ("$1.2K") rather than parsed: the app abbreviates it
+   * through getFormattedAbbreviatedPrice, so digits alone would not compare faithfully.
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @param {number} position - 1-based row position in the Preferred airlines filter
+   * @returns {Promise<{airline: string, price: string}>} Airline name and price text as displayed
+   */
+  async extractPreferredAirlinesFilterPrice(page, position) {
+    if (!page) {
+      throw new Error('[FlightResults.extractPreferredAirlinesFilterPrice] "page" is required');
+    }
+    if (!Number.isInteger(position) || position < 1) {
+      throw new Error(
+        `[FlightResults.extractPreferredAirlinesFilterPrice] "position" must be an integer >= 1, got: ${position}`
+      );
+    }
+
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    logger.debug('[FlightResults.extractPreferredAirlinesFilterPrice] Reading Preferred airlines filter row', { position });
+
+    // The filters re-render whenever the displayed leg changes, so settle the skeleton first --
+    // otherwise the row read belongs to the previous leg.
+    try {
+      await flightResultsPage.waitForResultsSkeletonToFinish();
+    } catch (err) {
+      throw new Error(
+        `[FlightResults.extractPreferredAirlinesFilterPrice] The results filters were still loading when ` +
+        `reading Preferred airlines row ${position}. The displayed leg's results never finished rendering. ` +
+        `Original: ${err.message}`
+      );
+    }
+
+    let option;
+    try {
+      option = await flightResultsPage.getPreferredAirlinesFilterOptionByPosition(position);
+    } catch (err) {
+      throw new Error(
+        `[FlightResults.extractPreferredAirlinesFilterPrice] Failed to read row ${position} of the ` +
+        `"Preferred airlines" filter for the displayed leg. Verify the leg's results offer at least ` +
+        `${position} carriers to filter by. Original: ${err.message}`
+      );
+    }
+
+    logger.debug('[FlightResults.extractPreferredAirlinesFilterPrice] Read Preferred airlines filter row', {
+      position,
+      airline: option.airline,
+      price: option.price,
+    });
+
+    return option;
+  },
+
+  /**
+   * Asserts the "Preferred airlines" filter prices captured for one leg differ from those captured
+   * for another -- the point of the by-schedule test: each leg is filtered on its own flights, so
+   * its filter shows that leg's carrier prices, not the previous leg's.
+   *
+   * Compares the legs as a whole (all captured positions together) rather than position by
+   * position: two legs can legitimately share a price at one position while still being different
+   * result sets, and only an identical set of prices proves the filter never refreshed.
+   *
+   * @param {object} capturedPrices - Prices by leg key, e.g. { outbound: { 1: {...} }, inbound: {...} }
+   * @param {string} firstLeg - Leg key captured first (e.g. "outbound")
+   * @param {string} secondLeg - Leg key captured second (e.g. "inbound")
+   * @returns {Promise<{firstLegPrices: string[], secondLegPrices: string[]}>}
+   */
+  async verifyPreferredAirlinesFilterPricesDifferBetweenLegs(capturedPrices, firstLeg, secondLeg) {
+    if (!capturedPrices || typeof capturedPrices !== 'object') {
+      throw new Error(
+        `[FlightResults.verifyPreferredAirlinesFilterPricesDifferBetweenLegs] "capturedPrices" must be an object, got: ${typeof capturedPrices}`
+      );
+    }
+    if (!firstLeg || typeof firstLeg !== 'string') {
+      throw new Error(
+        `[FlightResults.verifyPreferredAirlinesFilterPricesDifferBetweenLegs] "firstLeg" must be a non-empty string, got: ${typeof firstLeg}`
+      );
+    }
+    if (!secondLeg || typeof secondLeg !== 'string') {
+      throw new Error(
+        `[FlightResults.verifyPreferredAirlinesFilterPricesDifferBetweenLegs] "secondLeg" must be a non-empty string, got: ${typeof secondLeg}`
+      );
+    }
+
+    const readLeg = (legKey) => {
+      const leg = capturedPrices[legKey];
+      const positions = leg ? Object.keys(leg).map(Number).sort((a, b) => a - b) : [];
+      if (!positions.length) {
+        throw new Error(
+          `[FlightResults.verifyPreferredAirlinesFilterPricesDifferBetweenLegs] No "${legKey}" Preferred ` +
+          `airlines prices were captured. Run the extraction step for the "${legKey}" leg before asserting.`
+        );
+      }
+      return { positions, entries: positions.map((position) => leg[position]) };
+    };
+
+    const first = readLeg(firstLeg);
+    const second = readLeg(secondLeg);
+
+    if (first.positions.join(',') !== second.positions.join(',')) {
+      throw new Error(
+        `[FlightResults.verifyPreferredAirlinesFilterPricesDifferBetweenLegs] The legs were captured at ` +
+        `different filter positions ("${firstLeg}": ${first.positions.join(', ')}; "${secondLeg}": ` +
+        `${second.positions.join(', ')}), so their prices are not comparable. Extract the same positions for both legs.`
+      );
+    }
+
+    const describe = (legKey, leg) =>
+      leg.positions.map((position, index) => {
+        const entry = leg.entries[index];
+        return `${legKey} #${position} ${entry.airline || 'unknown airline'}: ${entry.price}`;
+      }).join(', ');
+
+    const firstLegPrices = first.entries.map((entry) => entry.price);
+    const secondLegPrices = second.entries.map((entry) => entry.price);
+
+    expect(
+      secondLegPrices.join(' | '),
+      `[FlightResults.verifyPreferredAirlinesFilterPricesDifferBetweenLegs] The "Preferred airlines" filter ` +
+      `showed identical prices for the "${firstLeg}" and "${secondLeg}" legs, so the filter did not refresh ` +
+      `for the displayed leg. Captured -- ${describe(firstLeg, first)}; ${describe(secondLeg, second)}.`
+    ).not.toBe(firstLegPrices.join(' | '));
+
+    return { firstLegPrices, secondLegPrices };
+  },
+
+  /**
    * Extracts the displayed price of the first flight result as a number.
    *
    * @param {import('playwright').Page} page - Playwright page instance
