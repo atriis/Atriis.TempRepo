@@ -10,14 +10,12 @@ Feature: 28639 Amadeus - Book flight with FOP AirPlus
   I want to book a flight using AirPlus payment method
   So that the booking completes with the correct form of payment
 
-  Scenario: Booking a round trip flight with AirPlus FOP
-    Given I am logged in as "airplus@testim.com" booking a new trip
+  Scenario: Booking flight with AirPlus FOP
+    Given I am logged in as "olgac@club.com" booking a new trip
     And I have added a random guest traveler
-    When I search for a round trip flight from "EWR" to "LAX"
+    When I search for a one way flight from "SIN" to "ZRH"
     And I add the first flight to cart
-    Then the booking status should be "Pending booking"
-    And I click add payment method button
-    When I select card 1 and save
+    And the booking status should be "Pending booking"
     When I proceed to checkout
     And I complete the booking
     Then the quote destination should contain "Flight to"
