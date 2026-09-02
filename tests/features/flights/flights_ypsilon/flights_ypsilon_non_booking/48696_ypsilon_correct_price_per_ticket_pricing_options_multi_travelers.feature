@@ -12,25 +12,30 @@ Feature: 48696 Ypsilon - Correct price per ticket in pricing options for multi t
   I want to see correct per-ticket pricing in pricing options with separate tickets
   So that prices are consistent between results and pricing options for single and multi pax
 
-  Scenario: Results and pricing option prices match for 1 pax and 2 pax
+  Scenario: Results and pricing option prices match for 1 pax
     Given I am logged in as "ypsilon@corp.ams" booking a new trip
     And I have added a random guest traveler
     When I search for a round trip flight from "AMS" to "BCN" with outbound on a "thursday" and inbound the next day
     Then flight results should be available
-    When I filter airline results by "Vueling Airline" checkbox
-    Then flight results should be available
+    When I filter airline results by "Multi carrier" checkbox
+    Then first flight has carrier "Vueling Airline" for outbound
+    And first flight has carrier "Transavia Airlines" for inbound
     When I extract the price from first flight result
     And I click to open first pricing options
     And I extract the price from first pricing option
     And I close pricing options modal
     Then the extracted price at index 0 should equal the extracted price at index 1 within tolerance
-    When I navigate back to flight search via breadcrumb
+
+  Scenario: Results and pricing option prices match for 2 pax
+    Given I am logged in as "ypsilon@corp.ams" booking a new trip
     And I have added a random guest traveler
-    And I click the search button
+    And I have added a random guest traveler
+    When I search for a round trip flight from "AMS" to "BCN" with outbound on a "thursday" and inbound the next day
     Then flight results should be available
-    When I filter airline results by "Vueling Airline" checkbox
-    Then flight results should be available
+    When I filter airline results by "Multi carrier" checkbox
+    Then first flight has carrier "Vueling Airline" for outbound
+    And first flight has carrier "Transavia Airlines" for inbound
     When I extract the price from first flight result
     And I click to open first pricing options
     And I extract the price from first pricing option
-    Then the extracted price at index 2 should equal the extracted price at index 3 within tolerance
+    Then the extracted price at index 0 should equal the extracted price at index 1 within tolerance

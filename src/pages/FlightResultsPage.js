@@ -2329,6 +2329,36 @@ async clickSelectForFareWithBaggagePricingOptions(baggageText) {
   }
 
   /**
+   * Builds a locator for the carrier name of one leg of the FIRST flight result card.
+   * Scopes card-first (first `.flight-list .flight-preview`), then the requested
+   * `.flight-info-container` leg, then that leg's first `.carrier-container .carrier-name`.
+   *
+   * Returns the Locator without reading it, so the caller can assert with an auto-retrying
+   * assertion that survives the results list re-rendering after a filter change.
+   *
+   * Note: when a single leg mixes carriers the app renders the i18n label "Multiple carriers"
+   * in this node instead of an airline name.
+   *
+   * @param {number} legIndex - Zero-based leg index within the first result card (0 = outbound, 1 = inbound)
+   * @returns {import('@playwright/test').Locator} Locator for that leg's carrier name node
+   */
+  getFirstResultLegCarrierNameLocator(legIndex = 0) {
+    if (!Number.isInteger(legIndex) || legIndex < 0) {
+      throw new Error(
+        `[FlightResultsPage.getFirstResultLegCarrierNameLocator] "legIndex" must be a non-negative integer, got: ${legIndex}`
+      );
+    }
+
+    return this.page
+      .locator(SELECTORS.FLIGHT_PREVIEW)
+      .first()
+      .locator(SELECTORS.FLIGHT_PREVIEW_SEGMENT)
+      .nth(legIndex)
+      .locator(SELECTORS.RESULT_SEGMENT_CARRIER_NAME)
+      .first();
+  }
+
+  /**
    * Extracts the departure date text from a flight result preview card.
    * Returns the date in the format displayed in the UI (e.g., "Mon, 15 Dec").
    * @param {number} cardIndex - Zero-based index of the flight preview card (default: 0)

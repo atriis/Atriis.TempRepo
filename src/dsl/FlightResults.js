@@ -2750,6 +2750,61 @@ async verifyFareComponentTextColorInPricingOptions(page, expectedColor, index = 
   },
 
   /**
+   * Verifies the carrier name shown on one leg of the FIRST flight result card.
+   *
+   * Uses an auto-retrying locator assertion on purpose: the results list re-renders after a
+   * filter change (for example the "Multi carrier" checkbox), so a one-shot text read races
+   * the rebuild and can assert against the pre-filter card.
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @param {string} expectedCarrier - Expected carrier name (e.g. "Vueling Airline")
+   * @param {string} legDirection - Which leg to check: "outbound" or "inbound" (case-insensitive)
+   * @returns {Promise<void>}
+   */
+  async verifyFirstFlightCarrierForLeg(page, expectedCarrier, legDirection) {
+    if (!page) throw new Error('[FlightResults.verifyFirstFlightCarrierForLeg] "page" is required, got: ' + typeof page);
+    if (!expectedCarrier || typeof expectedCarrier !== 'string') {
+      throw new Error(
+        `[FlightResults.verifyFirstFlightCarrierForLeg] "expectedCarrier" must be a non-empty string, got: ${typeof expectedCarrier} (${expectedCarrier})`
+      );
+    }
+    if (!legDirection || typeof legDirection !== 'string') {
+      throw new Error(
+        `[FlightResults.verifyFirstFlightCarrierForLeg] "legDirection" must be a non-empty string, got: ${typeof legDirection} (${legDirection})`
+      );
+    }
+
+    const legMap = { outbound: 0, inbound: 1 };
+    const normalizedLeg = legDirection.trim().toLowerCase();
+    const legIndex = legMap[normalizedLeg];
+    if (legIndex === undefined) {
+      throw new Error(
+        `[FlightResults.verifyFirstFlightCarrierForLeg] "legDirection" must be "outbound" or "inbound", got: "${legDirection}"`
+      );
+    }
+
+    logger.debug('Reading the first result leg carrier name', { expectedCarrier, legDirection, legIndex });
+
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    const carrierName = flightResultsPage.getFirstResultLegCarrierNameLocator(legIndex);
+
+    try {
+      await expect(carrierName).toContainText(expectedCarrier, { timeout: 30000 });
+    } catch (err) {
+      const actual = await carrierName.innerText().catch(() => '(carrier name node not found)');
+      throw new Error(
+        `[FlightResults.verifyFirstFlightCarrierForLeg] The ${normalizedLeg} leg (leg index ${legIndex}) of the first `
+        + `flight result should show carrier "${expectedCarrier}", but it shows "${String(actual).trim()}". `
+        + 'A leg whose own flights mix carriers renders the i18n label "Multiple carriers" instead of a carrier '
+        + 'name, so either the filter selected a different first result or this leg is genuinely multi-carrier. '
+        + `Original: ${err.message}`
+      );
+    }
+
+    logger.info('Verified the first flight result leg carrier', { expectedCarrier, legDirection, legIndex });
+  },
+
+  /**
    * Verifies that all flight results are from a specific airline.
    *
    * @param {import('playwright').Page} page - Playwright page instance
