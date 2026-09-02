@@ -61,7 +61,18 @@ When("I add a car to the trip as the agent", async function () {
   await LegacyGtp.addCarToTrip(requireLegacyGtpPage(this));
 });
 
-When("I add a hotel to the trip as the agent", async function () {
-  logger.info("Agent re-searching and adding a hotel to the trip");
+When("I add a hotel to the trip as the agent through \"Search Online\"", async function () {
+  logger.info('Agent re-searching a hotel via the "Search Online" link and adding it to the trip');
   await LegacyGtp.addHotelToTrip(requireLegacyGtpPage(this));
+});
+
+// Picks a REFUNDABLE room rather than the first one — the legacy front lists non-refundable
+// prepaid rates first, so "any hotel" adds a non-refundable rate most of the time (test 55155).
+When("I add a refundable hotel to the trip as the agent through \"Search Online\"", async function () {
+  logger.info('Agent re-searching a hotel via the "Search Online" link and adding a REFUNDABLE room to the trip');
+  const result = await LegacyGtp.addRefundableHotelToTrip(requireLegacyGtpPage(this));
+  logger.info("Agent added a refundable hotel room", {
+    hotelIndex: result.hotelIndex,
+    cancellationPolicy: result.cancellationPolicy,
+  });
 });

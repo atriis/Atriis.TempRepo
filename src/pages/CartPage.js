@@ -928,6 +928,11 @@ const SELECTORS = {
   SUGGESTED_ITEMS_HEADING: '.suggested-quotes-container h2:text-is("Suggested items")',
   SUGGESTED_QUOTE_ITEM: '.suggested-quote',
   SUGGESTED_CAR_ADD_BUTTON: '.suggested-quote .car-quote-card .add-to-trip-btn',
+  // The hotel equivalent cannot be scoped the same way: hotel-quote-card.vue's root is a bare
+  // `section.quote-payment-card` with NO product class of its own (unlike car-quote-card.vue, which
+  // adds `.car-quote-card`). The hotel card is identified instead by the `hotel-preview` component
+  // it renders in its ticket-details slot, so the suggestion wrapper is filtered on that.
+  SUGGESTED_HOTEL_ADD_BUTTON: '.suggested-quote:has(.hotel-preview) .add-to-trip-btn',
 
   // ===== Compensation / Climate Contribution (compensation-quote-card.vue) =====
   // The card root carries both `quote-payment-card` and `compensation-quote-card`.
@@ -12436,6 +12441,25 @@ class CartPage {
         `[CartPage.clickSuggestedCarQuoteAddButton] Could not click the suggested car quote's ` +
         `"Add to trip" button (${SELECTORS.SUGGESTED_CAR_ADD_BUTTON}). The agent may not have ` +
         `suggested a car, or the suggestion was already added to the trip. Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Clicks the "Add to trip" button on the agent-suggested hotel quote card.
+   */
+  async clickSuggestedHotelQuoteAddButton() {
+    const button = this.page.locator(SELECTORS.SUGGESTED_HOTEL_ADD_BUTTON).first();
+    try {
+      await button.scrollIntoViewIfNeeded({ timeout: 10000 }).catch(() => {});
+      await button.waitFor({ state: 'visible', timeout: 20000 });
+      await button.click({ timeout: 10000 });
+    } catch (err) {
+      throw new Error(
+        `[CartPage.clickSuggestedHotelQuoteAddButton] Could not click the suggested hotel quote's ` +
+        `"Add to trip" button (${SELECTORS.SUGGESTED_HOTEL_ADD_BUTTON}). The agent may not have ` +
+        `suggested a hotel, the suggestion was already added to the trip, or the hotel quote expired ` +
+        `(an expired timed quote renders "Check availability" instead). Original: ${err.message}`
       );
     }
   }

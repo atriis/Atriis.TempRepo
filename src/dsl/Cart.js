@@ -12972,6 +12972,29 @@ const Cart = {
   },
 
   /**
+   * Adds the agent-suggested hotel quote to the trip from the trip overview's "Suggested items"
+   * section. The hotel sibling of addSuggestedCarQuoteToTrip — the two cards are scoped by
+   * different markers (see CartPage.SUGGESTED_HOTEL_ADD_BUTTON), so they stay separate methods.
+   *
+   * @param {import('playwright').Page} page
+   */
+  async addSuggestedHotelQuoteToTrip(page) {
+    if (!page) throw new Error('[Cart.addSuggestedHotelQuoteToTrip] "page" is required.');
+    logger.debug('[Cart.addSuggestedHotelQuoteToTrip] Adding the agent-suggested hotel quote to the trip');
+
+    const cartPage = getPageObject(page, CartPage);
+    try {
+      await cartPage.clickSuggestedHotelQuoteAddButton();
+    } catch (err) {
+      throw new Error(
+        `[Cart.addSuggestedHotelQuoteToTrip] Could not add the agent-suggested hotel quote to the trip. ` +
+        `The Suggested items section may not hold an unchosen hotel suggestion — the agent's hotel may ` +
+        `not have reached this trip yet (the page needs a refresh after the agent adds it). Original: ${err.message}`
+      );
+    }
+  },
+
+  /**
    * Verifies the trip overview holds a car quote (any car — presence, not identity), by reading its
    * quote-card title. Use verifyTripHasSameCarType when the copied car must match a stored one.
    *

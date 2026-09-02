@@ -17,6 +17,12 @@ const logger = require("@utils/logger").child("LegacyGtp");
 // trip view and the re-search links all work without it).
 const CONSENT_SCRIPT_URL_PATTERN = /cookiehub|cookieconsent/i;
 
+// Any spelling of "non refundable" a supplier's cancellation policy might use — case-insensitive
+// ("NON REFUNDABLE" counts) with space, hyphen or nothing between the words. Mirrors the
+// LegacyGtpPage.REFUNDABLE_ROOM_ITEM CSS filter; addRefundableHotelToTrip re-checks the picked
+// room against this pattern so the two can never silently disagree.
+const NON_REFUNDABLE_POLICY_PATTERN = /non[\s-]*refundable/i;
+
 const LegacyGtp = {
   /**
    * Opens an ISOLATED browser context for the agent and returns it with its page.
@@ -173,8 +179,9 @@ const LegacyGtp = {
   },
 
   /**
-   * Re-searches the requested hotel online and adds the first room of the first hotel to the
-   * trip cart.
+   * Re-searches the requested hotel through the requested item's "Search Online" link and adds
+   * the first room of the first hotel to the trip cart. Nothing is typed into the search form —
+   * destination and dates arrive pre-populated from the item the traveller requested.
    *
    * @param {import('@playwright/test').Page} page - The legacy GTP tab, already on the trip
    */
@@ -198,6 +205,114 @@ const LegacyGtp = {
       );
     }
     return { added: true };
+  },
+
+  /**
+   * Re-searches the requested hotel online and adds a REFUNDABLE room to the trip cart.
+   *
+   * Refundability has to be chosen, not assumed: the legacy front lists the cheapest rooms first
+   * and those are routinely "Prepay non-refundable non-changeable" rates (3 of the 4 rooms of the
+   * first hotel, on the run this was built against), so `addHotelToTrip`'s first-room pick lands
+   * on a non-refundable rate most of the time. Each room carries its full policy in the title
+   * attribute of its cancellation-policy span, which LegacyGtpPage.REFUNDABLE_ROOM_ITEM filters
+   * case-insensitively across the "non refundable"/"non-refundable"/"nonrefundable" spellings —
+   * and the picked room's policy is re-verified here against NON_REFUNDABLE_POLICY_PATTERN, so a
+   * selector drift fails loudly instead of quietly adding a non-refundable room.
+   *
+   * A single hotel can offer only non-refundable rates, so hotels are walked in results order
+   * until one has a refundable room — returning to the results list in between. Running out of
+   * hotels is a hard failure, never a silent fall back to a non-refundable rate.
+   *
+   * @param {import('@playwright/test').Page} page - The legacy GTP tab, already on the trip
+   * @param {object} [options]
+   * @param {number} [options.maxHotels=5] - How many hotel results to try before giving up.
+   * @returns {Promise<{added: boolean, hotelIndex: number, cancellationPolicy: string}>}
+   */
+  async addRefundableHotelToTrip(page, { maxHotels = 5 } = {}) {
+    if (!page) throw new Error('[LegacyGtp.addRefundableHotelToTrip] "page" is required.');
+    if (!Number.isInteger(maxHotels) || maxHotels < 1) {
+      throw new Error(
+        `[LegacyGtp.addRefundableHotelToTrip] "maxHotels" must be a positive integer, got: ${JSON.stringify(maxHotels)}`
+      );
+    }
+    logger.debug("Agent adding a refundable hotel room to trip via legacy GTP", { maxHotels });
+
+    const legacyGtpPage = getPageObject(page, LegacyGtpPage);
+    try {
+      await legacyGtpPage.clickReSearchLink("hotel");
+      await legacyGtpPage.clickHotelSearchButton();
+      await legacyGtpPage.waitForHotelResults();
+
+      const hotelCount = await legacyGtpPage.getHotelResultCount();
+      if (hotelCount === 0) {
+        throw new Error("the hotel re-search returned no results at all");
+      }
+      const hotelsToTry = Math.min(hotelCount, maxHotels);
+
+      for (let index = 0; index < hotelsToTry; index += 1) {
+        await legacyGtpPage.clickHotelPriceOfferByIndex(index);
+        await legacyGtpPage.waitForRoomList();
+
+        // The rooms view renders only the first chunk of rooms (data-ng-repeat with |limitTo and
+        // an infinite-scroll loadMore()) — a refundable room further down does not EXIST in the
+        // DOM until the list is scrolled. Scroll ONLY while no rendered room qualifies: each pass
+        // scrolls the last row into view to load the next chunk, and stops as soon as a refundable
+        // room appears or the room count stops growing (list exhausted).
+        let refundableRooms = await legacyGtpPage.getRefundableRoomCount();
+        let renderedRooms = await legacyGtpPage.getRoomCount();
+        const maxScrolls = 15;
+        for (let scrolls = 0; refundableRooms === 0 && scrolls < maxScrolls; scrolls += 1) {
+          await legacyGtpPage.scrollToLastRoom();
+          // Brief settle so the infinite-scroll directive can append the next chunk; the
+          // count-based exit below decides whether anything new actually rendered.
+          await page.waitForTimeout(1000);
+          const nowRendered = await legacyGtpPage.getRoomCount();
+          refundableRooms = await legacyGtpPage.getRefundableRoomCount();
+          if (refundableRooms === 0 && nowRendered === renderedRooms) break; // list exhausted
+          renderedRooms = nowRendered;
+        }
+
+        if (refundableRooms === 0) {
+          logger.debug("Hotel offers no refundable room — trying the next one", {
+            index,
+            roomsScanned: renderedRooms,
+          });
+          await legacyGtpPage.clickBackToHotelResults();
+          await legacyGtpPage.waitForHotelResults();
+          continue;
+        }
+
+        // Second line of defence: the CSS filter picked this room, but the DECISION is re-checked
+        // here in code — a policy that still reads as non-refundable in any spelling/casing means
+        // the selector no longer means what it did, and adding the room would be the exact mistake
+        // this method exists to prevent.
+        const cancellationPolicy = await legacyGtpPage.getFirstRefundableRoomPolicy();
+        if (NON_REFUNDABLE_POLICY_PATTERN.test(cancellationPolicy) || cancellationPolicy.trim() === "") {
+          throw new Error(
+            `the room selected as refundable carries the cancellation policy ` +
+            `"${cancellationPolicy}", which still reads as non-refundable (or empty) — the ` +
+            `refundable-room selector no longer matches what the legacy front renders`
+          );
+        }
+
+        await legacyGtpPage.clickAddFirstRefundableRoomToCart();
+        await legacyGtpPage.waitForAddedIndicator();
+        await legacyGtpPage.clickBackToTrip();
+
+        logger.info("Agent added a refundable hotel room to the trip", { hotelIndex: index, cancellationPolicy });
+        return { added: true, hotelIndex: index, cancellationPolicy };
+      }
+
+      throw new Error(
+        `none of the first ${hotelsToTry} of ${hotelCount} hotel results offered a refundable room ` +
+        `(every rate read as non-refundable or carried no cancellation policy)`
+      );
+    } catch (err) {
+      throw new Error(
+        `[LegacyGtp.addRefundableHotelToTrip] Could not re-search and add a REFUNDABLE hotel room to ` +
+        `the trip as the agent: ${err.message}`
+      );
+    }
   },
 };
 

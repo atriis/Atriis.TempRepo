@@ -42,9 +42,40 @@ const SELECTORS = {
   HOTEL_SEARCH_BUTTON: '[data-ng-click="onSearchHotelsClicked()"]',
   // "Sort by:" bar of the hotel results list — the hotel-results-ready signal.
   HOTEL_RESULTS_SORT_BAR: ".filter-sort-by",
-  // First hotel row's price-offer block — clicking it expands the hotel's rooms.
-  FIRST_HOTEL_PRICE_OFFER: '#hotelItem0 [ng-switch="isPriceOffer"]',
+  // One row per hotel result, ids running #hotelItem0..N.
+  HOTEL_RESULT_ITEM: '[id^="hotelItem"]',
+  // A hotel row's price-offer block. Clicking it OPENS THAT HOTEL'S ROOMS VIEW (route
+  // #/hotels/results -> rooms) — the results list is replaced, not expanded in place, so getting
+  // back to the list requires BACK_TO_HOTEL_RESULTS_LINK.
+  HOTEL_PRICE_OFFER: (index) => `#hotelItem${index} [ng-switch="isPriceOffer"]`,
   HOTEL_ROOM_ADD_TO_CART_ICON: ".room-container .trip-cart-icon-new",
+  // Row-RELATIVE version of the same icon, for chaining inside one ROOM_ITEM locator. The page-wide
+  // selector above cannot be chained: `.room-container` is the room row's ANCESTOR, so resolving it
+  // relative to the row would look for a .room-container INSIDE .room-item and match nothing.
+  ROOM_ROW_ADD_TO_CART_ICON: ".trip-cart-icon-new",
+  // Rooms view — one `.room-item` per room (data-ng-repeat="room in rooms"), each holding exactly
+  // one cancellation-policy span and one add-to-cart icon. Scoping by the row is what keeps "the
+  // refundable room's cart icon" from degrading into "the first cart icon on the page".
+  ROOM_ITEM: ".room-container .room-item",
+  // A room's cancellation policy. The `title` attribute carries the FULL policy while the visible
+  // text is truncated by the `truncate` filter, so the attribute is what to match: exactly
+  // "Non Refundable" for a non-refundable rate, a real deadline ("Cancellation after 23:59,
+  // Mon, 30 Nov 26 will be charged 1 night(s)") for a refundable one.
+  ROOM_CANCELLATION_POLICY: '[data-ng-switch="room.CancellationPolicyTime"] span[title]',
+  // A room row whose policy is anything OTHER than non-refundable. The `i` flag makes each match
+  // case-insensitive ("NON REFUNDABLE" is still caught) and the chained :not()s cover the
+  // spelling variants suppliers use: "non refundable", "non-refundable", "nonrefundable".
+  // Requiring span[title] inside :has() means a room with an EMPTY CancellationPolicyTime (which
+  // renders no policy span at all) is excluded too — an unknown policy must never be treated as
+  // refundable. LegacyGtp.addRefundableHotelToTrip re-verifies the picked room's policy text as a
+  // second line of defence.
+  REFUNDABLE_ROOM_ITEM:
+    '.room-container .room-item:has([data-ng-switch="room.CancellationPolicyTime"] ' +
+    'span[title]:not([title*="non refundable" i]):not([title*="non-refundable" i])' +
+    ':not([title*="nonrefundable" i]))',
+  // "<< Back to hotel results" in the rooms-view header. Rendered twice (one copy hidden), so
+  // :visible is required.
+  BACK_TO_HOTEL_RESULTS_LINK: '.hotel-room-results-header a[href="#/hotels/results"]:visible',
 
   // "Added" cart confirmation shown after an add-to-cart click (e.g. "Added" / "1 Added").
   // Scoped to the two containers that actually render it — the per-product booking-state block
@@ -358,16 +389,152 @@ class LegacyGtpPage {
     }
   }
 
-  /** Clicks the first hotel result's price offer to expand its rooms. */
-  async clickFirstHotelPriceOffer() {
+  /** Counts the hotel result rows currently listed. */
+  async getHotelResultCount() {
     try {
-      const offer = this.page.locator(SELECTORS.FIRST_HOTEL_PRICE_OFFER).first();
+      return await this.page.locator(SELECTORS.HOTEL_RESULT_ITEM).count();
+    } catch (err) {
+      throw new Error(
+        `[LegacyGtpPage.getHotelResultCount] Could not count the hotel result rows ` +
+        `(${SELECTORS.HOTEL_RESULT_ITEM}). The results list may have been replaced mid-read. ` +
+        `Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Clicks the price offer of the hotel result at `index`, opening that hotel's rooms view.
+   * @param {number} index - Zero-based hotel row index (#hotelItem{index}).
+   */
+  async clickHotelPriceOfferByIndex(index) {
+    if (!Number.isInteger(index) || index < 0) {
+      throw new Error(`"index" must be a non-negative integer, got: ${JSON.stringify(index)}`);
+    }
+    const selector = SELECTORS.HOTEL_PRICE_OFFER(index);
+    try {
+      const offer = this.page.locator(selector).first();
       await offer.waitFor({ state: "visible", timeout: 20000 });
       await offer.click({ timeout: 10000 });
     } catch (err) {
       throw new Error(
-        `[LegacyGtpPage.clickFirstHotelPriceOffer] Could not click the first hotel result's price ` +
-        `offer (${SELECTORS.FIRST_HOTEL_PRICE_OFFER}). The results list may be empty. Original: ${err.message}`
+        `[LegacyGtpPage.clickHotelPriceOfferByIndex] Could not click hotel result ${index}'s price ` +
+        `offer (${selector}). The results list may hold fewer than ${index + 1} hotels. ` +
+        `Original: ${err.message}`
+      );
+    }
+  }
+
+  /** Clicks the first hotel result's price offer to open its rooms. */
+  async clickFirstHotelPriceOffer() {
+    await this.clickHotelPriceOfferByIndex(0);
+  }
+
+  /** Waits for the opened hotel's room list to render. */
+  async waitForRoomList({ timeout = 60000 } = {}) {
+    try {
+      await this.page.locator(SELECTORS.ROOM_ITEM).first().waitFor({ state: "visible", timeout });
+    } catch (err) {
+      throw new Error(
+        `[LegacyGtpPage.waitForRoomList] No room rows (${SELECTORS.ROOM_ITEM}) appeared within ` +
+        `${timeout}ms after opening the hotel. The hotel may offer no bookable rooms, or the rooms ` +
+        `view did not load. Original: ${err.message}`
+      );
+    }
+  }
+
+  /** Counts the rooms of the opened hotel whose cancellation policy is NOT non-refundable. */
+  async getRefundableRoomCount() {
+    try {
+      return await this.page.locator(SELECTORS.REFUNDABLE_ROOM_ITEM).count();
+    } catch (err) {
+      throw new Error(
+        `[LegacyGtpPage.getRefundableRoomCount] Could not count the refundable rooms ` +
+        `(${SELECTORS.REFUNDABLE_ROOM_ITEM}). Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Reads the full cancellation policy of the first refundable room — the evidence of WHY that
+   * room is about to be picked, re-verified by the DSL so a wrong pick fails loudly.
+   * @returns {Promise<string>}
+   */
+  async getFirstRefundableRoomPolicy() {
+    const policy = this.page
+      .locator(SELECTORS.REFUNDABLE_ROOM_ITEM)
+      .first()
+      .locator(SELECTORS.ROOM_CANCELLATION_POLICY)
+      .first();
+    try {
+      await policy.waitFor({ state: "visible", timeout: 20000 });
+      return (await policy.getAttribute("title")) || "";
+    } catch (err) {
+      throw new Error(
+        `[LegacyGtpPage.getFirstRefundableRoomPolicy] Could not read the cancellation policy of the ` +
+        `first refundable room (${SELECTORS.REFUNDABLE_ROOM_ITEM}). The room list may have re-rendered. ` +
+        `Original: ${err.message}`
+      );
+    }
+  }
+
+  /** Counts the room rows currently RENDERED (the infinite-scroll list grows as it is scrolled). */
+  async getRoomCount() {
+    try {
+      return await this.page.locator(SELECTORS.ROOM_ITEM).count();
+    } catch (err) {
+      throw new Error(
+        `[LegacyGtpPage.getRoomCount] Could not count the rendered room rows (${SELECTORS.ROOM_ITEM}). ` +
+        `The rooms view may have been replaced mid-read. Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Scrolls the LAST rendered room row into view — the gesture that fires the rooms view's
+   * infinite-scroll loadMore(), appending the next chunk of rooms to the DOM.
+   */
+  async scrollToLastRoom() {
+    try {
+      await this.page.locator(SELECTORS.ROOM_ITEM).last().scrollIntoViewIfNeeded({ timeout: 10000 });
+    } catch (err) {
+      throw new Error(
+        `[LegacyGtpPage.scrollToLastRoom] Could not scroll the last room row into view ` +
+        `(${SELECTORS.ROOM_ITEM}). The rooms view may have been replaced mid-scroll. ` +
+        `Original: ${err.message}`
+      );
+    }
+  }
+
+  /** Clicks the add-to-cart icon of the first refundable room of the opened hotel. */
+  async clickAddFirstRefundableRoomToCart() {
+    const icon = this.page
+      .locator(SELECTORS.REFUNDABLE_ROOM_ITEM)
+      .first()
+      .locator(`${SELECTORS.ROOM_ROW_ADD_TO_CART_ICON}:visible`)
+      .first();
+    try {
+      await icon.waitFor({ state: "visible", timeout: 30000 });
+      await icon.click({ timeout: 10000 });
+    } catch (err) {
+      throw new Error(
+        `[LegacyGtpPage.clickAddFirstRefundableRoomToCart] Could not click the add-to-cart icon of ` +
+        `the first refundable room (${SELECTORS.REFUNDABLE_ROOM_ITEM}). The hotel may offer only ` +
+        `non-refundable rates, or the room row re-rendered. Original: ${err.message}`
+      );
+    }
+  }
+
+  /** Returns from a hotel's rooms view to the hotel results list. */
+  async clickBackToHotelResults() {
+    try {
+      const link = this.page.locator(SELECTORS.BACK_TO_HOTEL_RESULTS_LINK).first();
+      await link.waitFor({ state: "visible", timeout: 20000 });
+      await link.click({ timeout: 10000 });
+    } catch (err) {
+      throw new Error(
+        `[LegacyGtpPage.clickBackToHotelResults] Could not click "<< Back to hotel results" ` +
+        `(${SELECTORS.BACK_TO_HOTEL_RESULTS_LINK}). The rooms view may not be open. ` +
+        `Original: ${err.message}`
       );
     }
   }

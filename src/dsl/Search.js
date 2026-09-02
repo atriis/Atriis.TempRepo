@@ -1655,6 +1655,72 @@ const Search = {
 
     logger.info('[Search.verifyNoTravelerAddedSoSearchIsBlocked] No traveller reached the trip — search is blocked');
   },
+
+  /**
+   * Asserts the main search button is NOT rendered on the search page — the privilege check for a
+   * role that may only send travel requests.
+   *
+   * trip-search-control.vue gates the button with `v-if="canUseOnlineSearch"`, so a restricted role
+   * gets no element at all rather than a disabled one — absence, not a disabled state, is what has
+   * to be asserted.
+   *
+   * The control bar is awaited FIRST. A count-of-zero on a page that has not rendered yet is
+   * satisfied instantly, so without that anchor this assertion would pass for a user who does hold
+   * the online-search privilege, simply by running early.
+   *
+   * @param {import('playwright').Page} page
+   * @returns {Promise<{searchButtonCount: number}>}
+   */
+  async verifySearchButtonNotVisible(page) {
+    if (!page) {
+      throw new Error('[Search.verifySearchButtonNotVisible] "page" is required.');
+    }
+
+    logger.debug('[Search.verifySearchButtonNotVisible] Asserting the main search button is absent');
+    const searchPage = getPageObject(page, SearchPage);
+
+    await searchPage.waitForSearchControl();
+    const searchButtonCount = await searchPage.getSearchControlSearchButton().count();
+
+    // Thrown rather than asserted through expect(): this repo's Playwright discards expect's
+    // custom message, and the bare "Expected: 0 Received: 1" diff would not say WHICH privilege
+    // the rendered button proves is still granted.
+    if (searchButtonCount !== 0) {
+      throw new Error(
+        `[Search.verifySearchButtonNotVisible] The search page renders ${searchButtonCount} main ` +
+        `Search button(s) for a role that may only send travel requests — expected none. ` +
+        `trip-search-control.vue renders it only when canUseOnlineSearch is true, so a present ` +
+        `button means the online-search privilege is still granted to this user.`
+      );
+    }
+
+    logger.info('[Search.verifySearchButtonNotVisible] No Search button on the search control — online search is blocked');
+    return { searchButtonCount };
+  },
+
+  /**
+   * Asserts the "Travel request" call to action is visible on the search page — the other half of
+   * the restricted-role privilege check: online search is gone, requesting an agent is all that is
+   * left. Rendered by trip-search-control.vue behind `canUseRequestAssistance`.
+   *
+   * @param {import('playwright').Page} page
+   */
+  async verifyTravelRequestButtonVisible(page) {
+    if (!page) {
+      throw new Error('[Search.verifyTravelRequestButtonVisible] "page" is required.');
+    }
+
+    logger.debug('[Search.verifyTravelRequestButtonVisible] Asserting the Travel request button is visible');
+    const searchPage = getPageObject(page, SearchPage);
+
+    await expect(
+      searchPage.getTravelRequestButton(),
+      'Expected the "Travel request" button to be visible on the search page. It is gated by ' +
+      'canUseRequestAssistance && !isAssistanceRequested in trip-search-control.vue, so it is ' +
+      'missing when the user lacks the request-assistance privilege or a request was already sent ' +
+      'for this trip — either way the restricted user has no way to book at all.',
+    ).toBeVisible({ timeout: 30000 });
+  },
 };
 
 module.exports = Search;

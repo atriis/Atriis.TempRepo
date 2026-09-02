@@ -411,10 +411,16 @@ class CommonPage {
 
   /**
    * Gets the Success notification locator.
+   *
+   * `.first()` is required, not a convenience: element-plus stacks one el-notification per message
+   * (#notification_1, #notification_2, ...), and some actions raise two at once — adding an
+   * agent-suggested quote to a trip reports both the quote add and the trip update (test 55155).
+   * The unscoped locator then fails Playwright's strict mode instead of resolving. Both callers
+   * only wait for a success toast to appear, so taking the first is the same assertion.
    * @returns {Locator} Playwright locator for the Success notification.
    */
   getSuccessNotification() {
-    return this.page.getByText("Success", { exact: true });
+    return this.page.getByText("Success", { exact: true }).first();
   }
 
   /**

@@ -35,6 +35,14 @@ const SELECTORS = {
 
   // Search and guest management
   SEARCH_BUTTON: "button.search-btn",
+  // Root of trip-search-control.vue — the bar holding the travellers list, the Search button and
+  // the "Travel request" button. It renders unconditionally, so it is the anchor that proves the
+  // control is mounted before the absence of the Search button inside it means anything.
+  TRIP_SEARCH_CONTROL: ".trip-search-control",
+  // The Search button SCOPED to that control. `.search-btn` is also used by unrelated components
+  // (cross-sell-suggestions.vue, price-change-badge.vue), so the unscoped selector would report a
+  // search button that has nothing to do with the search-page privilege being asserted.
+  SEARCH_CONTROL_SEARCH_BUTTON: ".trip-search-control button.search-btn",
   // An el-collapse-item header inside the visible search form, addressed by its rendered title —
   // e.g. "Advanced search" ($t('common.advancedSearch')), which UK Rail (evolvi-search-inputs.vue)
   // uses to hide its class/priority/split-ticket options. `:visible` keeps the other products'
@@ -1443,6 +1451,36 @@ class SearchPage {
   }
 
   // Executes the search
+
+  /**
+   * Waits for the trip search control bar to render — the gate before any claim about what it does
+   * or does not contain.
+   */
+  async waitForSearchControl({ timeout = 30000 } = {}) {
+    try {
+      await this.page
+        .locator(SELECTORS.TRIP_SEARCH_CONTROL)
+        .first()
+        .waitFor({ state: "visible", timeout });
+    } catch (err) {
+      throw new Error(
+        `[SearchPage.waitForSearchControl] The trip search control bar ` +
+        `(${SELECTORS.TRIP_SEARCH_CONTROL}) did not render within ${timeout}ms. The search page may ` +
+        `not have finished loading. Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * The main Search button scoped to the trip search control. Returned as a locator rather than a
+   * click so callers can also assert its ABSENCE: the button sits behind `v-if="canUseOnlineSearch"`
+   * in trip-search-control.vue, so a role restricted to travel requests never renders it at all
+   * (it is not merely disabled).
+   * @returns {import('@playwright/test').Locator}
+   */
+  getSearchControlSearchButton() {
+    return this.page.locator(SELECTORS.SEARCH_CONTROL_SEARCH_BUTTON);
+  }
 
   /**
    * Clicks the main search button.

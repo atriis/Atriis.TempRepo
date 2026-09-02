@@ -444,3 +444,15 @@ Given(
     this.selectedTravelerCount = result.selectedTravelerCount;
   }
 );
+
+// ===== Restricted-role privilege checks on the search page (test 55155) =====
+
+Then("the search button should not be visible", async function () {
+  logger.info("Verifying the main search button is not rendered for this role");
+  await Search.verifySearchButtonNotVisible(this.page);
+});
+
+Then("the Travel request button should be visible", async function () {
+  logger.info("Verifying the Travel request button is visible on the search page");
+  await Search.verifyTravelRequestButtonVisible(this.page);
+});

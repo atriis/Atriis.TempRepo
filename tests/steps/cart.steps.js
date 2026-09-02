@@ -563,7 +563,6 @@ When("I select the first available flight seat", async function () {
 When("I extract seat price in seat map drawer", async function () {
   this.seatPrice = await Cart.extractSeatPriceFromDrawer(this.page);
   logger.info("Extracted seat price from seat map drawer", { seatPrice: this.seatPrice });
-  console.log(`[Seat Price] ${this.seatPrice}`);
 });
 
 When("I extract the baggage price", async function () {
@@ -835,7 +834,7 @@ Then("the total price in cart is equal to total price in cart before seats + sea
     pwExpect(currentTotal).not.toBe(priceBeforeSeats);
   }).toPass({ timeout: 20000 });
 
-  console.log(`[Price Assertion] Before seats: ${priceBeforeSeats}, Seat price: ${seatPrice}, Expected total: ${priceBeforeSeats + seatPrice}, Actual: ${currentTotal}`);
+  logger.info("Cart total price assertion", { priceBeforeSeats, seatPrice, expectedTotal: priceBeforeSeats + seatPrice, actual: currentTotal });
   expectSumToBeEqualWithTolerance(
     priceBeforeSeats,
     seatPrice,
@@ -872,7 +871,7 @@ Then("the price in cart should equal the total price before adding baggage + the
     pwExpect(currentTotal).not.toBe(priceBeforeBaggage);
   }).toPass({ timeout: 20000 });
 
-  console.log(`[Price Assertion] Before baggage: ${priceBeforeBaggage}, Baggage price: ${baggagePrice}, Expected total: ${priceBeforeBaggage + baggagePrice}, Actual: ${currentTotal}`);
+  logger.info("Cart total price assertion", { priceBeforeBaggage, baggagePrice, expectedTotal: priceBeforeBaggage + baggagePrice, actual: currentTotal });
   expectSumToBeEqualWithTolerance(
     priceBeforeBaggage,
     baggagePrice,
@@ -3580,6 +3579,11 @@ Then("gender is not selected", async function () {
 When("I add the suggested car quote to the trip", async function () {
   logger.info("Adding the agent-suggested car quote to the trip");
   await Cart.addSuggestedCarQuoteToTrip(this.page);
+});
+
+When("I add the suggested hotel quote to the trip", async function () {
+  logger.info("Adding the agent-suggested hotel quote to the trip");
+  await Cart.addSuggestedHotelQuoteToTrip(this.page);
 });
 
 When("I copy the trip", async function () {
