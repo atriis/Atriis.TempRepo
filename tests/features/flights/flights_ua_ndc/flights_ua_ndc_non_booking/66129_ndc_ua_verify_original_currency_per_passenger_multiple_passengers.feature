@@ -13,7 +13,6 @@ Feature: 66129 NDC UA - Verify original currency per passenger for multiple pass
   I want to see the original currency price displayed per passenger
   So that I can verify the price breakdown matches the original currency
 
-  #BUG 77300
   Scenario: Verify original currency is displayed per traveler in results, pricing options, and cart
     Given I am logged in as "uandc.amsalem@testimcorporate.com" booking a new trip
     And I have added a random guest traveler
