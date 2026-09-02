@@ -4193,6 +4193,49 @@ class CartPage {
   }
 
   /**
+   * Reads ONE quote card's own total price, addressed by its 1-based cart position
+   * (quote 1 = topmost card).
+   *
+   * This is the per-quote total, NOT the cart grand total - use getCartTotalPrice() for that.
+   * The two differ on any multi-quote trip, and only this one moves when an extra is added to
+   * one specific quote.
+   *
+   * The price lives in the card's own price block: base-quote-card.vue renders
+   * `.product-extra-info.price-wrapper > app-price` (`displayPrice`), and the variants that
+   * override the `ticket-extra-info` slot render their own `.price-wrapper > app-price`
+   * (flight-extra-info.vue - `totalPriceDisplayCurrency`). SELECTORS.QUOTE_CARD_PRICE_AMOUNT
+   * covers both. `visible=true` is required, not cosmetic: those components render a mobile AND
+   * a desktop price block, and a card renders a SECOND app-price in brackets for the original
+   * currency whenever it differs from the display currency - so an unfiltered .first() can land
+   * on a hidden node or on the wrong currency.
+   *
+   * @param {number} position - 1-based quote position
+   * @param {{ timeout?: number }} options
+   * @returns {Promise<number>} the quote total, parsed
+   */
+  async getQuoteTotalPriceByPosition(position, { timeout = 30000 } = {}) {
+    const card = await this.waitForQuoteCardByPosition(position, { timeout });
+
+    const priceEl = card
+      .locator(SELECTORS.QUOTE_CARD_PRICE_AMOUNT)
+      .locator('visible=true')
+      .first();
+
+    try {
+      await priceEl.waitFor({ state: 'visible', timeout });
+    } catch (err) {
+      throw new Error(
+        `[CartPage.getQuoteTotalPriceByPosition] Quote ${position} renders no visible price within ` +
+        `${timeout}ms (selector: ${SELECTORS.QUOTE_CARD_PRICE_AMOUNT} inside ` +
+        `${SELECTORS.QUOTE_PAYMENT_CARD_VISIBLE}). Original: ${err.message}`
+      );
+    }
+
+    const text = (await priceEl.innerText()).trim();
+    return parseAmountText(text, `quote ${position} total price`);
+  }
+
+  /**
    * Reads one quote card's status badge text.
    * @param {number} position - 1-based quote position
    * @param {{ timeout?: number }} options

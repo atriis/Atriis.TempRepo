@@ -8694,6 +8694,22 @@ const Cart = {
   },
 
   /**
+   * Extracts ONE quote card's own total price from the cart, by 1-based position
+   * (quote 1 = the topmost card). Use for per-quote assertions on a multi-quote trip, or when a
+   * change must be shown to move THAT quote rather than merely the trip total.
+   * For the trip grand total use extractCartTotalPrice().
+   *
+   * @param {import('playwright').Page} page
+   * @param {number} position - 1-based quote position
+   * @returns {Promise<number>} The quote total price
+   */
+  async extractQuoteTotalPrice(page, position) {
+    if (!page) throw new Error('page is required');
+    const cartPage = getPageObject(page, CartPage);
+    return cartPage.getQuoteTotalPriceByPosition(position);
+  },
+
+  /**
    * Extracts the cart grand total price from the trip summary sidebar.
    * @param {import('playwright').Page} page
    * @returns {Promise<number>} The cart total price

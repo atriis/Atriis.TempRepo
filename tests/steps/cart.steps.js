@@ -578,8 +578,8 @@ When("I extract the selected baggage option label", async function () {
 
 // Semantic replacements for "I extract the price at index {int} from cart", which is purely
 // positional (the nth `.amount` node anywhere on the page) and silently reads a
-// different number as soon as a row is added above it. It still pushes onto this.extractedPrices,
-// so every existing "the extracted price at index {int} should ..." comparison keeps working - the
+// different number as soon as a row is added above it. Both push onto this.extractedPrices, so
+// every existing "the extracted price at index {int} should ..." comparison keeps working - the
 // first extraction in a scenario is index 0, the second index 1, and so on.
 
 // The trip grand total in the cart summary sidebar (.price-total .amount, trip-summary.vue).
@@ -596,6 +596,22 @@ When("I extract the total cart summary price", async function () {
     price,
     extractedPricesIndex: this.extractedPrices.length - 1,
     cartSummaryPricesIndex: this.cartSummaryPrices.length - 1,
+  });
+});
+
+// ONE quote card's own total, by 1-based cart position - "quote 1" is the topmost card. Use this
+// over the summary total whenever the assertion is about a specific quote (a per-quote extra, a
+// multi-quote trip where the grand total would move for the wrong reason).
+When("I extract the total price of quote {int}", async function (position) {
+  const price = await Cart.extractQuoteTotalPrice(this.page, position);
+  if (!this.extractedPrices) this.extractedPrices = [];
+  this.extractedPrices.push(price);
+  if (!this.quoteTotalPrices) this.quoteTotalPrices = {};
+  this.quoteTotalPrices[position] = price;
+  logger.info("Extracted quote total price", {
+    position,
+    price,
+    extractedPricesIndex: this.extractedPrices.length - 1,
   });
 });
 
