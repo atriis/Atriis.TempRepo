@@ -2,7 +2,7 @@
 // Re-run: node docs/user-guide/scan-steps.js
 window.STEP_DATA = {
   "generatedFrom": "tests/steps/*.js",
-  "count": 1862,
+  "count": 2005,
   "products": [
     "Cars",
     "Flights",
@@ -14,6 +14,7 @@ window.STEP_DATA = {
   ],
   "dsls": [
     "Administration",
+    "AmtrakResults",
     "AmtrakSearch",
     "App",
     "BenerailResults",
@@ -24,6 +25,7 @@ window.STEP_DATA = {
     "CartPayment",
     "Chat",
     "Checkout",
+    "DbRail",
     "DynamicAndReferenceFields",
     "EvolviResults",
     "EvolviSearch",
@@ -31,11 +33,13 @@ window.STEP_DATA = {
     "FlightResults",
     "FlightSearch",
     "GenesysChat",
+    "GroundTransportResults",
     "GroundTransportSearch",
     "Homepage",
     "HotelLevelResults",
     "HotelSearch",
     "LegacyGtp",
+    "ManageProfiles",
     "ManualQuoteSearch",
     "ParallelSearch",
     "PayloadValidation",
@@ -600,6 +604,15 @@ window.STEP_DATA = {
     },
     {
       "type": "When",
+      "text": "I ensure the administration user {string} is active",
+      "file": "administration.steps.js",
+      "product": "Shared",
+      "dsl": [
+        "Administration"
+      ]
+    },
+    {
+      "type": "When",
       "text": "I filter the administration users by {string}",
       "file": "administration.steps.js",
       "product": "Shared",
@@ -780,6 +793,69 @@ window.STEP_DATA = {
     },
     {
       "type": "When",
+      "text": "I open the Agreements section in the administration",
+      "file": "administration.steps.js",
+      "product": "Shared",
+      "dsl": [
+        "Administration"
+      ]
+    },
+    {
+      "type": "When",
+      "text": "I open the first agreement listed under the {string} category in the administration",
+      "file": "administration.steps.js",
+      "product": "Shared",
+      "dsl": [
+        "Administration"
+      ]
+    },
+    {
+      "type": "When",
+      "text": "I enter a random value into the agreement tooltip in the administration",
+      "file": "administration.steps.js",
+      "product": "Shared",
+      "dsl": [
+        "Administration"
+      ]
+    },
+    {
+      "type": "When",
+      "text": "I enter the agreement tooltip value {string} in the administration",
+      "file": "administration.steps.js",
+      "product": "Shared",
+      "dsl": [
+        "Administration"
+      ]
+    },
+    {
+      "type": "When",
+      "text": "I enter the comment {string} for the agreement change in the administration",
+      "file": "administration.steps.js",
+      "product": "Shared",
+      "dsl": [
+        "Administration"
+      ]
+    },
+    {
+      "type": "When",
+      "text": "I save the agreement in the administration",
+      "file": "administration.steps.js",
+      "product": "Shared",
+      "dsl": [
+        "Administration"
+      ]
+    },
+    {
+      "type": "Then",
+      "text": "the agreement tooltip should display {string} in the administration",
+      "file": "administration.steps.js",
+      "product": "Shared",
+      "dsl": [
+        "Administration"
+      ]
+    },
+    {
+      "type": "When",
       "text": "I search for a one way Amtrak train from {string}",
       "file": "amtrak.steps.js",
       "product": "Rail",
@@ -798,52 +874,66 @@ window.STEP_DATA = {
     },
     {
       "type": "When",
-      "text": "I fill in Amtrak contact information and proceed to checkout",
+      "text": "I search for a round trip Amtrak train from {string} without clicking search button",
       "file": "amtrak.steps.js",
       "product": "Rail",
-      "dsl": []
+      "dsl": [
+        "AmtrakSearch"
+      ]
     },
     {
       "type": "When",
-      "text": "I validate the departure time selector in Amtrak search",
+      "text": "I validate the departure time selector in Amtrak search by changing the hour",
       "file": "amtrak.steps.js",
       "product": "Rail",
-      "dsl": []
+      "dsl": [
+        "AmtrakSearch"
+      ]
     },
     {
       "type": "When",
-      "text": "I validate the return time selector in Amtrak search",
+      "text": "I validate the return time selector in Amtrak search by changing the hour",
       "file": "amtrak.steps.js",
       "product": "Rail",
-      "dsl": []
+      "dsl": [
+        "AmtrakSearch"
+      ]
     },
     {
       "type": "When",
       "text": "I add a second traveler through the Amtrak search form",
       "file": "amtrak.steps.js",
       "product": "Rail",
-      "dsl": []
+      "dsl": [
+        "AmtrakSearch"
+      ]
+    },
+    {
+      "type": "When",
+      "text": "I type {string} in promo code field",
+      "file": "amtrak.steps.js",
+      "product": "Rail",
+      "dsl": [
+        "AmtrakSearch"
+      ]
+    },
+    {
+      "type": "Then",
+      "text": "the promo code minimum length validation {string} should be displayed",
+      "file": "amtrak.steps.js",
+      "product": "Rail",
+      "dsl": [
+        "AmtrakSearch"
+      ]
     },
     {
       "type": "When",
       "text": "I expand the traveler detail section in Amtrak search",
       "file": "amtrak.steps.js",
       "product": "Rail",
-      "dsl": []
-    },
-    {
-      "type": "When",
-      "text": "I enter a valid Amtrak promo code",
-      "file": "amtrak.steps.js",
-      "product": "Rail",
-      "dsl": []
-    },
-    {
-      "type": "When",
-      "text": "I expand the Amtrak extras section in cart",
-      "file": "amtrak.steps.js",
-      "product": "Rail",
-      "dsl": []
+      "dsl": [
+        "AmtrakSearch"
+      ]
     },
     {
       "type": "Then",
@@ -868,21 +958,7 @@ window.STEP_DATA = {
     },
     {
       "type": "Then",
-      "text": "the promo code minimum length validation should be displayed",
-      "file": "amtrak.steps.js",
-      "product": "Rail",
-      "dsl": []
-    },
-    {
-      "type": "Then",
       "text": "the Amtrak search results should be displayed",
-      "file": "amtrak.steps.js",
-      "product": "Rail",
-      "dsl": []
-    },
-    {
-      "type": "Then",
-      "text": "the Amtrak trip timer badge should be visible in cart",
       "file": "amtrak.steps.js",
       "product": "Rail",
       "dsl": []
@@ -892,60 +968,85 @@ window.STEP_DATA = {
       "text": "the required extras notice should be visible in cart",
       "file": "amtrak.steps.js",
       "product": "Rail",
-      "dsl": []
-    },
-    {
-      "type": "Then",
-      "text": "the contact information section should be visible in the Amtrak cart extras",
-      "file": "amtrak.steps.js",
-      "product": "Rail",
-      "dsl": []
+      "dsl": [
+        "Cart"
+      ]
     },
     {
       "type": "Then",
       "text": "the phone number field should be visible in the Amtrak cart extras",
       "file": "amtrak.steps.js",
       "product": "Rail",
-      "dsl": []
+      "dsl": [
+        "Cart"
+      ]
     },
     {
       "type": "Then",
-      "text": "the Amtrak summary title should contain the destination",
+      "text": "the Amtrak summary title should contain {string}",
       "file": "amtrak.steps.js",
       "product": "Rail",
-      "dsl": []
+      "dsl": [
+        "Cart"
+      ]
     },
     {
       "type": "Then",
-      "text": "the fare rules cancellations section should be visible",
+      "text": "the fare rules should be accessible in the Amtrak cart and contain {string}",
       "file": "amtrak.steps.js",
       "product": "Rail",
-      "dsl": []
+      "dsl": [
+        "Cart"
+      ]
     },
     {
       "type": "Then",
       "text": "the contact information section should be required in cart",
       "file": "amtrak.steps.js",
       "product": "Rail",
-      "dsl": []
+      "dsl": [
+        "Cart"
+      ]
+    },
+    {
+      "type": "When",
+      "text": "I expand the contact informations section in cart",
+      "file": "amtrak.steps.js",
+      "product": "Rail",
+      "dsl": [
+        "Cart"
+      ]
+    },
+    {
+      "type": "When",
+      "text": "I fill in Amtrak contact information",
+      "file": "amtrak.steps.js",
+      "product": "Rail",
+      "dsl": [
+        "Cart"
+      ]
     },
     {
       "type": "Then",
       "text": "the phone number fields should be empty in cart",
       "file": "amtrak.steps.js",
       "product": "Rail",
-      "dsl": []
+      "dsl": [
+        "Cart"
+      ]
+    },
+    {
+      "type": "Then",
+      "text": "the contact information should have red border because it is mandatory",
+      "file": "amtrak.steps.js",
+      "product": "Rail",
+      "dsl": [
+        "Cart"
+      ]
     },
     {
       "type": "Then",
       "text": "the mandatory information validation error should be displayed",
-      "file": "amtrak.steps.js",
-      "product": "Rail",
-      "dsl": []
-    },
-    {
-      "type": "Then",
-      "text": "the Amtrak destination title and train icon should be displayed in the trip overview",
       "file": "amtrak.steps.js",
       "product": "Rail",
       "dsl": []
@@ -966,49 +1067,88 @@ window.STEP_DATA = {
     },
     {
       "type": "When",
-      "text": "I click more details for the first Amtrak result",
+      "text": "I add an Amtrak one way to the trip",
       "file": "amtrak_results.steps.js",
       "product": "Rail",
-      "dsl": []
+      "dsl": [
+        "AmtrakResults"
+      ]
     },
     {
       "type": "When",
-      "text": "I check fare rules and add the Amtrak round trip to cart",
+      "text": "I click more details for the first Amtrak result",
       "file": "amtrak_results.steps.js",
       "product": "Rail",
-      "dsl": []
+      "dsl": [
+        "AmtrakResults"
+      ]
     },
     {
       "type": "When",
       "text": "I share the price offer from the Amtrak results page",
       "file": "amtrak_results.steps.js",
       "product": "Rail",
-      "dsl": []
-    },
-    {
-      "type": "When",
-      "text": "I close the Amtrak results share panel",
-      "file": "amtrak_results.steps.js",
-      "product": "Rail",
-      "dsl": []
+      "dsl": [
+        "AmtrakResults"
+      ]
     },
     {
       "type": "When",
       "text": "I view fare rules for the first Amtrak result",
       "file": "amtrak_results.steps.js",
       "product": "Rail",
-      "dsl": []
+      "dsl": [
+        "Cart"
+      ]
     },
     {
       "type": "When",
       "text": "I close the Amtrak fare rules modal",
       "file": "amtrak_results.steps.js",
       "product": "Rail",
-      "dsl": []
+      "dsl": [
+        "Cart"
+      ]
     },
     {
       "type": "When",
-      "text": "I expand the first Amtrak result details",
+      "text": "I select the first Amtrak result from the more details drawer",
+      "file": "amtrak_results.steps.js",
+      "product": "Rail",
+      "dsl": [
+        "AmtrakResults"
+      ]
+    },
+    {
+      "type": "Then",
+      "text": "the fare rules modal should show the supplier terms and conditions link",
+      "file": "amtrak_results.steps.js",
+      "product": "Rail",
+      "dsl": [
+        "AmtrakResults"
+      ]
+    },
+    {
+      "type": "Then",
+      "text": "the fare rules should be accessible in Amtrak results and contain {string}",
+      "file": "amtrak_results.steps.js",
+      "product": "Rail",
+      "dsl": [
+        "Cart"
+      ]
+    },
+    {
+      "type": "Then",
+      "text": "the available classes and fares should be displayed",
+      "file": "amtrak_results.steps.js",
+      "product": "Rail",
+      "dsl": [
+        "AmtrakResults"
+      ]
+    },
+    {
+      "type": "When",
+      "text": "I check fare rules and add the Amtrak round trip to cart",
       "file": "amtrak_results.steps.js",
       "product": "Rail",
       "dsl": []
@@ -1023,20 +1163,6 @@ window.STEP_DATA = {
     {
       "type": "When",
       "text": "I add the out of policy Amtrak result to cart",
-      "file": "amtrak_results.steps.js",
-      "product": "Rail",
-      "dsl": []
-    },
-    {
-      "type": "Then",
-      "text": "the fare rules modal should show the supplier terms and conditions link",
-      "file": "amtrak_results.steps.js",
-      "product": "Rail",
-      "dsl": []
-    },
-    {
-      "type": "Then",
-      "text": "the available classes and fares should be displayed",
       "file": "amtrak_results.steps.js",
       "product": "Rail",
       "dsl": []
@@ -3370,6 +3496,16 @@ window.STEP_DATA = {
     },
     {
       "type": "When",
+      "text": "I hold quote {int}",
+      "file": "cart.steps.js",
+      "product": "Shared",
+      "dsl": [
+        "Cart",
+        "Checkout"
+      ]
+    },
+    {
+      "type": "When",
       "text": "I click hold flight button",
       "file": "cart.steps.js",
       "product": "Shared",
@@ -3875,6 +4011,24 @@ window.STEP_DATA = {
     },
     {
       "type": "When",
+      "text": "I extract the total cart summary price",
+      "file": "cart.steps.js",
+      "product": "Shared",
+      "dsl": [
+        "Cart"
+      ]
+    },
+    {
+      "type": "When",
+      "text": "I extract the total price of quote {int}",
+      "file": "cart.steps.js",
+      "product": "Shared",
+      "dsl": [
+        "Cart"
+      ]
+    },
+    {
+      "type": "When",
       "text": "I extract the price from price breakdown",
       "file": "cart.steps.js",
       "product": "Shared",
@@ -3908,6 +4062,51 @@ window.STEP_DATA = {
     {
       "type": "Then",
       "text": "the seat tooltip should contain preferred and extra legroom labels",
+      "file": "cart.steps.js",
+      "product": "Shared",
+      "dsl": [
+        "Cart"
+      ]
+    },
+    {
+      "type": "Then",
+      "text": "the economy comfort seats should be shown in the economy comfort color",
+      "file": "cart.steps.js",
+      "product": "Shared",
+      "dsl": [
+        "Cart"
+      ]
+    },
+    {
+      "type": "When",
+      "text": "I hover over an economy comfort seat",
+      "file": "cart.steps.js",
+      "product": "Shared",
+      "dsl": [
+        "Cart"
+      ]
+    },
+    {
+      "type": "Then",
+      "text": "the seat tooltip should contain the economy comfort label",
+      "file": "cart.steps.js",
+      "product": "Shared",
+      "dsl": [
+        "Cart"
+      ]
+    },
+    {
+      "type": "Then",
+      "text": "the economy comfort color should override the preferred and extra legroom colors",
+      "file": "cart.steps.js",
+      "product": "Shared",
+      "dsl": [
+        "Cart"
+      ]
+    },
+    {
+      "type": "Then",
+      "text": "the seats without the economy comfort characteristic should keep their existing colors",
       "file": "cart.steps.js",
       "product": "Shared",
       "dsl": [
@@ -3993,6 +4192,69 @@ window.STEP_DATA = {
     },
     {
       "type": "When",
+      "text": "I select the {string} delivery method and save",
+      "file": "cart.steps.js",
+      "product": "Shared",
+      "dsl": [
+        "Cart"
+      ]
+    },
+    {
+      "type": "When",
+      "text": "I expand delivery method in extras section",
+      "file": "cart.steps.js",
+      "product": "Shared",
+      "dsl": [
+        "Cart"
+      ]
+    },
+    {
+      "type": "Then",
+      "text": "{string} is displayed in {string} field",
+      "file": "cart.steps.js",
+      "product": "Shared",
+      "dsl": [
+        "Cart"
+      ]
+    },
+    {
+      "type": "Then",
+      "text": "I should see route that contains {string} to {string}",
+      "file": "cart.steps.js",
+      "product": "Shared",
+      "dsl": [
+        "Cart"
+      ]
+    },
+    {
+      "type": "Then",
+      "text": "the cart should show {string} to {string} for the Evolvi outbound leg",
+      "file": "cart.steps.js",
+      "product": "Shared",
+      "dsl": [
+        "Cart"
+      ]
+    },
+    {
+      "type": "Then",
+      "text": "the cart should show {string} to {string} for the Evolvi inbound leg",
+      "file": "cart.steps.js",
+      "product": "Shared",
+      "dsl": [
+        "Cart"
+      ]
+    },
+    {
+      "type": "Then",
+      "text": "both rail segments in cart should show the ticket type {string}",
+      "file": "cart.steps.js",
+      "product": "Shared",
+      "dsl": [
+        "Cart"
+      ]
+    },
+    {
+      "type": "When",
       "text": "I extract cancellation policy from cart",
       "file": "cart.steps.js",
       "product": "Shared",
@@ -4029,6 +4291,15 @@ window.STEP_DATA = {
       "file": "cart.steps.js",
       "product": "Shared",
       "dsl": []
+    },
+    {
+      "type": "Then",
+      "text": "the cart summary price should equal the cart summary price before adding baggage plus the baggage price",
+      "file": "cart.steps.js",
+      "product": "Shared",
+      "dsl": [
+        "Cart"
+      ]
     },
     {
       "type": "Then",
@@ -4282,7 +4553,8 @@ window.STEP_DATA = {
       "file": "cart.steps.js",
       "product": "Shared",
       "dsl": [
-        "Cart"
+        "Cart",
+        "Checkout"
       ]
     },
     {
@@ -4290,10 +4562,14 @@ window.STEP_DATA = {
       "text": "the booking status should be {string}",
       "file": "cart.steps.js",
       "product": "Shared",
-      "dsl": [
-        "Cart",
-        "Checkout"
-      ]
+      "dsl": []
+    },
+    {
+      "type": "Then",
+      "text": "the booking status is {string}",
+      "file": "cart.steps.js",
+      "product": "Shared",
+      "dsl": []
     },
     {
       "type": "Then",
@@ -4603,6 +4879,15 @@ window.STEP_DATA = {
       ]
     },
     {
+      "type": "Then",
+      "text": "the countdown clock is between {int} and {int} minutes",
+      "file": "cart.steps.js",
+      "product": "Shared",
+      "dsl": [
+        "Cart"
+      ]
+    },
+    {
       "type": "When",
       "text": "I hover the countdown clock",
       "file": "cart.steps.js",
@@ -4682,6 +4967,33 @@ window.STEP_DATA = {
     {
       "type": "Then",
       "text": "the download voucher options for english and french should not be visible in cart",
+      "file": "cart.steps.js",
+      "product": "Shared",
+      "dsl": [
+        "Cart"
+      ]
+    },
+    {
+      "type": "When",
+      "text": "I download the hotel voucher in {string}",
+      "file": "cart.steps.js",
+      "product": "Shared",
+      "dsl": [
+        "Cart"
+      ]
+    },
+    {
+      "type": "Then",
+      "text": "the downloaded hotel voucher should not contain any prices",
+      "file": "cart.steps.js",
+      "product": "Shared",
+      "dsl": [
+        "Cart"
+      ]
+    },
+    {
+      "type": "Then",
+      "text": "the extracted price from cart more details is not displayed",
       "file": "cart.steps.js",
       "product": "Shared",
       "dsl": [
@@ -4843,6 +5155,15 @@ window.STEP_DATA = {
     },
     {
       "type": "Then",
+      "text": "the last added quote title contains {string} and drop off contains {string}",
+      "file": "cart.steps.js",
+      "product": "Shared",
+      "dsl": [
+        "Cart"
+      ]
+    },
+    {
+      "type": "Then",
       "text": "the flight quote destination should be {string}",
       "file": "cart.steps.js",
       "product": "Shared",
@@ -4907,6 +5228,15 @@ window.STEP_DATA = {
     {
       "type": "Then",
       "text": "the cart should contain {int} flight quote(s)",
+      "file": "cart.steps.js",
+      "product": "Shared",
+      "dsl": [
+        "Cart"
+      ]
+    },
+    {
+      "type": "Then",
+      "text": "the cart should contain {int} quote(s)",
       "file": "cart.steps.js",
       "product": "Shared",
       "dsl": [
@@ -5005,6 +5335,15 @@ window.STEP_DATA = {
     },
     {
       "type": "Then",
+      "text": "quote {int} status should be {string}",
+      "file": "cart.steps.js",
+      "product": "Shared",
+      "dsl": [
+        "Cart"
+      ]
+    },
+    {
+      "type": "Then",
       "text": "the last quote status should be {string}",
       "file": "cart.steps.js",
       "product": "Shared",
@@ -5060,6 +5399,15 @@ window.STEP_DATA = {
     {
       "type": "When",
       "text": "I dismiss the mandatory notifications popup if displayed",
+      "file": "cart.steps.js",
+      "product": "Shared",
+      "dsl": [
+        "Cart"
+      ]
+    },
+    {
+      "type": "When",
+      "text": "I close mandatory notifications if displayed",
       "file": "cart.steps.js",
       "product": "Shared",
       "dsl": [
@@ -5141,6 +5489,24 @@ window.STEP_DATA = {
     {
       "type": "When",
       "text": "I close the notification center",
+      "file": "cart.steps.js",
+      "product": "Shared",
+      "dsl": [
+        "Cart"
+      ]
+    },
+    {
+      "type": "Then",
+      "text": "the mandatory unread notifications message should be displayed",
+      "file": "cart.steps.js",
+      "product": "Shared",
+      "dsl": [
+        "Cart"
+      ]
+    },
+    {
+      "type": "When",
+      "text": "I mark all unread notifications as read",
       "file": "cart.steps.js",
       "product": "Shared",
       "dsl": [
@@ -6021,6 +6387,33 @@ window.STEP_DATA = {
     },
     {
       "type": "Then",
+      "text": "the {string} section should be visible in the extras highlighted and with red asterisk",
+      "file": "cart.steps.js",
+      "product": "Shared",
+      "dsl": [
+        "Cart"
+      ]
+    },
+    {
+      "type": "When",
+      "text": "I fill in {string} section",
+      "file": "cart.steps.js",
+      "product": "Shared",
+      "dsl": [
+        "Cart"
+      ]
+    },
+    {
+      "type": "Then",
+      "text": "{string}, {string} and {string} have green check marks",
+      "file": "cart.steps.js",
+      "product": "Shared",
+      "dsl": [
+        "Cart"
+      ]
+    },
+    {
+      "type": "Then",
       "text": "the age association mandatory field should not be displayed in the Benerail extras",
       "file": "cart.steps.js",
       "product": "Shared",
@@ -6139,6 +6532,24 @@ window.STEP_DATA = {
     {
       "type": "When",
       "text": "I fill in the passport expiry date {string} in passenger info section",
+      "file": "cart.steps.js",
+      "product": "Shared",
+      "dsl": [
+        "Cart"
+      ]
+    },
+    {
+      "type": "When",
+      "text": "I fill in all the passenger info",
+      "file": "cart.steps.js",
+      "product": "Shared",
+      "dsl": [
+        "Cart"
+      ]
+    },
+    {
+      "type": "When",
+      "text": "I fill in all the passenger info with:",
       "file": "cart.steps.js",
       "product": "Shared",
       "dsl": [
@@ -6292,6 +6703,15 @@ window.STEP_DATA = {
     {
       "type": "When",
       "text": "I click more details in cart",
+      "file": "cart.steps.js",
+      "product": "Shared",
+      "dsl": [
+        "Cart"
+      ]
+    },
+    {
+      "type": "Then",
+      "text": "the more details link should be displayed in the trip overview",
       "file": "cart.steps.js",
       "product": "Shared",
       "dsl": [
@@ -6971,6 +7391,15 @@ window.STEP_DATA = {
     },
     {
       "type": "Then",
+      "text": "the Amtrak destination title {string} and train icon should be displayed in the trip overview",
+      "file": "cart.steps.js",
+      "product": "Shared",
+      "dsl": [
+        "Cart"
+      ]
+    },
+    {
+      "type": "Then",
       "text": "the passenger initials {string} should be visible",
       "file": "cart.steps.js",
       "product": "Shared",
@@ -7053,6 +7482,15 @@ window.STEP_DATA = {
     {
       "type": "When",
       "text": "I add the suggested car quote to the trip",
+      "file": "cart.steps.js",
+      "product": "Shared",
+      "dsl": [
+        "Cart"
+      ]
+    },
+    {
+      "type": "When",
+      "text": "I add the suggested hotel quote to the trip",
       "file": "cart.steps.js",
       "product": "Shared",
       "dsl": [
@@ -7228,7 +7666,7 @@ window.STEP_DATA = {
     },
     {
       "type": "Then",
-      "text": "the copied trip should show a to pay amount",
+      "text": "the copied trip flight should show a copied offer amount",
       "file": "cart.steps.js",
       "product": "Shared",
       "dsl": [
@@ -7585,6 +8023,15 @@ window.STEP_DATA = {
       ]
     },
     {
+      "type": "Then",
+      "text": "the trip approval bar should show {string} with {string} and {string} buttons",
+      "file": "cart.steps.js",
+      "product": "Shared",
+      "dsl": [
+        "Cart"
+      ]
+    },
+    {
       "type": "When",
       "text": "I fill mandatory Evolvi fields in cart",
       "file": "cart.steps.js",
@@ -7595,7 +8042,214 @@ window.STEP_DATA = {
     },
     {
       "type": "When",
+      "text": "I open the UK Rail seat reservation in the cart extras",
+      "file": "cart.steps.js",
+      "product": "Shared",
+      "dsl": [
+        "Cart"
+      ]
+    },
+    {
+      "type": "When",
+      "text": "I select the {string} UK Rail seat option",
+      "file": "cart.steps.js",
+      "product": "Shared",
+      "dsl": [
+        "Cart"
+      ]
+    },
+    {
+      "type": "Then",
+      "text": "the UK Rail seat option should be {string}",
+      "file": "cart.steps.js",
+      "product": "Shared",
+      "dsl": [
+        "Cart"
+      ]
+    },
+    {
+      "type": "When",
+      "text": "I extract the offered seat number from the UK Rail seat reservation",
+      "file": "cart.steps.js",
+      "product": "Shared",
+      "dsl": [
+        "Cart"
+      ]
+    },
+    {
+      "type": "When",
+      "text": "I extract the offered coach from the UK Rail seat reservation",
+      "file": "cart.steps.js",
+      "product": "Shared",
+      "dsl": [
+        "Cart"
+      ]
+    },
+    {
+      "type": "Then",
+      "text": "the UK Rail quote summary should show {string}",
+      "file": "cart.steps.js",
+      "product": "Shared",
+      "dsl": [
+        "Cart"
+      ]
+    },
+    {
+      "type": "Then",
+      "text": "the seat number reserved seat in the UK Rail seating extra should match the extracted seat number",
+      "file": "cart.steps.js",
+      "product": "Shared",
+      "dsl": [
+        "Cart"
+      ]
+    },
+    {
+      "type": "Then",
+      "text": "the UK Rail seating extra summary should show the extracted coach",
+      "file": "cart.steps.js",
+      "product": "Shared",
+      "dsl": [
+        "Cart"
+      ]
+    },
+    {
+      "type": "When",
+      "text": "I save the UK Rail seat reservation",
+      "file": "cart.steps.js",
+      "product": "Shared",
+      "dsl": [
+        "Cart"
+      ]
+    },
+    {
+      "type": "When",
+      "text": "I select the first available UK Rail coach",
+      "file": "cart.steps.js",
+      "product": "Shared",
+      "dsl": [
+        "Cart"
+      ]
+    },
+    {
+      "type": "When",
+      "text": "I fill in the UK Rail seat reservation telephone number {string}",
+      "file": "cart.steps.js",
+      "product": "Shared",
+      "dsl": [
+        "Cart"
+      ]
+    },
+    {
+      "type": "Then",
+      "text": "the coach sent in the UK Rail seat reservation should be a single uppercase letter",
+      "file": "cart.steps.js",
+      "product": "Shared",
+      "dsl": [
+        "Cart"
+      ]
+    },
+    {
+      "type": "Then",
+      "text": "the coach reserved seat in the UK Rail more details should be a single uppercase letter",
+      "file": "cart.steps.js",
+      "product": "Shared",
+      "dsl": [
+        "Cart"
+      ]
+    },
+    {
+      "type": "Then",
+      "text": "split ticket icon information and {string} should be visible in cart",
+      "file": "cart.steps.js",
+      "product": "Shared",
+      "dsl": [
+        "Cart"
+      ]
+    },
+    {
+      "type": "Then",
+      "text": "split ticket icon information and {string} should be visible in more details",
+      "file": "cart.steps.js",
+      "product": "Shared",
+      "dsl": [
+        "Cart"
+      ]
+    },
+    {
+      "type": "Then",
+      "text": "split ticket icon information, {string} and {string} should be visible in itinerary",
+      "file": "cart.steps.js",
+      "product": "Shared",
+      "dsl": [
+        "Cart"
+      ]
+    },
+    {
+      "type": "Then",
+      "text": "the wallet link {string} should be visible in itinerary",
+      "file": "cart.steps.js",
+      "product": "Shared",
+      "dsl": [
+        "Cart"
+      ]
+    },
+    {
+      "type": "When",
+      "text": "I extract the e-ticket number from the trip overview",
+      "file": "cart.steps.js",
+      "product": "Shared",
+      "dsl": [
+        "Cart"
+      ]
+    },
+    {
+      "type": "When",
+      "text": "I click the e-ticket link in the share itinerary preview",
+      "file": "cart.steps.js",
+      "product": "Shared",
+      "dsl": [
+        "Cart"
+      ]
+    },
+    {
+      "type": "Then",
+      "text": "the e-ticket file should be downloaded",
+      "file": "cart.steps.js",
+      "product": "Shared",
+      "dsl": [
+        "Cart"
+      ]
+    },
+    {
+      "type": "Then",
+      "text": "the e-ticket number in the share itinerary should match the trip overview",
+      "file": "cart.steps.js",
+      "product": "Shared",
+      "dsl": [
+        "Cart"
+      ]
+    },
+    {
+      "type": "When",
+      "text": "I add a generated email address as the itinerary recipient",
+      "file": "cart.steps.js",
+      "product": "Shared",
+      "dsl": [
+        "Cart"
+      ]
+    },
+    {
+      "type": "When",
       "text": "I add a credit card as payment method",
+      "file": "cart_fop.steps.js",
+      "product": "Shared",
+      "dsl": [
+        "CartPayment"
+      ]
+    },
+    {
+      "type": "When",
+      "text": "I add a credit card as payment method for the hotel quote",
       "file": "cart_fop.steps.js",
       "product": "Shared",
       "dsl": [
@@ -7718,7 +8372,9 @@ window.STEP_DATA = {
       "text": "I fill CVV with {string}",
       "file": "cart_fop.steps.js",
       "product": "Shared",
-      "dsl": []
+      "dsl": [
+        "CartPayment"
+      ]
     },
     {
       "type": "Then",
@@ -7840,6 +8496,15 @@ window.STEP_DATA = {
     {
       "type": "Then",
       "text": "the payment options should include {string} and {string}",
+      "file": "cart_fop.steps.js",
+      "product": "Shared",
+      "dsl": [
+        "CartPayment"
+      ]
+    },
+    {
+      "type": "Then",
+      "text": "the {string} payment option should be displayed",
       "file": "cart_fop.steps.js",
       "product": "Shared",
       "dsl": [
@@ -8764,66 +9429,39 @@ window.STEP_DATA = {
     },
     {
       "type": "When",
-      "text": "I open the traveler profile frequent programs tab",
-      "file": "db.steps.js",
-      "product": "Shared",
-      "dsl": []
-    },
-    {
-      "type": "When",
-      "text": "I add DB BahnCard 50 with number and expiration date",
-      "file": "db.steps.js",
-      "product": "Shared",
-      "dsl": []
-    },
-    {
-      "type": "Then",
-      "text": "the DB BahnCard 50 expiration date should be saved",
-      "file": "db.steps.js",
-      "product": "Shared",
-      "dsl": []
-    },
-    {
-      "type": "When",
-      "text": "I remove the DB BahnCard frequent program entry",
-      "file": "db.steps.js",
-      "product": "Shared",
-      "dsl": []
-    },
-    {
-      "type": "When",
-      "text": "I open the first trip from the trip list",
-      "file": "db.steps.js",
-      "product": "Shared",
-      "dsl": []
-    },
-    {
-      "type": "When",
       "text": "I open the Deutsche Bahn continue action from trip overview",
       "file": "db.steps.js",
       "product": "Shared",
-      "dsl": []
+      "dsl": [
+        "DbRail"
+      ]
     },
     {
       "type": "Then",
       "text": "I should see the DB continue booking information message",
       "file": "db.steps.js",
       "product": "Shared",
-      "dsl": []
+      "dsl": [
+        "DbRail"
+      ]
     },
     {
       "type": "When",
       "text": "I continue and confirm the DB order retrieval",
       "file": "db.steps.js",
       "product": "Shared",
-      "dsl": []
+      "dsl": [
+        "DbRail"
+      ]
     },
     {
       "type": "Then",
       "text": "I should see the DB order not completed error message",
       "file": "db.steps.js",
       "product": "Shared",
-      "dsl": []
+      "dsl": [
+        "DbRail"
+      ]
     },
     {
       "type": "When",
@@ -9240,6 +9878,34 @@ window.STEP_DATA = {
       ]
     },
     {
+      "type": "Then",
+      "text": "the itinerary email should be received",
+      "file": "email.steps.js",
+      "product": "Shared",
+      "dsl": []
+    },
+    {
+      "type": "Then",
+      "text": "the received itinerary email should match the itinerary preview",
+      "file": "email.steps.js",
+      "product": "Shared",
+      "dsl": []
+    },
+    {
+      "type": "Then",
+      "text": "the received itinerary email should contain {string}",
+      "file": "email.steps.js",
+      "product": "Shared",
+      "dsl": []
+    },
+    {
+      "type": "Then",
+      "text": "the received itinerary email should contain the link {string}",
+      "file": "email.steps.js",
+      "product": "Shared",
+      "dsl": []
+    },
+    {
       "type": "When",
       "text": "I add an Evolvi one way to the trip",
       "file": "evolvi_results.steps.js",
@@ -9313,108 +9979,219 @@ window.STEP_DATA = {
     },
     {
       "type": "When",
-      "text": "I close mandatory notifications if displayed",
+      "text": "I should click info icon next to {string}",
       "file": "evolvi_results.steps.js",
       "product": "Rail",
-      "dsl": []
+      "dsl": [
+        "EvolviResults"
+      ]
     },
     {
       "type": "Then",
-      "text": "the Select outbound prompt should be displayed",
+      "text": "I should see message should contain {string}",
       "file": "evolvi_results.steps.js",
       "product": "Rail",
-      "dsl": []
+      "dsl": [
+        "EvolviResults"
+      ]
     },
     {
       "type": "When",
-      "text": "I select an outbound Evolvi fare",
+      "text": "I hover over the first split ticket fare highlighted in blue",
       "file": "evolvi_results.steps.js",
       "product": "Rail",
-      "dsl": []
+      "dsl": [
+        "EvolviResults"
+      ]
+    },
+    {
+      "type": "Then",
+      "text": "I should see message {string} for the first split ticket fare highlighted in blue",
+      "file": "evolvi_results.steps.js",
+      "product": "Rail",
+      "dsl": [
+        "EvolviResults"
+      ]
+    },
+    {
+      "type": "Then",
+      "text": "I should see that first split ticket fare highlighted in blue message contaings {string}",
+      "file": "evolvi_results.steps.js",
+      "product": "Rail",
+      "dsl": [
+        "EvolviResults"
+      ]
     },
     {
       "type": "When",
-      "text": "I select the highlighted inbound Evolvi fare",
+      "text": "I select and add to cart the first split ticket fare highlighted in blue",
       "file": "evolvi_results.steps.js",
       "product": "Rail",
-      "dsl": []
+      "dsl": [
+        "EvolviResults"
+      ]
     },
     {
       "type": "Then",
-      "text": "the inbound selection should display the selected return time",
+      "text": "the fare rules should be accessible in Evolvi results and contain {string}",
       "file": "evolvi_results.steps.js",
       "product": "Rail",
-      "dsl": []
+      "dsl": [
+        "EvolviResults"
+      ]
+    },
+    {
+      "type": "Then",
+      "text": "the fare rules should be accessible in the Evolvi cart and contain {string}",
+      "file": "evolvi_results.steps.js",
+      "product": "Rail",
+      "dsl": [
+        "Cart"
+      ]
     },
     {
       "type": "When",
-      "text": "I select a random available Evolvi fare",
+      "text": "I select the outbound {string} Evolvi fare",
       "file": "evolvi_results.steps.js",
       "product": "Rail",
-      "dsl": []
+      "dsl": [
+        "EvolviResults"
+      ]
     },
     {
       "type": "When",
-      "text": "I select the first available Evolvi fare",
+      "text": "I select the inbound {string} Evolvi fare",
       "file": "evolvi_results.steps.js",
       "product": "Rail",
-      "dsl": []
-    },
-    {
-      "type": "Then",
-      "text": "the cart status should be Pending booking",
-      "file": "evolvi_results.steps.js",
-      "product": "Rail",
-      "dsl": []
-    },
-    {
-      "type": "Then",
-      "text": "the departure city should be correct in the Evolvi TOD section",
-      "file": "evolvi_results.steps.js",
-      "product": "Rail",
-      "dsl": []
+      "dsl": [
+        "EvolviResults"
+      ]
     },
     {
       "type": "When",
-      "text": "I select a Split Ticket result",
+      "text": "I click Evolvi add to trip",
       "file": "evolvi_results.steps.js",
       "product": "Rail",
-      "dsl": []
+      "dsl": [
+        "EvolviResults"
+      ]
+    },
+    {
+      "type": "When",
+      "text": "I hover over the greenest Evolvi fare in results",
+      "file": "evolvi_results.steps.js",
+      "product": "Rail",
+      "dsl": [
+        "EvolviResults"
+      ]
     },
     {
       "type": "Then",
-      "text": "split ticket information should be visible in cart before checkout",
+      "text": "the greenest fare tooltip should show {string}",
       "file": "evolvi_results.steps.js",
       "product": "Rail",
-      "dsl": []
+      "dsl": [
+        "EvolviResults"
+      ]
+    },
+    {
+      "type": "When",
+      "text": "I select the greenest Evolvi fare",
+      "file": "evolvi_results.steps.js",
+      "product": "Rail",
+      "dsl": [
+        "EvolviResults"
+      ]
+    },
+    {
+      "type": "When",
+      "text": "I extract the selected fare total price from the Evolvi results header",
+      "file": "evolvi_results.steps.js",
+      "product": "Rail",
+      "dsl": [
+        "EvolviResults"
+      ]
     },
     {
       "type": "Then",
-      "text": "split ticket information should be visible after checkout and in itinerary email",
+      "text": "the first Evolvi outbound time should be marked as {string}",
       "file": "evolvi_results.steps.js",
       "product": "Rail",
-      "dsl": []
+      "dsl": [
+        "EvolviResults"
+      ]
+    },
+    {
+      "type": "When",
+      "text": "I hover over first Evolvi outbound time information icon",
+      "file": "evolvi_results.steps.js",
+      "product": "Rail",
+      "dsl": [
+        "EvolviResults"
+      ]
     },
     {
       "type": "Then",
-      "text": "itinerary email split ticket information should match the trip",
+      "text": "the journey details should show the departure station {string} and the arrival station {string}",
       "file": "evolvi_results.steps.js",
       "product": "Rail",
-      "dsl": []
+      "dsl": [
+        "EvolviResults"
+      ]
     },
     {
       "type": "Then",
-      "text": "the FOP owner should be displayed as Paid by TMC",
+      "text": "the journey details travel mode should be {string}",
       "file": "evolvi_results.steps.js",
       "product": "Rail",
-      "dsl": []
+      "dsl": [
+        "EvolviResults"
+      ]
     },
     {
       "type": "Then",
-      "text": "the CVV field should not be displayed for invoice FOP",
+      "text": "I should see outbound text in Evolvi results page",
       "file": "evolvi_results.steps.js",
       "product": "Rail",
-      "dsl": []
+      "dsl": [
+        "EvolviResults"
+      ]
+    },
+    {
+      "type": "Then",
+      "text": "the Evolvi outbound results heading should read {string}",
+      "file": "evolvi_results.steps.js",
+      "product": "Rail",
+      "dsl": [
+        "EvolviResults"
+      ]
+    },
+    {
+      "type": "Then",
+      "text": "I should see the Evolvi round trip results page returned train results",
+      "file": "evolvi_results.steps.js",
+      "product": "Rail",
+      "dsl": [
+        "EvolviResults"
+      ]
+    },
+    {
+      "type": "Then",
+      "text": "outbound times start at {string} and inbound times start at {string}",
+      "file": "evolvi_results.steps.js",
+      "product": "Rail",
+      "dsl": [
+        "EvolviResults"
+      ]
+    },
+    {
+      "type": "Then",
+      "text": "discount banner is displayed in at least one of the fares",
+      "file": "evolvi_results.steps.js",
+      "product": "Rail",
+      "dsl": [
+        "EvolviResults"
+      ]
     },
     {
       "type": "When",
@@ -9445,17 +10222,75 @@ window.STEP_DATA = {
     },
     {
       "type": "When",
-      "text": "I validate and configure split ticket options in Evolvi search",
+      "text": "I fill in a round trip Evolvi train from {string} without clicking search button",
       "file": "evolvi_search.steps.js",
       "product": "Rail",
-      "dsl": []
+      "dsl": [
+        "EvolviSearch"
+      ]
     },
     {
       "type": "When",
-      "text": "I perform the Evolvi split ticket search",
+      "text": "I click the UK Rail search button",
       "file": "evolvi_search.steps.js",
       "product": "Rail",
-      "dsl": []
+      "dsl": [
+        "EvolviSearch"
+      ]
+    },
+    {
+      "type": "When",
+      "text": "I search one way Evolvi train from {string} without unchecking split ticket checkbox",
+      "file": "evolvi_search.steps.js",
+      "product": "Rail",
+      "dsl": [
+        "EvolviSearch"
+      ]
+    },
+    {
+      "type": "When",
+      "text": "I validate that split ticket options in Evolvi search checkbox is checked",
+      "file": "evolvi_search.steps.js",
+      "product": "Rail",
+      "dsl": [
+        "EvolviSearch"
+      ]
+    },
+    {
+      "type": "Then",
+      "text": "I hover over split ticket info to see the message {string}",
+      "file": "evolvi_search.steps.js",
+      "product": "Rail",
+      "dsl": [
+        "EvolviSearch"
+      ]
+    },
+    {
+      "type": "Then",
+      "text": "I should select {string} radio button",
+      "file": "evolvi_search.steps.js",
+      "product": "Rail",
+      "dsl": [
+        "EvolviSearch"
+      ]
+    },
+    {
+      "type": "Then",
+      "text": "I hover over split ticket info from {string} to see message {string}",
+      "file": "evolvi_search.steps.js",
+      "product": "Rail",
+      "dsl": [
+        "EvolviSearch"
+      ]
+    },
+    {
+      "type": "Then",
+      "text": "I also see message {string} when hover over split ticket info from {string}",
+      "file": "evolvi_search.steps.js",
+      "product": "Rail",
+      "dsl": [
+        "EvolviSearch"
+      ]
     },
     {
       "type": "When",
@@ -9463,6 +10298,15 @@ window.STEP_DATA = {
       "file": "evolvi_search.steps.js",
       "product": "Rail",
       "dsl": []
+    },
+    {
+      "type": "Then",
+      "text": "the {string} checkbox should be displayed and checked",
+      "file": "evolvi_search.steps.js",
+      "product": "Rail",
+      "dsl": [
+        "EvolviSearch"
+      ]
     },
     {
       "type": "Then",
@@ -10124,6 +10968,24 @@ window.STEP_DATA = {
     },
     {
       "type": "When",
+      "text": "I extract the {int} price in preferred airlines {string} filter",
+      "file": "flight_results.steps.js",
+      "product": "Flights",
+      "dsl": [
+        "FlightResults"
+      ]
+    },
+    {
+      "type": "Then",
+      "text": "prices in outbound results and return results filters filters are not same",
+      "file": "flight_results.steps.js",
+      "product": "Flights",
+      "dsl": [
+        "FlightResults"
+      ]
+    },
+    {
+      "type": "When",
       "text": "I extract the price from first flight result",
       "file": "flight_results.steps.js",
       "product": "Flights",
@@ -10446,6 +11308,33 @@ window.STEP_DATA = {
       ]
     },
     {
+      "type": "Then",
+      "text": "all results should have \"Add to trip\" button disabled",
+      "file": "flight_results.steps.js",
+      "product": "Flights",
+      "dsl": [
+        "FlightResults"
+      ]
+    },
+    {
+      "type": "Then",
+      "text": "the \"Pricing Options\" button should be enabled",
+      "file": "flight_results.steps.js",
+      "product": "Flights",
+      "dsl": [
+        "FlightResults"
+      ]
+    },
+    {
+      "type": "Then",
+      "text": "all pricing options should be disabled",
+      "file": "flight_results.steps.js",
+      "product": "Flights",
+      "dsl": [
+        "FlightResults"
+      ]
+    },
+    {
       "type": "When",
       "text": "I hover over the add to trip button in flight results",
       "file": "flight_results.steps.js",
@@ -10471,6 +11360,22 @@ window.STEP_DATA = {
       "dsl": [
         "FlightResults"
       ]
+    },
+    {
+      "type": "When",
+      "text": "I hover over the first fare that has agreement icon in flight pricing options",
+      "file": "flight_results.steps.js",
+      "product": "Flights",
+      "dsl": [
+        "FlightResults"
+      ]
+    },
+    {
+      "type": "Then",
+      "text": "the agreement tooltip in the first fare that has agreement in pricing options should contain the generated value",
+      "file": "flight_results.steps.js",
+      "product": "Flights",
+      "dsl": []
     },
     {
       "type": "When",
@@ -10502,6 +11407,24 @@ window.STEP_DATA = {
     {
       "type": "When",
       "text": "I open seat map from results and verify it loads",
+      "file": "flight_results.steps.js",
+      "product": "Flights",
+      "dsl": [
+        "FlightResults"
+      ]
+    },
+    {
+      "type": "Then",
+      "text": "the seat map should be displayed in results",
+      "file": "flight_results.steps.js",
+      "product": "Flights",
+      "dsl": [
+        "FlightResults"
+      ]
+    },
+    {
+      "type": "When",
+      "text": "I close the seat map drawer in results",
       "file": "flight_results.steps.js",
       "product": "Flights",
       "dsl": [
@@ -11008,6 +11931,15 @@ window.STEP_DATA = {
     },
     {
       "type": "Then",
+      "text": "first flight has carrier {string} for {word}",
+      "file": "flight_results.steps.js",
+      "product": "Flights",
+      "dsl": [
+        "FlightResults"
+      ]
+    },
+    {
+      "type": "Then",
       "text": "all flight results should be from airline {string}",
       "file": "flight_results.steps.js",
       "product": "Flights",
@@ -11187,6 +12119,15 @@ window.STEP_DATA = {
       ]
     },
     {
+      "type": "Then",
+      "text": "the {string} sort option should be selected by default",
+      "file": "flight_results.steps.js",
+      "product": "Flights",
+      "dsl": [
+        "FlightResults"
+      ]
+    },
+    {
       "type": "When",
       "text": "I filter by {string} airport in the airports filter",
       "file": "flight_results.steps.js",
@@ -11342,15 +12283,6 @@ window.STEP_DATA = {
     {
       "type": "When",
       "text": "I search for a round trip flight from {string} to {string} with outbound on a {string} and inbound the next day",
-      "file": "flight_search.steps.js",
-      "product": "Flights",
-      "dsl": [
-        "FlightSearch"
-      ]
-    },
-    {
-      "type": "When",
-      "text": "I click the search button",
       "file": "flight_search.steps.js",
       "product": "Flights",
       "dsl": [
@@ -11962,6 +12894,13 @@ window.STEP_DATA = {
     },
     {
       "type": "When",
+      "text": "I change number of traveler to {string} and luggage to {string} in Transferz search",
+      "file": "ground_transport.steps.js",
+      "product": "Ground Transport",
+      "dsl": []
+    },
+    {
+      "type": "When",
       "text": "I search for ground transport from airport {string} to specific address {string}",
       "file": "ground_transport.steps.js",
       "product": "Ground Transport",
@@ -11980,10 +12919,12 @@ window.STEP_DATA = {
     },
     {
       "type": "When",
-      "text": "I search for ground transport from cart validating prepopulated pickup time with {string} and airline {string}",
+      "text": "I search for ground transport from cart validating prepopulated pickup time is displayed with pickup in {string} and drop off in {string}",
       "file": "ground_transport.steps.js",
       "product": "Ground Transport",
-      "dsl": []
+      "dsl": [
+        "GroundTransportSearch"
+      ]
     },
     {
       "type": "When",
@@ -11994,17 +12935,48 @@ window.STEP_DATA = {
     },
     {
       "type": "When",
-      "text": "I search for ground transport from airport {string} to specific address {string} changing the pickup time",
+      "text": "I search for ground transport from airport {string} to airport {string} changing the pickup time without clicking search button",
       "file": "ground_transport.steps.js",
       "product": "Ground Transport",
-      "dsl": []
+      "dsl": [
+        "GroundTransportSearch"
+      ]
     },
     {
       "type": "When",
-      "text": "I search transferz from cart and validate results are displayed",
+      "text": "I extract the date and pickup time from ground transport search",
       "file": "ground_transport.steps.js",
       "product": "Ground Transport",
-      "dsl": []
+      "dsl": [
+        "GroundTransportSearch"
+      ]
+    },
+    {
+      "type": "When",
+      "text": "I search for ground transport from airport {string} to specific address {string} changing the pickup time",
+      "file": "ground_transport.steps.js",
+      "product": "Ground Transport",
+      "dsl": [
+        "GroundTransportSearch"
+      ]
+    },
+    {
+      "type": "When",
+      "text": "I click search button from {string}",
+      "file": "ground_transport.steps.js",
+      "product": "Ground Transport",
+      "dsl": [
+        "GroundTransportSearch"
+      ]
+    },
+    {
+      "type": "When",
+      "text": "I set drop off location to be {string}, vehicle type to be {string}, traveller to be {int} and click search button",
+      "file": "ground_transport.steps.js",
+      "product": "Ground Transport",
+      "dsl": [
+        "GroundTransportSearch"
+      ]
     },
     {
       "type": "When",
@@ -12018,35 +12990,63 @@ window.STEP_DATA = {
       "text": "I filter ground transport results by vehicle type {string}",
       "file": "ground_transport.steps.js",
       "product": "Ground Transport",
-      "dsl": []
+      "dsl": [
+        "GroundTransportResults"
+      ]
     },
     {
       "type": "When",
       "text": "I remove the ground transport vehicle filter {string}",
       "file": "ground_transport.steps.js",
       "product": "Ground Transport",
-      "dsl": []
+      "dsl": [
+        "GroundTransportResults"
+      ]
     },
     {
       "type": "When",
-      "text": "I capture the ground transport total price",
+      "text": "I navigate back to ground transport search via breadcrumb",
       "file": "ground_transport.steps.js",
       "product": "Ground Transport",
-      "dsl": []
+      "dsl": [
+        "GroundTransportResults"
+      ]
+    },
+    {
+      "type": "When",
+      "text": "I extract the ground transport total price",
+      "file": "ground_transport.steps.js",
+      "product": "Ground Transport",
+      "dsl": [
+        "Cart"
+      ]
     },
     {
       "type": "When",
       "text": "I add ground transport contact information",
       "file": "ground_transport.steps.js",
       "product": "Ground Transport",
-      "dsl": []
+      "dsl": [
+        "Cart"
+      ]
     },
     {
       "type": "When",
-      "text": "I add a ground transport extra",
+      "text": "I add a ground transport free extra meet and greet",
       "file": "ground_transport.steps.js",
       "product": "Ground Transport",
-      "dsl": []
+      "dsl": [
+        "Cart"
+      ]
+    },
+    {
+      "type": "When",
+      "text": "I extract the ground transport total price after adding free extra meet and greet",
+      "file": "ground_transport.steps.js",
+      "product": "Ground Transport",
+      "dsl": [
+        "Cart"
+      ]
     },
     {
       "type": "When",
@@ -12060,7 +13060,9 @@ window.STEP_DATA = {
       "text": "I fill ground transport contact details in cart",
       "file": "ground_transport.steps.js",
       "product": "Ground Transport",
-      "dsl": []
+      "dsl": [
+        "Cart"
+      ]
     },
     {
       "type": "When",
@@ -12085,31 +13087,75 @@ window.STEP_DATA = {
     },
     {
       "type": "When",
-      "text": "I set the Transferz luggage selection",
+      "text": "I edit the groundscope search from the results page drop off location only in {string} and search",
       "file": "ground_transport.steps.js",
       "product": "Ground Transport",
-      "dsl": []
-    },
-    {
-      "type": "When",
-      "text": "I edit the groundscope search from the results page",
-      "file": "ground_transport.steps.js",
-      "product": "Ground Transport",
-      "dsl": []
+      "dsl": [
+        "GroundTransportSearch"
+      ]
     },
     {
       "type": "When",
       "text": "I extract the ground transport results price and VAT",
       "file": "ground_transport.steps.js",
       "product": "Ground Transport",
-      "dsl": []
+      "dsl": [
+        "GroundTransportResults"
+      ]
     },
     {
       "type": "Then",
       "text": "ground transport results should be displayed",
       "file": "ground_transport.steps.js",
       "product": "Ground Transport",
-      "dsl": []
+      "dsl": [
+        "GroundTransportResults"
+      ]
+    },
+    {
+      "type": "Then",
+      "text": "the ground transport terms and conditions should include {string}",
+      "file": "ground_transport.steps.js",
+      "product": "Ground Transport",
+      "dsl": [
+        "GroundTransportResults"
+      ]
+    },
+    {
+      "type": "Then",
+      "text": "the ground transport pickup time should stay the same in cart and more details",
+      "file": "ground_transport.steps.js",
+      "product": "Ground Transport",
+      "dsl": [
+        "Cart"
+      ]
+    },
+    {
+      "type": "Then",
+      "text": "the ground transport results price with VAT should equal the cart price",
+      "file": "ground_transport.steps.js",
+      "product": "Ground Transport",
+      "dsl": [
+        "Cart"
+      ]
+    },
+    {
+      "type": "Then",
+      "text": "I should see that pickup contains {string}",
+      "file": "ground_transport.steps.js",
+      "product": "Ground Transport",
+      "dsl": [
+        "GroundTransportSearch"
+      ]
+    },
+    {
+      "type": "Then",
+      "text": "carrier is populated by text",
+      "file": "ground_transport.steps.js",
+      "product": "Ground Transport",
+      "dsl": [
+        "GroundTransportSearch"
+      ]
     },
     {
       "type": "Then",
@@ -12120,10 +13166,12 @@ window.STEP_DATA = {
     },
     {
       "type": "Then",
-      "text": "ground transport results should match the vehicle filter {string}",
+      "text": "all the ground transport options on this page contain {string} model text",
       "file": "ground_transport.steps.js",
       "product": "Ground Transport",
-      "dsl": []
+      "dsl": [
+        "GroundTransportResults"
+      ]
     },
     {
       "type": "Then",
@@ -12134,10 +13182,12 @@ window.STEP_DATA = {
     },
     {
       "type": "Then",
-      "text": "the ground transport total should include the selected extra",
+      "text": "ground transport current total price is equal to ground transport free extra meet and greet plus ground transport total price",
       "file": "ground_transport.steps.js",
       "product": "Ground Transport",
-      "dsl": []
+      "dsl": [
+        "Cart"
+      ]
     },
     {
       "type": "Then",
@@ -12165,49 +13215,63 @@ window.STEP_DATA = {
       "text": "the ground transport pickup date and time should be displayed correctly in cart",
       "file": "ground_transport.steps.js",
       "product": "Ground Transport",
-      "dsl": []
+      "dsl": [
+        "Cart"
+      ]
     },
     {
       "type": "Then",
-      "text": "the ground transport price section content should be displayed",
+      "text": "the ground transport price, type of payment, date and time and add to trip button are displayed",
       "file": "ground_transport.steps.js",
       "product": "Ground Transport",
-      "dsl": []
+      "dsl": [
+        "GroundTransportResults"
+      ]
     },
     {
       "type": "Then",
       "text": "the transfer booking code should be displayed on the trip",
       "file": "ground_transport.steps.js",
       "product": "Ground Transport",
-      "dsl": []
+      "dsl": [
+        "Cart"
+      ]
     },
     {
       "type": "Then",
       "text": "the share quote preview should contain the transfer booking code",
       "file": "ground_transport.steps.js",
       "product": "Ground Transport",
-      "dsl": []
+      "dsl": [
+        "Cart"
+      ]
     },
     {
       "type": "Then",
       "text": "the share itinerary preview should contain the transfer booking code",
       "file": "ground_transport.steps.js",
       "product": "Ground Transport",
-      "dsl": []
+      "dsl": [
+        "Cart"
+      ]
     },
     {
       "type": "Then",
       "text": "the share quote preview should contain a ground transport image",
       "file": "ground_transport.steps.js",
       "product": "Ground Transport",
-      "dsl": []
+      "dsl": [
+        "Cart"
+      ]
     },
     {
       "type": "Then",
       "text": "the share itinerary preview should contain a ground transport image",
       "file": "ground_transport.steps.js",
       "product": "Ground Transport",
-      "dsl": []
+      "dsl": [
+        "Cart"
+      ]
     },
     {
       "type": "Then",
@@ -12219,48 +13283,6 @@ window.STEP_DATA = {
     {
       "type": "Then",
       "text": "the ground transport availability actions should be displayed",
-      "file": "ground_transport.steps.js",
-      "product": "Ground Transport",
-      "dsl": []
-    },
-    {
-      "type": "Then",
-      "text": "the groundscope result in cart should be correct",
-      "file": "ground_transport.steps.js",
-      "product": "Ground Transport",
-      "dsl": []
-    },
-    {
-      "type": "Then",
-      "text": "ground transport terms and conditions should be displayed in results",
-      "file": "ground_transport.steps.js",
-      "product": "Ground Transport",
-      "dsl": []
-    },
-    {
-      "type": "Then",
-      "text": "the ground transport pickup time should stay the same across the system",
-      "file": "ground_transport.steps.js",
-      "product": "Ground Transport",
-      "dsl": []
-    },
-    {
-      "type": "Then",
-      "text": "the ground transport results price with VAT should equal the cart price",
-      "file": "ground_transport.steps.js",
-      "product": "Ground Transport",
-      "dsl": []
-    },
-    {
-      "type": "Then",
-      "text": "ground transport terms and conditions should be displayed in cart",
-      "file": "ground_transport.steps.js",
-      "product": "Ground Transport",
-      "dsl": []
-    },
-    {
-      "type": "Then",
-      "text": "ground transport terms and conditions should be displayed after booking",
       "file": "ground_transport.steps.js",
       "product": "Ground Transport",
       "dsl": []
@@ -12418,15 +13440,6 @@ window.STEP_DATA = {
     {
       "type": "When",
       "text": "I extract the price from hotel level results",
-      "file": "hotel_level_results.steps.js",
-      "product": "Hotels",
-      "dsl": [
-        "HotelLevelResults"
-      ]
-    },
-    {
-      "type": "When",
-      "text": "I extract the booking fee from the first hotel result",
       "file": "hotel_level_results.steps.js",
       "product": "Hotels",
       "dsl": [
@@ -13126,11 +14139,65 @@ window.STEP_DATA = {
     },
     {
       "type": "When",
-      "text": "I add a hotel to the trip as the agent",
+      "text": "I add a hotel to the trip as the agent through \"Search Online\"",
       "file": "legacy_gtp.steps.js",
       "product": "Shared",
       "dsl": [
         "LegacyGtp"
+      ]
+    },
+    {
+      "type": "When",
+      "text": "I add a refundable hotel to the trip as the agent through \"Search Online\"",
+      "file": "legacy_gtp.steps.js",
+      "product": "Shared",
+      "dsl": [
+        "LegacyGtp"
+      ]
+    },
+    {
+      "type": "Then",
+      "text": "the Manage profiles list should be displayed",
+      "file": "manage_profiles.steps.js",
+      "product": "Shared",
+      "dsl": [
+        "ManageProfiles"
+      ]
+    },
+    {
+      "type": "When",
+      "text": "I hover over the first profile row in the Manage profiles list",
+      "file": "manage_profiles.steps.js",
+      "product": "Shared",
+      "dsl": [
+        "ManageProfiles"
+      ]
+    },
+    {
+      "type": "Then",
+      "text": "the edit icon should be visible on the hovered profile row",
+      "file": "manage_profiles.steps.js",
+      "product": "Shared",
+      "dsl": [
+        "ManageProfiles"
+      ]
+    },
+    {
+      "type": "When",
+      "text": "I open that profile by clicking the edit icon",
+      "file": "manage_profiles.steps.js",
+      "product": "Shared",
+      "dsl": [
+        "ManageProfiles"
+      ]
+    },
+    {
+      "type": "Then",
+      "text": "the user profile should be displayed for the selected user",
+      "file": "manage_profiles.steps.js",
+      "product": "Shared",
+      "dsl": [
+        "ManageProfiles"
       ]
     },
     {
@@ -13396,44 +14463,12 @@ window.STEP_DATA = {
     },
     {
       "type": "When",
-      "text": "I edit the UK parking search from the results page",
+      "text": "I edit the UK parking search by changing the dates from the results page",
       "file": "parking.steps.js",
       "product": "Parking",
       "dsl": [
         "UKParkingSearch"
       ]
-    },
-    {
-      "type": "When",
-      "text": "I verify there is only one parking quote in the cart",
-      "file": "parking.steps.js",
-      "product": "Parking",
-      "dsl": [
-        "UKParkingCart"
-      ]
-    },
-    {
-      "type": "When",
-      "text": "I open and validate the UK parking more details drawer",
-      "file": "parking.steps.js",
-      "product": "Parking",
-      "dsl": [
-        "UKParkingCart"
-      ]
-    },
-    {
-      "type": "When",
-      "text": "I click the parking tab in the cart trip bar",
-      "file": "parking.steps.js",
-      "product": "Parking",
-      "dsl": []
-    },
-    {
-      "type": "When",
-      "text": "I close the parking search panel",
-      "file": "parking.steps.js",
-      "product": "Parking",
-      "dsl": []
     },
     {
       "type": "When",
@@ -13446,33 +14481,22 @@ window.STEP_DATA = {
     },
     {
       "type": "When",
-      "text": "I add a guest with user group as primary traveler",
+      "text": "I navigate back to parking search via breadcrumb",
       "file": "parking.steps.js",
       "product": "Parking",
       "dsl": [
-        "UKParkingSearch"
+        "UKParkingResults"
       ]
     },
     {
       "type": "Then",
-      "text": "the reset filters button should be visible",
+      "text": "the parking search should be pre-populated with the departure airport of the flight in the cart",
       "file": "parking.steps.js",
       "product": "Parking",
-      "dsl": []
-    },
-    {
-      "type": "Then",
-      "text": "the parking search should be pre-populated with airport {string}",
-      "file": "parking.steps.js",
-      "product": "Parking",
-      "dsl": []
-    },
-    {
-      "type": "Then",
-      "text": "no results should be found for UK parking",
-      "file": "parking.steps.js",
-      "product": "Parking",
-      "dsl": []
+      "dsl": [
+        "Cart",
+        "UKParkingSearch"
+      ]
     },
     {
       "type": "When",
@@ -13576,6 +14600,24 @@ window.STEP_DATA = {
     },
     {
       "type": "When",
+      "text": "I capture all the {string} types from Storage",
+      "file": "payload_validation.steps.js",
+      "product": "Shared",
+      "dsl": [
+        "PayloadValidation"
+      ]
+    },
+    {
+      "type": "Then",
+      "text": "the captured {string} types do not contain request type {string}",
+      "file": "payload_validation.steps.js",
+      "product": "Shared",
+      "dsl": [
+        "PayloadValidation"
+      ]
+    },
+    {
+      "type": "When",
       "text": "I capture the number of {string} requests sent for the trip",
       "file": "payload_validation.steps.js",
       "product": "Shared",
@@ -13586,6 +14628,42 @@ window.STEP_DATA = {
     {
       "type": "Then",
       "text": "no additional {string} requests should have been sent after {string}",
+      "file": "payload_validation.steps.js",
+      "product": "Shared",
+      "dsl": [
+        "PayloadValidation"
+      ]
+    },
+    {
+      "type": "Then",
+      "text": "exactly {int} {string} requests should have been sent",
+      "file": "payload_validation.steps.js",
+      "product": "Shared",
+      "dsl": [
+        "PayloadValidation"
+      ]
+    },
+    {
+      "type": "Then",
+      "text": "every {string} request should contain {string}",
+      "file": "payload_validation.steps.js",
+      "product": "Shared",
+      "dsl": [
+        "PayloadValidation"
+      ]
+    },
+    {
+      "type": "Then",
+      "text": "every {string} request should have {string} containing {string}",
+      "file": "payload_validation.steps.js",
+      "product": "Shared",
+      "dsl": [
+        "PayloadValidation"
+      ]
+    },
+    {
+      "type": "Then",
+      "text": "every {string} request should have {string} within {string} containing {string}",
       "file": "payload_validation.steps.js",
       "product": "Shared",
       "dsl": [
@@ -13635,6 +14713,42 @@ window.STEP_DATA = {
     },
     {
       "type": "When",
+      "text": "I click my user initials in the header",
+      "file": "profile.steps.js",
+      "product": "Shared",
+      "dsl": [
+        "Profile"
+      ]
+    },
+    {
+      "type": "Then",
+      "text": "the {string} option should be displayed in the profile menu",
+      "file": "profile.steps.js",
+      "product": "Shared",
+      "dsl": [
+        "Profile"
+      ]
+    },
+    {
+      "type": "Then",
+      "text": "the {string} option should not be displayed in the profile menu",
+      "file": "profile.steps.js",
+      "product": "Shared",
+      "dsl": [
+        "Profile"
+      ]
+    },
+    {
+      "type": "When",
+      "text": "I open {string} from the profile menu",
+      "file": "profile.steps.js",
+      "product": "Shared",
+      "dsl": [
+        "Profile"
+      ]
+    },
+    {
+      "type": "When",
       "text": "I open the frequent programs tab in my profile",
       "file": "profile.steps.js",
       "product": "Shared",
@@ -13663,6 +14777,33 @@ window.STEP_DATA = {
     {
       "type": "When",
       "text": "I add a new FQTV entry with number {string} using the first available airline",
+      "file": "profile.steps.js",
+      "product": "Shared",
+      "dsl": [
+        "Profile"
+      ]
+    },
+    {
+      "type": "When",
+      "text": "I add DB BahnCard 50 with number {string} and expiration date {string}",
+      "file": "profile.steps.js",
+      "product": "Shared",
+      "dsl": [
+        "Profile"
+      ]
+    },
+    {
+      "type": "Then",
+      "text": "the DB BahnCard 50 expiration date {string} should be saved",
+      "file": "profile.steps.js",
+      "product": "Shared",
+      "dsl": [
+        "Profile"
+      ]
+    },
+    {
+      "type": "When",
+      "text": "I successfully remove the DB BahnCard frequent program entry",
       "file": "profile.steps.js",
       "product": "Shared",
       "dsl": [
@@ -13977,6 +15118,15 @@ window.STEP_DATA = {
     },
     {
       "type": "When",
+      "text": "I set the time format to {string} in my profile",
+      "file": "profile.steps.js",
+      "product": "Shared",
+      "dsl": [
+        "Profile"
+      ]
+    },
+    {
+      "type": "When",
       "text": "I save the personal details",
       "file": "profile.steps.js",
       "product": "Shared",
@@ -14192,8 +15342,161 @@ window.STEP_DATA = {
       ]
     },
     {
+      "type": "Then",
+      "text": "the user profile popup is displayed",
+      "file": "profile.steps.js",
+      "product": "Shared",
+      "dsl": [
+        "Profile"
+      ]
+    },
+    {
+      "type": "Then",
+      "text": "the user profile popup is displayed for {string}",
+      "file": "profile.steps.js",
+      "product": "Shared",
+      "dsl": [
+        "Profile"
+      ]
+    },
+    {
+      "type": "Then",
+      "text": "the user profile popup is not displayed",
+      "file": "profile.steps.js",
+      "product": "Shared",
+      "dsl": [
+        "Profile"
+      ]
+    },
+    {
+      "type": "Then",
+      "text": "the mandatory details are missing popup is displayed",
+      "file": "profile.steps.js",
+      "product": "Shared",
+      "dsl": [
+        "Profile"
+      ]
+    },
+    {
+      "type": "Then",
+      "text": "the mandatory details are missing popup is not displayed",
+      "file": "profile.steps.js",
+      "product": "Shared",
+      "dsl": [
+        "Profile"
+      ]
+    },
+    {
+      "type": "Then",
+      "text": "the mandatory details are missing popup states {string}",
+      "file": "profile.steps.js",
+      "product": "Shared",
+      "dsl": [
+        "Profile"
+      ]
+    },
+    {
+      "type": "Then",
+      "text": "the {string} field is marked with a red star",
+      "file": "profile.steps.js",
+      "product": "Shared",
+      "dsl": [
+        "Profile"
+      ]
+    },
+    {
+      "type": "Then",
+      "text": "the user profile popup opens on the {string} tab",
+      "file": "profile.steps.js",
+      "product": "Shared",
+      "dsl": [
+        "Profile"
+      ]
+    },
+    {
+      "type": "Then",
+      "text": "the user profile popup is editable",
+      "file": "profile.steps.js",
+      "product": "Shared",
+      "dsl": [
+        "Profile"
+      ]
+    },
+    {
+      "type": "When",
+      "text": "I close the user profile popup",
+      "file": "profile.steps.js",
+      "product": "Shared",
+      "dsl": [
+        "Profile"
+      ]
+    },
+    {
+      "type": "When",
+      "text": "I close the mandatory details are missing popup",
+      "file": "profile.steps.js",
+      "product": "Shared",
+      "dsl": [
+        "Profile"
+      ]
+    },
+    {
+      "type": "When",
+      "text": "I remember the mandatory details are missing popup wording",
+      "file": "profile.steps.js",
+      "product": "Shared",
+      "dsl": [
+        "Profile"
+      ]
+    },
+    {
+      "type": "Then",
+      "text": "the mandatory details are missing popup wording is identical to the one remembered earlier",
+      "file": "profile.steps.js",
+      "product": "Shared",
+      "dsl": [
+        "Profile"
+      ]
+    },
+    {
+      "type": "When",
+      "text": "I click the traveler name on the search page",
+      "file": "profile.steps.js",
+      "product": "Shared",
+      "dsl": [
+        "Profile"
+      ]
+    },
+    {
+      "type": "Then",
+      "text": "the traveler profile page is displayed",
+      "file": "profile.steps.js",
+      "product": "Shared",
+      "dsl": [
+        "Profile"
+      ]
+    },
+    {
+      "type": "Then",
+      "text": "the traveler profile page is not editable",
+      "file": "profile.steps.js",
+      "product": "Shared",
+      "dsl": [
+        "Profile"
+      ]
+    },
+    {
       "type": "When",
       "text": "I select and add one way journey to trip",
+      "file": "results.steps.js",
+      "product": "Shared",
+      "dsl": [
+        "Results"
+      ]
+    },
+    {
+      "type": "When",
+      "text": "I click select button in results",
       "file": "results.steps.js",
       "product": "Shared",
       "dsl": [
@@ -14410,6 +15713,15 @@ window.STEP_DATA = {
     },
     {
       "type": "Then",
+      "text": "the reset filters button should be visible",
+      "file": "results.steps.js",
+      "product": "Shared",
+      "dsl": [
+        "Results"
+      ]
+    },
+    {
+      "type": "Then",
       "text": "the reset filters button should be visible and disabled",
       "file": "results.steps.js",
       "product": "Shared",
@@ -14482,6 +15794,15 @@ window.STEP_DATA = {
     },
     {
       "type": "When",
+      "text": "I add the first room to my cart from the terms and conditions dialog",
+      "file": "room_level_results.steps.js",
+      "product": "Hotels",
+      "dsl": [
+        "RoomLevelResults"
+      ]
+    },
+    {
+      "type": "When",
       "text": "I add room called {string} to cart",
       "file": "room_level_results.steps.js",
       "product": "Hotels",
@@ -14535,15 +15856,6 @@ window.STEP_DATA = {
     },
     {
       "type": "When",
-      "text": "I extract the booking fee from the first room result",
-      "file": "room_level_results.steps.js",
-      "product": "Hotels",
-      "dsl": [
-        "RoomLevelResults"
-      ]
-    },
-    {
-      "type": "When",
       "text": "I check terms and conditions in room level",
       "file": "room_level_results.steps.js",
       "product": "Hotels",
@@ -14572,6 +15884,15 @@ window.STEP_DATA = {
     {
       "type": "When",
       "text": "I filter room results by refundable",
+      "file": "room_level_results.steps.js",
+      "product": "Hotels",
+      "dsl": [
+        "RoomLevelResults"
+      ]
+    },
+    {
+      "type": "Then",
+      "text": "deposit required is displayed in the first room",
       "file": "room_level_results.steps.js",
       "product": "Hotels",
       "dsl": [
@@ -14942,6 +16263,24 @@ window.STEP_DATA = {
     },
     {
       "type": "When",
+      "text": "I click the search button",
+      "file": "search.steps.js",
+      "product": "Shared",
+      "dsl": [
+        "Search"
+      ]
+    },
+    {
+      "type": "When",
+      "text": "I click {string} in search page",
+      "file": "search.steps.js",
+      "product": "Shared",
+      "dsl": [
+        "Search"
+      ]
+    },
+    {
+      "type": "When",
       "text": "I click to add myself as the traveler",
       "file": "search.steps.js",
       "product": "Shared",
@@ -14961,6 +16300,15 @@ window.STEP_DATA = {
     {
       "type": "Then",
       "text": "the traveler {string} should not be available to add",
+      "file": "search.steps.js",
+      "product": "Shared",
+      "dsl": [
+        "Search"
+      ]
+    },
+    {
+      "type": "Then",
+      "text": "the search is blocked because no traveler was added to the trip",
       "file": "search.steps.js",
       "product": "Shared",
       "dsl": [
@@ -14988,6 +16336,24 @@ window.STEP_DATA = {
     {
       "type": "Given",
       "text": "I have added a random guest traveler with phone type {string}",
+      "file": "search.steps.js",
+      "product": "Shared",
+      "dsl": [
+        "Search"
+      ]
+    },
+    {
+      "type": "Given",
+      "text": "I have added a random guest traveler as the primary traveller clicking {string} button copying settings from the user group {string}",
+      "file": "search.steps.js",
+      "product": "Shared",
+      "dsl": [
+        "Search"
+      ]
+    },
+    {
+      "type": "Given",
+      "text": "I have added a random guest traveler with name {string} {string} in the empty traveler slot",
       "file": "search.steps.js",
       "product": "Shared",
       "dsl": [
@@ -15078,6 +16444,24 @@ window.STEP_DATA = {
     {
       "type": "Then",
       "text": "I remove myself as the traveler",
+      "file": "search.steps.js",
+      "product": "Shared",
+      "dsl": [
+        "Search"
+      ]
+    },
+    {
+      "type": "When",
+      "text": "I remove all travelers",
+      "file": "search.steps.js",
+      "product": "Shared",
+      "dsl": [
+        "Search"
+      ]
+    },
+    {
+      "type": "Given",
+      "text": "I have added {string} as primary traveler by clicking select traveller",
       "file": "search.steps.js",
       "product": "Shared",
       "dsl": [
@@ -15410,6 +16794,24 @@ window.STEP_DATA = {
       "file": "search.steps.js",
       "product": "Shared",
       "dsl": []
+    },
+    {
+      "type": "Then",
+      "text": "the search button should not be visible",
+      "file": "search.steps.js",
+      "product": "Shared",
+      "dsl": [
+        "Search"
+      ]
+    },
+    {
+      "type": "Then",
+      "text": "the Travel request button should be visible",
+      "file": "search.steps.js",
+      "product": "Shared",
+      "dsl": [
+        "Search"
+      ]
     },
     {
       "type": "Then",
@@ -15885,7 +17287,9 @@ window.STEP_DATA = {
       "text": "I submit the trips search",
       "file": "trips.steps.js",
       "product": "Shared",
-      "dsl": []
+      "dsl": [
+        "Trips"
+      ]
     },
     {
       "type": "When",
@@ -15901,7 +17305,9 @@ window.STEP_DATA = {
       "text": "I check the {string} filter on the trips page",
       "file": "trips.steps.js",
       "product": "Shared",
-      "dsl": []
+      "dsl": [
+        "Trips"
+      ]
     },
     {
       "type": "When",
@@ -15949,7 +17355,9 @@ window.STEP_DATA = {
       "text": "the trips search suggestions dropdown should be displayed",
       "file": "trips.steps.js",
       "product": "Shared",
-      "dsl": []
+      "dsl": [
+        "Trips"
+      ]
     },
     {
       "type": "Then",
@@ -15965,35 +17373,54 @@ window.STEP_DATA = {
       "text": "a search results tab should be displayed",
       "file": "trips.steps.js",
       "product": "Shared",
-      "dsl": []
+      "dsl": [
+        "Trips"
+      ]
     },
     {
       "type": "Then",
       "text": "the search results tab should no longer be displayed",
       "file": "trips.steps.js",
       "product": "Shared",
-      "dsl": []
+      "dsl": [
+        "Trips"
+      ]
     },
     {
       "type": "Then",
       "text": "the search results should display a trip list",
       "file": "trips.steps.js",
       "product": "Shared",
-      "dsl": []
+      "dsl": [
+        "Trips"
+      ]
     },
     {
       "type": "Then",
       "text": "the search results should show a trip for traveller {string}",
       "file": "trips.steps.js",
       "product": "Shared",
-      "dsl": []
+      "dsl": [
+        "Trips"
+      ]
+    },
+    {
+      "type": "Then",
+      "text": "the search results should not show a trip for traveller {string}",
+      "file": "trips.steps.js",
+      "product": "Shared",
+      "dsl": [
+        "Trips"
+      ]
     },
     {
       "type": "Then",
       "text": "the {string} trips tab should be displayed",
       "file": "trips.steps.js",
       "product": "Shared",
-      "dsl": []
+      "dsl": [
+        "Trips"
+      ]
     },
     {
       "type": "Then",
@@ -16118,6 +17545,42 @@ window.STEP_DATA = {
     {
       "type": "Then",
       "text": "MCO unused tickets should be hidden on checkout",
+      "file": "unused_tickets.steps.js",
+      "product": "Shared",
+      "dsl": [
+        "UnusedTickets"
+      ]
+    },
+    {
+      "type": "Then",
+      "text": "the checkout unused tickets list should include a ticket with record locator containing {string}",
+      "file": "unused_tickets.steps.js",
+      "product": "Shared",
+      "dsl": [
+        "UnusedTickets"
+      ]
+    },
+    {
+      "type": "When",
+      "text": "I select the unused ticket with record locator containing {string} on checkout",
+      "file": "unused_tickets.steps.js",
+      "product": "Shared",
+      "dsl": [
+        "UnusedTickets"
+      ]
+    },
+    {
+      "type": "Then",
+      "text": "the unused tickets action button on checkout should be {string}",
+      "file": "unused_tickets.steps.js",
+      "product": "Shared",
+      "dsl": [
+        "UnusedTickets"
+      ]
+    },
+    {
+      "type": "When",
+      "text": "I apply the selected unused ticket on checkout",
       "file": "unused_tickets.steps.js",
       "product": "Shared",
       "dsl": [
