@@ -11,7 +11,7 @@ Feature: 70438 Sabre NDC (BA) - Multi pax seating mandatory for all
   I want to select seats for all travelers on a Sabre NDC BA flight
   So that seating is mandatory and completed for all passengers
 
-  #BLOCKED - second fare from pricing options is not displayed, preventing test from proceeding to booking and seating steps
+  #BLOCKED - Test Env very unstable. When its available, need to select standard economy in pricing options for both ways.
   Scenario: Seating is mandatory for all travelers on Sabre NDC BA flight
     Given I am logged in as "corpSabreNdc@reg.ams" booking a new trip
     And I have added a random guest traveler
