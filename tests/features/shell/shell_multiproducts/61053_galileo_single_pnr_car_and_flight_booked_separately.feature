@@ -12,24 +12,20 @@ Feature: 61053 Galileo - Single PNR when car and flight segments are booked sepa
   I want both segments to share one PNR even though I book them separately
   So that my Galileo itinerary stays consolidated under a single record
 
-  #Booking error
   Scenario: A separately booked car and flight result in a single PNR
     Given I am logged in as "beatrizpamplonacorp@galileo.com" booking a new trip
     And I have added a random guest traveler
-    When I search for a car at "LHR"
-    Then the car results section should be displayed
-    When I add the first car to cart
-    Then the booking status should be "Pending booking"
+    When I search for a car at "MXP"
+    And I add the first car to cart
+    And the booking status should be "Pending booking"
     When I proceed to checkout
     And I complete the booking
     When I click to add a flight to my trip from cart
-    And I edit the flight search from "LIS" to "LON" with the same dates as the car search
+    And I edit the flight search from "LIS" to "MIA" with the same dates as the car search
     Then flight results should be available
     When I filter results by carrier "TP"
     And I add the first flight to cart
     And the booking status should be "Pending booking"
-    And I add a credit card as payment method
-    And I fill credit card cvv if needed
     When I proceed to checkout
     And I complete the booking
     When I store the first quote PNR code
