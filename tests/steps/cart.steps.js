@@ -576,6 +576,29 @@ When("I extract the selected baggage option label", async function () {
   logger.info("Extracted selected baggage option label", { baggageOptionText: this.baggageOptionText });
 });
 
+// Semantic replacements for "I extract the price at index {int} from cart", which is purely
+// positional (the nth `.amount` node anywhere on the page) and silently reads a
+// different number as soon as a row is added above it. It still pushes onto this.extractedPrices,
+// so every existing "the extracted price at index {int} should ..." comparison keeps working - the
+// first extraction in a scenario is index 0, the second index 1, and so on.
+
+// The trip grand total in the cart summary sidebar (.price-total .amount, trip-summary.vue).
+When("I extract the total cart summary price", async function () {
+  const price = await Cart.extractCartTotalPrice(this.page);
+  if (!this.extractedPrices) this.extractedPrices = [];
+  this.extractedPrices.push(price);
+  this.cartSummaryTotalPrice = price;
+  // Own append-only history, so a before/after comparison can address "the previous cart summary
+  // price" without counting every unrelated extraction that shares this.extractedPrices.
+  if (!this.cartSummaryPrices) this.cartSummaryPrices = [];
+  this.cartSummaryPrices.push(price);
+  logger.info("Extracted cart summary total price", {
+    price,
+    extractedPricesIndex: this.extractedPrices.length - 1,
+    cartSummaryPricesIndex: this.cartSummaryPrices.length - 1,
+  });
+});
+
 When("I extract the price from price breakdown", async function () {
   const cartPage = getPageObject(this.page, CartPage);
   // Sum Subtotal rows from Price Summary > Rate Information — these include
@@ -840,6 +863,65 @@ Then("the price in cart should equal the total price before adding baggage + the
     currentTotal,
     12,
     "Cart total = flight price + baggage price"
+  );
+});
+
+// The supplier prices the bag in its own currency and the summary total is rounded for display, so
+// label price + previous total can land a rounding step away from the figure on screen. One
+// currency unit absorbs that while still failing if the bag was charged at anything other than the
+// price its option advertised.
+const BAGGAGE_SUMMARY_TOTAL_TOLERANCE = 1;
+
+// Sibling of "the price in cart should equal the total price before adding baggage + the baggage
+// price" for scenarios that read the summary total through "I extract the total cart summary price"
+// on both sides of the save, rather than through the checkout-comparison snapshot.
+Then("the cart summary price should equal the cart summary price before adding baggage plus the baggage price", async function () {
+  const history = this.cartSummaryPrices || [];
+  if (history.length < 2) {
+    throw new Error(
+      'This step needs "I extract the total cart summary price" both before and after the baggage ' +
+      `save; only ${history.length} cart summary extraction(s) were recorded.`
+    );
+  }
+  if (typeof this.baggagePrice !== "number") {
+    throw new Error(
+      'No baggage price recorded. Call "I extract the baggage price" while the selected baggage ' +
+      "option is still on screen, before this step."
+    );
+  }
+
+  const priceBeforeBaggage = history[history.length - 2];
+  let currentTotal = history[history.length - 1];
+
+  // The summary sidebar refreshes asynchronously after the extras save: the green baggage icon can
+  // already be up while the total still shows the pre-baggage figure, so an unchanged snapshot
+  // means the extraction ran too early — not that the bag was free. Re-read until it moves instead
+  // of asserting against a stale number. Guarded on a priced bag: a genuinely free option leaves
+  // the total where it was, and waiting for a change that can never come would turn a correct
+  // result into a 20s timeout.
+  if (currentTotal === priceBeforeBaggage && this.baggagePrice !== 0) {
+    logger.info("Cart summary total still showed the pre-baggage figure — re-reading", {
+      priceBeforeBaggage,
+    });
+    await expect(async () => {
+      currentTotal = await Cart.extractCartTotalPrice(this.page);
+      expect(currentTotal).not.toBe(priceBeforeBaggage);
+    }).toPass({ timeout: 20000 });
+  }
+
+  logger.info("Verifying the cart summary total absorbed the baggage price", {
+    priceBeforeBaggage,
+    baggagePrice: this.baggagePrice,
+    expectedTotal: priceBeforeBaggage + this.baggagePrice,
+    currentTotal,
+  });
+
+  expectSumToBeEqualWithTolerance(
+    priceBeforeBaggage,
+    this.baggagePrice,
+    currentTotal,
+    BAGGAGE_SUMMARY_TOTAL_TOLERANCE,
+    "Cart summary total = summary total before baggage + baggage price"
   );
 });
 
