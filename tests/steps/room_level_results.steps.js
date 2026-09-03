@@ -274,7 +274,8 @@ Then("the hotel level price should match the room level price", async function (
 
 Then("the hotel map should open in room level results", async function () {
   logger.info("Verifying hotel map modal is visible in room level results");
-  await RoomLevelResults.verifyMapModalOpened(this.page);
+  const markerSelector = await RoomLevelResults.verifyMapModalOpened(this.page);
+  logger.info("Hotel marker rendered on the map", { markerSelector });
 });
 
 When("I filter room results by Wi-Fi amenity", async function () {

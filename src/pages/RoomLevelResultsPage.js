@@ -9,6 +9,23 @@ const { getScrollOffsetFromTop } = require("@utils/dom");
 const SELECTORS = {
   VIEW_HOTEL_ON_MAP_BUTTON: "button.map-btn.is-paddingless",
   MAP_MODAL: ".map-modal .google-map-loader, .map-modal .el-dialog__body .google-map-loader",
+  // Google Maps only injects .gm-style once the JS API has booted and painted; the
+  // .google-map-loader section above is the Vue wrapper and is present the moment the dialog
+  // opens, so on its own it cannot tell a rendered map from a map that failed to load.
+  MAP_CANVAS: ".map-modal .gm-style",
+  // The room-level dialog passes :showPriceMarkers="false", so the hotel is drawn as a NATIVE
+  // google.maps.Marker (icon: map-marker.svg) rather than the .hotel-map-marker component used at
+  // hotel level - HotelLevelResultsPage.MAP_MARKER would never match here. The build inlines that
+  // svg as a data: URI, so there is no filename in the src either; what identifies the pin is the
+  // icon's own 32x43 geometry, url-encoded in the SVG header. Nothing else on the map can match it:
+  // hotel-marker.svg (corporate POI pins) is 27x43, and the base tiles are 256x256 https imgs from
+  // mapsresources-pa.googleapis.com. Probed as an ordered candidate list, the same way
+  // CarResultsPage.STATION_MAP_MARKER_CANDIDATES handles native Google markers.
+  MAP_HOTEL_MARKER_CANDIDATES: [
+    ".map-modal .gm-style img[src^=\"data:image/svg+xml\"][src*=\"width='32'%20height='43'\"]",
+    // Fallback if the pin icon is ever resized: any inlined SVG marker on the map.
+    '.map-modal .gm-style img[src^="data:image/svg+xml"]',
+  ],
   FIRST_ROOM_PRICE_AMOUNT: ".room-list__cards > div:nth-child(1) .price-details-main h4.amount",
   SECOND_ROOM_PRICE_AMOUNT: ".room-list__cards > div:nth-child(2) .price-details-main h4.amount",
   REFUNDABLE_CHECKBOX_LABEL: "label.el-checkbox",
@@ -269,6 +286,54 @@ class RoomLevelResultsPage {
    */
   async waitForHotelMapModal() {
     await this.page.locator(SELECTORS.MAP_MODAL).first().waitFor({ state: "visible", timeout: 15000 });
+  }
+
+  /**
+   * Waits for the Google map inside the hotel map modal to actually render, then for the hotel's
+   * marker pin to appear on it. Proves the map loaded and the hotel is plotted on it - not merely
+   * that the modal opened.
+   * @param {number} timeout - Total budget in ms, shared between the canvas and the marker probe
+   * @returns {Promise<string>} The marker selector that matched, for logging
+   * @throws {Error} If the map never renders, or no marker appears within the budget
+   */
+  async waitForHotelMapMarker({ timeout = 30000 } = {}) {
+    const deadline = Date.now() + timeout;
+
+    try {
+      await this.page.locator(SELECTORS.MAP_CANVAS).first().waitFor({ state: "visible", timeout });
+    } catch (err) {
+      throw new Error(
+        `[RoomLevelResultsPage.waitForHotelMapMarker] The map modal opened but Google Maps never ` +
+          `rendered ("${SELECTORS.MAP_CANVAS}" not visible within ${timeout}ms). Likely causes: the ` +
+          `Google Maps script failed to load from its CDN, or the hotel has no coordinates so the ` +
+          `map was never centred. Original: ${err.message}`,
+      );
+    }
+
+    const candidates = SELECTORS.MAP_HOTEL_MARKER_CANDIDATES;
+    for (const [index, candidate] of candidates.entries()) {
+      // Split whatever is left of the budget across the candidates still to probe, so a leading
+      // candidate that never matches cannot starve the ones behind it.
+      const remaining = deadline - Date.now();
+      const candidateTimeout = Math.max(2000, Math.floor(remaining / (candidates.length - index)));
+      const isVisible = await this.page
+        .locator(candidate)
+        .first()
+        .waitFor({ state: "visible", timeout: candidateTimeout })
+        .then(() => true)
+        .catch(() => false);
+      if (isVisible) {
+        return candidate;
+      }
+    }
+
+    throw new Error(
+      `[RoomLevelResultsPage.waitForHotelMapMarker] The map rendered but no hotel marker appeared ` +
+        `within the ${timeout}ms budget. None of the probed selectors matched: ` +
+        `${candidates.map((candidate) => `"${candidate}"`).join(", ")}. Likely causes: the hotel ` +
+        `has no loc coordinates, or the pin icon was resized in the app (see the geometry note on ` +
+        `MAP_HOTEL_MARKER_CANDIDATES).`,
+    );
   }
 
   /**

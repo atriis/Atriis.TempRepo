@@ -186,6 +186,9 @@ const RoomLevelResults = {
 
     const roomLevelResultsPage = getPageObject(page, RoomLevelResultsPage);
     await roomLevelResultsPage.waitForHotelMapModal();
+    // The modal being open only proves a dialog appeared. Assert the map itself rendered and the
+    // hotel is plotted on it, otherwise a Google Maps failure would still pass this check.
+    return roomLevelResultsPage.waitForHotelMapMarker();
   },
 
   /**
