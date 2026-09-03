@@ -7345,6 +7345,88 @@ const Cart = {
   },
 
   /**
+   * Extracts one per-night price from the "Rate information" panel of the open hotel More Details
+   * drawer. This is the price for ONE room for ONE night, before the room count is applied — pair
+   * it with extractTotalForRoomsFromMoreDetails to check the stay total against it.
+   *
+   * Preconditions: the hotel More Details drawer must already be open (via openMoreDetailsInCart).
+   *
+   * @param {import('playwright').Page} page
+   * @param {number} nightNumber - 1-based night position in the rate breakdown
+   * @returns {Promise<{nightNumber: number, price: number, label: string}>}
+   */
+  async extractNightPriceFromRateInformation(page, nightNumber) {
+    if (!page) throw new Error('[Cart.extractNightPriceFromRateInformation] "page" is required.');
+    if (typeof nightNumber !== 'number' || !Number.isInteger(nightNumber) || nightNumber < 1) {
+      throw new Error(
+        `[Cart.extractNightPriceFromRateInformation] "nightNumber" must be a 1-based integer, got: ${typeof nightNumber} (${nightNumber})`
+      );
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+    let row;
+    try {
+      row = await cartPage.getHotelMoreDetailsNightPrice(nightNumber);
+    } catch (err) {
+      throw new Error(
+        `[Cart.extractNightPriceFromRateInformation] Could not read the night ${nightNumber} price from the ` +
+        `More Details "Rate information" panel. Open the hotel's More Details drawer first. Original: ${err.message}`
+      );
+    }
+
+    logger.info('Extracted per-night price from More Details rate information', {
+      nightNumber,
+      label: row.label,
+      price: row.amount,
+    });
+    return { nightNumber, price: row.amount, label: row.label };
+  },
+
+  /**
+   * Extracts the "Total for N rooms" amount from the open hotel More Details drawer, asserting the
+   * row is the one for the expected room count (the label carries the count the app booked).
+   *
+   * Preconditions: the hotel More Details drawer must already be open (via openMoreDetailsInCart).
+   *
+   * @param {import('playwright').Page} page
+   * @param {number} expectedRoomCount - Room count the row's own label must report
+   * @returns {Promise<{price: number, roomCount: number, label: string}>}
+   */
+  async extractTotalForRoomsFromMoreDetails(page, expectedRoomCount) {
+    if (!page) throw new Error('[Cart.extractTotalForRoomsFromMoreDetails] "page" is required.');
+    if (typeof expectedRoomCount !== 'number' || !Number.isInteger(expectedRoomCount) || expectedRoomCount < 1) {
+      throw new Error(
+        `[Cart.extractTotalForRoomsFromMoreDetails] "expectedRoomCount" must be an integer >= 1, got: ${typeof expectedRoomCount} (${expectedRoomCount})`
+      );
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+    let row;
+    try {
+      row = await cartPage.getHotelMoreDetailsTotalForRooms();
+    } catch (err) {
+      throw new Error(
+        `[Cart.extractTotalForRoomsFromMoreDetails] Could not read the "Total for ${expectedRoomCount} rooms" ` +
+        `row from the More Details drawer. Open the hotel's More Details drawer first. Original: ${err.message}`
+      );
+    }
+
+    expect(
+      row.roomCount,
+      `[Cart.extractTotalForRoomsFromMoreDetails] Expected the More Details total row to be for ` +
+      `${expectedRoomCount} rooms, but it reads "${row.label}" — the quote holds a different number of rooms ` +
+      `than the search asked for.`,
+    ).toBe(expectedRoomCount);
+
+    logger.info('Extracted total-for-rooms price from More Details', {
+      label: row.label,
+      roomCount: row.roomCount,
+      price: row.amount,
+    });
+    return { price: row.amount, roomCount: row.roomCount, label: row.label };
+  },
+
+  /**
    * Closes the More Details drawer in the cart.
    * @param {import('playwright').Page} page
    */
@@ -12115,6 +12197,93 @@ const Cart = {
     const actualCount = await cartPage.getVisibleExtrasSectionsCount();
     expect(actualCount, `Expected ${expectedCount} extras sections visible, got ${actualCount}`).toBe(expectedCount);
     logger.info('Extras sections count matches expected', { expectedCount, actualCount });
+  },
+
+  // ===== HOTEL "Additional preferences" EXTRAS ROW (Go Global, multi-room only) =====
+
+  /**
+   * Opens the hotel quote's "Additional preferences" extras panel, expanding the card's Extras
+   * collapse first if it is closed.
+   *
+   * @param {import('playwright').Page} page
+   */
+  async openAdditionalPreferencesExtras(page) {
+    if (!page) throw new Error('[Cart.openAdditionalPreferencesExtras] "page" is required.');
+    logger.info('Opening the Additional preferences extras panel');
+    const cartPage = getPageObject(page, CartPage);
+    await cartPage.openAdditionalPreferencesExtras();
+  },
+
+  /**
+   * Verifies a preference option with the given label is displayed in the OPEN "Additional
+   * preferences" panel. The failure message lists the options actually rendered, since which ones
+   * appear depends on the room count (the adjoining/connected pair is multi-room only).
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} optionLabel - e.g. "Request adjoining rooms"
+   * @returns {Promise<{options: string[]}>}
+   */
+  async verifyAdditionalPreferenceOptionDisplayed(page, optionLabel) {
+    if (!page) throw new Error('[Cart.verifyAdditionalPreferenceOptionDisplayed] "page" is required.');
+    if (!optionLabel || typeof optionLabel !== 'string') {
+      throw new Error(
+        `[Cart.verifyAdditionalPreferenceOptionDisplayed] "optionLabel" must be a non-empty string, got: ${typeof optionLabel} (${JSON.stringify(optionLabel)})`
+      );
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+    const options = await cartPage.getAdditionalPreferencesOptionLabels();
+
+    expect(
+      options,
+      `[Cart.verifyAdditionalPreferenceOptionDisplayed] Expected the Additional preferences panel to offer ` +
+      `"${optionLabel}", but it shows: ${options.map((option) => `"${option}"`).join(', ') || 'no options'}.`,
+    ).toContain(optionLabel);
+
+    logger.info('Additional preferences option is displayed', { optionLabel, options });
+    return { options };
+  },
+
+  /**
+   * Verifies how many preference options the OPEN "Additional preferences" panel offers. The
+   * arrival-time checkbox is not one of them — see CartPage.ADDITIONAL_PREFERENCES_OPTION.
+   *
+   * @param {import('playwright').Page} page
+   * @param {number} expectedCount
+   * @returns {Promise<{options: string[]}>}
+   */
+  async verifyAdditionalPreferencesCount(page, expectedCount) {
+    if (!page) throw new Error('[Cart.verifyAdditionalPreferencesCount] "page" is required.');
+    if (typeof expectedCount !== 'number' || !Number.isInteger(expectedCount) || expectedCount < 0) {
+      throw new Error(
+        `[Cart.verifyAdditionalPreferencesCount] "expectedCount" must be a non-negative integer, got: ${typeof expectedCount} (${expectedCount})`
+      );
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+    const options = await cartPage.getAdditionalPreferencesOptionLabels();
+
+    expect(
+      options.length,
+      `[Cart.verifyAdditionalPreferencesCount] Expected ${expectedCount} preference option(s) in the Additional ` +
+      `preferences panel, got ${options.length}: ${options.map((option) => `"${option}"`).join(', ') || 'none'}.`,
+    ).toBe(expectedCount);
+
+    logger.info('Additional preferences option count matches expected', { expectedCount, options });
+    return { options };
+  },
+
+  /**
+   * Closes the open "Additional preferences" panel via its own Cancel button, discarding any
+   * selection made in it.
+   *
+   * @param {import('playwright').Page} page
+   */
+  async cancelAdditionalPreferencesExtras(page) {
+    if (!page) throw new Error('[Cart.cancelAdditionalPreferencesExtras] "page" is required.');
+    logger.info('Cancelling the open Additional preferences extras panel');
+    const cartPage = getPageObject(page, CartPage);
+    await cartPage.clickAdditionalPreferencesCancelButton();
   },
 
   /**

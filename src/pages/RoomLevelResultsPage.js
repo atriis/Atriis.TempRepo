@@ -131,6 +131,10 @@ const SELECTORS = {
   // its own text instead — that class alone would also match a genuine policy violation badge.
   // en.json common.depositRequired is "Deposit Required".
   ROOM_CARD_DEPOSIT_REQUIRED: 'section.app-out-of-policy:has-text("Deposit Required")',
+  // "Showing {shown} of {total} Results" line above the room list (room-list-bar.vue). Anchored on
+  // its own "Showing" text rather than a position, because the same `p.is-size-6` shape is reused
+  // by the sibling "{n} clusters" line the bar renders when room merging is enabled.
+  ROOM_RESULTS_COUNT_TEXT: '.room-list-sort .actions p:has-text("Showing")',
 };
 
 class RoomLevelResultsPage {
@@ -1190,6 +1194,25 @@ class RoomLevelResultsPage {
     } catch (err) {
       throw new Error(`[RoomLevelResultsPage.setMaxPriceFilter] Could not drag price slider to ${maxPrice}. Original: ${err.message}`);
     }
+  }
+
+  /**
+   * Reads the "Showing {shown} of {total} Results" line above the room list.
+   * @param {object} [options]
+   * @param {number} [options.timeout=30000]
+   * @returns {Promise<string>} The raw line text, whitespace-collapsed
+   */
+  async getRoomResultsCountText({ timeout = 30000 } = {}) {
+    const line = this.page.locator(SELECTORS.ROOM_RESULTS_COUNT_TEXT).first();
+    try {
+      await line.waitFor({ state: 'visible', timeout });
+    } catch (err) {
+      throw new Error(
+        `[RoomLevelResultsPage.getRoomResultsCountText] The room results count line ` +
+        `(selector: ${SELECTORS.ROOM_RESULTS_COUNT_TEXT}) was not visible within ${timeout}ms. Original: ${err.message}`
+      );
+    }
+    return (await line.innerText()).replace(/\s+/g, ' ').trim();
   }
 }
 

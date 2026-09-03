@@ -2867,6 +2867,30 @@ Then("there should be {int} extras sections visible", async function (expectedCo
   await Cart.verifyExtrasSectionsCount(this.page, expectedCount);
 });
 
+// ===== HOTEL "ADDITIONAL PREFERENCES" EXTRAS ROW (Go Global, multi-room only) =====
+
+When("I open the additional preferences extras section", async function () {
+  logger.info("Opening the additional preferences extras section");
+  await Cart.openAdditionalPreferencesExtras(this.page);
+});
+
+Then("the additional preferences option {string} should be displayed", async function (optionLabel) {
+  logger.info("Verifying an additional preferences option is displayed", { optionLabel });
+  await Cart.verifyAdditionalPreferenceOptionDisplayed(this.page, optionLabel);
+});
+
+Then("there are {int} additional preferences displayed in extras", async function (expectedCount) {
+  logger.info("Verifying the number of additional preferences displayed", { expectedCount });
+  await Cart.verifyAdditionalPreferencesCount(this.page, expectedCount);
+});
+
+// Closes the open additional preferences panel without saving. Registered against the open extras
+// panel rather than page-wide: it is the only Cancel button in the cart's extras flow.
+When("I click cancel button", async function () {
+  logger.info("Clicking cancel in the open extras panel");
+  await Cart.cancelAdditionalPreferencesExtras(this.page);
+});
+
 Then("the passenger info section should be marked as required with an asterisk", async function () {
   logger.info("Verifying passenger info section shows required asterisk");
   await Cart.verifyPassengerInfoMarkedAsRequired(this.page);
@@ -3075,6 +3099,28 @@ When("I extract the price from more details", async function () {
   if (!this.extractedPrices) this.extractedPrices = [];
   this.extractedPrices.push(this.moreDetailsPrice);
   logger.info("Stored more details price", { moreDetailsPrice: this.moreDetailsPrice });
+});
+
+// Reads the "Total for N rooms" row of the open hotel More Details drawer — the whole stay for
+// every room. Stored as this.totalPrice so the shared price-per-night check can use it.
+When("I extract total for {int} rooms price in more details", async function (roomCount) {
+  logger.info("Extracting the total-for-rooms price from More Details", { roomCount });
+  const result = await Cart.extractTotalForRoomsFromMoreDetails(this.page, roomCount);
+  this.moreDetailsTotalForRooms = result.price;
+  this.totalPrice = result.price;
+  if (!this.extractedPrices) this.extractedPrices = [];
+  this.extractedPrices.push(result.price);
+  logger.info("Stored total-for-rooms price", { totalPrice: result.price, label: result.label });
+});
+
+// Reads one night's price from the "Rate information" panel of the same drawer — one room, one
+// night. Stored as this.pricePerNight for the shared price-per-night check.
+When("I extract the {int} night price from rate information", async function (nightNumber) {
+  logger.info("Extracting a per-night price from More Details rate information", { nightNumber });
+  const result = await Cart.extractNightPriceFromRateInformation(this.page, nightNumber);
+  this.moreDetailsNightPrice = result.price;
+  this.pricePerNight = result.price;
+  logger.info("Stored per-night price", { pricePerNight: result.price, night: result.label });
 });
 
 When("I close more details in cart", async function () {

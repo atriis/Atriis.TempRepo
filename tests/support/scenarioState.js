@@ -51,9 +51,34 @@ function getHotelListScrollOffsetAtSelection(world) {
   return typeof offset === "number" && !Number.isNaN(offset) ? offset : null;
 }
 
+// The per-night price and stay total most recently read in the scenario, whichever surface they came
+// from (the room-level price breakdown dialog, or the cart's More Details drawer). Both extraction
+// steps publish the same two names, so the price-per-night check reads one pair and does not care
+// which surface produced it — but that also means both must have been read on the SAME surface, so
+// the error names the steps that publish them.
+function getPricePerNightAndTotal(world) {
+  const pricePerNight = world.pricePerNight;
+  const totalPrice = world.totalPrice;
+
+  const missing = [];
+  if (typeof pricePerNight !== "number" || Number.isNaN(pricePerNight)) missing.push("a price per night");
+  if (typeof totalPrice !== "number" || Number.isNaN(totalPrice)) missing.push("a total price");
+
+  if (missing.length > 0) {
+    throw new Error(
+      `No ${missing.join(" and ")} has been extracted yet. Run "I extract prices from the price breakdown" ` +
+        `(room level), or both "I extract total for N rooms price in more details" and ` +
+        `"I extract the N night price from rate information" (cart More Details), before comparing them.`,
+    );
+  }
+
+  return { pricePerNight, totalPrice };
+}
+
 module.exports = {
   getTravelerCount,
   getStoredFlightNumbers,
   getGsaAllowance,
   getHotelListScrollOffsetAtSelection,
+  getPricePerNightAndTotal,
 };

@@ -293,10 +293,12 @@ const HotelSearch = {
    * Contrast with `searchHotelByNights`, which waits for the results URL immediately.
    *
    * @param {import('playwright').Page} page
-   * @param {string|object} whereInput - Destination or { where, nights }
+   * @param {string|object} whereInput - Destination or { where, nights, rooms }
    * @param {object} [options]
    * @param {number} [options.nights] - Number of nights
-   * @returns {Promise<{where: string, nights: number}>}
+   * @param {number} [options.rooms] - Number of rooms to select before typing the destination.
+   *   Omit for the single-room default (the form's own default is left untouched).
+   * @returns {Promise<{where: string, nights: number, rooms: number|null}>}
    */
   async initiateHotelSearch(page, whereInput, options = {}) {
     // Same form-fill as fillHotelSearchWithoutSearching, then click Search (but don't wait for the
@@ -314,23 +316,30 @@ const HotelSearch = {
    * Contrast with `initiateHotelSearch`, which clicks Search (without waiting for results).
    *
    * @param {import('playwright').Page} page
-   * @param {string|object} whereInput - Destination or { where, nights }
+   * @param {string|object} whereInput - Destination or { where, nights, rooms }
    * @param {object} [options]
    * @param {number} [options.nights] - Number of nights
-   * @returns {Promise<{where: string, nights: number, checkInDate: string, checkOutDate: string}>}
+   * @param {number} [options.rooms] - Number of rooms to select before typing the destination.
+   *   Omit for the single-room default (the form's own default is left untouched).
+   * @returns {Promise<{where: string, nights: number, rooms: number|null, checkInDate: string, checkOutDate: string}>}
    */
   async fillHotelSearchWithoutSearching(page, whereInput, options = {}) {
     if (!page) throw new Error('[HotelSearch.fillHotelSearchWithoutSearching] "page" is required.');
 
-    let where, nights;
+    let where, nights, rooms;
     if (typeof whereInput === 'object' && whereInput !== null && (whereInput.where || whereInput.destination)) {
       where = resolveLocation(whereInput, ['where', 'destination'], hotelLocations);
       nights = whereInput.nights || SEARCH_DEFAULTS.HOTEL.NIGHTS;
+      rooms = whereInput.rooms ?? options.rooms ?? null;
     } else {
       where = resolveLocation(whereInput, ['where', 'destination'], hotelLocations);
       nights = options.nights || SEARCH_DEFAULTS.HOTEL.NIGHTS;
+      rooms = options.rooms ?? null;
     }
     if (nights < 1) throw new Error(`[HotelSearch.fillHotelSearchWithoutSearching] "nights" must be >= 1, got: ${nights}`);
+    if (rooms !== null && (typeof rooms !== 'number' || !Number.isInteger(rooms) || rooms < 1)) {
+      throw new Error(`[HotelSearch.fillHotelSearchWithoutSearching] "rooms" must be an integer >= 1 when provided, got: ${typeof rooms} (${rooms})`);
+    }
 
     const hotelSearchPage = getPageObject(page, HotelSearchPage);
     const searchPage = getPageObject(page, SearchPage);
@@ -338,6 +347,12 @@ const HotelSearch = {
     try {
       await hotelSearchPage.clickHotelTab();
       await hotelSearchPage.waitForBookAndStayAtYourHotelText();
+      // Rooms first, matching searchHotelMultiRoom: the rooms dropdown popper overlays the
+      // destination autocomplete, so picking the count after typing can swallow the suggestion click.
+      if (rooms !== null) {
+        await hotelSearchPage.openRoomsDropdown();
+        await hotelSearchPage.selectRoomCount(rooms);
+      }
       await hotelSearchPage.typeHotelDestination(where);
       await hotelSearchPage.clickCheckInField();
       await searchPage.clickCalendarNextArrow();
@@ -345,11 +360,12 @@ const HotelSearch = {
       const checkInDate = await hotelSearchPage.getCheckInDateValue();
       const checkOutDate = await hotelSearchPage.getCheckOutDateValue();
       // Intentionally NO search click — the caller carries these params into the next flow.
-      return { where, nights, checkInDate, checkOutDate };
+      return { where, nights, rooms, checkInDate, checkOutDate };
     } catch (err) {
       throw new Error(
-        `[HotelSearch.fillHotelSearchWithoutSearching] Could not fill the hotel search for "${where}" (${nights} night(s)) ` +
-        `without searching. The hotel tab, destination autocomplete, or calendar may not have been ready. Original: ${err.message}`
+        `[HotelSearch.fillHotelSearchWithoutSearching] Could not fill the hotel search for "${where}" (${nights} night(s)` +
+        `${rooms !== null ? `, ${rooms} room(s)` : ''}) without searching. The hotel tab, rooms dropdown, destination ` +
+        `autocomplete, or calendar may not have been ready. Original: ${err.message}`
       );
     }
   },

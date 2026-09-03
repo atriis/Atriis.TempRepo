@@ -1145,6 +1145,21 @@ const SELECTORS = {
   MORE_DETAILS_DRAWER_CONTAINER: ".cart-more-details-drawer",
   // Skeleton placeholders rendered inside the More Details drawer while content loads.
   MORE_DETAILS_DRAWER_SKELETON: ".el-skeleton, .el-skeleton__item",
+  // ===== HOTEL "More details" -> "Rate information" price rows (hotel-quote-more-details.vue) =====
+  // The Rate information column (`.row7`) holds ONE `.gray-section` whose `.price-details` rows are,
+  // in template order: one row per night (v-for over roomRateBreakdown, label = the formatted date),
+  // then the aggregate rows — Tax and fees, any handling/service fee, "Number of rooms" and
+  // "Total for N rooms". So night N is `.price-details` nth(N-1); the label guard in
+  // getHotelMoreDetailsNightPrice is what stops an aggregate row being read as a night.
+  MORE_DETAILS_RATE_INFORMATION_ROW: '.cart-more-details-drawer .row7 .gray-section .price-details',
+  // Amount inside one of those rows, relative to MORE_DETAILS_RATE_INFORMATION_ROW (app-price → h4.amount).
+  MORE_DETAILS_RATE_INFORMATION_ROW_AMOUNT: '.amount',
+  // Row label inside one of those rows, relative to MORE_DETAILS_RATE_INFORMATION_ROW.
+  MORE_DETAILS_RATE_INFORMATION_ROW_LABEL: 'p',
+  // The "Total for N rooms" row, matched on its own label class (`p.total-for-rooms`) so it is never
+  // confused with the per-night rows or the drawer footer total.
+  MORE_DETAILS_TOTAL_FOR_ROOMS_ROW: '.cart-more-details-drawer .price-details:has(p.total-for-rooms)',
+  MORE_DETAILS_TOTAL_FOR_ROOMS_LABEL: 'p.total-for-rooms',
   // Share dialog close button. Scope to :visible — multiple el-dialogs can linger hidden in
   // the DOM, and an unscoped .first() would resolve to a stale hidden dialog's close button
   // instead of the currently open share dialog.
@@ -1570,6 +1585,32 @@ const SELECTORS = {
   // Extras sections visibility (generic — used to verify which sections are rendered)
   EXTRAS_SECTION_CARD_TITLE: '.extras-collapse-container .card-title',
   EXTRAS_SECTION_ITEM: '.extras-collapse-container .extras-layout',
+
+  // ===== HOTEL "Additional preferences" EXTRAS ROW (additional-preferences.vue) =====
+  // Go Global multi-room extra. Unlike every other extras row it titles itself with a bare <p>
+  // (no `.card-title`), so EXTRAS_SECTION_CARD_TITLE above cannot find it — hence its own selectors.
+  // The collapsed row: `.extras-layout` holding `.extra__description` (the title) and `.extra__btns`
+  // (the Add/Edit/View trigger). Text-anchored because the component's root class (`quote-extras`)
+  // is shared with every other extras row.
+  ADDITIONAL_PREFERENCES_ROW:
+    '.extras-collapse-container .extras-layout:has(.extra__description p:text-is("Additional preferences"))',
+  ADDITIONAL_PREFERENCES_ROW_TRIGGER: '.extra__btns .is-clickable',
+  // The "Extras" collapse header of the quote card that owns the Additional preferences row. Scoped
+  // through the row rather than taken as the first header on the page, so a second quote card's
+  // extras collapse is never toggled instead. el-collapse keeps collapsed content in the DOM, so
+  // this still resolves while the section is closed.
+  ADDITIONAL_PREFERENCES_EXTRAS_COLLAPSE_HEADER:
+    '.extras-collapse-container:has(.extra__description p:text-is("Additional preferences")) .el-collapse-item__header',
+  // The OPEN panel. Once expanded, extras-layout swaps the collapsed `.extra` row for the component's
+  // own `el-card.extras-card`, which titles itself "Additional preferences" via `p.card-title`.
+  ADDITIONAL_PREFERENCES_CARD: '.extras-card:has(.card-title:text-is("Additional preferences"))',
+  // The preference checkboxes: the three "Request ..." room preferences are direct children of the
+  // panel's flex column, while "Late arrival" sits one level deeper inside its own row next to the
+  // timepicker — so the direct-child chain is what separates the preferences from the arrival time.
+  ADDITIONAL_PREFERENCES_OPTION: '.is-flex.is-flex-direction-column > .el-checkbox',
+  ADDITIONAL_PREFERENCES_OPTION_LABEL: '.el-checkbox__label',
+  // The panel's own footer buttons: "Cancel" (or "Close" once the quote is no longer pending) and "Save".
+  ADDITIONAL_PREFERENCES_CANCEL_BUTTON: '.btns button:has-text("Cancel")',
 
   // Payment terms selectors (for car rentals, hotels, etc)
   PAYMENT_TERMS_LINK: 'a:has-text("terms"), button:has-text("terms"), .more-details-btn:has-text("terms"), [role="button"]:has-text("terms")',
@@ -4963,6 +5004,130 @@ class CartPage {
     return this.page.locator(SELECTORS.EXTRAS_SECTION_ITEM).count();
   }
 
+  // ===== HOTEL "Additional preferences" EXTRAS ROW =====
+
+  /**
+   * Expands the quote card's "Extras" collapse and opens the "Additional preferences" panel.
+   *
+   * The collapse auto-expands for a pending quote, so it is only toggled when it reports itself
+   * closed (`aria-expanded`, the same source of truth reopenExtrasAfterSave uses — the arrow's
+   * `is-active` class can be stale), and the toggle is re-checked rather than trusted once.
+   *
+   * @param {number} [timeout=15000]
+   */
+  async openAdditionalPreferencesExtras(timeout = 15000) {
+    const header = this.page.locator(SELECTORS.ADDITIONAL_PREFERENCES_EXTRAS_COLLAPSE_HEADER).first();
+    try {
+      await header.waitFor({ state: 'visible', timeout });
+    } catch (err) {
+      throw new Error(
+        `[CartPage.openAdditionalPreferencesExtras] No quote card with an "Additional preferences" extras row ` +
+        `was found (selector: ${SELECTORS.ADDITIONAL_PREFERENCES_EXTRAS_COLLAPSE_HEADER}). The row only renders ` +
+        `for a supplier that supports it (Go Global) and only when more than one room is booked. Original: ${err.message}`
+      );
+    }
+
+    const trigger = this.page
+      .locator(SELECTORS.ADDITIONAL_PREFERENCES_ROW)
+      .first()
+      .locator(SELECTORS.ADDITIONAL_PREFERENCES_ROW_TRIGGER)
+      .first();
+
+    // Toggle-then-verify rather than toggle-once: a stale aria-expanded read would otherwise
+    // COLLAPSE an already-open section and leave the trigger permanently out of reach.
+    const maxAttempts = 3;
+    let triggerVisible = false;
+    for (let attempt = 1; attempt <= maxAttempts && !triggerVisible; attempt++) {
+      if ((await header.getAttribute('aria-expanded').catch(() => null)) !== 'true') {
+        await header.click();
+      }
+      triggerVisible = await trigger.isVisible({ timeout: 5000 }).catch(() => false);
+    }
+
+    if (!triggerVisible) {
+      throw new Error(
+        `[CartPage.openAdditionalPreferencesExtras] The quote card's "Extras" section would not stay expanded, ` +
+        `so the Additional preferences row's Add/Edit/View trigger never became visible ` +
+        `(selector: ${SELECTORS.ADDITIONAL_PREFERENCES_ROW} ${SELECTORS.ADDITIONAL_PREFERENCES_ROW_TRIGGER}).`
+      );
+    }
+
+    try {
+      await trigger.scrollIntoViewIfNeeded();
+      await trigger.click();
+    } catch (err) {
+      throw new Error(
+        `[CartPage.openAdditionalPreferencesExtras] Could not click the Additional preferences row's ` +
+        `Add/Edit/View trigger (selector: ${SELECTORS.ADDITIONAL_PREFERENCES_ROW} ` +
+        `${SELECTORS.ADDITIONAL_PREFERENCES_ROW_TRIGGER}). Original: ${err.message}`
+      );
+    }
+
+    const card = this.page.locator(SELECTORS.ADDITIONAL_PREFERENCES_CARD).first();
+    try {
+      await card.waitFor({ state: 'visible', timeout });
+    } catch (err) {
+      throw new Error(
+        `[CartPage.openAdditionalPreferencesExtras] The Additional preferences panel did not open ` +
+        `(selector: ${SELECTORS.ADDITIONAL_PREFERENCES_CARD}). Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Reads the preference option labels shown in the OPEN "Additional preferences" panel, in display
+   * order. Excludes the "Late arrival" checkbox, which is an arrival-time input rather than a room
+   * preference (see ADDITIONAL_PREFERENCES_OPTION).
+   *
+   * @param {number} [timeout=15000]
+   * @returns {Promise<string[]>}
+   */
+  async getAdditionalPreferencesOptionLabels(timeout = 15000) {
+    const card = this.page.locator(SELECTORS.ADDITIONAL_PREFERENCES_CARD).first();
+    try {
+      await card.waitFor({ state: 'visible', timeout });
+    } catch (err) {
+      throw new Error(
+        `[CartPage.getAdditionalPreferencesOptionLabels] The Additional preferences panel is not open ` +
+        `(selector: ${SELECTORS.ADDITIONAL_PREFERENCES_CARD}). Open it first with ` +
+        `openAdditionalPreferencesExtras. Original: ${err.message}`
+      );
+    }
+
+    const options = card.locator(SELECTORS.ADDITIONAL_PREFERENCES_OPTION);
+    await options.first().waitFor({ state: 'visible', timeout });
+    const labels = await options.locator(SELECTORS.ADDITIONAL_PREFERENCES_OPTION_LABEL).allInnerTexts();
+    return labels.map((label) => label.replace(/\s+/g, ' ').trim()).filter((label) => label.length > 0);
+  }
+
+  /**
+   * Clicks the "Cancel" button in the open "Additional preferences" panel, closing it without saving.
+   * @param {number} [timeout=15000]
+   */
+  async clickAdditionalPreferencesCancelButton(timeout = 15000) {
+    const button = this.page
+      .locator(SELECTORS.ADDITIONAL_PREFERENCES_CARD)
+      .first()
+      .locator(SELECTORS.ADDITIONAL_PREFERENCES_CANCEL_BUTTON)
+      .first();
+    try {
+      await button.waitFor({ state: 'visible', timeout });
+      await button.click();
+    } catch (err) {
+      throw new Error(
+        `[CartPage.clickAdditionalPreferencesCancelButton] Could not click Cancel in the Additional ` +
+        `preferences panel (selector: ${SELECTORS.ADDITIONAL_PREFERENCES_CARD} ` +
+        `${SELECTORS.ADDITIONAL_PREFERENCES_CANCEL_BUTTON}). The panel renders "Close" instead of "Cancel" ` +
+        `once the quote is no longer pending. Original: ${err.message}`
+      );
+    }
+    await this.page
+      .locator(SELECTORS.ADDITIONAL_PREFERENCES_CARD)
+      .first()
+      .waitFor({ state: 'hidden', timeout })
+      .catch(() => {});
+  }
+
   /**
    * Fills every mandatory row currently shown in the UK Rail (Evolvi) cart "Extras" panel
    * (ADO #81973) — e.g. "Delivery Method" (always present), and, only when a non-cheapest fare
@@ -8130,6 +8295,105 @@ class CartPage {
     const text = await el.innerText();
     const match = text.replace(/[^0-9.,]/g, '').replace(',', '.');
     return parseFloat(match) || null;
+  }
+
+  /**
+   * Reads one per-night price row from the "Rate information" panel of the open hotel
+   * "More details" drawer. The drawer must already be open (via clickMoreDetailsInCart).
+   *
+   * @param {number} nightNumber - 1-based night position in the rate breakdown
+   * @param {object} [options]
+   * @param {number} [options.timeout=15000]
+   * @returns {Promise<{label: string, amountText: string, amount: number}>}
+   */
+  async getHotelMoreDetailsNightPrice(nightNumber, { timeout = 15000 } = {}) {
+    if (typeof nightNumber !== 'number' || !Number.isInteger(nightNumber) || nightNumber < 1) {
+      throw new Error(
+        `[CartPage.getHotelMoreDetailsNightPrice] "nightNumber" must be a 1-based integer, got: ${typeof nightNumber} (${nightNumber})`
+      );
+    }
+
+    const rows = this.page.locator(SELECTORS.MORE_DETAILS_RATE_INFORMATION_ROW);
+    await rows.first().waitFor({ state: 'visible', timeout });
+
+    const rowCount = await rows.count();
+    if (rowCount < nightNumber) {
+      throw new Error(
+        `[CartPage.getHotelMoreDetailsNightPrice] The Rate information panel renders only ${rowCount} price ` +
+        `row(s), so night ${nightNumber} has none.`
+      );
+    }
+
+    const row = rows.nth(nightNumber - 1);
+    const label = (await row.locator(SELECTORS.MORE_DETAILS_RATE_INFORMATION_ROW_LABEL).first().innerText())
+      .replace(/\s+/g, ' ')
+      .trim();
+
+    // Night rows are labelled with the stay date ("Mon, 15 Sep"); every aggregate row in the same
+    // panel names an amount type instead. Reading an aggregate row as a night price would silently
+    // compare the wrong figures, so it fails loudly here.
+    if (/room|total|tax|fee|charge|currency/i.test(label)) {
+      throw new Error(
+        `[CartPage.getHotelMoreDetailsNightPrice] Row ${nightNumber} of the Rate information panel is the ` +
+        `"${label}" aggregate row, not a per-night row. The rate breakdown likely returned fewer than ` +
+        `${nightNumber} nights.`
+      );
+    }
+
+    const amountEl = row.locator(SELECTORS.MORE_DETAILS_RATE_INFORMATION_ROW_AMOUNT).first();
+    await amountEl.waitFor({ state: 'visible', timeout });
+    const amountText = (await amountEl.innerText()).trim();
+
+    return { label, amountText, amount: parseAmountText(amountText, `night ${nightNumber} price (More details)`) };
+  }
+
+  /**
+   * Reads the "Total for N rooms" row from the open hotel "More details" drawer.
+   * The drawer must already be open (via clickMoreDetailsInCart).
+   *
+   * @param {object} [options]
+   * @param {number} [options.timeout=15000]
+   * @returns {Promise<{label: string, roomCount: number, amountText: string, amount: number}>}
+   */
+  async getHotelMoreDetailsTotalForRooms({ timeout = 15000 } = {}) {
+    const row = this.page.locator(SELECTORS.MORE_DETAILS_TOTAL_FOR_ROOMS_ROW).first();
+    try {
+      await row.waitFor({ state: 'visible', timeout });
+    } catch (err) {
+      throw new Error(
+        `[CartPage.getHotelMoreDetailsTotalForRooms] The "Total for N rooms" row ` +
+        `(selector: ${SELECTORS.MORE_DETAILS_TOTAL_FOR_ROOMS_ROW}) was not visible within ${timeout}ms. ` +
+        `Either the hotel More details drawer is not open, or it is still loading. Original: ${err.message}`
+      );
+    }
+
+    const label = (await row.locator(SELECTORS.MORE_DETAILS_TOTAL_FOR_ROOMS_LABEL).first().innerText())
+      .replace(/\s+/g, ' ')
+      .trim();
+    const roomCountMatch = label.match(/\d+/);
+    if (!roomCountMatch) {
+      throw new Error(
+        `[CartPage.getHotelMoreDetailsTotalForRooms] Could not read a room count from the row label: "${label}".`
+      );
+    }
+
+    // The row renders "Included" instead of an app-price when the total is 0.
+    const amountEl = row.locator(SELECTORS.MORE_DETAILS_RATE_INFORMATION_ROW_AMOUNT).first();
+    if (!(await amountEl.count())) {
+      throw new Error(
+        `[CartPage.getHotelMoreDetailsTotalForRooms] The "${label}" row shows no amount ` +
+        `(row text: "${(await row.innerText()).replace(/\s+/g, ' ').trim()}").`
+      );
+    }
+    await amountEl.waitFor({ state: 'visible', timeout });
+    const amountText = (await amountEl.innerText()).trim();
+
+    return {
+      label,
+      roomCount: Number(roomCountMatch[0]),
+      amountText,
+      amount: parseAmountText(amountText, 'total for rooms (More details)'),
+    };
   }
 
   /**

@@ -164,6 +164,13 @@ When("I select hotel result at index {int}", async function (index) {
   await HotelLevelResults.clickHotelByIndex(this.page, index);
 });
 
+// Opens the hotel card's "More details" drawer and leaves it open (the ordinal is the 1-based hotel
+// card position). Use "I close the open drawer" afterwards before acting on the results list again.
+When("I open the more details drawer for the {int} hotel result", async function (index) {
+  logger.info("Opening the hotel details drawer by index", { index });
+  await HotelLevelResults.openMoreDetailsDrawerByIndex(this.page, index);
+});
+
 Then("hotel {int} should display the {string} amenity", async function (index, amenityName) {
   logger.info("Verifying amenity is displayed on hotel", { index, amenityName });
   await HotelLevelResults.verifyAmenityDisplayed(this.page, index, amenityName);

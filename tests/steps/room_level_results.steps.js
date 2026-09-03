@@ -197,6 +197,14 @@ Then("the room level results should display {int} nights", async function (night
   await RoomLevelResults.verifyNightsCountInRoomLevel(this.page, nights);
 });
 
+// Sanity check on the room list's own counter: it must report at least one room, no more than its
+// stated total, and stay under the given upper bound.
+Then('I see that "Showing X of X Results" display a logical number of rooms that is smaller than {int} hotels', async function (maxCount) {
+  logger.info("Verifying the room results count line reports a plausible number of rooms", { maxCount });
+  const result = await RoomLevelResults.verifyRoomResultsCountIsBelow(this.page, maxCount);
+  logger.info("Room results count line verified", result);
+});
+
 When("I click the first price breakdown button", async function () {
   logger.info("Clicking price details button to open price breakdown");
   await RoomLevelResults.clickPriceBreakdownButton(this.page);
@@ -208,6 +216,10 @@ When("I extract prices from the price breakdown", async function () {
   this.priceBreakdownNight = values.nightPrice;
   this.priceBreakdownSubtotal = values.subtotal;
   this.priceBreakdownTotal = values.total;
+  // Also published under the surface-agnostic names the shared "total price is price per night x N"
+  // check reads, so the same assertion works here and off the cart's More Details drawer.
+  this.pricePerNight = values.nightPrice;
+  this.totalPrice = values.total;
   logger.info("Stored price breakdown values", values);
 });
 

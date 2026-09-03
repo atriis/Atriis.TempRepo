@@ -1101,6 +1101,22 @@ class CommonPage {
   }
 
   /**
+   * Gets the first VISIBLE heading with the given text.
+   *
+   * Use this to assert a heading is on screen: the same text can legitimately be rendered as more
+   * than one heading (the hotel details drawer titles both its overview section `h3` and a nested
+   * `h4` "Overview"), and asserting on the unfiltered locator fails with a strict-mode violation
+   * rather than reporting whether the heading is there. Filtering by visibility first also skips
+   * the hidden responsive duplicates some layouts keep in the DOM.
+   *
+   * @param {string} text - The text content of the heading
+   * @returns {Locator} Playwright locator for the first visible matching heading
+   */
+  getVisibleHeadingByText(text) {
+    return this.getHeadingByText(text).filter({ visible: true }).first();
+  }
+
+  /**
    * Scrolls the window to the given coordinates. When `y` is omitted, scrolls to the bottom of the
    * page (document height) — used to reveal content below the fold, e.g. the hotel section of the
    * travel-request form. Ported from the Testim `scrollTo(page, x, y)` helper.

@@ -306,6 +306,32 @@ const HotelLevelResults = {
   },
 
   /**
+   * Opens the hotel details drawer ("More details") for a hotel result by 1-based index, and leaves
+   * it open for the caller to read. Distinct from clickHotelByIndex, which clicks "View rates" and
+   * navigates to room level.
+   *
+   * @param {import('playwright').Page} page
+   * @param {number} index - 1-based hotel index
+   */
+  async openMoreDetailsDrawerByIndex(page, index) {
+    if (!page) throw new Error('[HotelLevelResults.openMoreDetailsDrawerByIndex] "page" is required.');
+    if (typeof index !== 'number' || !Number.isInteger(index) || index < 1) {
+      throw new Error(
+        `[HotelLevelResults.openMoreDetailsDrawerByIndex] "index" must be a 1-based integer, got: ${typeof index} (${index})`
+      );
+    }
+    const hotelLevelResultsPage = getPageObject(page, HotelLevelResultsPage);
+    try {
+      await hotelLevelResultsPage.clickMoreDetailsByIndex(index);
+    } catch (err) {
+      throw new Error(
+        `[HotelLevelResults.openMoreDetailsDrawerByIndex] Could not open the details drawer for hotel result ` +
+        `${index}. Either fewer than ${index} hotel cards are rendered, or the drawer never opened. Original: ${err.message}`
+      );
+    }
+  },
+
+  /**
    * Sorts hotel results by a given label (e.g., "Price").
    * Closes any open hotel details drawer first.
    * @param {import('playwright').Page} page

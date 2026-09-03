@@ -51,6 +51,18 @@ const SELECTORS = {
   // general-reference-field component renders `.general-questions` with one `<article>` per field
   // (v-for over generalQuestions), each carrying a single `label.label` (FIELD_LABEL).
   GENERAL_QUESTIONS_LABEL: '.general-questions article label.label',
+  // EVERY reference-field label the questionnaire can render, whichever section a field is
+  // configured for. app-reference-field-questionnaire.vue mounts four field-bearing sections, and
+  // each renders one `<article>` per field wrapping a single input-basic (so one `label.label`):
+  //   * `.general-questions`          — general fields, and the profile/dynamic instance
+  //   * `.traveler-questions`         — per-traveller fields
+  //   * `.quote-questions`            — per-product fields (e.g. a hotel-only checkout field)
+  //   * `.quote-passenger-questions`  — per-product-per-traveller fields
+  // Counting the union answers "how many reference fields does this page show", which no single
+  // section can: the same admin configuration can put its fields in any of them.
+  ALL_QUESTIONS_LABEL:
+    '.general-questions article label.label, .traveler-questions article label.label, ' +
+    '.quote-questions article label.label, .quote-passenger-questions article label.label',
   // Filterable reference-field dropdown (input-dropdown.vue renders an `.el-select` with `filterable`).
   // Used by the "dropdown is filterable by typing" flow: open the dropdown, type to narrow the list,
   // then read/select the matching item from the OPEN dropdown panel.
@@ -1142,6 +1154,26 @@ class DynamicAndReferenceFieldsPage {
     const labels = this.page.locator(SELECTORS.GENERAL_QUESTIONS_LABEL).filter({ visible: true });
     await labels.first().waitFor({ state: 'visible', timeout });
     const rawTexts = await labels.allInnerTexts();
+    return rawTexts.map((t) => cleanReferenceLabelText(t)).filter((t) => t.length > 0);
+  }
+
+  /**
+   * Reads the labels of every reference field currently DISPLAYED on the page, across all four
+   * question sections the questionnaire can render (see ALL_QUESTIONS_LABEL). Returns immediately
+   * with whatever is rendered — no wait — so a caller can poll it while the form finishes rendering
+   * and can also assert that no fields are shown.
+   *
+   * Only VISIBLE labels count: the traveller and per-quote sections are accordions, and a field in a
+   * collapsed one is in the DOM but not displayed. The "*" mandatory marker and trailing "info"
+   * tooltip text every label concatenates are stripped, so these are the clean question texts.
+   *
+   * @returns {Promise<string[]>} Clean field labels in DOM order
+   */
+  async getDisplayedReferenceFieldLabels() {
+    const rawTexts = await this.page
+      .locator(SELECTORS.ALL_QUESTIONS_LABEL)
+      .filter({ visible: true })
+      .allInnerTexts();
     return rawTexts.map((t) => cleanReferenceLabelText(t)).filter((t) => t.length > 0);
   }
 

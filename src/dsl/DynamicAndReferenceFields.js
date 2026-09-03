@@ -747,6 +747,56 @@ const DynamicAndReferenceFields = {
   },
 
   /**
+   * Verifies how many reference fields the checkout page displays in total.
+   *
+   * Counts every field across all four question sections the questionnaire renders (general,
+   * per-traveller, per-quote and per-quote-per-traveller), because which section a field lands in is
+   * an admin configuration choice: a "show at checkout only when non-gds hotel" field is a PRODUCT
+   * question and never appears in the general section. Counting one section would silently report 0
+   * for a field the page is plainly showing.
+   *
+   * Polls the count rather than reading it once: the reference-fields form renders asynchronously
+   * after the "Booking details" heading, so a single read can catch it half-built — and polling is
+   * also what lets an expected count of 0 be verified.
+   *
+   * @param {import('playwright').Page} page
+   * @param {number} expectedCount
+   * @returns {Promise<{count: number, labels: string[]}>}
+   */
+  async verifyCheckoutReferenceFieldCount(page, expectedCount) {
+    if (!page) throw new Error('[DynamicAndReferenceFields.verifyCheckoutReferenceFieldCount] "page" is required.');
+    if (typeof expectedCount !== 'number' || !Number.isInteger(expectedCount) || expectedCount < 0) {
+      throw new Error(
+        `[DynamicAndReferenceFields.verifyCheckoutReferenceFieldCount] "expectedCount" must be a non-negative ` +
+        `integer, got: ${typeof expectedCount} (${expectedCount})`
+      );
+    }
+
+    const checkoutPage = getPageObject(page, CheckoutPage);
+    const dynamicFieldsPage = getPageObject(page, DynamicAndReferenceFieldsPage);
+
+    await checkoutPage.waitForBookingDetailsText();
+
+    try {
+      await expect
+        .poll(async () => (await dynamicFieldsPage.getDisplayedReferenceFieldLabels()).length, { timeout: 20000 })
+        .toBe(expectedCount);
+    } catch (err) {
+      const labels = await dynamicFieldsPage.getDisplayedReferenceFieldLabels();
+      throw new Error(
+        `[DynamicAndReferenceFields.verifyCheckoutReferenceFieldCount] Expected exactly ${expectedCount} checkout ` +
+        `reference field(s), got ${labels.length}: ${labels.map((label) => `"${label}"`).join(', ') || 'none'}. ` +
+        `Counted across the general, per-traveller, per-quote and per-quote-per-traveller sections. ` +
+        `Original: ${err.message}`
+      );
+    }
+
+    const labels = await dynamicFieldsPage.getDisplayedReferenceFieldLabels();
+    logger.info('Checkout reference field count matches expected', { expectedCount, labels });
+    return { count: labels.length, labels };
+  },
+
+  /**
    * Verifies that specific field labels have expected values.
    * @param {import('playwright').Page} page
    * @param {Array<{label: string, expectedValue: string}>} fieldValuePairs

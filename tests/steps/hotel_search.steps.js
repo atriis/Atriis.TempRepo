@@ -41,6 +41,14 @@ When("I initiate a hotel search in {string} for {int} night(s)", async function 
   this.hotelSearch = await HotelSearch.initiateHotelSearch(this.page, { where: location, nights });
 });
 
+// Multi-room sibling of the step above. Use instead of "I search for a hotel in ... with N rooms"
+// (searchHotelMultiRoom) whenever a reference-fields / trip-purpose popup gates the search: that
+// step waits for the results URL immediately and so times out on the popup.
+When("I initiate a hotel search in {string} for {int} night(s) with {int} rooms", async function (location, nights, rooms) {
+  logger.info("Initiating multi-room hotel search (no URL wait)", { location, nights, rooms });
+  this.hotelSearch = await HotelSearch.initiateHotelSearch(this.page, { where: location, nights, rooms });
+});
+
 When("I search for a hotel in {string} for {int} night(s) {int} months ahead", async function (location, nights, monthsAhead) {
   logger.info("Searching for hotel with custom months ahead", { location, nights, monthsAhead });
   this.hotelSearch = await HotelSearch.searchHotelByNights(this.page, { where: location, nights }, { monthsAhead });

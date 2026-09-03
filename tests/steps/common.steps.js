@@ -20,6 +20,7 @@ const Cart = require("@dsl/Cart");
 const FlightResults = require("@dsl/FlightResults");
 const Results = require("@dsl/Results");
 const DynamicAndReferenceFields = require("@dsl/DynamicAndReferenceFields");
+const { getPricePerNightAndTotal } = require("../support/scenarioState");
 const logger = require("@utils/logger").child("Common");
 
 setDefaultTimeout(120000);
@@ -263,6 +264,34 @@ Then("the extracted price at index {int} should equal the extracted price at ind
   expectNumbersToBeEqualWithTolerance(priceA, priceB, tolerance, `Price comparison [${indexA}] vs [${indexB}]`);
 });
 
+// Checks the stay total against the per-night price times a room-nights multiplier (e.g. 6 nights ×
+// 2 rooms = 12), using the pair most recently extracted — the room-level price breakdown, or the
+// cart's More Details drawer. It proves the marked-up nightly rate is what the total is built from.
+//
+// The tolerance is what the two figures can legitimately differ by, so it is derived rather than
+// picked: the room-level breakdown reads whole-currency amounts, so multiplying a rounded nightly
+// rate can drift by up to half a unit per night plus half a unit on the total, and 1% covers the
+// rounding the app applies to taxes and markup on top of that. A missing or wrong markup is a far
+// larger gap than either.
+Then("the total price is price per night x {int} with tolerance", function (multiplier) {
+  const { pricePerNight, totalPrice } = getPricePerNightAndTotal(this);
+  const expectedTotal = pricePerNight * multiplier;
+  const tolerance = Math.max(multiplier * 0.5 + 0.5, expectedTotal * 0.01);
+  logger.info("Asserting the total price equals the per-night price times the room-nights multiplier", {
+    pricePerNight,
+    multiplier,
+    expectedTotal,
+    totalPrice,
+    tolerance,
+  });
+  expectNumbersToBeEqualWithTolerance(
+    totalPrice,
+    expectedTotal,
+    tolerance,
+    `Total price vs price per night (${pricePerNight}) x ${multiplier}`,
+  );
+});
+
 Then("the sum of extracted prices at index {int} and {int} should equal {float}", function (indexA, indexB, expectedSum) {
   logger.info("Asserting sum of extracted prices equals value", { indexA, indexB, expectedSum });
   const priceA = this.extractedPrices[indexA];
@@ -313,10 +342,12 @@ Then("the sum of prices at index {int} from {string} and index {int} from {strin
 // ===== THEN STEPS =====
 
 Then('I should see the heading {string}', async function (text) {
-  const { expect } = require('@playwright/test');
   const commonPage = getPageObject(this.page, CommonPage);
-  
-  await expect(commonPage.getHeadingByText(text)).toBeVisible({ timeout: 30000 });
+
+  // Asserts on the first VISIBLE match: a page can render the same heading text more than once
+  // (e.g. the hotel details drawer's "Overview" section h3 plus a nested h4), and the unfiltered
+  // locator then throws a strict-mode violation instead of answering the question being asked.
+  await expect(commonPage.getVisibleHeadingByText(text)).toBeVisible({ timeout: 30000 });
 });
 
 // Generic, domain-agnostic text-visibility check (whole-page scope, including an open modal) —

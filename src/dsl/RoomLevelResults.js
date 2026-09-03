@@ -53,6 +53,65 @@ const RoomLevelResults = {
   },
 
   /**
+   * Reads the room list's own "Showing {shown} of {total} Results" line and verifies the shown
+   * count is a plausible room count: at least one room, no more than the total the same line
+   * reports, and below maxCount.
+   *
+   * The upper bound is the point of the check — a supplier answering with an implausibly long room
+   * list (or the counter rendering the hotel-level count) is the failure being guarded against.
+   *
+   * @param {import('playwright').Page} page
+   * @param {number} maxCount - Exclusive upper bound the shown count must stay under
+   * @returns {Promise<{shown: number, total: number, text: string}>}
+   */
+  async verifyRoomResultsCountIsBelow(page, maxCount) {
+    if (!page) throw new Error('[RoomLevelResults.verifyRoomResultsCountIsBelow] "page" is required.');
+    if (typeof maxCount !== 'number' || !Number.isInteger(maxCount) || maxCount < 1) {
+      throw new Error(
+        `[RoomLevelResults.verifyRoomResultsCountIsBelow] "maxCount" must be an integer >= 1, got: ${typeof maxCount} (${maxCount})`
+      );
+    }
+
+    const roomLevelResultsPage = getPageObject(page, RoomLevelResultsPage);
+    const text = await roomLevelResultsPage.getRoomResultsCountText();
+
+    // "Showing 12 of 12 Results" -> [12, 12]. Read the two numbers positionally so the surrounding
+    // wording (translated or reworded) does not have to be matched.
+    const numbers = text.match(/\d+/g);
+    if (!numbers || numbers.length < 2) {
+      throw new Error(
+        `[RoomLevelResults.verifyRoomResultsCountIsBelow] Expected the room results line to read ` +
+        `"Showing {shown} of {total} Results", but could not read two numbers from: "${text}".`
+      );
+    }
+    const shown = Number(numbers[0]);
+    const total = Number(numbers[1]);
+
+    logger.info('Room results count line', { text, shown, total, maxCount });
+
+    if (shown < 1) {
+      throw new Error(
+        `[RoomLevelResults.verifyRoomResultsCountIsBelow] The room results line reports no rooms ("${text}"). ` +
+        `The supplier returned an empty room list for this hotel.`
+      );
+    }
+    if (shown > total) {
+      throw new Error(
+        `[RoomLevelResults.verifyRoomResultsCountIsBelow] The room results line is inconsistent ("${text}"): ` +
+        `it shows ${shown} of a ${total}-room total.`
+      );
+    }
+    if (shown >= maxCount) {
+      throw new Error(
+        `[RoomLevelResults.verifyRoomResultsCountIsBelow] Expected fewer than ${maxCount} rooms in the room ` +
+        `results line, but it reports ${shown} ("${text}").`
+      );
+    }
+
+    return { shown, total, text };
+  },
+
+  /**
    * Adds a refundable hotel room to the cart.
    * Filters to refundable rooms first, then adds the first one available.
    */

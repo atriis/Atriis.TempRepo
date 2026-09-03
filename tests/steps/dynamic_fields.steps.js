@@ -132,6 +132,14 @@ Then("the following checkout reference fields should be visible:", async functio
   }
 });
 
+// Guards against extra reference fields leaking into checkout: proves the ones asserted above are
+// the ONLY ones configured to show there.
+Then("exactly {int} checkout reference fields should be displayed", async function (expectedCount) {
+  logger.info("Verifying the number of checkout reference fields displayed", { expectedCount });
+  const result = await DynamicAndReferenceFields.verifyCheckoutReferenceFieldCount(this.page, expectedCount);
+  logger.info("Checkout reference fields displayed", result);
+});
+
 // Opens a checkout reference-field dropdown by its label and asserts it offers the given option
 // display values — for tests verifying a field "displays value from Option, not the GDS output code"
 // (test 54444). These are dropdown OPTIONS, not field labels or selected values, so the label/value
