@@ -622,23 +622,45 @@ class RoomLevelResultsPage {
   }
 
   /**
-   * Verifies that all visible room cards have the Wi-Fi amenity displayed.
-   * @throws {Error} If any room card does not show Wi-Fi amenity
+   * Verifies that only Wi-Fi rooms are displayed after the Wi-Fi filter, in two checks:
+   *   1. No room card is displayed without an amenities block - a room whose amenities are not
+   *      rendered cannot be confirmed as a Wi-Fi room, so it must not pass silently.
+   *   2. Every room card that does render amenities shows Wi-Fi.
+   * An empty room list fails too - "no rooms" is not "only Wi-Fi rooms".
+   * @throws {Error} If no rooms are displayed, or a room has no amenities, or a room has no Wi-Fi
    */
   async verifyAllRoomsHaveWifi() {
+    const allRooms = this.page.locator(SELECTORS.ROOM_CARD);
+    await allRooms.first().waitFor({ state: "visible", timeout: 15000 });
     await this.page.locator(SELECTORS.AMENITY_SPAN).first().waitFor({ state: "visible", timeout: 15000 });
+
+    const total = await allRooms.count();
+    if (total === 0) {
+      throw new Error(
+        "[RoomLevelResultsPage.verifyAllRoomsHaveWifi] No room cards are displayed, so the Wi-Fi filter result cannot be verified.",
+      );
+    }
 
     const roomCards = this.page.locator(SELECTORS.ROOM_CARDS_WITH_AMENITIES);
     const count = await roomCards.count();
+    if (count !== total) {
+      throw new Error(
+        `[RoomLevelResultsPage.verifyAllRoomsHaveWifi] ${total - count} of ${total} displayed rooms show no amenities ` +
+        "at all, so their Wi-Fi cannot be confirmed. Only Wi-Fi rooms are expected after the filter.",
+      );
+    }
 
     for (let i = 0; i < count; i++) {
       const wifiSpan = roomCards.nth(i).locator(SELECTORS.WIFI_INCLUDED);
       const hasWifi = await wifiSpan.count() > 0;
       if (!hasWifi) {
-        throw new Error(`Room ${i + 1} does not have Wi-Fi amenity displayed`);
+        throw new Error(
+          `[RoomLevelResultsPage.verifyAllRoomsHaveWifi] Room ${i + 1} of ${total} does not have Wi-Fi amenity displayed.`,
+        );
       }
     }
   }
+
   /**
    * Enables the "Breakfast" amenity filter.
    * Waits until the checkbox state is confirmed.
