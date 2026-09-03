@@ -2061,6 +2061,22 @@ Then("the mandatory notifications popup should be displayed", async function () 
   await Cart.verifyMandatoryNotificationsPopupDisplayed(this.page);
 });
 
+// Asserts the message shown inside the still-OPEN reminder popup, leaving the popup open for the
+// following "I acknowledge the push notification". Substring-matched case-insensitively — the manual
+// test writes "...in italy" while the app renders "...in Italy".
+Then("I should see mandatory notifications with message {string}", async function (expectedMessage) {
+  logger.info("Verifying the mandatory notifications popup message", { expectedMessage });
+  await Cart.verifyMandatoryNotificationMessage(this.page, expectedMessage);
+});
+
+// Asserts the popup's "close" button is still disabled. app-reminder-popup.vue binds
+// `<app-btn :isDisabled="!wasCheck">`, so this step MUST run BEFORE "I acknowledge the push
+// notification" — that step ticks "Got it", which enables the button and closes the popup.
+Then("mandatory notifications close button is disabled", async function () {
+  logger.info("Verifying the mandatory notifications close button is disabled");
+  await Cart.verifyMandatoryNotificationsCloseButtonDisabled(this.page);
+});
+
 // Strict assertion that BOTH notifications configured for the searched origin/destination were raised:
 // the optional one as a toast, the mandatory one inside the still-open "Mandatory Notifications" popup.
 // Only the optional text is given — the mandatory counterpart is the same sentence with "optional"
@@ -2135,12 +2151,30 @@ When("I mark all unread notifications as read", async function () {
   await Cart.markAllUnreadNotificationsAsRead(this.page);
 });
 
+// The same "mark every unread notification as read" action under the wording test 37145 uses for it.
+// Kept as its own phrase rather than rewriting that feature: the manual test case is the source of
+// truth for step wording, and both phrases drive the identical DSL call, so there is no second
+// implementation to drift.
+When("I click mark as read in the notification center", async function () {
+  logger.info("Clicking mark as read in the notification center");
+  await Cart.markAllUnreadNotificationsAsRead(this.page);
+});
+
 // Verifies the open notification center lists each expected message. Values are substring-matched
 // because the panel truncates long messages (feature values end in "…").
 Then("the notification center should display the following notifications:", async function (dataTable) {
   const expectedMessages = dataTable.raw().map((row) => row[0]);
   logger.info("Verifying the notification center displays the expected notifications", { expectedMessages });
   await Cart.verifyNotificationCenterMessages(this.page, expectedMessages);
+});
+
+// Asserts how many notification ROWS the open notification center renders. Row semantics, not distinct
+// notifications: app-notification.vue lists each unread message in the "new" section AND again in the
+// full list, so 2 notifications with 1 unread render 3 rows — do not "fix" the expected numbers in the
+// feature to match the notification count.
+Then("the notification center displays {int} notifications", async function (count) {
+  logger.info("Verifying the notification center notification row count", { count });
+  await Cart.verifyNotificationCenterCount(this.page, count);
 });
 
 // ========================================

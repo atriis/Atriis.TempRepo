@@ -979,6 +979,20 @@ class CommonPage {
   }
 
   /**
+   * Returns a locator for the "close" button inside the mandatory-notifications popup
+   * (app-reminder-popup.vue). The popup renders `<app-btn :isDisabled="!wasCheck">` and app-btn.vue
+   * renders `<button :disabled="isDisabled">`, so this button carries the NATIVE disabled attribute for
+   * as long as the "Got it" checkbox is unchecked — which is what makes it assertable with
+   * toBeDisabled(). The dialog is declared with `:show-close="false"`, so there is no header X to
+   * collide with. Scoped to the VISIBLE "Mandatory Notifications" dialog, like every other consumer of
+   * getMandatoryNotificationsDialog, so a hidden responsive duplicate is never picked up.
+   * @returns {import('playwright').Locator}
+   */
+  getMandatoryNotificationsCloseButton() {
+    return this.getMandatoryNotificationsDialog().locator(SELECTORS.REMINDER_POPUP_CLOSE_BUTTON).first();
+  }
+
+  /**
    * Acknowledges the mandatory-notifications popup by checking its "Got it" box and clicking "close",
    * scoped to the "Mandatory Notifications" dialog. Marks the reminders as read and waits for the dialog
    * to close.

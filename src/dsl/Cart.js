@@ -6669,6 +6669,105 @@ const Cart = {
   },
 
   /**
+   * Verifies the still-open "Mandatory Notifications" popup (app-reminder-popup.vue) shows a reminder
+   * whose text contains the expected message. The match is case-insensitive, whitespace-collapsed and a
+   * SUBSTRING: manual test cases spell the country in lower case ("...in italy") while the app renders
+   * it capitalised ("...in Italy"), and the popup can list several reminders in one dialog.
+   *
+   * The popup is left OPEN so the following step ("I acknowledge the push notification") can
+   * acknowledge it.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} expectedMessage - Substring the reminder text must contain, e.g.
+   *   "mandatory message for GDS hotel in italy"
+   * @returns {Promise<string>} The full text of the matched reminder message
+   */
+  async verifyMandatoryNotificationMessage(page, expectedMessage) {
+    if (!page) throw new Error('[Cart.verifyMandatoryNotificationMessage] "page" is required.');
+    if (!expectedMessage || typeof expectedMessage !== 'string') {
+      throw new Error(
+        `[Cart.verifyMandatoryNotificationMessage] "expectedMessage" must be a non-empty string, got: ` +
+        `${typeof expectedMessage} (${JSON.stringify(expectedMessage)})`
+      );
+    }
+    logger.debug('Verifying the mandatory-notifications popup message', { expectedMessage });
+
+    const commonPage = getPageObject(page, CommonPage);
+    const visible = await commonPage.isMandatoryNotificationsPopupVisible({ timeout: 15000 });
+    if (!visible) {
+      const openTitles = await commonPage.getVisibleDialogTitles().catch(() => []);
+      throw new Error(
+        `[Cart.verifyMandatoryNotificationMessage] Expected the "Mandatory Notifications" popup to be ` +
+        `displayed so its message could be read, but it was not visible. Visible dialog(s): ` +
+        `${openTitles.length ? openTitles.join(', ') : 'none'}. (This assertion must run BEFORE ` +
+        `"I acknowledge the push notification" — that step closes the popup.)`
+      );
+    }
+
+    const messages = await commonPage.getMandatoryNotificationMessages({ timeout: 15000 });
+    const normalize = (text) => (text || '').replace(/\s+/g, ' ').trim().toLowerCase();
+    const needle = normalize(expectedMessage);
+    const matched = messages.find((text) => normalize(text).includes(needle));
+    if (!matched) {
+      throw new Error(
+        `[Cart.verifyMandatoryNotificationMessage] The "Mandatory Notifications" popup does not show a ` +
+        `reminder containing "${expectedMessage}". Message(s) actually in the popup: ` +
+        `${messages.length ? messages.map((t) => `"${t}"`).join(', ') : 'none'}. Either the mandatory ` +
+        `notification configured for this corporation/destination changed wording, or the search raised ` +
+        `a different reminder.`
+      );
+    }
+
+    logger.info('Mandatory notification message verified', { expectedMessage, matched });
+    return matched;
+  },
+
+  /**
+   * Verifies the "close" button of the still-open "Mandatory Notifications" popup is DISABLED — the
+   * mechanism by which the app forces the reminder to be acknowledged: app-reminder-popup.vue binds
+   * `<app-btn :isDisabled="!wasCheck">`, so the button stays natively disabled until the "Got it"
+   * checkbox is ticked.
+   *
+   * ORDER MATTERS: run this BEFORE "I acknowledge the push notification" — that step ticks the
+   * checkbox, which enables the button and closes the popup.
+   *
+   * @param {import('playwright').Page} page
+   * @returns {Promise<void>}
+   */
+  async verifyMandatoryNotificationsCloseButtonDisabled(page) {
+    if (!page) throw new Error('[Cart.verifyMandatoryNotificationsCloseButtonDisabled] "page" is required.');
+    logger.debug('Verifying the mandatory-notifications popup close button is disabled');
+
+    const commonPage = getPageObject(page, CommonPage);
+    const visible = await commonPage.isMandatoryNotificationsPopupVisible({ timeout: 15000 });
+    if (!visible) {
+      const openTitles = await commonPage.getVisibleDialogTitles().catch(() => []);
+      throw new Error(
+        `[Cart.verifyMandatoryNotificationsCloseButtonDisabled] Expected the "Mandatory Notifications" ` +
+        `popup to be open so its close button could be inspected, but it was not visible. Visible ` +
+        `dialog(s): ${openTitles.length ? openTitles.join(', ') : 'none'}. (A preceding step may have ` +
+        `already acknowledged the popup.)`
+      );
+    }
+
+    // A custom expect() message never reaches this framework's report, so the assertion failure is
+    // caught and re-thrown with the business context a reader needs.
+    try {
+      await expect(commonPage.getMandatoryNotificationsCloseButton()).toBeDisabled({ timeout: 10000 });
+    } catch (err) {
+      throw new Error(
+        `[Cart.verifyMandatoryNotificationsCloseButtonDisabled] The "close" button of the "Mandatory ` +
+        `Notifications" popup was expected to be disabled while the reminder is unacknowledged, but it ` +
+        `was enabled. The "Got it" checkbox may already be ticked — either a preceding step ` +
+        `acknowledged the popup, or app-reminder-popup.vue no longer gates the button on ` +
+        `:isDisabled="!wasCheck". Original: ${err.message}`
+      );
+    }
+
+    logger.info('Mandatory-notifications popup close button is disabled, as expected');
+  },
+
+  /**
    * Verifies that BOTH push notifications configured for a route's origin/destination were raised by
    * the search: the OPTIONAL one as an ElNotification toast, and the MANDATORY one inside the
    * "Mandatory Notifications" popup (reminder.service.ts routes type 11 to a toast and type 10 to the
@@ -6966,6 +7065,74 @@ const Cart = {
         `[${missing.join(' | ')}]. Actual messages found: [${actual.join(' | ')}]`
       );
     }
+  },
+
+  /**
+   * Verifies the OPEN notification center renders exactly the expected number of notification rows.
+   *
+   * COUNT SEMANTICS — a count here means RENDERED PANEL ROWS, not distinct notifications.
+   * app-notification.vue renders TWO lists: `newNotificationMessages` (the unread ones) followed by
+   * `notificationMessages` (ALL messages, unread included). So a trip with 2 notifications, one of them
+   * still unread, renders 3 rows — exactly what this feature's own 3-row table shows (its first row
+   * ends in "Mark as read", i.e. the unread copy in the "new" section). Once that one is marked as read
+   * the "new" section empties and 2 rows remain. The "mark all as read" control is a `.mark-all` div,
+   * not a `.notification-message`, so it never enters the count.
+   *
+   * Requires the notification center to already be open — call `openNotificationCenter` first.
+   *
+   * @param {import('playwright').Page} page
+   * @param {number} expectedCount - Expected number of rendered notification rows (integer >= 0)
+   * @returns {Promise<void>}
+   */
+  async verifyNotificationCenterCount(page, expectedCount) {
+    if (!page) throw new Error('[Cart.verifyNotificationCenterCount] "page" is required.');
+    if (!Number.isInteger(expectedCount) || expectedCount < 0) {
+      throw new Error(
+        `[Cart.verifyNotificationCenterCount] "expectedCount" must be an integer >= 0, got: ` +
+        `${typeof expectedCount} (${JSON.stringify(expectedCount)})`
+      );
+    }
+    logger.debug('Verifying the notification center row count', { expectedCount });
+
+    const commonPage = getPageObject(page, CommonPage);
+    const panelVisible = await commonPage.isNotificationPanelVisible({ timeout: 15000 });
+    if (!panelVisible) {
+      throw new Error(
+        '[Cart.verifyNotificationCenterCount] The notification center is not open, so its notifications ' +
+        'cannot be counted. Run the "I open the notification center" step before this one.'
+      );
+    }
+
+    // POLL instead of reading once: marking a notification as read re-renders the panel asynchronously
+    // (the "new" section empties), so a single read taken right after that click sees a stale row count.
+    // The count must hold across TWO consecutive reads: expect.poll resolves the instant a value passes
+    // THROUGH the expected number, so a mid-render count on the way to a higher steady state would
+    // otherwise pass. The inner timeout is deliberately short — getVisibleNotificationMessageTexts waits
+    // for its first row on every call, so its 10s default would leave the poll a single sample.
+    try {
+      await expect
+        .poll(
+          async () => {
+            const first = (await commonPage.getVisibleNotificationMessageTexts({ timeout: 2000 })).length;
+            const second = (await commonPage.getVisibleNotificationMessageTexts({ timeout: 2000 })).length;
+            // -1 while the panel is still re-rendering, so an unsettled count can never satisfy the matcher.
+            return first === second ? first : -1;
+          },
+          { timeout: 15000 }
+        )
+        .toBe(expectedCount);
+    } catch (err) {
+      const actual = await commonPage.getVisibleNotificationMessageTexts().catch(() => []);
+      throw new Error(
+        `[Cart.verifyNotificationCenterCount] Expected the notification center to render ${expectedCount} ` +
+        `notification row(s), but it rendered ${actual.length}: ` +
+        `${actual.length ? actual.map((t) => `"${t}"`).join(', ') : 'none'}. Note that each UNREAD ` +
+        `message renders TWICE (once in the "new" section, once in the full list), so 2 notifications ` +
+        `with 1 unread show 3 rows. Original: ${err.message}`
+      );
+    }
+
+    logger.info('Notification center row count verified', { expectedCount });
   },
 
   // ========================================
