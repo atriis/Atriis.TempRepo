@@ -681,20 +681,41 @@ class RoomLevelResultsPage {
   }
 
   /**
-   * Verifies that all visible room cards have the Breakfast amenity displayed.
-   * @throws {Error} If any room card does not show Breakfast amenity
+   * Verifies that only breakfast rooms are displayed after the breakfast filter, in two checks:
+   *   1. No room card is displayed without an amenities block - a room whose amenities are not
+   *      rendered cannot be confirmed as a breakfast room, so it must not pass silently.
+   *   2. Every room card that does render amenities shows breakfast.
+   * An empty room list fails too - "no rooms" is not "only breakfast rooms".
+   * @throws {Error} If no rooms are displayed, or a room has no amenities, or a room has no breakfast
    */
   async verifyAllRoomsHaveBreakfast() {
+    const allRooms = this.page.locator(SELECTORS.ROOM_CARD);
+    await allRooms.first().waitFor({ state: "visible", timeout: 15000 });
     await this.page.locator(SELECTORS.AMENITY_SPAN).first().waitFor({ state: "visible", timeout: 15000 });
+
+    const total = await allRooms.count();
+    if (total === 0) {
+      throw new Error(
+        "[RoomLevelResultsPage.verifyAllRoomsHaveBreakfast] No room cards are displayed, so the breakfast filter result cannot be verified.",
+      );
+    }
 
     const roomCards = this.page.locator(SELECTORS.ROOM_CARDS_WITH_AMENITIES);
     const count = await roomCards.count();
+    if (count !== total) {
+      throw new Error(
+        `[RoomLevelResultsPage.verifyAllRoomsHaveBreakfast] ${total - count} of ${total} displayed rooms show no amenities ` +
+        "at all, so their breakfast cannot be confirmed. Only breakfast rooms are expected after the filter.",
+      );
+    }
 
     for (let i = 0; i < count; i++) {
       const hasBreakfastIcon = await roomCards.nth(i).locator(SELECTORS.BREAKFAST_ICON).count() > 0;
       const hasBreakfastText = await roomCards.nth(i).locator(SELECTORS.AMENITY_SPAN).filter({ hasText: /breakfast/i }).count() > 0;
       if (!hasBreakfastIcon && !hasBreakfastText) {
-        throw new Error(`Room ${i + 1} does not have Breakfast amenity displayed`);
+        throw new Error(
+          `[RoomLevelResultsPage.verifyAllRoomsHaveBreakfast] Room ${i + 1} of ${total} does not have Breakfast amenity displayed.`,
+        );
       }
     }
   }
