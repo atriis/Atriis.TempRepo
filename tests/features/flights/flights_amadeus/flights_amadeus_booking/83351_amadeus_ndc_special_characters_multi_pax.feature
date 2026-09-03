@@ -16,7 +16,7 @@ Feature: 83351 Amadeus NDC - Booking succeeds for multi pax with special charact
 
   Scenario: Hold a LIS to AMS Amadeus NDC flight for two randomly selected travelers with accented names
     Given I am logged in as "amaNdc@special.name" booking a new trip
-    And I have added 2 random travelers from the list: Élodie Dubois-Lefèvre, Bjørn Kjærsgård, Begoña Núñez de Íñigo
+    And I have added 2 random travelers from the list: Élodie Dubois-Lefèvre, Bjørn Kjærsgård, Begoña Núñez de Íñigo, Henriëtte Bast, Łukasz Wiśniewski, Anaïs D'Hôtel-Lefèvre
     When I search for a one way flight from "LIS" to "AMS"
     Then flight results should be available
     When I add the first flight to cart
