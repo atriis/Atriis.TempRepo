@@ -547,37 +547,26 @@ const HotelLevelResults = {
   },
 
   /**
-   * Opens the first hotel preview from the map in a new browser tab.
+   * Opens the first hotel preview from the map in a new browser tab, reading the hotel
+   * name off the preview card first so the tab it opens can be checked against it.
+   *
+   * The name has to be read before the click: the preview card belongs to the results
+   * page and there is no reading it once the new tab is the thing under assertion.
    * @param {import('playwright').Page} page
+   * @returns {Promise<{roomLevelTab: import('playwright').Page, hotelName: string}>}
    */
   async openFirstHotelFromMapPreviewInNewTab(page) {
     if (!page) throw new Error('page is required');
 
     const hotelLevelResultsPage = getPageObject(page, HotelLevelResultsPage);
     await hotelLevelResultsPage.selectFirstMapMarker();
-    const popupPage = await hotelLevelResultsPage.clickSelectedMapPreviewAndWaitForNewTab();
 
-    return popupPage;
-  },
+    const hotelName = await hotelLevelResultsPage.getSelectedMapPreviewHotelName();
+    if (!hotelName) throw new Error('The map preview card shows no hotel name');
 
-  /**
-   * Verifies the newly opened tab is the hotel details page.
-   * @param {import('playwright').Page} page
-   * @param {import('playwright').Page} popupPage
-   */
-  async verifyHotelDetailsTabOpened(page, popupPage) {
-    if (!page) throw new Error('page is required');
-    if (!popupPage || typeof popupPage.url !== 'function') {
-      throw new Error('popupPage must be a Playwright page, got: ' + typeof popupPage);
-    }
+    const roomLevelTab = await hotelLevelResultsPage.clickSelectedMapPreviewAndWaitForNewTab();
 
-    await popupPage.waitForLoadState('domcontentloaded', { timeout: 60000 });
-    const popupUrl = popupPage.url();
-
-    expect(popupUrl).toContain('/rooms');
-    expect(popupUrl).not.toBe(page.url());
-
-    return { popupUrl };
+    return { roomLevelTab, hotelName };
   },
 
   /**

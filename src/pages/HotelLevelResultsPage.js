@@ -392,6 +392,19 @@ class HotelLevelResultsPage {
     await this.page.locator(SELECTORS.SELECTED_MAP_PREVIEW).first().waitFor({ state: 'visible', timeout: 10000 });
   }
 
+  /**
+   * Reads the hotel name shown on the open map preview card.
+   * @returns {Promise<string>} The hotel name, whitespace-normalized
+   */
+  async getSelectedMapPreviewHotelName() {
+    // Composed from MAP_CONTAINER + HOTEL_NAME rather than a selector of its own: the scope
+    // is what makes it read the hotel the marker opened instead of a card in the results
+    // list beside the map, and the name part stays defined in one place.
+    const name = this.page.locator(`${SELECTORS.MAP_CONTAINER} ${SELECTORS.HOTEL_NAME}`).first();
+    await name.waitFor({ state: 'visible', timeout: 10000 });
+    return normalizeText(await name.innerText());
+  }
+
   async clickSelectedMapPreviewAndWaitForNewTab() {
     const viewRatesButton = this.page.locator(SELECTORS.SELECTED_MAP_PREVIEW_VIEW_RATES_BUTTON).first();
     await viewRatesButton.waitFor({ state: 'visible', timeout: 10000 });

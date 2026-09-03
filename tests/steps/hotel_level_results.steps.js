@@ -1,7 +1,7 @@
 ﻿require("module-alias/register");
 const { When, Then, setDefaultTimeout } = require("@cucumber/cucumber");
 const { expect } = require("@playwright/test");
-const { HotelLevelResults } = require("../../src/dsl");
+const { HotelLevelResults, RoomLevelResults } = require("../../src/dsl");
 const logger = require("@utils/logger").child("HotelResults");
 const HotelLevelResultsPage = require("../../src/pages/HotelLevelResultsPage");
 const { getPageObject } = require("@utils/pageObjectCache");
@@ -78,7 +78,10 @@ When("I drag the hotel map to the {string}", async function (direction) {
 
 When("I open the first hotel from the map preview in a new browser tab", async function () {
   logger.info("Opening first hotel from map preview in a new browser tab");
-  this.hotelMapPopupPage = await HotelLevelResults.openFirstHotelFromMapPreviewInNewTab(this.page);
+  const { roomLevelTab, hotelName } = await HotelLevelResults.openFirstHotelFromMapPreviewInNewTab(this.page);
+  this.roomLevelTab = roomLevelTab;
+  this.mapPreviewHotelName = hotelName;
+  logger.info("Captured the hotel name from the map preview", { hotelName });
 });
 // ========================================
 // THEN STEPS - ASSERTIONS
@@ -94,10 +97,22 @@ Then("the parallel {word} modal should contain {string}", { timeout: 140000 }, a
   await HotelLevelResults.verifyParallelSearchLoaderContains(this.page, text);
 });
 
-Then("the new browser tab should show the hotel details page", async function () {
-  logger.info("Verifying the new browser tab shows the hotel details page");
-  const result = await HotelLevelResults.verifyHotelDetailsTabOpened(this.page, this.hotelMapPopupPage);
-  logger.info("Hotel details tab verification result", result);
+Then("the new browser tab should show the room level page", async function () {
+  logger.info("Verifying the new browser tab shows the room level page");
+  const result = await RoomLevelResults.verifyRoomLevelPageOpenedInNewTab(this.page, this.roomLevelTab);
+  logger.info("Room level tab verification result", result);
+});
+
+Then("the hotel name in the new browser tab should match the hotel selected on the map", async function () {
+  logger.info("Verifying the new browser tab shows the hotel selected on the map");
+  const result = await RoomLevelResults.verifyHotelNameInRoomLevel(this.roomLevelTab, this.mapPreviewHotelName);
+  logger.info("Hotel name verification result", result);
+});
+
+Then("every room in the new browser tab should show a price greater than zero", async function () {
+  logger.info("Verifying every room in the new browser tab shows a price greater than zero");
+  const result = await RoomLevelResults.verifyRoomPricesAreNotZero(this.roomLevelTab);
+  logger.info("Room price verification result", result);
 });
 
 Then("I should see member rates displayed in hotel level results", async function () {

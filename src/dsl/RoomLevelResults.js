@@ -251,6 +251,48 @@ const RoomLevelResults = {
   },
 
   /**
+   * Verifies a newly opened browser tab is the room level (hotel details) page: a
+   * /rooms URL that has actually rendered its content.
+   *
+   * The URL alone is not enough - a /rooms address that loads blank, errors, or is
+   * still all skeletons would pass an address check. The room level page object is
+   * built from the new tab, so the readiness wait (hotel name heading plus at least
+   * one room card) runs against that tab and not the tab the search started in.
+   * @param {import('playwright').Page} page - The tab the new one was opened from
+   * @param {import('playwright').Page} roomLevelTab - The newly opened browser tab
+   * @returns {Promise<{roomLevelUrl: string}>} The new tab URL
+   * @throws {Error} If the new tab is not a loaded room level page
+   */
+  async verifyRoomLevelPageOpenedInNewTab(page, roomLevelTab) {
+    if (!page) throw new Error('page parameter is required');
+    if (!roomLevelTab || typeof roomLevelTab.url !== 'function') {
+      throw new Error(`roomLevelTab must be a Playwright page, got: ${typeof roomLevelTab}`);
+    }
+
+    await roomLevelTab.waitForLoadState('domcontentloaded', { timeout: 60000 });
+
+    const roomLevelResultsPage = getPageObject(roomLevelTab, RoomLevelResultsPage);
+
+    // The tab opens blank and the SPA routes it client side, so reading its URL as soon
+    // as it appears reads that blank tab, not the page it ends up on. Wait for the room
+    // level route to arrive instead.
+    try {
+      await roomLevelResultsPage.waitForRoomLevelUrl();
+    } catch {
+      throw new Error(`The new tab is not on a room level page. Expected a /rooms URL, got: ${roomLevelTab.url()}`);
+    }
+
+    const roomLevelUrl = roomLevelTab.url();
+    if (roomLevelUrl === page.url()) {
+      throw new Error(`The new tab is on the same URL as the page it was opened from: ${roomLevelUrl}`);
+    }
+
+    await roomLevelResultsPage.waitForRoomLevelContentLoaded();
+
+    return { roomLevelUrl };
+  },
+
+  /**
    * Extracts the cancellation policy text from the first room in room level results.
    * @param {import('playwright').Page} page
    * @returns {Promise<string>} The cancellation policy text
@@ -576,6 +618,72 @@ const RoomLevelResults = {
         `(0-based card indexes: ${missingIndexes.join(', ')})`
       );
     }
+  },
+
+  /**
+   * Verifies the room level page is showing the hotel that was expected - the name in its
+   * heading matches the one read where the hotel was chosen.
+   *
+   * Both places render the same hotel.name from the app, so this is an exact match after
+   * whitespace normalization rather than a contains check.
+   * @param {import('playwright').Page} page - The tab showing the room level page
+   * @param {string} expectedHotelName - Hotel name captured where the hotel was selected
+   * @returns {Promise<{hotelName: string}>} The name shown on the room level page
+   * @throws {Error} If the room level page shows a different hotel
+   */
+  async verifyHotelNameInRoomLevel(page, expectedHotelName) {
+    if (!page) throw new Error('page parameter is required');
+    if (!expectedHotelName) throw new Error('expectedHotelName is required');
+
+    const roomLevelResultsPage = getPageObject(page, RoomLevelResultsPage);
+    const hotelName = await roomLevelResultsPage.getHotelNameHeadingText();
+
+    const expected = normalizeText(expectedHotelName);
+    if (normalizeText(hotelName) !== expected) {
+      throw new Error(`The room level page shows a different hotel. Expected "${expected}", got "${hotelName}"`);
+    }
+
+    return { hotelName };
+  },
+
+  /**
+   * Verifies every listed room shows a real price - none priced at zero or below.
+   *
+   * Reuses the reader behind the policy indicator check and ignores its policy half:
+   * what matters here is only the number each room card displays.
+   * @param {import('playwright').Page} page - The tab showing the room level page
+   * @returns {Promise<{total: number, prices: number[]}>} Room count and each displayed price
+   * @throws {Error} If no rooms are listed, or any room shows a price of zero or less
+   */
+  async verifyRoomPricesAreNotZero(page) {
+    if (!page) throw new Error('page parameter is required');
+
+    const roomLevelResultsPage = getPageObject(page, RoomLevelResultsPage);
+
+    // Rooms stream in per supplier, so the list can still be growing when the first card
+    // shows. Wait that out, otherwise "every room" only covers the rooms loaded so far.
+    // Best effort by the helper's design: a supplier that never answers is logged rather
+    // than failing a check that is about prices, not about how complete the list is.
+    const roomsFinishedLoading = await roomLevelResultsPage.waitForRoomsFinishedLoading();
+    if (!roomsFinishedLoading) {
+      logger.warn('Rooms were still loading when the prices were read, so some rooms may not have been checked');
+    }
+
+    const rooms = await roomLevelResultsPage.getRoomPricesWithPolicyIndicator();
+
+    if (rooms.length === 0) {
+      throw new Error('No rooms are listed, so no room price could be checked');
+    }
+
+    const invalid = rooms.filter((room) => room.price <= 0);
+    if (invalid.length > 0) {
+      throw new Error(
+        `${invalid.length} of ${rooms.length} rooms do not show a price above zero ` +
+        `(1-based card positions: ${invalid.map((room) => `${room.index + 1} = ${room.price}`).join(', ')})`
+      );
+    }
+
+    return { total: rooms.length, prices: rooms.map((room) => room.price) };
   },
 
   async verifyPriceInTermsAndConditions(page, price) {

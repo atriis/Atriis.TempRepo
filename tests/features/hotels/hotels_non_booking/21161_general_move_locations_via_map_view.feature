@@ -23,4 +23,4 @@ Feature: 21161 General - Move locations via map view and verify new hotels load
     And I wait for the hotel map markers to load
     And I drag the hotel map to the "right"
     When I open the first hotel from the map preview in a new browser tab
-    Then the new browser tab should show the hotel details page
+    Then the new browser tab should show the room level page

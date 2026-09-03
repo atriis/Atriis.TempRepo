@@ -1,5 +1,6 @@
 ﻿const { toNumber } = require("@utils/numbers");
 const { getScrollOffsetFromTop } = require("@utils/dom");
+const { normalizeText } = require("@utils/text");
 
 /**
  * Page Object for room level results page.
@@ -1044,6 +1045,16 @@ class RoomLevelResultsPage {
    */
   async getDistanceFromPageTop() {
     return getScrollOffsetFromTop(this.page, SELECTORS.ROOM_LIST);
+  }
+
+  /**
+   * Reads the hotel name from the h1 heading at the top of the room level page.
+   * @returns {Promise<string>} The hotel name, whitespace-normalized
+   */
+  async getHotelNameHeadingText() {
+    const heading = this.page.locator(SELECTORS.HOTEL_NAME_HEADING).first();
+    await heading.waitFor({ state: 'visible', timeout: 60000 });
+    return normalizeText(await heading.innerText());
   }
 
   /**
