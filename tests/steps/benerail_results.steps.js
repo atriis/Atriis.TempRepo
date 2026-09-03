@@ -669,5 +669,85 @@ Then("I should see {string} text in breadcrumb", async function (expectedText) {
 
 // --- Results confirmation ---
 Then("the Benerail search results should be displayed", async function () {
-  throw new Error("TODO: implement 'the Benerail search results should be displayed' — wait for and assert the Benerail results page has loaded with at least one result visible (see test hybrid_62913)");
+  logger.info("Verifying the Benerail search results are displayed");
+  await BenerailResults.waitForBenerailResults(this.page);
+});
+
+// ===== Vacancy check (ADO 70431 — Distribusion quote selection and vacancy check) =====
+
+When("I click Benerail add to trip button and capture the vacancy check exchange", async function () {
+  logger.info("Clicking Benerail add to trip button and capturing the vacancy check exchange");
+  this.lastVacancyCheck = await BenerailResults.clickAddToTripBenerailAndCaptureVacancyCheck(this.page);
+  logger.info("Vacancy check exchange captured", {
+    itemsCacheKeyCount: Array.isArray(this.lastVacancyCheck.requestBody?.ItemsCacheKey)
+      ? this.lastVacancyCheck.requestBody.ItemsCacheKey.length
+      : 0,
+    spinnerObservedDuringCheck: this.lastVacancyCheck.spinnerObservedDuringCheck,
+  });
+});
+
+Then("a vacancy check should have been performed for the selected offer", async function () {
+  logger.info("Verifying a vacancy check was performed for the selected offer");
+  await BenerailResults.assertVacancyCheckPerformedForItems(this.page, this.lastVacancyCheck, 1);
+});
+
+Then("a vacancy check should have been performed for both selected offers", async function () {
+  logger.info("Verifying a vacancy check was performed for both selected offers");
+  await BenerailResults.assertVacancyCheckPerformedForItems(this.page, this.lastVacancyCheck, 2);
+});
+
+Then("the Add to cart button should show a loading spinner during the vacancy check", async function () {
+  logger.info("Verifying the Add to cart button showed a loading spinner during the vacancy check");
+  if (!this.lastVacancyCheck) {
+    throw new Error(
+      '[benerail_results.steps] No vacancy check has been captured. Run "I click Benerail add to trip ' +
+      'button and capture the vacancy check exchange" first.'
+    );
+  }
+  if (!this.lastVacancyCheck.spinnerObservedDuringCheck) {
+    throw new Error(
+      "[benerail_results.steps] Expected the Add to cart button to show its loading spinner while the " +
+      "vacancy check was in flight, but it was never observed loading"
+    );
+  }
+});
+
+Then("no price change or unavailability message should be displayed", async function () {
+  logger.info("Verifying no vacancy-outcome message is displayed");
+  await BenerailResults.assertNoVacancyMessageDisplayed(this.page);
+});
+
+Then("the vacancy check response should report the price as unchanged and the fare as vacant", async function () {
+  logger.info("Verifying the vacancy check response reports outcome 1 by value");
+  await BenerailResults.assertVacancyResponseReportsPriceUnchangedAndVacant(this.page, this.lastVacancyCheck);
+});
+
+Then("the vacancy check request should have a correctly typed payload", async function () {
+  logger.info("Verifying the vacancy check request has a correctly typed payload");
+  await BenerailResults.assertVacancyCheckRequestShape(this.page, this.lastVacancyCheck);
+});
+
+Then("a fare not available alert should be displayed", async function () {
+  logger.info("Verifying the fare not available message is displayed");
+  await BenerailResults.assertVacancyUnavailableMessageDisplayed(this.page);
+});
+
+When("I click Change selection", async function () {
+  logger.info("Clicking Change selection");
+  await BenerailResults.clickChangeSelection(this.page);
+});
+
+Then("the inbound search results should be displayed", async function () {
+  logger.info("Verifying the inbound Benerail search results are displayed");
+  await BenerailResults.waitForBenerailResults(this.page);
+});
+
+Then("the vacancy check request should reference the search and item cache keys of the selected fare", async function () {
+  logger.info("Verifying the vacancy check request references the selected fare's cache keys");
+  await BenerailResults.assertVacancyCheckReferencesSelectedFareCacheKeys(this.page, this.lastVacancyCheck);
+});
+
+Then("the passenger-level and booking-level required attributes from the vacancy response should be present", async function () {
+  logger.info("Verifying the vacancy response carries the required-attribute fields");
+  await BenerailResults.assertVacancyResponseHasRequiredAttributeFields(this.page, this.lastVacancyCheck);
 });

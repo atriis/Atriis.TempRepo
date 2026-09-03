@@ -117,7 +117,18 @@ const SELECTORS = {
   // ("Select"). So a *secondary* .select-rail-btn exists only on a committed leg, which is what
   // makes it a reliable "the outbound was accepted and the list below is now the inbound" gate.
   SELECTED_LEG_CHANGE_BUTTON: ".select-rail-btn.btn--secondary",
+  // eu-rail-results.vue's "Add to trip" / "Continue" button (app-btn with :is-loading bound to the
+  // vacancy check in flight) — app-btn.vue adds this class itself when its isLoading prop is true
+  // (see app-btn.vue's btnClass computed). No data-testid on either component.
+  ADD_TO_TRIP_BUTTON_LOADING: ".add-rail-btn.is-loading",
 };
+
+// eu-rail-results.vue's inline vacancy-outcome messages (vacancyStatus === 'price-changed' /
+// 'unavailable'), sourced from src/assets/locale/en.json's euRail.vacancyPriceChanged /
+// euRail.vacancyFareUnavailable. Not part of SELECTORS — these are copy to match with getByText,
+// not CSS/role locators.
+const VACANCY_PRICE_CHANGED_TEXT = "The price for your selected fare has changed, you can continue with the new price or change your selection.";
+const VACANCY_UNAVAILABLE_TEXT = "Fare not available. Please choose another option.";
 
 class BenerailResultsPage {
   constructor(page) {
@@ -824,6 +835,58 @@ class BenerailResultsPage {
     const link = this.page.locator(SELECTORS.RESULTS_BREADCRUMB_SEARCH_LINK).first();
     await link.waitFor({ state: "visible", timeout });
     return ((await link.textContent()) ?? "").trim();
+  }
+
+  /**
+   * Gets the inline "price for your selected fare has changed" message (eu-rail-results.vue,
+   * vacancyStatus === 'price-changed'). An inline banner next to the price, not a modal dialog.
+   * @returns {Locator}
+   */
+  getVacancyPriceChangedMessage() {
+    return this.page.getByText(VACANCY_PRICE_CHANGED_TEXT, { exact: true });
+  }
+
+  /**
+   * Gets the inline "fare not available" message (eu-rail-results.vue, vacancyStatus ===
+   * 'unavailable'). An inline banner next to the price, not a modal dialog.
+   * @returns {Locator}
+   */
+  getVacancyUnavailableMessage() {
+    return this.page.getByText(VACANCY_UNAVAILABLE_TEXT, { exact: true });
+  }
+
+  /**
+   * Gets the "Change selection" button. Rendered for both the price-changed and unavailable
+   * vacancy outcomes, wired to the same changeSelection() handler in either case (eu-rail-results.ts)
+   * — there is no separate "OK" control in this UI.
+   * @returns {Locator}
+   */
+  getChangeSelectionButton() {
+    return this.page.getByRole("button", { name: "Change selection" });
+  }
+
+  /** Clicks the "Change selection" button. */
+  async clickChangeSelectionButton() {
+    await this.getChangeSelectionButton().click();
+  }
+
+  /**
+   * Checks whether the "Add to trip" / "Continue" button is currently showing its loading state
+   * (app-btn's is-loading prop, bound to the vacancy check request being in flight — see
+   * ADD_TO_TRIP_BUTTON_LOADING). A single, non-retrying snapshot — callers that need to catch this
+   * transient state should poll it themselves right after the click, since the vacancy check can
+   * resolve quickly.
+   * @param {object} [options]
+   * @param {number} [options.timeout=2000]
+   * @returns {Promise<boolean>}
+   */
+  async isAddToTripButtonLoading({ timeout = 2000 } = {}) {
+    try {
+      await this.page.locator(SELECTORS.ADD_TO_TRIP_BUTTON_LOADING).waitFor({ state: "visible", timeout });
+      return true;
+    } catch {
+      return false;
+    }
   }
 }
 

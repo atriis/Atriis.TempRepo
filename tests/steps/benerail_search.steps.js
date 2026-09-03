@@ -14,6 +14,14 @@ When("I search for a one way Benerail train from {string}", async function (rout
   await BenerailSearch.searchBenerailOneWay(this.page, routeKey);
 });
 
+// Near-date variant — one-way counterpart of "with a near departure date" for round trip. See
+// BenerailSearch.searchBenerailOneWayOnDaysFromNow for why an exact date offset from today is used
+// instead of an index into the calendar's default month view (ADO 70431).
+When("I search for a one way Benerail train from {string} with a near departure date", async function (routeKey) {
+  logger.info("Searching for one-way Benerail train with a near departure date", { routeKey });
+  await BenerailSearch.searchBenerailOneWayOnDaysFromNow(this.page, routeKey, { departureOffsetDays: 5 });
+});
+
 // Weekday-anchored departure date instead of the default "Nth available date" — same phrasing as
 // the flights equivalent ("...on the {int} {string} of next month"), for scenarios that need a
 // predictable mid-month departure so the expected carrier/fare inventory is stable (test 62008).
@@ -54,12 +62,14 @@ When("I search for a round trip Benerail train from {string}", async function (r
   await BenerailSearch.searchBenerailRoundTrip(this.page, routeKey);
 });
 
-// Near-date variant: the default departure/return indices (10th/13th available date) land far
-// enough out that supplier inventory for a given route is sometimes empty on the return leg
-// (AB#81914 fix-loop finding). Closer dates consistently have confirmed schedule data.
+// Near-date variant: index-based dates (Nth available date, however far out the calendar's default
+// month view happens to be) landed far enough out that supplier inventory for a given route is
+// sometimes empty on the return leg (AB#81914 fix-loop finding). An exact date offset from today —
+// 5 days out for departure — sidesteps that regardless of where in the month "today" falls (see
+// BenerailSearch.searchBenerailRoundTripOnDaysFromNow; found investigating ADO 70431).
 When("I search for a round trip Benerail train from {string} with a near departure date", async function (routeKey) {
   logger.info("Searching for round trip Benerail train with a near departure date", { routeKey });
-  await BenerailSearch.searchBenerailRoundTrip(this.page, routeKey, { departureIndex: 1, returnIndex: 3 });
+  await BenerailSearch.searchBenerailRoundTripOnDaysFromNow(this.page, routeKey, { departureOffsetDays: 5 });
 });
 
 // Shared by test 63183 (autocomplete improvements) and test 68008 (time-picker redesign) — both

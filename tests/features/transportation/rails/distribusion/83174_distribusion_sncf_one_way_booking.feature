@@ -8,7 +8,7 @@ Feature: 83174 Distribusion - One way SNCF booking is created end to end
   So that Distribusion bookings are confirmed successfully by the supplier
 
   Scenario: One way Distribusion SNCF booking is finalized successfully
-    Given I am logged in as "tanya@dist.corp" booking a new trip
+    Given I am logged in as "automation@distrail.club" booking a new trip
     And I have added myself as the traveler
     When I search for a one way Benerail train from "frpmoToFrnte" on the 1 "friday" of next month
     And I wait for select text to be visible

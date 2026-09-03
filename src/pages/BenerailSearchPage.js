@@ -53,6 +53,8 @@ const SELECTORS = {
   // supplier's mounted-but-hidden "From... Station or Location" input (UK Rail/Amtrak render the
   // same placeholder text).
   RAIL_FROM_STATION_INPUT: ".eu-rail-search-inputs input[placeholder='From... Station or Location' i]",
+  // To-station field — same scoping rationale as RAIL_FROM_STATION_INPUT.
+  RAIL_TO_STATION_INPUT: ".eu-rail-search-inputs input[placeholder='To... Station or Location' i]",
   // Station autocomplete suggestion popper (eu-rail-autocomplete.vue's #autocomplete-result slot,
   // wrapping Element Plus's app-autocomplete with popperClass="boxed-autocomplete-popper"). Element
   // Plus mounts a NEW popper element per query rather than reusing one, so a just-closed popper
@@ -383,6 +385,139 @@ class BenerailSearchPage {
         `suggestions: ${SELECTORS.RAIL_STATION_AUTOCOMPLETE_POPPER} ${SELECTORS.RAIL_STATION_AUTOCOMPLETE_SUGGESTION_TEXT}). Original: ${err.message}`
       );
     }
+  }
+
+  /**
+   * Types into a rail From/To station field and commits the suggestion that best matches what was
+   * typed — not just whichever renders first. A broader/parent entry can rank above the specific
+   * one searched for (e.g. typing "Lyon Part Dieu" can list a bare "Lyon" city entry ahead of the
+   * "Lyon Part Dieu" station itself), and blindly clicking the first suggestion silently commits the
+   * wrong place — the field still "succeeds" (a value gets committed), but the search runs against a
+   * different origin/destination than the caller asked for. Matching preference: exact text match,
+   * then a suggestion that starts with the typed text, then one that merely contains it. Falls back
+   * to the first suggestion when nothing matches at all — many existing routes in benerail.json are
+   * typed as station codes (e.g. "FRPMO") that never appear in the suggestion's own display text, so
+   * a text match is never expected to be found for them, and the app's own top-ranked suggestion for
+   * that code remains correct there.
+   *
+   * Scoped to Benerail's own boxed-autocomplete-popper (RAIL_STATION_AUTOCOMPLETE_POPPER) — this
+   * does not touch SearchPage's shared fillInFromField/fillInToField, which every other product
+   * (flights, hotels, cars) also calls.
+   *
+   * @param {import('playwright').Locator} inputSelector - RAIL_FROM_STATION_INPUT or RAIL_TO_STATION_INPUT
+   * @param {string} value - Station text to type
+   * @param {string} caller - Calling method name, used in the thrown error message
+   * @returns {Promise<void>}
+   */
+  async _fillRailStationFieldWithBestMatch(inputSelector, value, caller) {
+    const input = this.page.locator(inputSelector).first();
+
+    try {
+      await input.waitFor({ state: "visible", timeout: 10000 });
+      await input.click();
+      // Real keyboard events, not fill() — the Vue-bound autocomplete model does not reliably fire
+      // its debounced search on a programmatic fill (same reasoning as
+      // getStationAutocompleteSuggestionTexts's own pressSequentially usage).
+      await input.press("Control+A");
+      await input.press("Backspace");
+      await this.page.waitForTimeout(300);
+      await input.pressSequentially(value, { delay: 50 });
+    } catch (err) {
+      throw new Error(`[${caller}] Could not focus/type "${value}" into the station field (${inputSelector}). Original: ${err.message}`);
+    }
+
+    const popper = this.page.locator(SELECTORS.RAIL_STATION_AUTOCOMPLETE_POPPER).last();
+    try {
+      await popper.waitFor({ state: "visible", timeout: 15000 });
+    } catch (err) {
+      throw new Error(
+        `[${caller}] Station autocomplete dropdown never rendered for "${value}" (selector ` +
+        `${SELECTORS.RAIL_STATION_AUTOCOMPLETE_POPPER}) within 15000ms, so the field could not commit a ` +
+        `suggestion. The field likely stays empty/invalid. Original: ${err.message}`
+      );
+    }
+
+    const rows = popper.locator(SELECTORS.RAIL_STATION_AUTOCOMPLETE_SUGGESTION_TEXT);
+    // Poll rather than a single read — the popper element can attach before its rows finish
+    // rendering (same race documented on getStationAutocompleteSuggestionTexts).
+    let rowCount = 0;
+    const rowsDeadline = Date.now() + 5000;
+    do {
+      rowCount = await rows.count();
+      if (rowCount > 0) break;
+      await this.page.waitForTimeout(200);
+    } while (Date.now() < rowsDeadline);
+    if (rowCount === 0) {
+      throw new Error(`[${caller}] Station autocomplete dropdown rendered but no suggestion rows were found for "${value}"`);
+    }
+
+    const normalizedSearch = String(value ?? "").trim().toLowerCase();
+    let prefixMatchIndex = -1;
+    let containsMatchIndex = -1;
+    let chosenIndex = -1;
+
+    for (let index = 0; index < rowCount; index += 1) {
+      const rawText = (await rows.nth(index).textContent()) ?? "";
+      const normalizedRow = rawText.replace(/\s+/g, " ").trim().toLowerCase();
+
+      if (normalizedRow === normalizedSearch) {
+        chosenIndex = index;
+        break;
+      }
+      if (prefixMatchIndex === -1 && normalizedRow.startsWith(normalizedSearch)) {
+        prefixMatchIndex = index;
+      }
+      if (containsMatchIndex === -1 && normalizedRow.includes(normalizedSearch)) {
+        containsMatchIndex = index;
+      }
+    }
+
+    if (chosenIndex === -1) {
+      chosenIndex = prefixMatchIndex !== -1 ? prefixMatchIndex : (containsMatchIndex !== -1 ? containsMatchIndex : 0);
+    }
+
+    try {
+      await rows.nth(chosenIndex).click({ timeout: 5000 });
+    } catch (err) {
+      throw new Error(`[${caller}] Could not click the matched station suggestion (row ${chosenIndex}) for "${value}". Original: ${err.message}`);
+    }
+
+    try {
+      await this.page.waitForFunction(
+        (el) => !!el && el.value.trim().length > 0,
+        await input.elementHandle(),
+        { timeout: 5000 },
+      );
+    } catch (err) {
+      throw new Error(
+        `[${caller}] The station field still reads empty after clicking a suggestion for "${value}". ` +
+        `Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Fills the rail "From" station field and commits the best-matching suggestion.
+   * @param {string} from
+   */
+  async fillFromStationWithBestMatch(from) {
+    await this._fillRailStationFieldWithBestMatch(
+      SELECTORS.RAIL_FROM_STATION_INPUT,
+      from,
+      "BenerailSearchPage.fillFromStationWithBestMatch",
+    );
+  }
+
+  /**
+   * Fills the rail "To" station field and commits the best-matching suggestion.
+   * @param {string} to
+   */
+  async fillToStationWithBestMatch(to) {
+    await this._fillRailStationFieldWithBestMatch(
+      SELECTORS.RAIL_TO_STATION_INPUT,
+      to,
+      "BenerailSearchPage.fillToStationWithBestMatch",
+    );
   }
 }
 

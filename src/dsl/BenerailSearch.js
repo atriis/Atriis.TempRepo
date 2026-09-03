@@ -2,7 +2,12 @@ const { getPageObject } = require("@utils/pageObjectCache");
 const { SearchPage } = require("@pages/SearchPage");
 const { BenerailSearchPage } = require("@pages/BenerailSearchPage");
 const benerailRoutes = require("@data/benerail.json");
-const { selectDatesByNthAvailable, selectNthWeekdayFromNextMonth } = require("@utils/calendar.helper");
+const {
+  selectDatesByNthAvailable,
+  selectNthWeekdayFromNextMonth,
+  advanceSinglePickerCalendarUntilMonthVisible,
+  clickDayInVisibleMonth,
+} = require("@utils/calendar.helper");
 const { resolveRoute } = require("@utils/route.helper");
 const { SEARCH_DEFAULTS } = require("@utils/search.constants");
 
@@ -107,9 +112,10 @@ const BenerailSearch = {
     await BenerailSearch.selectBenerailSearch(page);
     await searchPage.selectOneWayTrip();
 
-    // Route selection — both fields assert their value committed before returning.
-    await searchPage.fillInFromField(from);
-    await searchPage.fillInToField(to);
+    // Route selection — both fields commit the best-matching suggestion (not just whichever
+    // renders first — see BenerailSearchPage.fillFromStationWithBestMatch) and assert it committed.
+    await benerailSearchPage.fillFromStationWithBestMatch(from);
+    await benerailSearchPage.fillToStationWithBestMatch(to);
 
     // Calendar flow: explicitly open the departure calendar, then select the Nth available date.
     // One month ahead, not the shared 3-month default — Benerail inventory is not published that far out.
@@ -170,8 +176,8 @@ const BenerailSearch = {
       await BenerailSearch.selectBenerailSearch(page);
       await searchPage.selectOneWayTrip();
 
-      await searchPage.fillInFromField(from);
-      await searchPage.fillInToField(to);
+      await benerailSearchPage.fillFromStationWithBestMatch(from);
+      await benerailSearchPage.fillToStationWithBestMatch(to);
 
       await benerailSearchPage.clickRailDepartureDateField();
       await selectNthWeekdayFromNextMonth(page, { dayOfWeek, nth });
@@ -254,8 +260,8 @@ const BenerailSearch = {
 
       await searchPage.selectOneWayTrip();
 
-      await searchPage.fillInFromField(from);
-      await searchPage.fillInToField(to);
+      await benerailSearchPage.fillFromStationWithBestMatch(from);
+      await benerailSearchPage.fillToStationWithBestMatch(to);
 
       // Explicitly open the departure calendar, then take the Nth available date. One month ahead
       // matches the standalone rail search — EU rail inventory is not published far out.
@@ -308,9 +314,9 @@ const BenerailSearch = {
     await BenerailSearch.selectBenerailSearch(page);
     await searchPage.selectRoundTrip();
 
-    await searchPage.fillInFromField(from);
+    await benerailSearchPage.fillFromStationWithBestMatch(from);
 
-    // Route is confirmed (fillInFromField already asserted the value committed) — now move to the
+    // Route is confirmed (fillFromStationWithBestMatch already asserted the value committed) — now move to the
     // departure date field. This must be an explicit click: the calendar panel does not open on its
     // own, it previously opened only as a side effect of Tab shifting focus onto this field.
     await benerailSearchPage.clickRailDepartureDateField();
@@ -324,7 +330,7 @@ const BenerailSearch = {
     });
 
     // Route selection for return
-    await searchPage.fillInToField(to);
+    await benerailSearchPage.fillToStationWithBestMatch(to);
 
     // Same as departure: explicitly open the return calendar rather than relying on focus order.
     // No further month advance here — the return picker already continues from the departure
@@ -348,6 +354,136 @@ const BenerailSearch = {
       departureIndex,
       returnIndex,
     };
+  },
+
+  /**
+   * Performs a round-trip Benerail search on exact calendar dates, N days from today, instead of
+   * an index into whatever dates the calendar happens to render as "available". An index-based
+   * pick (searchBenerailRoundTrip's default) still depends on the calendar's own month view, which
+   * "near departure date" callers were advancing a full month ahead unconditionally — pushing the
+   * search past where Distribusion/Benerail inventory is actually published whenever today falls
+   * early in the month (found investigating ADO 70431). Picking an exact date offset sidesteps
+   * that: it only advances the calendar's month view when the target date's month genuinely isn't
+   * the one currently showing (advanceSinglePickerCalendarUntilMonthVisible), so it works the same regardless
+   * of where in the month "today" happens to be.
+   * @param {import('playwright').Page} page
+   * @param {string|object} routeInput - Route key from benerail.json, or { from, to }
+   * @param {object} [options]
+   * @param {number} [options.departureOffsetDays=5] - Departure date, N days from today
+   * @param {number} [options.returnOffsetDays] - Return date, N days from today. Defaults to
+   *   departureOffsetDays + 2 (a short round trip) when not given.
+   * @returns {Promise<{searched: boolean, routeInput: string|object, from: string, to: string, departureDate: Date, returnDate: Date}>}
+   */
+  async searchBenerailRoundTripOnDaysFromNow(
+    page,
+    routeInput = benerailRoutes.defaultRoute,
+    { departureOffsetDays = 5, returnOffsetDays } = {},
+  ) {
+    if (!page) {
+      throw new Error('[BenerailSearch.searchBenerailRoundTripOnDaysFromNow] "page" is required.');
+    }
+    if (!Number.isInteger(departureOffsetDays) || departureOffsetDays < 0) {
+      throw new Error(
+        `[BenerailSearch.searchBenerailRoundTripOnDaysFromNow] "departureOffsetDays" must be a non-negative integer, got: ${departureOffsetDays}`,
+      );
+    }
+    const resolvedReturnOffsetDays = returnOffsetDays ?? departureOffsetDays + 2;
+    if (!Number.isInteger(resolvedReturnOffsetDays) || resolvedReturnOffsetDays <= departureOffsetDays) {
+      throw new Error(
+        `[BenerailSearch.searchBenerailRoundTripOnDaysFromNow] "returnOffsetDays" (${resolvedReturnOffsetDays}) must be an integer greater than departureOffsetDays (${departureOffsetDays})`,
+      );
+    }
+
+    const { from, to } = resolveRoute(routeInput, benerailRoutes.routes, "benerail");
+
+    const today = new Date();
+    const departureDate = new Date(today.getFullYear(), today.getMonth(), today.getDate() + departureOffsetDays);
+    const returnDate = new Date(today.getFullYear(), today.getMonth(), today.getDate() + resolvedReturnOffsetDays);
+
+    const searchPage = getPageObject(page, SearchPage);
+    const benerailSearchPage = getPageObject(page, BenerailSearchPage);
+
+    try {
+      await BenerailSearch.selectBenerailSearch(page);
+      await searchPage.selectRoundTrip();
+
+      await benerailSearchPage.fillFromStationWithBestMatch(from);
+
+      await benerailSearchPage.clickRailDepartureDateField();
+      const departureMonthTableIndex = await advanceSinglePickerCalendarUntilMonthVisible(page, departureDate);
+      await clickDayInVisibleMonth(page, departureDate, departureMonthTableIndex);
+
+      await benerailSearchPage.fillToStationWithBestMatch(to);
+
+      await benerailSearchPage.clickRailReturnDateField();
+      const returnMonthTableIndex = await advanceSinglePickerCalendarUntilMonthVisible(page, returnDate);
+      await clickDayInVisibleMonth(page, returnDate, returnMonthTableIndex);
+
+      await searchPage.waitAndClickSearchButton();
+
+      return { searched: true, routeInput, from, to, departureDate, returnDate };
+    } catch (err) {
+      throw new Error(
+        `[BenerailSearch.searchBenerailRoundTripOnDaysFromNow] Failed to run a round trip EU rail ` +
+        `search (${from} → ${to}) departing ${departureDate.toDateString()} returning ${returnDate.toDateString()}. ` +
+        `Original: ${err.message}`,
+      );
+    }
+  },
+
+  /**
+   * Performs a one-way Benerail search on an exact calendar date, N days from today — the one-way
+   * counterpart of searchBenerailRoundTripOnDaysFromNow. See that method's doc for why an exact
+   * date offset is used instead of an index into whatever the calendar's current month view
+   * happens to render as "available" (ADO 70431).
+   * @param {import('playwright').Page} page
+   * @param {string|object} routeInput - Route key from benerail.json, or { from, to }
+   * @param {object} [options]
+   * @param {number} [options.departureOffsetDays=5] - Departure date, N days from today
+   * @returns {Promise<{searched: boolean, routeInput: string|object, from: string, to: string, departureDate: Date}>}
+   */
+  async searchBenerailOneWayOnDaysFromNow(
+    page,
+    routeInput = benerailRoutes.defaultRoute,
+    { departureOffsetDays = 5 } = {},
+  ) {
+    if (!page) {
+      throw new Error('[BenerailSearch.searchBenerailOneWayOnDaysFromNow] "page" is required.');
+    }
+    if (!Number.isInteger(departureOffsetDays) || departureOffsetDays < 0) {
+      throw new Error(
+        `[BenerailSearch.searchBenerailOneWayOnDaysFromNow] "departureOffsetDays" must be a non-negative integer, got: ${departureOffsetDays}`,
+      );
+    }
+
+    const { from, to } = resolveRoute(routeInput, benerailRoutes.routes, "benerail");
+
+    const today = new Date();
+    const departureDate = new Date(today.getFullYear(), today.getMonth(), today.getDate() + departureOffsetDays);
+
+    const searchPage = getPageObject(page, SearchPage);
+    const benerailSearchPage = getPageObject(page, BenerailSearchPage);
+
+    try {
+      await BenerailSearch.selectBenerailSearch(page);
+      await searchPage.selectOneWayTrip();
+
+      await benerailSearchPage.fillFromStationWithBestMatch(from);
+      await benerailSearchPage.fillToStationWithBestMatch(to);
+
+      await benerailSearchPage.clickRailDepartureDateField();
+      const departureMonthTableIndex = await advanceSinglePickerCalendarUntilMonthVisible(page, departureDate);
+      await clickDayInVisibleMonth(page, departureDate, departureMonthTableIndex);
+
+      await searchPage.waitAndClickSearchButton();
+
+      return { searched: true, routeInput, from, to, departureDate };
+    } catch (err) {
+      throw new Error(
+        `[BenerailSearch.searchBenerailOneWayOnDaysFromNow] Failed to run a one-way EU rail search ` +
+        `(${from} → ${to}) departing ${departureDate.toDateString()}. Original: ${err.message}`,
+      );
+    }
   },
 
   /**

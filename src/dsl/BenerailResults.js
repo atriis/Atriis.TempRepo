@@ -66,6 +66,29 @@ const STEPPER_TIME_PATTERN = /(\d{1,2}:\d{2}(?:\s*[AP]M)?)\s*$/i;
 // only when the search carries a return date — i.e. only on a round trip).
 const STEPPER_LEG_INDEXES = { outbound: 0, inbound: 1 };
 
+// eu-rail.store.ts's checkVacancy() dispatch — the OBT frontend's own POST /RailVacancyCheck to the
+// Atriis backend, not Distribusion's connections/vacancy (which happens server-side, invisible to
+// Playwright). Matched by URL substring so a query string or host prefix never breaks the match.
+const VACANCY_CHECK_URL_FRAGMENT = "/RailVacancyCheck";
+const VACANCY_CHECK_RESPONSE_TIMEOUT_MS = 30000;
+
+/**
+ * Reads the vacancy check exchange captured by clickAddToTripBenerailAndCaptureVacancyCheck, with a
+ * consistent error when the caller forgot to run the capturing step first.
+ * @param {{requestBody: object, responseBody: object}} vacancyCheck
+ * @param {string} methodName - For the error's [Layer.method] prefix
+ * @returns {{requestBody: object, responseBody: object}}
+ */
+function requireCapturedVacancyCheck(vacancyCheck, methodName) {
+  if (!vacancyCheck || !vacancyCheck.requestBody) {
+    throw new Error(
+      `[BenerailResults.${methodName}] No vacancy check has been captured. Run ` +
+      `"I click Benerail add to trip button and capture the vacancy check exchange" first.`,
+    );
+  }
+  return vacancyCheck;
+}
+
 /**
  * Parses a price-breakdown passenger-row label (eu-rail-price-breakdown.vue, e.g. "2 Adult")
  * into its traveler count and age-association type.
@@ -812,6 +835,304 @@ const BenerailResults = {
     }
 
     return { rows, total };
+  },
+
+  /**
+   * Clicks "Add to trip" and captures the resulting vacancy check exchange — the OBT frontend's own
+   * POST /RailVacancyCheck call to the Atriis backend (eu-rail.store.ts checkVacancy()), triggered by
+   * addRailsToTrip() before the quote is added to the cart.
+   *
+   * Deliberately a NEW method rather than an extension of clickAddToTripBenerail — that method is
+   * shared by every Benerail "add to trip" flow in the codebase (plain Benerail bookings included,
+   * not just Distribusion's vacancy-check scenarios), so arming a vacancy-check-specific network
+   * listener inside it would add unrelated risk/latency to callers that have no reason to care about
+   * this response.
+   *
+   * The listener is armed BEFORE the click so the request can never complete (and be missed) before
+   * this method starts watching for it. The button's loading state is also sampled concurrently with
+   * awaiting the response, since it can only be observed while the request is still in flight — by
+   * the time this method returns, the request is done and the button has very likely stopped
+   * loading. A very fast round trip can still flash faster than this sampling catches it; treat
+   * spinnerObservedDuringCheck as a best-effort signal, not an ironclad guarantee.
+   * @param {import('playwright').Page} page
+   * @returns {Promise<{requestBody: object, responseBody: object, spinnerObservedDuringCheck: boolean}>}
+   */
+  async clickAddToTripBenerailAndCaptureVacancyCheck(page) {
+    if (!page) throw new Error("[BenerailResults.clickAddToTripBenerailAndCaptureVacancyCheck] page is required");
+
+    const benerailResultsPage = getPageObject(page, BenerailResultsPage);
+
+    const responsePromise = page.waitForResponse(
+      (response) => response.url().includes(VACANCY_CHECK_URL_FRAGMENT) && response.request().method() === "POST",
+      { timeout: VACANCY_CHECK_RESPONSE_TIMEOUT_MS },
+    );
+
+    await BenerailResults.clickAddToTripBenerail(page);
+
+    // Started right after the click, awaited after the response — runs concurrently with the
+    // network wait below rather than sequentially after it (see method doc for why sequencing this
+    // after the response would make it pointless).
+    const spinnerCheckPromise = benerailResultsPage.isAddToTripButtonLoading({ timeout: 5000 });
+
+    let response;
+    try {
+      response = await responsePromise;
+    } catch (err) {
+      throw new Error(
+        `[BenerailResults.clickAddToTripBenerailAndCaptureVacancyCheck] "Add to trip" was clicked but no ` +
+        `POST ${VACANCY_CHECK_URL_FRAGMENT} response was observed within ${VACANCY_CHECK_RESPONSE_TIMEOUT_MS}ms. ` +
+        `Original: ${err.message}`,
+      );
+    }
+
+    const spinnerObservedDuringCheck = await spinnerCheckPromise;
+
+    let requestBody;
+    try {
+      requestBody = JSON.parse(response.request().postData() || "null");
+    } catch (err) {
+      throw new Error(
+        `[BenerailResults.clickAddToTripBenerailAndCaptureVacancyCheck] Could not parse the ` +
+        `${VACANCY_CHECK_URL_FRAGMENT} request body as JSON. Original: ${err.message}`,
+      );
+    }
+
+    let responseBody;
+    try {
+      responseBody = await response.json();
+    } catch (err) {
+      throw new Error(
+        `[BenerailResults.clickAddToTripBenerailAndCaptureVacancyCheck] Could not parse the ` +
+        `${VACANCY_CHECK_URL_FRAGMENT} response body as JSON. Original: ${err.message}`,
+      );
+    }
+
+    if (!requestBody) {
+      throw new Error(
+        `[BenerailResults.clickAddToTripBenerailAndCaptureVacancyCheck] The ${VACANCY_CHECK_URL_FRAGMENT} ` +
+        `request carried no body`,
+      );
+    }
+
+    return { requestBody, responseBody, spinnerObservedDuringCheck };
+  },
+
+  /**
+   * Verifies a captured vacancy check request referenced the expected number of selected fares via
+   * its ItemsCacheKey array (one for a one-way selection, two for a round trip's outbound + inbound).
+   * See file header note on clickAddToTripBenerailAndCaptureVacancyCheck for why ItemsCacheKey is
+   * asserted here instead of a Distribusion-native offer_id, which never reaches the browser.
+   * @param {import('playwright').Page} page
+   * @param {{requestBody: object}} vacancyCheck - Returned by clickAddToTripBenerailAndCaptureVacancyCheck
+   * @param {number} [expectedItemCount=1]
+   * @returns {Promise<{itemsCacheKey: string[]}>}
+   */
+  async assertVacancyCheckPerformedForItems(page, vacancyCheck, expectedItemCount = 1) {
+    if (!page) throw new Error("[BenerailResults.assertVacancyCheckPerformedForItems] page is required");
+    if (!Number.isInteger(expectedItemCount) || expectedItemCount < 1) {
+      throw new Error(
+        `[BenerailResults.assertVacancyCheckPerformedForItems] "expectedItemCount" must be a positive integer, got: ${expectedItemCount}`,
+      );
+    }
+    const { requestBody } = requireCapturedVacancyCheck(vacancyCheck, "assertVacancyCheckPerformedForItems");
+
+    const itemsCacheKey = requestBody.ItemsCacheKey;
+    if (!Array.isArray(itemsCacheKey) || itemsCacheKey.filter(Boolean).length !== expectedItemCount) {
+      throw new Error(
+        `[BenerailResults.assertVacancyCheckPerformedForItems] Expected the vacancy check request's ` +
+        `ItemsCacheKey to reference exactly ${expectedItemCount} selected fare(s), got: ${JSON.stringify(itemsCacheKey)}`,
+      );
+    }
+
+    return { itemsCacheKey };
+  },
+
+  /**
+   * Verifies a captured vacancy check request has the correctly typed payload shape (see
+   * VacancyCheckRequest in eu-rail's models/types.ts): TripId a number, ItemsCacheKey a non-empty
+   * array of non-empty strings, Expires present.
+   * @param {import('playwright').Page} page
+   * @param {{requestBody: object}} vacancyCheck
+   */
+  async assertVacancyCheckRequestShape(page, vacancyCheck) {
+    if (!page) throw new Error("[BenerailResults.assertVacancyCheckRequestShape] page is required");
+    const { requestBody } = requireCapturedVacancyCheck(vacancyCheck, "assertVacancyCheckRequestShape");
+
+    if (typeof requestBody.TripId !== "number") {
+      throw new Error(
+        `[BenerailResults.assertVacancyCheckRequestShape] Expected the vacancy check request's TripId ` +
+        `to be a number, got: ${typeof requestBody.TripId} (${JSON.stringify(requestBody.TripId)})`,
+      );
+    }
+
+    // A one-way selection still carries two slots (Departure/Arrival leg types internally), with
+    // whichever leg has no selection contributing null/undefined — see eu-rail.store.ts's
+    // checkVacancy(), which maps ItemsCacheKey off Object.values(selectedRails) unconditionally. So
+    // this checks for AT LEAST ONE non-empty string entry, not that every entry is one.
+    const itemsCacheKey = requestBody.ItemsCacheKey;
+    const hasValidItemsCacheKey = Array.isArray(itemsCacheKey) && itemsCacheKey.length > 0 &&
+      itemsCacheKey.some((key) => typeof key === "string" && key.length > 0);
+    if (!hasValidItemsCacheKey) {
+      throw new Error(
+        `[BenerailResults.assertVacancyCheckRequestShape] Expected the vacancy check request's ` +
+        `ItemsCacheKey to contain at least one non-empty string, got: ${JSON.stringify(itemsCacheKey)}`,
+      );
+    }
+
+    if (requestBody.Expires === undefined || requestBody.Expires === null) {
+      throw new Error(
+        `[BenerailResults.assertVacancyCheckRequestShape] Expected the vacancy check request to carry ` +
+        `an "Expires" value, got: ${JSON.stringify(requestBody.Expires)}`,
+      );
+    }
+  },
+
+  /**
+   * Verifies a captured vacancy check request references the search and item cache-key identity of
+   * the selected fare — the frontend's own observable proof that the fare picked in search results
+   * was retained through to the vacancy check (see file header note on TC-009's redefinition).
+   * @param {import('playwright').Page} page
+   * @param {{requestBody: object}} vacancyCheck
+   */
+  async assertVacancyCheckReferencesSelectedFareCacheKeys(page, vacancyCheck) {
+    if (!page) throw new Error("[BenerailResults.assertVacancyCheckReferencesSelectedFareCacheKeys] page is required");
+    const { requestBody } = requireCapturedVacancyCheck(vacancyCheck, "assertVacancyCheckReferencesSelectedFareCacheKeys");
+
+    const searchCacheKey = requestBody.SearchCacheKey;
+    if (!Array.isArray(searchCacheKey) || searchCacheKey.filter(Boolean).length === 0) {
+      throw new Error(
+        `[BenerailResults.assertVacancyCheckReferencesSelectedFareCacheKeys] Expected the vacancy ` +
+        `check request's SearchCacheKey to be a non-empty array, got: ${JSON.stringify(searchCacheKey)}`,
+      );
+    }
+
+    const itemsCacheKey = requestBody.ItemsCacheKey;
+    if (!Array.isArray(itemsCacheKey) || itemsCacheKey.filter(Boolean).length === 0) {
+      throw new Error(
+        `[BenerailResults.assertVacancyCheckReferencesSelectedFareCacheKeys] Expected the vacancy ` +
+        `check request's ItemsCacheKey to be a non-empty array, got: ${JSON.stringify(itemsCacheKey)}`,
+      );
+    }
+
+    if (!Array.isArray(requestBody.ReturnSearchCacheKey)) {
+      throw new Error(
+        `[BenerailResults.assertVacancyCheckReferencesSelectedFareCacheKeys] Expected the vacancy ` +
+        `check request to carry a ReturnSearchCacheKey array (even if its entries are empty for a ` +
+        `one-way selection), got: ${JSON.stringify(requestBody.ReturnSearchCacheKey)}`,
+      );
+    }
+  },
+
+  /**
+   * Verifies a captured vacancy check response carries the dynamic passenger/booking required-field
+   * arrays (VacancyCheckResponse.passengerRequiredAttributes / .bookingRequiredAttributes — see
+   * eu-rail's models/types.ts and eu-rail-results.ts's extractRequiredFields). Presence/shape only —
+   * a fare that requires no extra fields legitimately returns empty arrays.
+   * @param {import('playwright').Page} page
+   * @param {{responseBody: object}} vacancyCheck
+   */
+  async assertVacancyResponseHasRequiredAttributeFields(page, vacancyCheck) {
+    if (!page) throw new Error("[BenerailResults.assertVacancyResponseHasRequiredAttributeFields] page is required");
+    const { responseBody } = requireCapturedVacancyCheck(vacancyCheck, "assertVacancyResponseHasRequiredAttributeFields");
+
+    if (!Array.isArray(responseBody.passengerRequiredAttributes)) {
+      throw new Error(
+        `[BenerailResults.assertVacancyResponseHasRequiredAttributeFields] Expected the vacancy check ` +
+        `response's passengerRequiredAttributes to be an array, got: ${JSON.stringify(responseBody.passengerRequiredAttributes)}`,
+      );
+    }
+
+    if (!Array.isArray(responseBody.bookingRequiredAttributes)) {
+      throw new Error(
+        `[BenerailResults.assertVacancyResponseHasRequiredAttributeFields] Expected the vacancy check ` +
+        `response's bookingRequiredAttributes to be an array, got: ${JSON.stringify(responseBody.bookingRequiredAttributes)}`,
+      );
+    }
+  },
+
+  /**
+   * Verifies neither vacancy-outcome message (price-changed or unavailable) is displayed — the
+   * outcome-1 "price unchanged and vacant" path, where the app shows nothing and redirects straight
+   * to Cart (eu-rail-results.vue, vacancyStatus stays null).
+   * @param {import('playwright').Page} page
+   */
+  async assertNoVacancyMessageDisplayed(page) {
+    if (!page) throw new Error("[BenerailResults.assertNoVacancyMessageDisplayed] page is required");
+    const benerailResultsPage = getPageObject(page, BenerailResultsPage);
+
+    const [priceChangedVisible, unavailableVisible] = await Promise.all([
+      benerailResultsPage.getVacancyPriceChangedMessage().isVisible(),
+      benerailResultsPage.getVacancyUnavailableMessage().isVisible(),
+    ]);
+
+    if (priceChangedVisible || unavailableVisible) {
+      throw new Error(
+        `[BenerailResults.assertNoVacancyMessageDisplayed] Expected no vacancy-outcome message, but ` +
+        `${priceChangedVisible ? "the price-changed" : "the fare-not-available"} message is displayed`,
+      );
+    }
+  },
+
+  /**
+   * Verifies a captured vacancy check response reports outcome 1 (vacant, price unchanged) by
+   * value: isVacant true, priceChanged false. This is the frontend's own POST /RailVacancyCheck
+   * response (see VacancyCheckResponse in eu-rail's models/types.ts) — the Atriis backend's own
+   * separate call to Distribusion's connections/vacancy happens server-side and is not visible to
+   * Playwright, so this is the closest interceptable confirmation of the actual outcome, one layer
+   * up from the UI-only assertNoVacancyMessageDisplayed check.
+   * @param {import('playwright').Page} page
+   * @param {{responseBody: object}} vacancyCheck - Returned by clickAddToTripBenerailAndCaptureVacancyCheck
+   */
+  async assertVacancyResponseReportsPriceUnchangedAndVacant(page, vacancyCheck) {
+    if (!page) throw new Error("[BenerailResults.assertVacancyResponseReportsPriceUnchangedAndVacant] page is required");
+    const { responseBody } = requireCapturedVacancyCheck(vacancyCheck, "assertVacancyResponseReportsPriceUnchangedAndVacant");
+
+    if (responseBody.isVacant !== true) {
+      throw new Error(
+        `[BenerailResults.assertVacancyResponseReportsPriceUnchangedAndVacant] Expected the vacancy ` +
+        `check response's isVacant to be true, got: ${JSON.stringify(responseBody.isVacant)}`,
+      );
+    }
+
+    if (responseBody.priceChanged !== false) {
+      throw new Error(
+        `[BenerailResults.assertVacancyResponseReportsPriceUnchangedAndVacant] Expected the vacancy ` +
+        `check response's priceChanged to be false, got: ${JSON.stringify(responseBody.priceChanged)}`,
+      );
+    }
+  },
+
+  /**
+   * Verifies the "Fare not available. Please choose another option." inline message is displayed
+   * (eu-rail-results.vue, vacancyStatus === 'unavailable' — outcome 3, no vacancy).
+   * @param {import('playwright').Page} page
+   */
+  async assertVacancyUnavailableMessageDisplayed(page) {
+    if (!page) throw new Error("[BenerailResults.assertVacancyUnavailableMessageDisplayed] page is required");
+    const benerailResultsPage = getPageObject(page, BenerailResultsPage);
+    try {
+      await benerailResultsPage.getVacancyUnavailableMessage().waitFor({ state: "visible", timeout: 30000 });
+    } catch (err) {
+      throw new Error(
+        `[BenerailResults.assertVacancyUnavailableMessageDisplayed] The "Fare not available" message ` +
+        `never appeared. Original: ${err.message}`,
+      );
+    }
+  },
+
+  /**
+   * Clicks "Change selection" — the only action available on either vacancy-outcome message
+   * (price-changed or unavailable both wire to the same changeSelection() handler, eu-rail-results.ts).
+   * @param {import('playwright').Page} page
+   */
+  async clickChangeSelection(page) {
+    if (!page) throw new Error("[BenerailResults.clickChangeSelection] page is required");
+    const benerailResultsPage = getPageObject(page, BenerailResultsPage);
+    try {
+      await benerailResultsPage.clickChangeSelectionButton();
+    } catch (err) {
+      throw new Error(`[BenerailResults.clickChangeSelection] Could not click "Change selection". Original: ${err.message}`);
+    }
   },
 };
 

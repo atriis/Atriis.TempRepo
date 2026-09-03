@@ -95,6 +95,10 @@
     "frpmoToFrnte": {
       "from": "FRPMO",
       "to": "FRNTE"
+    },
+    "parisGareDeLyonToLyonPartDieu": {
+      "from": "Paris Gare de Lyon",
+      "to": "Lyon Part Dieu"
     }
   },
   "defaultRoute": "beleuToBeabc"
