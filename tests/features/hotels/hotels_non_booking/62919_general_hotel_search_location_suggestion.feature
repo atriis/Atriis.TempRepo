@@ -6,11 +6,10 @@
 # Created: 2025-06-04T03:50:49Z
 # Updated: 2025-06-04T07:28:24Z
 
-@regression @provider:amadeus
+@regression @provider:general
 Feature: 62919 Hotels - 'Woking' location appears as a suggested location
   As a corporate traveler
-  I want to type "Woking" in hotel search and see it appear as a location suggestion
-  So that I can search for hotels in less common cities
+  I want to start typing word in the hotel search field and see all the relevant locations in the dropdown
 
   @priority:low
   Scenario: 'Woking' location appears as a suggested location
