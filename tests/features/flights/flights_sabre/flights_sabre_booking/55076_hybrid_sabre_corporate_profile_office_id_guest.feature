@@ -6,7 +6,7 @@
 # Updated: 2026-02-16T09:33:35Z
 
 @regression @flights @sabre @full-purchase @guest @hybrid
-Feature: 55076 Sabre - Correct corporate profile office ID sent when booking for guest
+Feature: 55076 HYBRID Sabre - Correct corporate profile office ID sent when booking for guest
   As a corporate traveler
   I want to book a flight for a guest traveler
   So that the correct corporate profile office ID is used in the booking
