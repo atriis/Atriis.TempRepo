@@ -7,15 +7,14 @@
 # Updated: 2025-05-04T09:14:25Z
 
 @regression @provider:bookingcom
-Feature: 61577 Booking.com - Supplier filters reflect primary traveler user group
-  As a travel arranger
-  I want to see supplier filters that correspond to the primary traveler's user group permissions
-  So that only allowed suppliers are shown for the traveler
+Feature: 61577 General - Hotel content is taken from the user group of the primary traveler
+  As a corporate user
+  I want to see the content according to the primary traveler's administration
 
   @priority:high
-  Scenario: Supplier filters displayed are based on primary traveler's user group
+  Scenario: Content displayed is based on primary traveler's user group
     Given I am logged in as "amos@one.com" booking a new trip
-    And I have added myself as the traveler
+    And I have added traveler by name "avital one"
     And I have added "becky leshin" as primary traveler
     When I search for a hotel in "LON" for 1 night
     And I click proceed button if visible
