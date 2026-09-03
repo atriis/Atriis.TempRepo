@@ -3930,6 +3930,14 @@ When("I open the financial reference details from the trip overview", async func
   await Cart.openFinancialReferenceDetailsFromTripOverview(this.page);
 });
 
+// Opens the "Trip reference form" item of the trip actions (three dots) menu in the trip overview and
+// waits until its footer Edit button is visible. The form opens read-only after booking, so pair this
+// with "I click edit on the reference fields popup" (dynamic_fields.steps.js) before filling any field.
+When("I open the trip reference form from the trip overview", async function () {
+  logger.info("Opening the trip reference form from the quote actions dropdown in the trip overview");
+  await Cart.openTripReferenceFormFromTripOverview(this.page);
+});
+
 Then("the financial reference field in the trip overview should show {string}", async function (expectedText) {
   logger.info(`Verifying the financial reference field in the trip overview shows "${expectedText}"`);
   await Cart.verifyFinancialReferenceFieldDescriptionInTripOverview(this.page, expectedText);

@@ -14514,6 +14514,29 @@ const Cart = {
   },
 
   /**
+   * Opens the Trip reference form from the trip-level options menu in the Trip overview (hover the
+   * options icon, then pick the "Trip reference form" option) and leaves it open on its read-only
+   * view, ready for Edit.
+   *
+   * @param {import('playwright').Page} page
+   * @returns {Promise<void>}
+   */
+  async openTripReferenceFormFromTripOverview(page) {
+    if (!page) throw new Error('[Cart.openTripReferenceFormFromTripOverview] "page" is required.');
+
+    logger.debug('Opening the Trip reference form from the trip actions dropdown in the trip overview');
+    try {
+      const cartPage = getPageObject(page, CartPage);
+      await cartPage.openTripReferenceFormFromTripOverview();
+    } catch (err) {
+      throw new Error(
+        `[Cart.openTripReferenceFormFromTripOverview] Failed to open the Trip reference form from the trip ` +
+        `overview: ${err.message}`
+      );
+    }
+  },
+
+  /**
    * Verifies that the Financial Reference field in the trip overview shows the
    * expected description text (the selected value inside the .financial-section el-select).
    *

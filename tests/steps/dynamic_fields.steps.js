@@ -64,6 +64,14 @@ When("I select the mandatory reference field option in the popup", async functio
   await DynamicAndReferenceFields.selectMandatoryReferenceFieldOptionInPopup(this.page);
 });
 
+// Switches an already-open reference-fields popup from read-only into edit mode. Needed for the
+// trip-overview Trip reference form, whose fields arrive disabled after booking; the step returns only
+// once the footer submit button (Save/Proceed) has appeared, i.e. the fields really are editable.
+When("I click edit on the reference fields popup", async function () {
+  logger.info("Clicking Edit on the reference fields popup to make the fields editable");
+  await DynamicAndReferenceFields.clickEditOnReferenceFieldsPopup(this.page);
+});
+
 // Expects the reference fields popup to be present — waits up to 15s and FAILS if it never appears.
 // Use this when the popup is guaranteed to show (e.g., after adding to cart with mandatory reference fields).
 // For an optional/soft click that won't fail, use: "I click proceed button if visible" (common.steps.js)

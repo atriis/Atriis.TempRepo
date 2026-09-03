@@ -971,6 +971,55 @@ class DynamicAndReferenceFieldsPage {
   }
 
   /**
+   * Clicks the "Edit" button in the open reference-fields popup's footer, making the reference and
+   * dynamic fields editable. Used by the trip-overview Trip reference form, which opens read-only
+   * (trip-app.vue sets `refFieldsOption.disableAllFields: true`); clicking Edit flips that flag, which
+   * both enables the inputs and swaps the footer's submit button in ("Save", or "Proceed" when
+   * `isShowProceedBtn`). That submit button is therefore the deterministic signal that the fields
+   * became editable, so it is awaited here rather than leaving the next step to type into a disabled
+   * input.
+   *
+   * @param {object} [options]
+   * @param {number} [options.timeout=15000]
+   */
+  async clickEditOnReferenceFieldsPopup({ timeout = 15000 } = {}) {
+    const dialog = this.page.locator(SELECTORS.REFERENCE_DIALOG).first();
+    // Exact text, not a substring: the same `.app-footer` also holds Close and Save/Proceed.
+    const editButton = dialog
+      .locator(SELECTORS.REFERENCE_DIALOG_FOOTER_BUTTON)
+      .filter({ hasText: /^\s*Edit\s*$/ })
+      .first();
+    try {
+      await editButton.waitFor({ state: 'visible', timeout });
+      await editButton.click({ timeout });
+    } catch (err) {
+      throw new Error(
+        `[DynamicAndReferenceFieldsPage.clickEditOnReferenceFieldsPopup] Could not find/click the "Edit" button ` +
+        `in the open reference-fields popup's .app-footer within ${timeout}ms. The popup may not be open, or the ` +
+        `Edit button is not rendered (trip-app.vue removes it unless isShowEditBtn is true and the fields are ` +
+        `still disabled — e.g. the form was already switched to edit mode). Original: ${err.message}`
+      );
+    }
+
+    // Gate on the submit button appearing: it only renders once `disableAllFields` is false, so its
+    // presence proves the fields are now editable.
+    const submit = dialog
+      .locator(SELECTORS.REFERENCE_DIALOG_FOOTER_BUTTON)
+      .filter({ hasText: /^\s*(Proceed|Save)\s*$/ })
+      .first();
+    try {
+      await submit.waitFor({ state: 'visible', timeout });
+    } catch (err) {
+      throw new Error(
+        `[DynamicAndReferenceFieldsPage.clickEditOnReferenceFieldsPopup] Clicked "Edit" but neither a "Save" nor ` +
+        `a "Proceed" button appeared in the popup footer within ${timeout}ms, so the reference fields did not ` +
+        `become editable (trip-app.vue only renders the submit button once disableAllFields is false). ` +
+        `Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
    * Submits the reference-fields popup. The cart-checkout flow renders a "Proceed" button, whereas
    * the request-assistance "Trip Reference Form" submits via a dialog-footer "Save". Clicks whichever
    * is present (preferring Proceed) so a single step works for both flows.

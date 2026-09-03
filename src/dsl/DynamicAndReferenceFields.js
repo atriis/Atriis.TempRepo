@@ -1169,6 +1169,28 @@ const DynamicAndReferenceFields = {
   },
 
   /**
+   * Clicks "Edit" in the open reference-fields popup so its reference and dynamic fields become
+   * editable. Needed for the trip-overview Trip reference form, which opens read-only after booking.
+   *
+   * @param {import('playwright').Page} page
+   * @returns {Promise<void>}
+   */
+  async clickEditOnReferenceFieldsPopup(page) {
+    if (!page) throw new Error('[DynamicAndReferenceFields.clickEditOnReferenceFieldsPopup] "page" is required.');
+
+    logger.debug('Clicking Edit on the reference-fields popup to make the fields editable');
+    try {
+      const dynamicFieldsPage = getPageObject(page, DynamicAndReferenceFieldsPage);
+      await dynamicFieldsPage.clickEditOnReferenceFieldsPopup();
+    } catch (err) {
+      throw new Error(
+        `[DynamicAndReferenceFields.clickEditOnReferenceFieldsPopup] Failed to switch the reference-fields popup ` +
+        `into edit mode: ${err.message}`
+      );
+    }
+  },
+
+  /**
    * Waits for the reference fields popup Proceed button to be visible and clicks it.
    * Use when the popup appears and all required fields are already pre-filled,
    * so no field selection is needed — just dismiss the popup to continue.

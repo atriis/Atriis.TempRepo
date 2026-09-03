@@ -391,9 +391,19 @@ const SELECTORS = {
   // menu as "Cancel trip"); this text selects the item, matched by text (not index) since item
   // visibility is dynamic (approvals/copy/cancel items are conditional).
   TRIP_REFERENCE_FORM_MENU_TEXT: 'Trip reference form',
-  // Reference-fields dialog (trip-app.vue el-dialog wrapping .ref-container) shown for the financial reference details.
-  REFERENCE_FORM_DIALOG: '.el-dialog:has(.ref-container)',
-  REFERENCE_FORM_DIALOG_CLOSE: '.el-dialog:has(.ref-container) .el-dialog__headerbtn',
+  // Reference-fields dialog (trip-app.vue el-dialog wrapping .ref-container) shown for the financial
+  // reference details and for the trip-overview "Trip Reference Form".
+  // `:visible` is part of the selector, not a caller concern: a reference-fields popup answered earlier
+  // in the flow (e.g. the search-stage "New trip reference fields" dialog) stays in the DOM hidden, so an
+  // unrestricted match resolves to that leftover and every wait times out against a hidden dialog while
+  // the live one is on screen. Only one of these dialogs is ever open at a time.
+  REFERENCE_FORM_DIALOG: '.el-dialog:has(.ref-container):visible',
+  REFERENCE_FORM_DIALOG_CLOSE: '.el-dialog:has(.ref-container):visible .el-dialog__headerbtn',
+  // Footer "Edit" button of the reference-fields dialog (trip-app.vue NEW REF footer, rendered while
+  // `refFieldsOption.isShowEditBtn && refFieldsOption.disableAllFields`). Opening the form from the trip
+  // overview always starts read-only (`disableAllFields: true`), so this button is the signal that the
+  // dialog finished rendering. Exact text, not `has-text`: the same footer holds Close and Save/Proceed.
+  REFERENCE_FORM_DIALOG_EDIT_BUTTON: '.el-dialog:has(.ref-container):visible .app-footer button:text-is("Edit")',
   // Selected financial reference value shown in the (disabled) el-select inside the .financial-section.
   FINANCIAL_REFERENCE_FIELD_VALUE: '.financial-section .el-select__placeholder span',
 
@@ -1878,6 +1888,50 @@ class CartPage {
         `from the trip actions menu in the trip overview (open menu, click the ` +
         `"${SELECTORS.TRIP_REFERENCE_FORM_MENU_TEXT}" item). The menu or reference-fields dialog did not appear ` +
         `within ${timeout}ms — the trip may have no financial reference configured. Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Opens the Trip reference form from the trip actions menu in the Trip overview and waits until
+   * the reference-fields dialog is editable-ready — i.e. its footer "Edit" button is visible.
+   * Reuses the retry-hardened trip actions menu helpers (hoverTripActionsDropdownIconWithRetry /
+   * waitForTripActionMenuOptionText); the "Trip reference form" item lives in the same .share-popper
+   * menu as "Cancel trip".
+   *
+   * Unlike openFinancialReferenceDetailsFromTripOverview (which only needs the dialog to render for a
+   * read-only financial-reference assertion), this waits for the Edit button because the reference and
+   * dynamic fields arrive disabled (`refFieldsOption.disableAllFields: true`) and cannot be filled
+   * until Edit is clicked.
+   *
+   * @param {object} [options]
+   * @param {number} [options.timeout=15000]
+   * @returns {Promise<void>}
+   */
+  async openTripReferenceFormFromTripOverview({ timeout = 15000 } = {}) {
+    try {
+      // The el-dropdown is briefly disabled during backend polling, so a single hover can silently
+      // fail — reuse the retry helper that opens the menu and confirms it rendered.
+      await this.hoverTripActionsDropdownIconWithRetry();
+      await this.waitForTripActionMenuOptionText(SELECTORS.TRIP_REFERENCE_FORM_MENU_TEXT);
+      await this.page
+        .locator(SELECTORS.TRIP_ACTION_MENU_OPTION, { hasText: SELECTORS.TRIP_REFERENCE_FORM_MENU_TEXT })
+        .first()
+        .click();
+
+      await this.page.locator(SELECTORS.REFERENCE_FORM_DIALOG).first().waitFor({ state: 'visible', timeout });
+      await this.page
+        .locator(SELECTORS.REFERENCE_FORM_DIALOG_EDIT_BUTTON)
+        .first()
+        .waitFor({ state: 'visible', timeout });
+    } catch (err) {
+      throw new Error(
+        `[CartPage.openTripReferenceFormFromTripOverview] Could not open the Trip reference form from the trip ` +
+        `actions menu in the trip overview (open menu, click the "${SELECTORS.TRIP_REFERENCE_FORM_MENU_TEXT}" item, ` +
+        `wait for the footer "Edit" button). The menu, the reference-fields dialog or its Edit button did not ` +
+        `appear within ${timeout}ms — the trip may have no reference fields configured for this stage, or the ` +
+        `user may lack edit permission (the Edit button is removed when isShowEditBtn is false). ` +
+        `Original: ${err.message}`
       );
     }
   }
