@@ -7,13 +7,13 @@
 # Updated: 2025-09-09T07:23:59Z
 
 @regression @provider:amadeus
-Feature: 66604 Amadeus - Wi-Fi amenity filter works in room level after hotel name filter
-  As a corporate traveler
-  I want to filter hotel results by hotel name then filter rooms by Wi-Fi amenity
-  So that I can find a specific hotel that offers rooms with Wi-Fi
+Feature: 66604 Amadeus - Wi-Fi amenity filter works in room level results
+  As a corporate traveler using Amadeus
+  I want to filter room results by Wi-Fi amenity
+  So that I can find rooms that include Wi-Fi connectivity
 
   @priority:medium
-  Scenario: Wi-Fi filter in room level works after filtering hotels by name
+  Scenario: Wi-Fi amenity filter shows only Wi-Fi rooms in Amadeus room level results
     Given I am logged in as "amy@gadasy.com" booking a new trip
     And I have added myself as the traveler
     When I search for a hotel in "London" for 1 night
