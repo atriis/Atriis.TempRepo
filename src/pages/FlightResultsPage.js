@@ -370,6 +370,27 @@ class FlightResultsPage {
   }
 
   /**
+   * Every fare option card inside the pricing options overlay.
+   *
+   * @returns {import('@playwright/test').Locator}
+   */
+  getPricingOptionsCards() {
+    return this.getPricingOptionsOverlay().locator(SELECTORS.PRICING_OPTIONS_CARD);
+  }
+
+  /**
+   * Waits for the pricing options overlay and its first fare option card. The drawer opens on the
+   * click and then shows skeletons, so it is the first card that marks the fare options as rendered.
+   *
+   * @param {{timeout?: number}} [options] - timeout is a parameter so a caller measuring the render
+   *   time can set its own budget.
+   */
+  async waitForPricingOptionsCards({ timeout = 60000 } = {}) {
+    await this.getPricingOptionsOverlay().waitFor({ state: 'visible', timeout });
+    await this.getPricingOptionsCards().first().waitFor({ state: 'visible', timeout });
+  }
+
+  /**
    * Gets the "Fare rules" button element.
    * @returns {import('@playwright/test').Locator}
    */
@@ -3566,13 +3587,24 @@ async clickSelectForFareWithBaggagePricingOptions(baggageText) {
   // ===== NEW FLIGHT FLOW (flight-selection brand cards) =====
 
   /**
+   * Every brand card within a specific leg.
+   * @param {number} legIndex - Zero-based leg index (0=outbound, 1=inbound)
+   * @returns {import('@playwright/test').Locator}
+   */
+  getNewFlightFlowBrandCards(legIndex = 0) {
+    return this.page
+      .locator(SELECTORS.NEW_FLOW_BRAND_LEG)
+      .nth(legIndex)
+      .locator(SELECTORS.NEW_FLOW_BRAND_CARD);
+  }
+
+  /**
    * Waits for the brand cards within a specific leg to appear.
    * @param {number} legIndex - Zero-based leg index (0=outbound, 1=inbound)
    */
   async waitForNewFlightFlowBrandCards(legIndex = 0, timeout = 120000) {
-    const leg = this.page.locator(SELECTORS.NEW_FLOW_BRAND_LEG).nth(legIndex);
     try {
-      await leg.locator(SELECTORS.NEW_FLOW_BRAND_CARD).first()
+      await this.getNewFlightFlowBrandCards(legIndex).first()
         .waitFor({ state: 'visible', timeout });
     } catch (err) {
       throw new Error(

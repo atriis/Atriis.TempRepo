@@ -2,7 +2,7 @@
 // Re-run: node docs/user-guide/scan-steps.js
 window.STEP_DATA = {
   "generatedFrom": "tests/steps/*.js",
-  "count": 2005,
+  "count": 2007,
   "products": [
     "Cars",
     "Flights",
@@ -11914,6 +11914,24 @@ window.STEP_DATA = {
     {
       "type": "Then",
       "text": "the {string} indicator should be visible in pricing options",
+      "file": "flight_results.steps.js",
+      "product": "Flights",
+      "dsl": [
+        "FlightResults"
+      ]
+    },
+    {
+      "type": "Then",
+      "text": "the fare options should render within {string} seconds",
+      "file": "flight_results.steps.js",
+      "product": "Flights",
+      "dsl": [
+        "FlightResults"
+      ]
+    },
+    {
+      "type": "Then",
+      "text": "the outbound leg brand cards should render within {string} seconds",
       "file": "flight_results.steps.js",
       "product": "Flights",
       "dsl": [

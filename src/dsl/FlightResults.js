@@ -17,6 +17,60 @@ const {
   normalizeCurrencyCode,
 } = require("../utils/currencyConversion");
 
+// The render wait deliberately runs past the caller's budget so a breach can report the real
+// duration instead of an opaque timeout. It is capped because the wait must still finish inside
+// the Cucumber step timeout (150s on the steps that call this) - otherwise Cucumber kills the
+// step first and the measurement is lost.
+const RENDER_WAIT_CAP_SECONDS = 90;
+// How much longer than the budget to wait before giving up, within the cap above.
+const RENDER_WAIT_BUDGET_MULTIPLIER = 3;
+
+/**
+ * Times how long a set of fare options takes to render and asserts it stays within budget.
+ *
+ * Shared by the legacy pricing-options overlay and the new-flight-flow brand cards: only the
+ * locators differ, and ADO 83755 is measured the same way on both.
+ *
+ * @param {{maxSeconds: number, what: string, waitForCards: (timeout: number) => Promise<void>,
+ *          countCards: () => Promise<number>}} params
+ */
+async function measureFareOptionsRender({ maxSeconds, what, waitForCards, countCards }) {
+  if (typeof maxSeconds !== "number" || !Number.isFinite(maxSeconds) || maxSeconds <= 0) {
+    throw new Error(`maxSeconds must be a positive number, got: ${maxSeconds}`);
+  }
+
+  const waitBudgetMs =
+    Math.min(maxSeconds * RENDER_WAIT_BUDGET_MULTIPLIER, RENDER_WAIT_CAP_SECONDS) * 1000;
+  const startedAt = Date.now();
+  let rendered = true;
+  try {
+    await waitForCards(waitBudgetMs);
+  } catch {
+    rendered = false;
+  }
+  const elapsedSeconds = Number(((Date.now() - startedAt) / 1000).toFixed(1));
+
+  if (!rendered) {
+    throw new Error(
+      `The ${what} had still not rendered ${elapsedSeconds}s after the fare options were opened ` +
+      `(budget ${maxSeconds}s). Repeated pricing of the same fare options, or a repeat pass ` +
+      `dispatched one call at a time, leaves the screen on skeletons this long.`
+    );
+  }
+
+  const fareOptions = await countCards();
+  logger.info("Fare options render time measured", { what, elapsedSeconds, maxSeconds, fareOptions });
+
+  expect(
+    elapsedSeconds,
+    `The ${what} should render within ${maxSeconds}s, but took ${elapsedSeconds}s for ` +
+    `${fareOptions} fare option(s). A wait far above the budget means the fare options are being ` +
+    `priced repeatedly, or the repeat pass is being dispatched one call at a time.`
+  ).toBeLessThanOrEqual(maxSeconds);
+
+  return { elapsedSeconds, maxSeconds, fareOptions };
+}
+
 /**
  * Explains a missing EU Rail banner from the parallel rail-search answer that gates it, so the
  * report says whether the rail supplier returned nothing for this route/date or the options were
@@ -2736,6 +2790,40 @@ async verifyFareComponentTextColorInPricingOptions(page, expectedColor, index = 
     ).toBeGreaterThan(0);
 
     return counts;
+  },
+
+  /**
+   * Measures how long the legacy pricing options fare cards take to render. Guards ADO 83755.
+   *
+   * @param {import('playwright').Page} page
+   * @param {number} maxSeconds
+   */
+  async verifyPricingOptionsRenderWithin(page, maxSeconds) {
+    if (!page) throw new Error('page is required');
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    return measureFareOptionsRender({
+      maxSeconds,
+      what: 'pricing options fare cards',
+      waitForCards: (timeout) => flightResultsPage.waitForPricingOptionsCards({ timeout }),
+      countCards: () => flightResultsPage.getPricingOptionsCards().count(),
+    });
+  },
+
+  /**
+   * Measures how long the new-flight-flow outbound brand cards take to render. Guards ADO 83755.
+   *
+   * @param {import('playwright').Page} page
+   * @param {number} maxSeconds
+   */
+  async verifyOutboundBrandCardsRenderWithin(page, maxSeconds) {
+    if (!page) throw new Error('page is required');
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    return measureFareOptionsRender({
+      maxSeconds,
+      what: 'outbound leg brand cards',
+      waitForCards: (timeout) => flightResultsPage.waitForNewFlightFlowBrandCards(0, timeout),
+      countCards: () => flightResultsPage.getNewFlightFlowBrandCards(0).count(),
+    });
   },
 
   /**

@@ -418,23 +418,25 @@ Distributor logs are published asynchronously, so a single read can land mid-bur
   - `page`: Playwright page object (required)
   - `world`: Test context object (required)
   - `requestType`: The request type to inspect (e.g. `"OfferPrice"`)
-  - `attributeName`: The XML attribute whose values must all differ (e.g. `"OfferID"`)
+  - `attributeName`: The parameter whose values must all differ (e.g. `"OfferID"`, `"offerItemId"`)
 - **Key Logic:**
   1. Downloads **every** matching request (`maxMatches: MAX_REQUESTS_TO_INSPECT`, with a raised `timeoutMs`)
   2. Throws if the set was truncated — duplicates could otherwise hide in the dropped tail
-  3. Extracts `attributeName="…"` from each payload and groups requests by value
-  4. Asserts no value appears in more than one request
+  3. Extracts the parameter from each payload via `collectParameterValues()`, so it is found as an XML attribute (`OfferID="…"`), an XML tag (`<OfferID>`) or a JSON key (`"offerItemId": …`) — pass the bare name and let the DSL find its shape. A JSON array value is normalized, so `["abc"` and `abc` are the same id.
+  4. Groups requests by value and asserts no value appears in more than one request
 - **Why this is not covered by the count check:** a count only proves the total did not *grow* after a point. If the same offer were priced twice from the start, the baseline would simply begin higher and the count assertion would still pass. This one catches repetition wherever it happens in the flow.
 - **Returns:** void (assertion passes or throws)
 - **Error Handling:**
   - Truncated result set → explicit error naming `MAX_REQUESTS_TO_INSPECT`, never a silent partial check
   - Duplicates found → failure lists each repeated value with how many times it was sent and at what timestamps
+  - **No request carries the parameter at all** → throws. Reporting zero duplicates from nothing would be a pass that validated nothing (this is exactly how a wrong parameter name goes unnoticed — see the Sabre NDC case in the gotchas below)
 - **Usage:** Step: `Then every "{requestType}" request should reference a different "{attributeName}"`
 - **When to run it:** after every request of that type has been sent, since it inspects the whole trip.
 
 #### Gotchas
 
 - **Capture step is mandatory** — the assertion throws if no baseline exists for that request type.
+- **Get the parameter name from a real payload, not from the supplier's spec.** Sabre NDC's Offer Price request carries the offer as the JSON key `offerItemId` (`{"query":[{"offerItemId":["…"]}]}`), not as `OfferID`. Asserting on `OfferID` there used to report `distinctValues=0 duplicates=0` and **pass while checking nothing**; it now throws instead, but the log line is still the quickest confirmation — `distinctValues` must match the number of requests you expect.
 - **Trip-scoped, not step-scoped** — the count covers the whole trip, so the baseline must be captured at the exact point in the flow you want to measure from.
 - **`world.tripId` must be set** — the count cannot be established before the trip exists.
 - **Settling never fails on timeout** — it warns and uses the last read, so an unusually slow log publication could in theory yield a stale count. Check the warning in the logs when a request-count test behaves oddly.

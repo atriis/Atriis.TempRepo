@@ -158,7 +158,8 @@ And every "OfferPrice" request should reference a different "OfferID"
 
 - **`exactly {int}` is absolute** — no baseline needed. It catches an extra call sent *before* the point a baseline would have been taken, which §5's unchanged-count check cannot.
 - **`should contain` here means the whole set**, not the latest payload. It is matched as an XML attribute (`OfferID="…"`), an XML tag (`<OfferID>`) or a JSON key (`"OfferID":`) — pass the bare parameter name and let the DSL find its shape. A value that is not a plain identifier is matched as raw text.
-- **Presence and uniqueness are different assertions.** `reference a different` only *warns* on a request that lacks the attribute; `should contain` is the one that fails.
+- **Presence and uniqueness are different assertions.** `reference a different` only *warns* on an individual request that lacks the parameter — `should contain` is the one that fails per request. It does fail, however, when *no* request in the trip carries the parameter, since there would be nothing to compare.
+- **Take the parameter name from a real payload.** `reference a different` finds it as an XML attribute, an XML tag or a JSON key, but only if you name it correctly: Sabre NDC sends `offerItemId`, not `OfferID`. Check `distinctValues` in the log matches the request count — that is what proves the ids were read.
 - **Run both last**, once every request of that type has been sent — they inspect the whole trip.
 - **`exactly 0` cannot tell "never sent" from "not published yet".** Pair it with a step proving the flow reached the supplier.
 

@@ -12,6 +12,11 @@ const logger = require("@utils/logger").child("FlightResults");
 
 setDefaultTimeout(120000);
 
+// The render-measurement steps wait past their budget on purpose so a breach reports the real
+// duration, so they need more than the default: above FlightResults' 90s wait cap, or Cucumber
+// kills the step first and the measurement is lost.
+const RENDER_MEASUREMENT_TIMEOUT_MS = 150000;
+
 // EU Rail options is a supplier-dependent async lookup that can take longer than
 // the default step timeout to surface the banner in flight results (see test 47148).
 const RAIL_BANNER_STEP_TIMEOUT_MS = 180000;
@@ -1067,6 +1072,21 @@ Then('the {string} indicator should be visible in pricing options', async functi
   } else {
     throw new Error(`Unknown indicator: "${indicatorName}". Supported: "Agreement", "Marine Fare"`);
   }
+});
+
+// Run right after the step that opens the fare options: that step returns on the click, so the
+// wait measured here is the render itself.
+Then('the fare options should render within {string} seconds', { timeout: RENDER_MEASUREMENT_TIMEOUT_MS }, async function (maxSeconds) {
+  logger.info('Verifying the pricing options fare cards render within budget', { maxSeconds });
+  const result = await FlightResults.verifyPricingOptionsRenderWithin(this.page, Number(maxSeconds));
+  logger.info('Pricing options render time verified', result);
+});
+
+// New-flight-flow counterpart: the fare options are brand cards on the flight-selection screen.
+Then('the outbound leg brand cards should render within {string} seconds', { timeout: RENDER_MEASUREMENT_TIMEOUT_MS }, async function (maxSeconds) {
+  logger.info('Verifying the outbound leg brand cards render within budget', { maxSeconds });
+  const result = await FlightResults.verifyOutboundBrandCardsRenderWithin(this.page, Number(maxSeconds));
+  logger.info('Outbound brand cards render time verified', result);
 });
 
 Then('both edifact and NDC results are displayed', async function () {

@@ -323,6 +323,13 @@ function isPlainParameterName(parameterName) {
   return /^[\w.:-]+$/.test(parameterName);
 }
 
+// A JSON key whose value is an array captures as '["abc"' because the value branch stops at the
+// closing bracket. The brackets and quotes are noise for identity comparison and would make the
+// same id read as two different values if one payload wrapped it and another did not.
+function normalizeParameterValue(value) {
+  return typeof value === "string" ? value.replace(/^[[\s"]+|[\]\s"]+$/g, "") : "";
+}
+
 /**
  * Every occurrence of a named parameter in one payload, in document order.
  *
@@ -2093,11 +2100,15 @@ const PayloadValidation = {
   },
 
   /**
-   * Asserts that no two requests of the given type carry the same value for an XML attribute.
+   * Asserts that no two requests of the given type carry the same value for a named parameter.
    *
-   * For OfferPrice, the attribute is OfferID: each request should price a different offer, so the
+   * For OfferPrice the parameter is OfferID: each request should price a different offer, so the
    * same offer id appearing twice means the supplier was asked to re-price something already priced.
    * Run this once every request of that type has been sent - it looks at the whole trip.
+   *
+   * The parameter is found in whatever shape the supplier uses - XML attribute, XML tag or JSON key
+   * (Sabre NDC sends {"query":[{"offerItemId":["..."]}]}). It fails when no request carries it at
+   * all, rather than reporting zero duplicates from nothing.
    */
   async expectRequestAttributeValuesAreUnique(page, world, requestType, attributeName) {
     if (!page) {
@@ -2138,11 +2149,18 @@ const PayloadValidation = {
       );
     }
 
-    const attributeRegex = new RegExp(`\\b${escapeRegex(attributeName)}="([^"]+)"`, "gi");
     const requestsByValue = new Map();
 
     result.matches.forEach((match, index) => {
-      const values = new Set([...match.payload.matchAll(attributeRegex)].map((m) => m[1]));
+      // collectParameterValues, not a local regex: the same identifier arrives as an XML attribute
+      // on some suppliers and as a JSON key on others. Sabre NDC sends
+      // {"query":[{"offerItemId":["..."]}]}, which an XML-attribute regex never matches - and a
+      // miss here is silent, leaving zero duplicates and a green assertion that checked nothing.
+      const values = new Set(
+        collectParameterValues(match.payload, attributeName)
+          .map((occurrence) => normalizeParameterValue(occurrence.value))
+          .filter(Boolean)
+      );
       if (values.size === 0) {
         logger.warn(`No "${attributeName}" found in a "${normalizedRequestType}" request`, {
           requestIndex: index,
@@ -2154,6 +2172,16 @@ const PayloadValidation = {
         requestsByValue.get(value).push(match.metadata.timestamp);
       }
     });
+
+    // Every request missing the attribute means nothing was compared. Reporting zero duplicates
+    // there would be a pass that proves nothing, so it fails as a wrong-attribute-name mistake.
+    if (result.matches.length > 0 && requestsByValue.size === 0) {
+      throw new Error(
+        `None of the ${result.matches.length} "${normalizedRequestType}" request(s) carry a ` +
+        `"${attributeName}", so uniqueness could not be checked. Asserting on it would pass without ` +
+        `validating anything - check the parameter name against a real payload.`
+      );
+    }
 
     const duplicates = [...requestsByValue.entries()].filter(([, timestamps]) => timestamps.length > 1);
 
