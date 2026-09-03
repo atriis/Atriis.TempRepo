@@ -445,6 +445,48 @@ Given(
   }
 );
 
+// Multi-pax sibling of the single-pick step above. The names are picked WITHOUT replacement: the same
+// profile traveler cannot be added to a trip twice, so drawing with replacement would intermittently
+// fail on a duplicate. Regex-based (not {string}) so the list can carry apostrophes and accents
+// verbatim, e.g. "Anaïs D'Hôtel-Lefèvre" — only commas separate entries.
+Given(
+  /^I have added (\d+) random travelers from the list: (.+)$/,
+  async function (count, nameList) {
+    const requested = Number(count);
+    const names = nameList
+      .split(",")
+      .map((n) => n.trim())
+      .filter(Boolean);
+
+    expect(
+      names.length,
+      `Cannot pick ${requested} distinct travelers from a list of ${names.length}: ${nameList}`
+    ).toBeGreaterThanOrEqual(requested);
+
+    const pool = [...names];
+    const selectedNames = [];
+    for (let i = 0; i < requested; i++) {
+      selectedNames.push(...pool.splice(Math.floor(Math.random() * pool.length), 1));
+    }
+
+    logger.info("Adding randomly selected travelers from list", { requested, selectedNames, nameList });
+
+    for (const selectedName of selectedNames) {
+      const result = await Search.addTravelerByName(this.page, selectedName);
+      expect(
+        result.starIconVisible,
+        `Star icon should be visible after adding traveler "${selectedName}"`
+      ).toBe(true);
+      this.selectedTravelerCount = result.selectedTravelerCount;
+    }
+
+    expect(
+      this.selectedTravelerCount,
+      `Expected ${requested} travelers on the trip after adding ${selectedNames.join(", ")}`
+    ).toBe(requested);
+  }
+);
+
 // ===== Restricted-role privilege checks on the search page (test 55155) =====
 
 Then("the search button should not be visible", async function () {
