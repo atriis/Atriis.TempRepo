@@ -15,9 +15,14 @@
 
 const mailbox = require("@utils/mailbox");
 const config = require("@config/config");
+const { getPageObject } = require("@utils/pageObjectCache");
+const { CommonPage } = require("@pages/CommonPage");
 const logger = require("@utils/logger").child("Email-DSL");
 
 const normalize = (value) => (value ?? "").replace(/\s+/g, " ").trim().toLowerCase();
+
+// How the app titles a share-quotes email: "Share quotes for <traveller> <dates>".
+const SHARE_QUOTES_SUBJECT = "Share quotes for";
 
 const Email = {
   /**
@@ -62,6 +67,89 @@ const Email = {
   },
 
   /**
+   * The subject substring a share-ITINERARY mailbox read is narrowed to.
+   *
+   * What tells this run's mail apart from another's. With a per-scenario generated address the
+   * inbox itself was the discriminator, so no subject filter was needed. A reserved
+   * MAILBOX_ADDRESS is shared by every scenario and by every parallel worker, so the address no
+   * longer discriminates and something else must: two scenarios sending within the same window
+   * would otherwise each match the other's message.
+   *
+   * The trip number does the job. The app titles these "Travel plan for <traveller> trip <id> …",
+   * and while the share dialog's Language selector localises the wording, a bare number survives
+   * it — which is exactly why the number is matched and not the phrasing.
+   *
+   * The open page's URL wins over the caller's candidates: the share dialog is opened on the trip
+   * being shared, so that is the trip, not merely a trip the scenario touched.
+   *
+   * Throws rather than reading an unfiltered shared inbox: matching another scenario's mail is a
+   * pass for the wrong reason, which is worse than the failure this raises.
+   *
+   * @param {import('@playwright/test').Page} page
+   * @param {object} [options]
+   * @param {Array<string|number>} [options.tripNumberCandidates] - Fallbacks in preference order,
+   *   for when the page is no longer on the trip route (e.g. trip numbers the scenario recorded)
+   * @returns {Promise<string|undefined>} The substring, or undefined when no filter is needed
+   */
+  async resolveItinerarySubjectHint(page, { tripNumberCandidates = [] } = {}) {
+    const commonPage = getPageObject(page, CommonPage);
+    const fromUrl = commonPage.getTripNumberFromUrl();
+    if (fromUrl) return fromUrl;
+
+    for (const candidate of tripNumberCandidates) {
+      if (candidate === null || candidate === undefined) continue;
+      const value = String(candidate).trim();
+      if (value) return value;
+    }
+
+    if (config.mailbox.address) {
+      throw new Error(
+        "[Email.resolveItinerarySubjectHint] Could not work out which trip was shared, and " +
+          "MAILBOX_ADDRESS is a single inbox shared by every scenario — reading it unfiltered " +
+          "could match another run's mail. Record the trip number on the world " +
+          "(this.recordTripId) before sharing, or open the trip page so its URL carries the number."
+      );
+    }
+
+    // Per-scenario generated address: the inbox is already this run's, so no filter is needed.
+    return undefined;
+  },
+
+  /**
+   * The subject substring a share-QUOTES mailbox read is narrowed to.
+   *
+   * Share quotes mail is a different template from share itinerary mail, and the trip number
+   * resolveItinerarySubjectHint relies on is not in its subject: the app titles it
+   * "Share quotes for <traveller> <dates>". So this run is identified by the traveller instead.
+   *
+   * Throws for the same reason resolveItinerarySubjectHint does: on a reserved MAILBOX_ADDRESS,
+   * "Share quotes for" alone would happily match a parallel run's message.
+   *
+   * No page argument: unlike the itinerary hint there is nothing to read off the page, and the
+   * traveller is something the scenario knows rather than something the mail route reveals.
+   *
+   * @param {object} [options]
+   * @param {string} [options.traveller] - The traveller the quotes were shared for
+   * @returns {string} The substring
+   */
+  resolveShareQuotesSubjectHint({ traveller } = {}) {
+    const name = (traveller ?? "").trim();
+    if (name) return `${SHARE_QUOTES_SUBJECT} ${name}`;
+
+    if (config.mailbox.address) {
+      throw new Error(
+        "[Email.resolveShareQuotesSubjectHint] Could not work out whose quotes were shared, and " +
+          'MAILBOX_ADDRESS is a single inbox shared by every scenario — matching on "Share quotes ' +
+          'for" alone could read another run\'s mail. Add "I have added a random guest traveler" ' +
+          "(which records the name) before sharing, or pass the traveller explicitly."
+      );
+    }
+
+    // Per-scenario generated address: the inbox is already this run's, so the prefix is enough.
+    return SHARE_QUOTES_SUBJECT;
+  },
+
+  /**
    * Waits for a share email to land in the test mailbox.
    *
    * @param {object} options
@@ -88,6 +176,29 @@ const Email = {
     });
 
     return message;
+  },
+
+  /**
+   * Resolves the subject to filter on, then waits for that share email — the whole read-back in
+   * one call, so a caller does not have to know that a hint is chosen before the wait.
+   *
+   * The explicit subjectContains wins when given; otherwise the itinerary hint is resolved from
+   * the page and the caller's trip numbers. Pass the share-quotes hint in explicitly
+   * (resolveShareQuotesSubjectHint), since only the caller knows which template was sent.
+   *
+   * @param {import('@playwright/test').Page} page
+   * @param {object} options
+   * @param {string} options.to - The address the share was sent to
+   * @param {string} [options.subjectContains] - Overrides the resolved itinerary hint
+   * @param {Array<string|number>} [options.tripNumberCandidates] - Fallbacks for the itinerary hint
+   * @param {Date} [options.sentAfter] - Ignores mail older than this
+   * @returns {Promise<object>} The received message
+   */
+  async receiveShareEmail(page, { to, subjectContains, tripNumberCandidates = [], sentAfter } = {}) {
+    const hint =
+      subjectContains ?? (await this.resolveItinerarySubjectHint(page, { tripNumberCandidates }));
+
+    return this.waitForSharedEmail({ to, subjectContains: hint, sentAfter });
   },
 
   /**
@@ -133,6 +244,53 @@ const Email = {
 
     logger.info("[Email.verifyEmailContainsTexts] All expected strings present in the received email", {
       count: expectedTexts.length,
+    });
+  },
+
+  /**
+   * Verifies a received email's SUBJECT contains an expected substring.
+   *
+   * Distinct from the subjectContains passed to waitForSharedEmail: that one only decides which
+   * message to pick out of the inbox, and a run-unique key (a trip number, a traveller name) is
+   * what makes it safe. This asserts the wording the app actually titled the mail with, which is
+   * a property of the template and the thing a scenario about the subject cares about.
+   *
+   * Matching is whitespace-normalised and case-insensitive, in line with the body assertion: the
+   * app pads the subject with the trip dates and a double space, which is not meaningful.
+   *
+   * @param {object} message - A message from waitForSharedEmail
+   * @param {string} expectedSubject
+   */
+  verifyEmailSubjectContains(message, expectedSubject) {
+    if (!message || typeof message.subject !== "string") {
+      throw new Error('[Email.verifyEmailSubjectContains] "message" must come from waitForSharedEmail.');
+    }
+    if (typeof expectedSubject !== "string" || !expectedSubject.trim()) {
+      throw new Error(
+        `[Email.verifyEmailSubjectContains] "expectedSubject" must be a non-empty string, got: ${expectedSubject}`
+      );
+    }
+
+    if (!message.subject.trim()) {
+      throw new Error(
+        "[Email.verifyEmailSubjectContains] The received email has an empty subject, so " +
+          `"${expectedSubject}" cannot be verified in it.`
+      );
+    }
+
+    // Thrown rather than asserted through expect(): this Playwright version drops the custom
+    // message passed to expect(value, message), and the actual subject is the whole diagnostic.
+    if (!normalize(message.subject).includes(normalize(expectedSubject))) {
+      throw new Error(
+        `[Email.verifyEmailSubjectContains] The received email's subject does not contain ` +
+          `"${expectedSubject}".
+Actual subject was: "${message.subject}"`
+      );
+    }
+
+    logger.info("[Email.verifyEmailSubjectContains] Subject contains the expected text", {
+      expectedSubject,
+      subject: message.subject,
     });
   },
 

@@ -130,6 +130,9 @@ const SELECTORS = {
   // They auto-dismiss after 7000ms, so an assertion has to run right after the search that raised them.
   OPTIONAL_NOTIFICATION_TOAST: '.el-notification',
   OPTIONAL_NOTIFICATION_TOAST_TEXT: '.el-notification .el-notification__content',
+
+  // Trip number as it appears in a trip route, e.g. /trips/3837845.
+  TRIP_NUMBER_IN_URL: /\/trips\/(\d+)(?:[/?#]|$)/i,
 };
 
 // One comma-separated `.el-dialog__title` selector covering every translation above, built once
@@ -178,6 +181,24 @@ function parseFirstSharedOfferAmount(rawText) {
 class CommonPage {
   constructor(page) {
     this.page = page;
+  }
+
+  /**
+   * The trip number in the current URL, or null when the page is not on a trip route.
+   *
+   * Atomic read, no interpretation: which trip a caller should key off, and what to do when the
+   * URL carries none, is a DSL decision (see Email.resolveItinerarySubjectHint).
+   *
+   * @returns {string|null}
+   */
+  getTripNumberFromUrl() {
+    try {
+      const match = String(this.page.url() || "").match(SELECTORS.TRIP_NUMBER_IN_URL);
+      return match ? match[1] : null;
+    } catch {
+      // The page may be closed or mid-navigation; a caller has other sources to fall back on.
+      return null;
+    }
   }
 
   /**

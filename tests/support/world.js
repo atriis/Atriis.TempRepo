@@ -61,6 +61,24 @@ class CustomWorld extends World {
   }
 
   /**
+   * The trip numbers this scenario is known to have touched, in the order a consumer should fall
+   * back through them. Reading its own state is the World's job; deciding which one identifies a
+   * given trip is the caller's (see Email.resolveItinerarySubjectHint).
+   *
+   * @returns {Array<string|number|undefined>} Preference order, sparse — entries may be undefined
+   */
+  getTripNumberCandidates() {
+    const recorded = this.tripIds.filter(Boolean);
+    return [
+      this.tripId,
+      this.currentTripId,
+      this.createdTripId,
+      // Mirrors how tests/support/hooks.js gathers trip ids for reporting; last seen wins.
+      recorded.length ? recorded[recorded.length - 1] : undefined,
+    ];
+  }
+
+  /**
    * Initialize Playwright browser and create a new page
    */
   async init() {

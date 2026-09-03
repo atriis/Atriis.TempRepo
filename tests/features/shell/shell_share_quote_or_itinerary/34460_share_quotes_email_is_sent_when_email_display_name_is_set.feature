@@ -20,10 +20,8 @@ Feature: 34460 - Share quotes email is sent when email display name is set
     And I click on the 1 share button in results page
     And I click on the 2 share button in results page
     And I click on the "Share" button to open the share dialog
-    # TODO: no catalog phrase matches selecting specific quote share buttons from results (closest phrase adds a safety-text assertion this test does not perform)
-    And I select two quotes to share from the results page
-    # TODO: no catalog phrase matches emailing the selected quotes to a specific recipient/traveler from the results page
-    And I email the selected quotes to the traveler
-    # TODO: source Validate_email_was_sent() has an empty body (manual email-validation step); this is the core assertion of the test
-    Then the share quotes email should be sent with the configured email display name
-    And I exit share mode
+    And I wait to see "Subject" field in share dialog
+    When I add a generated email address as the itinerary recipient
+    And I send the email and see success notification
+    Then the received share quotes email should contain "Flight Offer # 1 Pending booking"
+    And the received share quotes email should contain subject "Share quotes for"

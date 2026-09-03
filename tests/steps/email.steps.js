@@ -20,76 +20,14 @@
 const { Then } = require("@cucumber/cucumber");
 const { expect } = require("@playwright/test");
 const Email = require("@dsl/Email");
-const config = require("@config/config");
 const logger = require("@utils/logger").child("Email-Steps");
-
-// What tells this run's mail apart from another's.
-//
-// With a per-scenario generated address the inbox itself was the discriminator, so no subject
-// filter was needed. A reserved MAILBOX_ADDRESS is shared by every scenario and by every parallel
-// worker, so the address no longer discriminates and something else must: two scenarios sending
-// within the same window would otherwise each match the other's message.
-//
-// The trip number does the job. The app titles these "Travel plan for <traveller> trip <id> …",
-// and while the share dialog's Language selector localises the wording, a bare number survives
-// it — which is exactly why the number is matched and not the phrasing.
-const TRIP_NUMBER_IN_URL = /\/trips\/(\d+)(?:[/?#]|$)/i;
-
-/**
- * Resolves the trip number whose itinerary was shared, to narrow the mailbox read to this run.
- *
- * Prefers the open page's URL — the share dialog is opened on the trip being shared, so that is
- * the trip, not merely a trip the scenario touched — then falls back to the well-known World
- * fields, mirroring how tests/support/hooks.js gathers trip ids for reporting.
- *
- * @param {object} world - The cucumber World (`this` in a step)
- * @returns {string|undefined}
- */
-function resolveSharedTripNumber(world) {
-  try {
-    const match = String(world.page?.url() || "").match(TRIP_NUMBER_IN_URL);
-    if (match) return match[1];
-  } catch {
-    // Page may be closed or navigating — fall through to the world fields.
-  }
-
-  for (const id of [world.tripId, world.currentTripId, world.createdTripId]) {
-    if (id !== null && id !== undefined && String(id).trim()) return String(id).trim();
-  }
-
-  const recorded = Array.isArray(world.tripIds) ? world.tripIds.filter(Boolean) : [];
-  return recorded.length ? String(recorded[recorded.length - 1]) : undefined;
-}
-
-/**
- * The subject substring the mailbox read is narrowed to.
- *
- * Throws rather than reading an unfiltered shared inbox: matching another scenario's mail is a
- * pass for the wrong reason, which is worse than the failure this raises.
- *
- * @param {object} world - The cucumber World (`this` in a step)
- * @returns {string|undefined}
- */
-function itinerarySubjectHint(world) {
-  const tripNumber = resolveSharedTripNumber(world);
-  if (tripNumber) return tripNumber;
-
-  if (config.mailbox.address) {
-    throw new Error(
-      "[email.steps] Could not work out which trip was shared, and MAILBOX_ADDRESS is a single " +
-        "inbox shared by every scenario — reading it unfiltered could match another run's mail. " +
-        "Record the trip number on the world (this.recordTripId) before sharing, or open the " +
-        "trip page so its URL carries the number."
-    );
-  }
-
-  // Per-scenario generated address: the inbox is already this run's, so no filter is needed.
-  return undefined;
-}
 
 /**
  * Resolves the address the itinerary was shared to, failing with the fix rather than a
  * "cannot read property of undefined" when the recipient step did not run.
+ *
+ * Stays in the glue layer on purpose: the whole value of this guard is an error that names the
+ * Gherkin step to add, and a DSL that knew step phrases would be reaching back up a layer.
  *
  * @param {object} world - The cucumber World (`this` in a step)
  * @returns {string}
@@ -106,11 +44,14 @@ function requireItineraryRecipient(world) {
 }
 
 /**
- * Waits for the itinerary email once per scenario and caches it: a scenario may assert several
- * things about the same message, and each wait is a real poll against an external API.
+ * Reads the share email once per scenario and caches it on the World.
+ *
+ * The cache is the reason this is here rather than in the DSL, and it is not an optimisation:
+ * @utils/mailbox DELETES a message once it has been read, so a second read for the same scenario
+ * would poll an empty inbox until it timed out. Scenario-lifetime state belongs to the World.
  *
  * @param {object} world - The cucumber World (`this` in a step)
- * @param {string} [subjectContains]
+ * @param {string} [subjectContains] - Overrides the itinerary hint, e.g. for share-quotes mail
  * @returns {Promise<object>} The received message
  */
 async function receivedItineraryEmail(world, subjectContains) {
@@ -118,14 +59,14 @@ async function receivedItineraryEmail(world, subjectContains) {
     return world.receivedItineraryEmail;
   }
 
-  const message = await Email.waitForSharedEmail({
+  world.receivedItineraryEmail = await Email.receiveShareEmail(world.page, {
     to: requireItineraryRecipient(world),
-    subjectContains: subjectContains ?? itinerarySubjectHint(world),
+    subjectContains,
+    tripNumberCandidates: world.getTripNumberCandidates(),
     sentAfter: world.itineraryShareSentAfter,
   });
 
-  world.receivedItineraryEmail = message;
-  return message;
+  return world.receivedItineraryEmail;
 }
 
 Then("the itinerary email should be received", async function () {
@@ -172,6 +113,32 @@ Then("the received itinerary email should contain {string}", async function (exp
   logger.info("Verifying the received itinerary email contains text", { expectedText });
   const message = await receivedItineraryEmail(this);
   Email.verifyEmailContainsTexts(message, [expectedText]);
+});
+
+// Same body assertion as the itinerary step above, but for the share-QUOTES template — only the
+// subject the message is FOUND by differs (see Email.resolveShareQuotesSubjectHint). Kept as its own phrase
+// rather than branching inside one step: which template was sent is a property of the flow the
+// scenario ran, not something the step can sniff after the fact.
+Then("the received share quotes email should contain {string}", async function (expectedText) {
+  logger.info("Verifying the received share quotes email contains text", { expectedText });
+  const message = await receivedItineraryEmail(
+    this,
+    Email.resolveShareQuotesSubjectHint({ traveller: this.lastAddedGuestName })
+  );
+  Email.verifyEmailContainsTexts(message, [expectedText]);
+});
+
+// Asserts the TITLE the app gave the mail, which the step above never proves: the subject there is
+// only the key the message is looked up by, and that key is built from the traveller name rather
+// than read from the message. Shares the once-per-scenario cached message, so this costs no extra
+// mailbox read -- and must not, since a read deletes the message from the inbox.
+Then("the received share quotes email should contain subject {string}", async function (expectedSubject) {
+  logger.info("Verifying the received share quotes email subject", { expectedSubject });
+  const message = await receivedItineraryEmail(
+    this,
+    Email.resolveShareQuotesSubjectHint({ traveller: this.lastAddedGuestName })
+  );
+  Email.verifyEmailSubjectContains(message, expectedSubject);
 });
 
 Then("the received itinerary email should contain the link {string}", async function (linkLabel) {
