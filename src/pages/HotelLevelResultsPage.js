@@ -99,6 +99,14 @@ const SELECTORS = {
   // Hotel name text inside hotel cards. Targets the .hotel-name link itself rather than its
   // heading child - the app renamed that heading h4 -> h3 in the Figma UI alignment (657b67ff).
   HOTEL_NAME: '.hotel-preview .hotel-name',
+  // Hotel loyalty programme badge (hotel-preview.vue, gated by the IsHotelLoyaltyPointsEnabled
+  // feature flag). The app renders it two ways off the same hotel.loyaltyProgramName: as the
+  // programme logo when hotel.service.getLoyaltyProgramIcon() maps the name to a local asset
+  // (Hilton Honors, World of Hyatt, Wyndham Rewards...), otherwise as a text badge. Both carry
+  // the programme name - the logo in its img alt, the badge as its own text - so both are read
+  // and merged by getLoyaltyBadgeLabels().
+  HOTEL_LOYALTY_LOGO_IMG: '.hotel-preview .hotel-loyalty-logo img',
+  HOTEL_LOYALTY_TEXT_BADGE: '.hotel-preview .loyalty-badge',
   // Slider runway and thumb for the hotel-level Price filter panel
   HOTEL_PRICE_SLIDER_RUNWAY: '.hotel-filter .price-slider .el-slider__runway',
   HOTEL_PRICE_SLIDER_THUMB: '.hotel-filter .price-slider .el-slider__button-wrapper',
@@ -1156,6 +1164,35 @@ class HotelLevelResultsPage {
     } catch (err) {
       throw new Error(`[HotelLevelResultsPage.setMaxPriceFilter] Could not drag price slider to ${maxPrice}. Original: ${err.message}`);
     }
+  }
+
+  /**
+   * Collects the loyalty programme label of every hotel card that shows a loyalty badge.
+   *
+   * Reads both renderings of the badge - the programme logo (label = img alt) and the text
+   * badge the app falls back to when the programme has no local logo - so the caller does not
+   * have to know which form a given chain resolves to.
+   *
+   * @param {object} [options]
+   * @param {number} [options.timeout=30000] - How long to wait for the first badge to appear
+   * @returns {Promise<string[]>} Whitespace-collapsed labels, empty when no badge is displayed
+   */
+  async getLoyaltyBadgeLabels({ timeout = 30000 } = {}) {
+    const badges = this.page.locator(
+      `${SELECTORS.HOTEL_LOYALTY_LOGO_IMG}, ${SELECTORS.HOTEL_LOYALTY_TEXT_BADGE}`
+    );
+
+    try {
+      await badges.first().waitFor({ state: 'visible', timeout });
+    } catch {
+      return [];
+    }
+
+    const labels = await badges.evaluateAll((nodes) =>
+      nodes.map((node) => (node.tagName === 'IMG' ? node.getAttribute('alt') : node.textContent) || '')
+    );
+
+    return labels.map((label) => label.replace(/\s+/g, ' ').trim()).filter(Boolean);
   }
 }
 

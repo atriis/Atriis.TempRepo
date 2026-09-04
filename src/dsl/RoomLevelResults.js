@@ -327,6 +327,43 @@ const RoomLevelResults = {
   },
 
   /**
+   * Verifies that a hotel loyalty programme badge for the given chain is displayed in room
+   * level results.
+   *
+   * Matches on the programme label rather than the asset filename, so it holds for both badge
+   * renderings (programme logo and text chip) and does not break when the chain's logo file is
+   * renamed. The match is a case-insensitive substring, because the label is the full programme
+   * name ("Hilton Honors") while callers name the chain ("Hilton").
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} chainName - Chain or programme keyword, e.g. "Hilton"
+   * @returns {Promise<string>} The matched badge label
+   * @throws {Error} If no loyalty badge matches the chain
+   */
+  async verifyLoyaltyBadgeInRoomLevel(page, chainName) {
+    if (!page) throw new Error('page is required');
+    if (!chainName || typeof chainName !== 'string') {
+      throw new Error('chainName must be a non-empty string, got: ' + typeof chainName);
+    }
+
+    const roomLevelResultsPage = getPageObject(page, RoomLevelResultsPage);
+    const labels = await roomLevelResultsPage.getLoyaltyBadgeLabels();
+    const matched = labels.find((label) => label.toLowerCase().includes(chainName.toLowerCase()));
+
+    if (!matched) {
+      throw new Error(
+        `[RoomLevelResults.verifyLoyaltyBadgeInRoomLevel] No "${chainName}" loyalty badge is ` +
+        `displayed in room level results. Loyalty badges found: ` +
+        `${labels.length ? labels.map((l) => `"${l}"`).join(', ') : 'none'}. ` +
+        `The badge needs the IsHotelLoyaltyPointsEnabled feature flag on and the room to return ` +
+        `loyalty points for the chain.`
+      );
+    }
+
+    return matched;
+  },
+
+  /**
    * Verifies the member badge tag contains the expected text in room level results.
    * @param {import('playwright').Page} page
    * @param {string} expectedText - The expected badge text (case-insensitive match)

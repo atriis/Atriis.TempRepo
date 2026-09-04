@@ -204,6 +204,45 @@ const HotelLevelResults = {
   },
 
   /**
+   * Verifies that a hotel loyalty programme badge for the given chain is displayed in hotel
+   * level results.
+   *
+   * Matches on the programme label rather than the asset filename, so it holds for both badge
+   * renderings (programme logo and text fallback) and does not break when the chain's logo file
+   * is renamed. The match is a case-insensitive substring, because the label is the full
+   * programme name ("Hilton Honors") while callers name the chain ("Hilton").
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} chainName - Chain or programme keyword, e.g. "Hilton"
+   * @returns {Promise<string>} The matched badge label
+   * @throws {Error} If no loyalty badge matches the chain
+   */
+  async verifyLoyaltyBadgeInHotelLevel(page, chainName) {
+    if (!page) throw new Error('page is required');
+    if (!chainName || typeof chainName !== 'string') {
+      throw new Error('chainName must be a non-empty string, got: ' + typeof chainName);
+    }
+
+    const hotelLevelResultsPage = getPageObject(page, HotelLevelResultsPage);
+    await hotelLevelResultsPage.waitForViewRatesText();
+
+    const labels = await hotelLevelResultsPage.getLoyaltyBadgeLabels();
+    const matched = labels.find((label) => label.toLowerCase().includes(chainName.toLowerCase()));
+
+    if (!matched) {
+      throw new Error(
+        `[HotelLevelResults.verifyLoyaltyBadgeInHotelLevel] No "${chainName}" loyalty badge is ` +
+        `displayed in hotel level results. Loyalty badges found: ` +
+        `${labels.length ? labels.map((l) => `"${l}"`).join(', ') : 'none'}. ` +
+        `The badge needs the IsHotelLoyaltyPointsEnabled feature flag on and the hotel to return ` +
+        `loyalty points for the chain.`
+      );
+    }
+
+    return matched;
+  },
+
+  /**
    * Verifies that CO2 emissions data is displayed in hotel level results.
    * Checks that the eco-label is visible and the CO2 value is a non-zero number.
    * @param {import('playwright').Page} page

@@ -51,6 +51,14 @@ const SELECTORS = {
   WIFI_INCLUDED: ".room-amenities span:has-text('Wifi included')",
   BREAKFAST_ICON: "img[src*='breakfastIncluded']",
   SUPPLIER_LOGO_IMG: (supplierId) => `.supplier-img img[alt*="${supplierId}"]`,
+  // Room loyalty programme badge. Three components render it off the same room.loyaltyProgramName:
+  // room-preview.vue as .room-loyalty-logo (desktop) / .mobile-loyalty-logo (mobile) when
+  // hotel.service.getLoyaltyProgramIcon() maps the programme to a local asset, and as the
+  // .loyalty-fallback-chip text chip when it does not; merged-room-preview.vue uses .loyalty-tag
+  // for both. Gated by the IsHotelLoyaltyPointsEnabled feature flag. The logo carries the
+  // programme name in its img alt, the chips as their own text - getLoyaltyBadgeLabels() merges both.
+  ROOM_LOYALTY_LOGO_IMG: '.room-loyalty-logo img, .mobile-loyalty-logo img, .loyalty-tag img',
+  ROOM_LOYALTY_TEXT_CHIP: '.loyalty-fallback-chip, .loyalty-tag:not(:has(img))',
   // Room-level filter panel section titles (h4 used by all filter types)
   ROOM_FILTER_SECTION_HEADING: (text) => `.room-filter h4:has-text("${text}")`,
   // Room filter checkbox by filter title and option text
@@ -1267,6 +1275,35 @@ class RoomLevelResultsPage {
       );
     }
     return (await line.innerText()).replace(/\s+/g, ' ').trim();
+  }
+
+  /**
+   * Collects the loyalty programme label of every room that shows a loyalty badge.
+   *
+   * Reads both renderings of the badge - the programme logo (label = img alt) and the text chip
+   * the app falls back to when the programme has no local logo - so the caller does not have to
+   * know which form a given chain resolves to.
+   *
+   * @param {object} [options]
+   * @param {number} [options.timeout=30000] - How long to wait for the first badge to appear
+   * @returns {Promise<string[]>} Whitespace-collapsed labels, empty when no badge is displayed
+   */
+  async getLoyaltyBadgeLabels({ timeout = 30000 } = {}) {
+    const badges = this.page.locator(
+      `${SELECTORS.ROOM_LOYALTY_LOGO_IMG}, ${SELECTORS.ROOM_LOYALTY_TEXT_CHIP}`
+    );
+
+    try {
+      await badges.first().waitFor({ state: 'visible', timeout });
+    } catch {
+      return [];
+    }
+
+    const labels = await badges.evaluateAll((nodes) =>
+      nodes.map((node) => (node.tagName === 'IMG' ? node.getAttribute('alt') : node.textContent) || '')
+    );
+
+    return labels.map((label) => label.replace(/\s+/g, ' ').trim()).filter(Boolean);
   }
 }
 

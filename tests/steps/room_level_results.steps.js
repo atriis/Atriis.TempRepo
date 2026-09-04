@@ -169,6 +169,12 @@ Then("I should see a tag with the text {string} in room level results", async fu
   await RoomLevelResults.verifyMemberBadgeTagText(this.page, tagText);
 });
 
+Then("the {string} loyalty badge should be visible in room level results", async function (chainName) {
+  logger.info("Verifying hotel loyalty badge is visible in room level results", { chainName });
+  const label = await RoomLevelResults.verifyLoyaltyBadgeInRoomLevel(this.page, chainName);
+  logger.info("Hotel loyalty badge found in room level results", { chainName, label });
+});
+
 Then("the CO2 emissions should be displayed in room level results", async function () {
   logger.info("Verifying CO2 emissions are displayed in room level results");
   const result = await RoomLevelResults.verifyCO2InRoomLevel(this.page);

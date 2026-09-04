@@ -132,6 +132,12 @@ Then("the corporate rates badge should be visible on hotel level results", async
   await HotelLevelResults.verifyCorporatePreferredBadge(this.page);
 });
 
+Then("the {string} loyalty badge should be visible in hotel level results", async function (chainName) {
+  logger.info("Verifying hotel loyalty badge is visible in hotel level results", { chainName });
+  const label = await HotelLevelResults.verifyLoyaltyBadgeInHotelLevel(this.page, chainName);
+  logger.info("Hotel loyalty badge found in hotel level results", { chainName, label });
+});
+
 Then("the CO2 emissions should be displayed in hotel level results", async function () {
   logger.info("Verifying CO2 emissions are displayed in hotel level results");
   const result = await HotelLevelResults.verifyCO2InHotelLevel(this.page);
