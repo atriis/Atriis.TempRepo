@@ -4,15 +4,14 @@
 
 # ADO Test Case ID: 78541
 # US 77638: management markup = 50% of base fare on Lufthansa published fares only, per pax.
-# DEV-only account (corp.mu1@galileo.gdg) — run with AUTOMATION_APP_BASEURL="https://atriis-dev.app".
 @regression @flights @galileo @ado:77638 @management-fee
-Feature: 78541 Galileo - Management markup applied only to Lufthansa (not KLM) on a complete-trip round trip for multi PAX
+Feature: 78541 Galileo - Management markup applied only to Lufthansa on a complete-trip round trip for multi PAX
   As a corporate traveler with a Galileo (UAPI) management markup configuration
   I want to price and book a complete-trip round trip FRA<->JFK for 2 adult passengers
-  So that the management markup is applied per pax only to Lufthansa flights (not KLM) and is reflected in the cart total
+  So that the management markup is applied per pax only to Lufthansa flights and is reflected in the cart total
 
   @priority:high
-  Scenario: Management markup 50% of base on Lufthansa, none on KLM, reflected in cart for 2 PAX
+  Scenario: Management markup 50% of base on Lufthansa, none on Scandinavian, reflected in cart for 2 PAX
     Given I am logged in as "corp.mu1@galileo.gdg" booking a new trip
     And I have added myself as the traveler
     And I have added a random guest traveler
@@ -20,8 +19,8 @@ Feature: 78541 Galileo - Management markup applied only to Lufthansa (not KLM) o
     When I search for a round trip flight from "FRA" to "JFK"
     And flight results should be available
 
-    # KLM does not qualify -> no markup
-    And I filter results by carrier "KLM"
+    # Scandinavian does not qualify -> no markup
+    And I filter results by carrier "Scandinavian"
     And I start intercepting the "flightPricing" API response
     And I click to open first pricing options
     Then the markup in the flight pricing response should be "0"
