@@ -3534,6 +3534,40 @@ async verifyFareComponentTextColorInPricingOptions(page, expectedColor, index = 
   },
 
   /**
+   * Verifies the classic Pricing Options drawer actually rendered fares for the
+   * currently-active leg. The app renders its "no pricing options" empty state inside the
+   * same drawer section, so the fare cards are counted instead of only waiting for the
+   * drawer to become visible. Unlike verifyPricingOptionsLegOffersMultipleFares, a single
+   * fare is a pass — a multicarrier leg whose carrier has no branded fares legitimately
+   * returns one.
+   *
+   * @param {import('playwright').Page} page
+   * @param {number} [minimumFares=1] - Minimum number of fare cards the leg must display.
+   * @returns {Promise<{fareCount: number, fareNames: Array<string|null>}>}
+   */
+  async verifyPricingOptionsFaresDisplayed(page, minimumFares = 1) {
+    if (!page) {
+      throw new Error('[FlightResults.verifyPricingOptionsFaresDisplayed] "page" is required.');
+    }
+    if (!Number.isInteger(minimumFares) || minimumFares < 1) {
+      throw new Error(`[FlightResults.verifyPricingOptionsFaresDisplayed] "minimumFares" must be an integer >= 1, got: ${minimumFares}`);
+    }
+
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    await flightResultsPage.waitForPricingOptionsDrawerLeg();
+
+    const fareCount = await flightResultsPage.getPricingOptionsLegFareCardCount();
+    const fareNames = await flightResultsPage.getPricingOptionsLegFareNames();
+
+    expect(
+      fareCount,
+      `Expected the pricing options drawer to display at least ${minimumFares} fare(s) on the active leg, got ${fareCount}: ${JSON.stringify(fareNames)}`,
+    ).toBeGreaterThanOrEqual(minimumFares);
+
+    return { fareCount, fareNames };
+  },
+
+  /**
    * Selects a random fare on the currently-active leg of the classic Pricing Options
    * drawer, then waits for that leg to register as selected. Cards already chosen (button
    * reads "Unselect") are excluded so the click never deselects the current fare.

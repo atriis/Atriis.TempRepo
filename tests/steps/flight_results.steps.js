@@ -1166,6 +1166,12 @@ Then('the first pricing option price should match the stored first flight result
   );
 });
 
+Then('pricing options are displayed', async function () {
+  logger.info('Verifying the pricing options drawer displays at least one fare');
+  const result = await FlightResults.verifyPricingOptionsFaresDisplayed(this.page);
+  logger.info('Pricing options fares verified', result);
+});
+
 Then('pricing options should be displayed in increasing price order', async function () {
   logger.info('Verifying pricing options are displayed in increasing price order');
   await FlightResults.verifyPricingOptionsInAscendingOrder(this.page);
