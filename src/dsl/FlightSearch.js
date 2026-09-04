@@ -386,6 +386,59 @@ const FlightSearch = {
   },
 
   /**
+   * One-way flight search with a departure date an explicit number of days from today.
+   *
+   * Short-notice travel-policy scenarios need a near-term departure, but NOT today's: a same-day
+   * search returns results whose ticketing time limit (lastTktDate) falls on the same day, often
+   * within minutes, and once it lapses the app disables that result's "Add to trip"
+   * (flight-extra-info.ts isAddToCardDisabled -> isExpired). That made 58667 pass or fail purely
+   * on the clock time of the run. A few days out keeps the booking inside the policy's
+   * short-notice window while leaving every result bookable.
+   *
+   * @param {Object} page - Playwright page object
+   * @param {string|Object} routeInput - Route key or {from, to}
+   * @param {Object} [options]
+   * @param {number} options.departureDaysFromNow - Whole days from today for the departure date
+   */
+  async searchFlightOneWayWithDaysFromNow(page, routeInput, { departureDaysFromNow } = {}) {
+    if (!page) {
+      throw new Error('[FlightSearch.searchFlightOneWayWithDaysFromNow] "page" is required.');
+    }
+    if (!routeInput) {
+      throw new Error('[FlightSearch.searchFlightOneWayWithDaysFromNow] "routeInput" is required.');
+    }
+    if (!Number.isInteger(departureDaysFromNow) || departureDaysFromNow < 0) {
+      throw new Error('departureDaysFromNow must be a non-negative integer, got: ' + departureDaysFromNow);
+    }
+
+    const { from, to } = resolveRoute(routeInput, flightRoutes.routes, 'flight');
+
+    const today = new Date();
+    const departureDate = new Date(today.getFullYear(), today.getMonth(), today.getDate() + departureDaysFromNow);
+
+    logger.info('Starting oneWay flight search with explicit days-from-now date', { from, to, departureDaysFromNow });
+
+    const flightSearchPage = getPageObject(page, FlightSearchPage);
+    const searchPage = getPageObject(page, SearchPage);
+
+    await flightSearchPage.clickFlightTab();
+    await searchPage.selectOneWayTrip();
+    await searchPage.fillInFromField(from);
+    await searchPage.fillInToField(to);
+
+    // One-way renders the SINGLE-month picker, whose header splits year and month into two
+    // labels — the range-calendar helpers cannot parse it ("Unsupported month header label").
+    await searchPage.clickDepartureDateField();
+    const monthTableIndex = await advanceSinglePickerCalendarUntilMonthVisible(page, departureDate);
+    await clickDayInVisibleMonth(page, departureDate, monthTableIndex);
+
+    await flightSearchPage.selectCompleteTrip();
+    await searchPage.waitAndClickSearchButton();
+
+    return { searched: true, from, to, tripType: 'oneWay', searchType: 'completeTrip', departureDate };
+  },
+
+  /**
    * Round-trip flight search with today's date for both the departure and return legs.
    *
    * Used to exercise the same-day-return validation behaviour on the search form.

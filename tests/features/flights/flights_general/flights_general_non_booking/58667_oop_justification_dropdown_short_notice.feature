@@ -14,6 +14,7 @@ Feature: 58667 Flights - When adding to cart a flight that is less than two week
   Scenario: Saving justification dropdown works for short-notice flight
     Given I am logged in as "lexasofia@travelpolicytest.com" booking a new trip
     And I have added myself as the traveler
-    When I search for a same day one way flight from "LON" to "MAD"
+    When I search for a one way flight from "LON" to "MAD" in 4 days
     And I add the first flight to cart
+    And the booking status should be "Pending booking"
     Then the OOP justification dropdown should be displayed and saving should work as expected

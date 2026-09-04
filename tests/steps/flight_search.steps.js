@@ -29,6 +29,11 @@ When('I search for a same day one way flight from {string} to {string}', async f
   await FlightSearch.searchFlightOneWaySameDay(this.page, { from, to });
 });
 
+When('I search for a one way flight from {string} to {string} in {int} days', async function (from, to, departureDaysFromNow) {
+  logger.info('Searching for one-way flight with an explicit days-from-now date', { from, to, departureDaysFromNow });
+  await FlightSearch.searchFlightOneWayWithDaysFromNow(this.page, { from, to }, { departureDaysFromNow });
+});
+
 When('I search for a same day round trip flight from {string} to {string}', async function (from, to) {
   logger.info('Searching for same-day round-trip flight', { from, to });
   await FlightSearch.searchFlightRoundTripSameDay(this.page, { from, to });
