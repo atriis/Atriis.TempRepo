@@ -3490,6 +3490,109 @@ const Cart = {
   },
 
   /**
+   * AB#80735 — hovers the first chargeable seat that is still free to select, so its tooltip
+   * opens. The seat is remembered on the returned object so the follow-up click assertion can
+   * target the very seat whose tooltip was read.
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @returns {Promise<{index: number, priceLabel: string}>}
+   */
+  async hoverFirstPaidSeat(page) {
+    if (!page) throw new Error('[Cart.hoverFirstPaidSeat] "page" is required.');
+    logger.info('Hovering the first selectable chargeable seat in the seat map');
+
+    const cartPage = getPageObject(page, CartPage);
+    const seat = await cartPage.hoverFirstPaidSeat();
+
+    logger.info('Hovered chargeable seat', seat);
+    return seat;
+  },
+
+  /**
+   * Asserts the hovered seat's tooltip carries an exact message.
+   *
+   * The comparison is against the tooltip's RED lines only (.tooltip-item.red), which is where
+   * plane-seat.vue prints every block reason — unselectableMessage, cantBuyPaidSeats and the
+   * AB#80735 seatsMustBeBookedWithFopCard. Reading the whole tooltip instead would also swallow
+   * the seat number, price and category, so a wrong-reason message could still pass.
+   *
+   * Deliberately NOT verifySeatSelectionRestricted: that one opens the seat map itself and then
+   * hovers the first AVAILABLE seat with a case-insensitive `toContain`. A FOP block only renders
+   * on a seat whose displayPrice > 0, so it can land on a free seat and find nothing, and its
+   * loose match would accept a different block reason. Pair this with hoverFirstPaidSeat instead.
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @param {string} expectedMessage - The exact message the tooltip must show
+   * @returns {Promise<{tooltipMessage: string}>}
+   * @throws {Error} If the tooltip shows no red message, or a different one
+   */
+  async verifySeatTooltipMessage(page, expectedMessage) {
+    if (!page) throw new Error('[Cart.verifySeatTooltipMessage] "page" is required.');
+    if (!expectedMessage || typeof expectedMessage !== 'string') {
+      throw new Error(
+        '[Cart.verifySeatTooltipMessage] "expectedMessage" must be a non-empty string, got: '
+        + typeof expectedMessage,
+      );
+    }
+    logger.info('Verifying the seat tooltip message', { expectedMessage });
+
+    const cartPage = getPageObject(page, CartPage);
+    const tooltipMessage = await cartPage.getSeatTooltipRedMessage();
+
+    expect(tooltipMessage.replace(/\s+/g, ' ').trim()).toBe(expectedMessage);
+
+    logger.info('Seat tooltip message verified', { tooltipMessage });
+    return { tooltipMessage };
+  },
+
+  /**
+   * AB#80735 — clicks a chargeable seat and proves the click did not buy it.
+   *
+   * Two independent readings have to agree, because either one alone can pass for the wrong
+   * reason: the deck must paint no seat as `selected`, AND every passenger in the left rail must
+   * still read "Not selected". A silently-dropped click would fail neither if only the seat's own
+   * class were checked on a deck that never repaints.
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @param {number} seatIndex - The index hoverFirstPaidSeat returned
+   * @returns {Promise<{passengerSeatLabels: string[]}>}
+   * @throws {Error} If the seat was selected
+   */
+  async verifyPaidSeatCannotBeSelected(page, seatIndex) {
+    if (!page) throw new Error('[Cart.verifyPaidSeatCannotBeSelected] "page" is required.');
+    if (!Number.isInteger(seatIndex) || seatIndex < 0) {
+      throw new Error(
+        '[Cart.verifyPaidSeatCannotBeSelected] "seatIndex" must be a non-negative integer, got: '
+        + seatIndex,
+      );
+    }
+    logger.info('Clicking a chargeable seat and verifying it does not get selected', { seatIndex });
+
+    const cartPage = getPageObject(page, CartPage);
+    await cartPage.clickSelectableSeatByIndex(seatIndex);
+
+    // handleSeatSelect returns synchronously when blocked, so there is no request to wait on.
+    // Poll instead of reading once, so a selection that DOES land a tick later still fails the
+    // assertion rather than racing past it.
+    await expect
+      .poll(async () => cartPage.getSelectedSeatCount(), { timeout: 5000, intervals: [500] })
+      .toBe(0);
+
+    const passengerSeatLabels = await cartPage.getSeatMapPassengerSeatLabels();
+
+    const seated = passengerSeatLabels.filter((label) => label !== 'Not selected');
+    if (seated.length > 0) {
+      throw new Error(
+        '[Cart.verifyPaidSeatCannotBeSelected] The blocked chargeable seat was assigned after all. '
+        + `Expected every passenger to read "Not selected", got: ${JSON.stringify(passengerSeatLabels)}`,
+      );
+    }
+
+    logger.info('Chargeable seat could not be selected', { passengerSeatLabels });
+    return { passengerSeatLabels };
+  },
+
+  /**
    * Selects the first available seat with a price (containing $, €, or £).
    * Clicks the .is-flex ancestor div which carries the Vue handleSeatSelect click handler.
    *

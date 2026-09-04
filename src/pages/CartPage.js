@@ -1062,6 +1062,26 @@ const SELECTORS = {
   SEAT_TOOLTIP_VISIBLE: '.el-popper.is-light:not([aria-hidden="true"])',
   // First available seat in the deck (has a seat number visible)
   FIRST_AVAILABLE_SEAT: '.deck-wrapper .seat',
+  // AB#80735 — a seat that is free to select right now. `section.plane-seat` is deliberate:
+  // plane-seat.vue renders the class on TWO nested elements — its own root <div class="plane-seat
+  // el-tooltip"> and the inner <section class="plane-seat"> that seatImageClass decorates. Only
+  // the <section> ever carries `occupied` / `selected`, so keying on the tag is what makes
+  // `:not(.occupied)` actually exclude an occupied seat instead of matching it through the root.
+  SELECTABLE_SEAT: '.deck-wrapper section.plane-seat:not(.occupied):not(.selected)',
+  // A seat the deck paints as taken by a passenger. Same `section.plane-seat` reasoning as above.
+  SELECTED_SEAT: '.deck-wrapper section.plane-seat.selected',
+  // The seat's own price label span (plane-seat.vue). Matches the data-testid first and falls back
+  // to the class, so it resolves against both the deployed staging and the latest source. The
+  // price is then read as TEXT, because the span renders for free seats too — only the currency
+  // symbol tells a chargeable seat from a free one.
+  SEAT_PRICE_LABEL: '[data-testid="flight.plane-seat.price"], .seat-price-label',
+  // The div that actually carries the seat click handler. flight-deck.vue binds
+  // `@click="handleSeatSelect(rowIdx, seat)"` on the `.is-flex` wrapper around <plane-seat>, so a
+  // click has to land there — the inner section has no handler of its own.
+  SEAT_CLICK_TARGET_ANCESTOR: 'xpath=ancestor::div[contains(@class,"is-flex")][1]',
+  // Per-passenger seat readout in the seat map's left rail (flight-deck.vue .username-wrapper).
+  // Holds either the selected seat's info or the "Not selected" placeholder.
+  SEAT_MAP_PAX_SELECTED_SEAT: '.username-wrapper .user-selected-seat',
 
   // Seating icon in extras section (flight-seating.vue — .yellow class = PendingApproval/PendingPayment)
   SEAT_ICON_IN_EXTRAS: '.flight-seating .material-symbols-outlined.seats',
@@ -6828,6 +6848,90 @@ class CartPage {
     await seat.scrollIntoViewIfNeeded();
     await seat.hover();
     return label;
+  }
+
+  /**
+   * AB#80735 — resolves the first chargeable seat that is currently free to select and hovers it,
+   * which is what opens its tooltip (plane-seat.vue binds mouseenter → toggleTooltipStatus).
+   *
+   * Chargeable is decided from the rendered price label carrying a currency symbol rather than
+   * from a class, because plane-seat.vue prints `{currency}{Math.round(displayPrice)}` for a paid
+   * seat and the "Free" wording for a free one — the same test selectFirstAvailableFlightSeat and
+   * hoverPreferredExtraLegroomSeat already use.
+   *
+   * Does NOT click: clicking runs openToolTip(), which toggles an already-open tooltip shut.
+   *
+   * @param {object} [options]
+   * @param {number} [options.timeout=30000] - Max wait for the deck to render a seat
+   * @returns {Promise<{index: number, priceLabel: string}>} The seat's 0-based index within
+   *   SELECTABLE_SEAT (hand it to clickSelectableSeatByIndex) and its rendered price
+   * @throws {Error} If the deck offers no selectable chargeable seat
+   */
+  async hoverFirstPaidSeat({ timeout = 30000 } = {}) {
+    const seats = this.page.locator(SELECTORS.SELECTABLE_SEAT);
+    await seats.first().waitFor({ state: 'visible', timeout });
+
+    const count = await seats.count();
+    for (let i = 0; i < count; i += 1) {
+      const seat = seats.nth(i);
+      const priceText = (
+        await seat.locator(SELECTORS.SEAT_PRICE_LABEL).first().textContent().catch(() => '')
+      ) || '';
+      if (/[$€£]\s*\d/.test(priceText)) {
+        await seat.scrollIntoViewIfNeeded();
+        await seat.hover();
+        return { index: i, priceLabel: priceText.trim() };
+      }
+    }
+
+    throw new Error(
+      '[CartPage.hoverFirstPaidSeat] The deck rendered no selectable chargeable seat '
+      + `(selector: ${SELECTORS.SELECTABLE_SEAT}, ${count} candidates, none with a priced `
+      + `${SELECTORS.SEAT_PRICE_LABEL}). This flight may offer only free seats.`,
+    );
+  }
+
+  /**
+   * AB#80735 — clicks one SELECTABLE_SEAT by its index, exercising the app's handleSeatSelect
+   * guard. Pass the index hoverFirstPaidSeat returned so the assertion lands on the same seat
+   * whose tooltip was just read.
+   *
+   * The click goes on the `.is-flex` wrapper because that is where flight-deck.vue binds
+   * `@click="handleSeatSelect(rowIdx, seat)"` — the inner section carries no handler of its own.
+   *
+   * @param {number} index - 0-based index within SELECTABLE_SEAT
+   * @param {object} [options]
+   * @param {number} [options.timeout=15000]
+   * @returns {Promise<void>}
+   */
+  async clickSelectableSeatByIndex(index, { timeout = 15000 } = {}) {
+    const seat = this.page.locator(SELECTORS.SELECTABLE_SEAT).nth(index);
+    const clickTarget = seat.locator(SELECTORS.SEAT_CLICK_TARGET_ANCESTOR);
+    await clickTarget.waitFor({ state: 'visible', timeout });
+    await clickTarget.click();
+  }
+
+  /**
+   * Reads the per-passenger seat readout from the seat map's left rail — either the selected
+   * seat's info or the "Not selected" placeholder.
+   *
+   * @param {object} [options]
+   * @param {number} [options.timeout=15000]
+   * @returns {Promise<string[]>} One entry per passenger, in render order
+   */
+  async getSeatMapPassengerSeatLabels({ timeout = 15000 } = {}) {
+    const labels = this.page.locator(SELECTORS.SEAT_MAP_PAX_SELECTED_SEAT);
+    await labels.first().waitFor({ state: 'visible', timeout });
+    return (await labels.allInnerTexts()).map((text) => text.replace(/\s+/g, ' ').trim());
+  }
+
+  /**
+   * Counts the seats the deck currently paints as selected (plane-seat.vue `selected` class).
+   *
+   * @returns {Promise<number>}
+   */
+  async getSelectedSeatCount() {
+    return this.page.locator(SELECTORS.SELECTED_SEAT).count();
   }
 
   /**

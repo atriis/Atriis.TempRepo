@@ -685,6 +685,32 @@ Then("the economy comfort seats should be shown in the economy comfort color", a
   logger.info("Economy comfort seat color verified", result);
 });
 
+When("I hover over a paid seat in the seat map", async function () {
+  logger.info("Hovering over the first selectable paid seat in the seat map");
+  // Remembered on the World so "the paid seat should not be selectable" clicks the very seat
+  // whose tooltip was just asserted, instead of re-resolving a possibly different one.
+  this.hoveredPaidSeat = await Cart.hoverFirstPaidSeat(this.page);
+  logger.info("Hovered paid seat", this.hoveredPaidSeat);
+});
+
+Then("the seat tooltip should show {string}", async function (expectedMessage) {
+  logger.info("Verifying the seat tooltip message", { expectedMessage });
+  const result = await Cart.verifySeatTooltipMessage(this.page, expectedMessage);
+  logger.info("Seat tooltip message verified", result);
+});
+
+Then("the paid seat should not be selectable", async function () {
+  if (!this.hoveredPaidSeat) {
+    throw new Error(
+      'No paid seat on the World. Run "I hover over a paid seat in the seat map" first — this step '
+      + "asserts the seat that step resolved."
+    );
+  }
+  logger.info("Verifying the paid seat cannot be selected", { seatIndex: this.hoveredPaidSeat.index });
+  const result = await Cart.verifyPaidSeatCannotBeSelected(this.page, this.hoveredPaidSeat.index);
+  logger.info("Paid seat is not selectable", result);
+});
+
 When("I hover over an economy comfort seat", async function () {
   logger.info("Hovering over an economy comfort seat in the seat map");
   const result = await Cart.hoverEconomyComfortSeat(this.page);
