@@ -16,9 +16,9 @@ Feature: 47291 BA NDC - DOB is mandatory in APIS when traveler has no DOB config
   Scenario: DOB is required in APIS for traveler without configured DOB
     Given I am logged in as "chris@ndcba.com" booking a new trip
     And I have added myself as the traveler
-    When I search for a round trip flight from "LON" to "NYC"
+    When I search for a one way flight from "LON" to "NYC"
     And I add the first flight to cart
-    Then the booking status should be "Pending booking"
+    And the booking status should be "Pending booking"
     Then the passenger info section should be marked as required with an asterisk
     When I click passenger info in extras
     Then the date of birth field should be required in the passenger info section
