@@ -502,6 +502,25 @@ When("I click dropdown option {string}", async function (option) {
   await cartPage.clickDropdownOption(option);
 });
 
+Then("the out of policy indicator should be visible in baggage section from extras", async function () {
+  logger.info("Verifying OOP indicator is visible in the baggage extras drawer");
+  await Cart.verifyBaggageExtrasOOPIndicatorVisible(this.page);
+});
+
+Then(
+  "when I hovering over the out of policy indicator in baggage section from extras it should contain message {string}",
+  async function (expectedMessage) {
+    logger.info("Verifying baggage extras OOP tooltip message", { expectedMessage });
+    const actualMessage = await Cart.hoverBaggageExtrasOOPAndGetTooltipText(this.page);
+    expect(
+      actualMessage,
+      `Baggage extras OOP tooltip did not contain the expected violation. Expected to contain: ` +
+      `"${expectedMessage}", got: "${actualMessage}". The tooltip line can carry a leading bullet ` +
+      `when several violations apply, so this is a contains check.`
+    ).toContain(expectedMessage);
+  }
+);
+
 When("I click the extras arrow button", async function () {
   logger.info("Clicking extras arrow button to expand/collapse");
   const cartPage = getPageObject(this.page, CartPage);
@@ -1475,6 +1494,15 @@ Then("the OOP justification text should be {string}", async function (expectedTe
 Then("the OOP policy reason should be {string}", async function (expectedText) {
   logger.info("Verifying OOP policy reason label in trip", { expectedText });
   await Cart.verifyOOPPolicyReasonInCart(this.page, expectedText);
+});
+
+// The phrase itself names no section, so the implementation is deliberately scoped to the
+// quote card's out-of-policy justification block only: it compares the ".oop-title" heading's
+// position against the ".oop-justification" dropdown. The second argument is accepted for
+// Gherkin readability and is never used to locate anything.
+Then("{string} is displayed above {string}", async function (titleText, _belowElementDescription) {
+  logger.info("Verifying OOP title is displayed above the justification dropdown", { titleText });
+  await Cart.verifyOOPTitleDisplayedAboveJustificationDropdown(this.page, titleText);
 });
 
 Then("the out of policy tooltip in cart should be {string}", async function (expectedText) {

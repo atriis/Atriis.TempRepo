@@ -15,26 +15,37 @@ Feature: 29776 Amadeus - Baggage amount OOP with 1 baggage included
   Scenario: Adding extra baggage triggers OOP and requires justification
     Given I am logged in as "shani@testimcorpnl.com" booking a new trip
     And I have added traveler by name "lary bagto"
-    # TODO: Search round trip with far future dates (2 months ahead)
-    # Testim: Copy_of_Search_flights_round_trip___for_far_dates('TLV', 'BUD')
-    # Existing step may not support "far dates" variant
-    When I search for a round trip flight from "TLV" to "BUD"
-    And I click proceed on the reference fields popup
-    # TODO: Filter by EL AL and add flight with 1 bag included
-    # Testim: add_el_al_flight_with_1_bag() — filters "EL AL", adds to cart
+    #TODO or reuse When I search for a round trip flight from "TLV" to "BUD" in 2 months
+    And I click proceed button if visible
+    Then flight results should be available
     And I filter results by carrier "EL AL"
-    And I add the first flight to cart
-    # TODO: Validate no OOP indication initially
-    # Testim: validate_there_is_no_oop_indication()
+    And I click to open first pricing options
+    And I select the pricing option containing "1PC"
+    And I should see the heading "Flight To Tel Aviv"
+    And I select the pricing option containing "1PC"
+    And I add to trip from pricing options
+    And the booking status should be "Pending booking"
     Then the out of policy indicator should not be visible in cart
-    # TODO: Add baggage and validate OOP is triggered
-    # Testim: add_bagage_and_validate_oop() — adds extra bag, checks OOP appears
-    # Need new step: When I add extra baggage to the flight
-    # Then the out of policy indicator should be visible in cart
-    # TODO: Validate OOP justification dropdown
-    # Testim: validate_justification() — checks justification is required
+    When I click to edit the baggage extras section
+    And I click number of baggage
+    And I click dropdown option "CHECKED BAG 2nd"
+    Then the out of policy indicator should be visible in baggage section from extras
+    And when I hovering over the out of policy indicator in baggage section from extras it should contain message "Luggage Amount is greater than or equals 2"
+    #TODO And "Luggage Amount is greater than or equals 2" is the title of the out of policy justification
+    And I click the save button
+    And I should see a success notification
+    Then "Out Of Policy*" is displayed above "Select your justification dropdown"
+    Then the out of policy tooltip in cart should be "Luggage Amount is greater than or equals 2"
+    And the OOP justification dropdown should contain the following options:
+    | No train available to destination                       |
+    | Train not an option for same day return                 |
+    | Train option only possible with adjusted travel program |
+    | Significantly lower CO2 emissions with this direct flight |
+    | Cheaper ticket only possible with adjusted travel program |
+    | Travel program still not definite. Flexibility needed. |
+    | Indirect flight only with possible with very short transfer time. |
+    And I select OOP justification option "No train available to destination" from the open dropdown
+    And the booking status should be "Pending booking"
     And I proceed to checkout
     And I complete the booking
-    # TODO: Verify "Out of policy" badge visible on trip overview
-    # Testim: waitForText(page, ".out-of-policy-badge", 'Out of policy')
-    Then I successfully cancel the trip
+    Then the out of policy indicator should be visible in cart

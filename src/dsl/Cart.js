@@ -2194,6 +2194,38 @@ const Cart = {
   },
 
   /**
+   * Verifies the out-of-policy indicator is shown inside the baggage extras drawer.
+   * The drawer computes this violation locally (flight-baggage.ts checkBaggageOOP) before any
+   * save, so this reads the drawer's own badge and never the quote-card badge.
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @returns {Promise<void>}
+   */
+  async verifyBaggageExtrasOOPIndicatorVisible(page) {
+    if (!page) {
+      throw new Error('[Cart.verifyBaggageExtrasOOPIndicatorVisible] "page" is required.');
+    }
+
+    logger.debug('Verifying the out-of-policy badge is shown in the baggage extras drawer');
+
+    try {
+      const cartPage = getPageObject(page, CartPage);
+      const isVisible = await cartPage.isBaggageOOPBadgeVisible();
+      expect(
+        isVisible,
+        `Out-of-policy indicator was not shown in the baggage extras drawer. ` +
+        `Expected the badge (${CART_SELECTORS.BAGGAGE_OOP_BADGE}) to be visible after selecting the extra bag. ` +
+        `This means the selected baggage did not breach the travel policy, or the drawer collapsed before the check.`
+      ).toBe(true);
+    } catch (err) {
+      if (err.matcherResult) throw err;
+      throw new Error(
+        `[Cart.verifyBaggageExtrasOOPIndicatorVisible] Failed to verify the baggage extras out-of-policy indicator: ${err.message}`
+      );
+    }
+  },
+
+  /**
    * Hovers over the Out of Policy info icon and gets tooltip text.
    * Returns the tooltip text for validation in step definitions.
    * @param {import('playwright').Page} page - Playwright page instance
@@ -2208,6 +2240,100 @@ const Cart = {
     await commonPage.waitForOOPVisible();
     await commonPage.hoverOverOOPInfoIcon();
     return await commonPage.getOOPTooltipTextCart();
+  },
+
+  /**
+   * Hovers the out-of-policy indicator inside the baggage extras drawer and returns the
+   * violation text from its tooltip. Returns the text rather than asserting so the step can
+   * decide how strictly to match it.
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @returns {Promise<string>} The baggage out-of-policy tooltip violation text
+   */
+  async hoverBaggageExtrasOOPAndGetTooltipText(page) {
+    if (!page) {
+      throw new Error('[Cart.hoverBaggageExtrasOOPAndGetTooltipText] "page" is required.');
+    }
+
+    logger.debug('Hovering the baggage extras out-of-policy badge to read its violation tooltip');
+
+    try {
+      const cartPage = getPageObject(page, CartPage);
+      await cartPage.hoverBaggageOOPIndicator();
+      return await cartPage.getBaggageOOPTooltipText();
+    } catch (err) {
+      throw new Error(
+        `[Cart.hoverBaggageExtrasOOPAndGetTooltipText] Failed to read the baggage extras out-of-policy tooltip: ${err.message}`
+      );
+    }
+  },
+
+  /**
+   * Verifies the out-of-policy title is rendered above the justification dropdown on the quote
+   * card. A trailing "*" in the expected title marks the justification as mandatory and is
+   * asserted separately against the title's sibling asterisk, since the app renders it as its
+   * own element (base-quote-card.vue).
+   *
+   * The dropdown is always located through the existing `.oop-justification` selectors — the
+   * step's second argument is descriptive only and is never used to locate anything.
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @param {string} titleText - Expected title text, optionally ending in "*" (e.g. "Out Of Policy*")
+   * @returns {Promise<void>}
+   */
+  async verifyOOPTitleDisplayedAboveJustificationDropdown(page, titleText) {
+    if (!page) {
+      throw new Error('[Cart.verifyOOPTitleDisplayedAboveJustificationDropdown] "page" is required.');
+    }
+    if (typeof titleText !== 'string' || titleText.trim() === '') {
+      throw new Error(
+        `[Cart.verifyOOPTitleDisplayedAboveJustificationDropdown] "titleText" must be a non-empty string, ` +
+        `got: ${typeof titleText} (${JSON.stringify(titleText)})`
+      );
+    }
+
+    const requiresAsterisk = titleText.trim().endsWith('*');
+    const expectedTitle = titleText.trim().replace(/\*$/, '').trim();
+
+    logger.debug('Verifying the out-of-policy title sits above the justification dropdown', {
+      expectedTitle,
+      requiresAsterisk,
+    });
+
+    try {
+      const cartPage = getPageObject(page, CartPage);
+
+      const actualTitle = await cartPage.getOOPTitleText();
+      expect(
+        actualTitle.toLowerCase(),
+        `Out-of-policy title did not match. Expected: "${expectedTitle}", got: "${actualTitle}" ` +
+        `(compared case-insensitively — the app ships it lowercase as "Out of policy").`
+      ).toBe(expectedTitle.toLowerCase());
+
+      if (requiresAsterisk) {
+        const asteriskVisible = await cartPage.getOOPTitleRequiredAsterisk().isVisible();
+        expect(
+          asteriskVisible,
+          `The mandatory-justification "*" next to the out-of-policy title was not visible ` +
+          `(${CART_SELECTORS.OOP_TITLE_REQUIRED_ASTERISK}). It renders only when the quote carries ` +
+          `travel policy justifications to pick from.`
+        ).toBe(true);
+      }
+
+      const titleBox = await cartPage.getOOPTitleBoundingBox();
+      const dropdownBox = await cartPage.getOOPJustificationDropdownBoundingBox();
+      expect(
+        titleBox.y,
+        `Out-of-policy title is not displayed above the justification dropdown. ` +
+        `Title top: ${titleBox.y}px, dropdown top: ${dropdownBox.y}px — the title must sit higher on the page.`
+      ).toBeLessThan(dropdownBox.y);
+    } catch (err) {
+      if (err.matcherResult) throw err;
+      throw new Error(
+        `[Cart.verifyOOPTitleDisplayedAboveJustificationDropdown] Failed to verify that "${titleText}" is ` +
+        `displayed above the out-of-policy justification dropdown: ${err.message}`
+      );
+    }
   },
 
   /**

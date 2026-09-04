@@ -550,7 +550,12 @@ const SELECTORS = {
   OOP_JUSTIFICATION_SECTION: '.oop-justification', // Section containing the OOP justification dropdown/text (oop-justification.vue)
   OOP_JUSTIFICATION_SELECT: '.oop-justification .app-select .el-select', // The el-select wrapper inside the OOP justification section
   OOP_JUSTIFICATION_SELECTED_VALUE: '.oop-justification .el-select__selected-item',
-  
+  OOP_TITLE: '.oop-title', // "Out of policy" heading above the justification block (base-quote-card.vue) — unique in the Atriis.OBT source
+  OOP_TITLE_REQUIRED_ASTERISK: '.oop-title + span.has-text-danger', // The "*" marking justification as mandatory, rendered as the heading's next sibling (base-quote-card.vue)
+  // One violation line inside the OOP badge tooltip. Deliberately NOT scoped to any section:
+  // el-tooltip teleports its content to a body-level .el-popper.is-light (app-oop-badge.vue).
+  OOP_TOOLTIP_VIOLATION_LINE: '.el-popper.is-light:visible li.mb-1',
+
   // Extras
   EDIT_EXTRAS_BUTTON: ".extra__btns", //All edit buttons in extras section have the same class, so we will use nth(index) to click the right one when needed
   EXTRAS_INFORMATION_FIELD: '.el-select__selected-item span', // The field that shows selected extra option
@@ -630,6 +635,11 @@ const SELECTORS = {
   BAGGAGE_DROPDOWN_PANEL: '.el-select-dropdown:visible', // Visible Element-Plus popper containing the segment dropdown options
   BAGGAGE_DROPDOWN_ENABLED_OPTION: '.el-select-dropdown__item:not(.is-disabled)', // Enabled (selectable) option inside a baggage dropdown panel
   BAGGAGE_SEGMENT_CARRIER_NAME: '.flight-baggage .el-tab-pane:visible .form-date-section > :nth-child(1) .carrier-name', // Carrier name in the first baggage segment row (flight-baggage.vue)
+  // OOP badge rendered inside the baggage drawer once checkBaggageOOP() populates oopViolation
+  // (flight-baggage.vue -> app-oop-badge.vue). Scoped to .flight-baggage because a bare
+  // .app-out-of-policy also matches the quote-card badge (base-quote-card.vue).
+  BAGGAGE_OOP_BADGE: '.flight-baggage .app-out-of-policy:visible',
+  BAGGAGE_OOP_INFO_ICON: '.flight-baggage .app-out-of-policy span.info-icon', // Hover trigger of the baggage OOP badge tooltip (app-oop-badge.vue)
   
   // Flight Seating (flight-seating.vue)
   SEATING_EDIT_BUTTON: ".flight-seating .extra__btns", // Edit/Add button in the seating extras row (scoped to flight-seating to avoid matching other extras buttons)
@@ -4055,6 +4065,100 @@ class CartPage {
   }
 
   /**
+   * Gets the "Out of policy" title locator shown above the justification block (base-quote-card.vue).
+   * @returns {Locator} Playwright locator for the first visible OOP title heading.
+   */
+  getOOPTitle() {
+    return this.page.locator(SELECTORS.OOP_TITLE).filter({ visible: true }).first();
+  }
+
+  /**
+   * Gets the mandatory-justification "*" locator rendered next to the OOP title.
+   * @returns {Locator} Playwright locator for the first visible required asterisk.
+   */
+  getOOPTitleRequiredAsterisk() {
+    return this.page.locator(SELECTORS.OOP_TITLE_REQUIRED_ASTERISK).filter({ visible: true }).first();
+  }
+
+  /**
+   * Reads the visible text of the OOP title heading.
+   * @param {number} [timeout=15000] - Maximum wait time in milliseconds
+   * @returns {Promise<string>} The OOP title text, whitespace-collapsed
+   */
+  async getOOPTitleText(timeout = 15000) {
+    const title = this.getOOPTitle();
+    try {
+      await title.waitFor({ state: 'visible', timeout });
+    } catch (err) {
+      throw new Error(
+        `[CartPage.getOOPTitleText] Could not read the out-of-policy title ` +
+        `(selector: ${SELECTORS.OOP_TITLE}). It was not visible within ${timeout}ms — likely the quote ` +
+        `carries no saved policy justifications, so the OOP block is absent from the quote card. ` +
+        `Original: ${err.message}`,
+      );
+    }
+    return ((await title.innerText()) ?? '').replace(/\s+/g, ' ').trim();
+  }
+
+  /**
+   * Gets the bounding box of the OOP title heading, used to compare its vertical position
+   * against the justification dropdown.
+   * @param {number} [timeout=15000] - Maximum wait time in milliseconds
+   * @returns {Promise<{x: number, y: number, width: number, height: number}>} The title bounding box
+   */
+  async getOOPTitleBoundingBox(timeout = 15000) {
+    const title = this.getOOPTitle();
+    try {
+      await title.waitFor({ state: 'visible', timeout });
+    } catch (err) {
+      throw new Error(
+        `[CartPage.getOOPTitleBoundingBox] Could not measure the out-of-policy title ` +
+        `(selector: ${SELECTORS.OOP_TITLE}). It was not visible within ${timeout}ms — likely the OOP block ` +
+        `is not rendered on the quote card. Original: ${err.message}`,
+      );
+    }
+
+    const box = await title.boundingBox();
+    if (!box) {
+      throw new Error(
+        `[CartPage.getOOPTitleBoundingBox] The out-of-policy title (selector: ${SELECTORS.OOP_TITLE}) ` +
+        `reported no bounding box. It is visible but has no layout box — likely collapsed or off-screen.`,
+      );
+    }
+    return box;
+  }
+
+  /**
+   * Gets the bounding box of the OOP justification dropdown, used to compare its vertical
+   * position against the OOP title.
+   * @param {number} [timeout=15000] - Maximum wait time in milliseconds
+   * @returns {Promise<{x: number, y: number, width: number, height: number}>} The dropdown bounding box
+   */
+  async getOOPJustificationDropdownBoundingBox(timeout = 15000) {
+    const dropdown = this.getJustificationDropdown().filter({ visible: true }).first();
+    try {
+      await dropdown.waitFor({ state: 'visible', timeout });
+    } catch (err) {
+      throw new Error(
+        `[CartPage.getOOPJustificationDropdownBoundingBox] Could not measure the OOP justification dropdown ` +
+        `(selector: ${SELECTORS.OOP_JUSTIFICATION_SELECT}). It was not visible within ${timeout}ms — likely the ` +
+        `justification section is not rendered, or this policy asks for free text instead of a dropdown. ` +
+        `Original: ${err.message}`,
+      );
+    }
+
+    const box = await dropdown.boundingBox();
+    if (!box) {
+      throw new Error(
+        `[CartPage.getOOPJustificationDropdownBoundingBox] The OOP justification dropdown ` +
+        `(selector: ${SELECTORS.OOP_JUSTIFICATION_SELECT}) reported no bounding box. It is visible but has ` +
+        `no layout box — likely collapsed or off-screen.`,
+      );
+    }
+    return box;
+  }
+
+  /**
    * Clicks the "Proceed with change" button if it is visible.
    * Uses waitFor to actually wait for the button to appear.
    *
@@ -4924,6 +5028,72 @@ class CartPage {
   async getVisibleBaggageSelectedTagCount(timeout = 10000) {
     await this.page.locator(SELECTORS.BAGGAGE_SAVE_BUTTON).first().waitFor({ state: 'visible', timeout });
     return this.page.locator(SELECTORS.BAGGAGE_SELECTED_TAG).count();
+  }
+
+  /**
+   * Gets the out-of-policy badge locator inside the baggage extras drawer.
+   * @returns {Locator} Playwright locator for the first visible baggage OOP badge.
+   */
+  getBaggageOOPBadge() {
+    return this.page.locator(SELECTORS.BAGGAGE_OOP_BADGE).first();
+  }
+
+  /**
+   * Returns whether the out-of-policy badge is visible inside the baggage extras drawer.
+   * @param {number} [timeout=15000] - Maximum wait time in milliseconds
+   * @returns {Promise<boolean>} True when the baggage OOP badge became visible
+   */
+  async isBaggageOOPBadgeVisible(timeout = 15000) {
+    const badge = this.getBaggageOOPBadge();
+    try {
+      await badge.waitFor({ state: 'visible', timeout });
+    } catch {
+      // A missing badge is a legitimate outcome for the caller to assert on, not a page-level
+      // failure — the drawer computes its OOP state locally (flight-baggage.ts checkBaggageOOP).
+      return false;
+    }
+    return badge.isVisible();
+  }
+
+  /**
+   * Hovers the info icon of the baggage out-of-policy badge to open its violations tooltip.
+   * @param {number} [timeout=15000] - Maximum wait time in milliseconds
+   * @returns {Promise<void>}
+   */
+  async hoverBaggageOOPIndicator(timeout = 15000) {
+    const icon = this.page.locator(SELECTORS.BAGGAGE_OOP_INFO_ICON).first();
+    try {
+      await icon.waitFor({ state: 'visible', timeout });
+      await icon.hover();
+    } catch (err) {
+      throw new Error(
+        `[CartPage.hoverBaggageOOPIndicator] Could not hover the baggage out-of-policy info icon ` +
+        `(selector: ${SELECTORS.BAGGAGE_OOP_INFO_ICON}). It was not visible within ${timeout}ms — likely the ` +
+        `baggage extras drawer is closed, or the selected baggage does not breach the travel policy. ` +
+        `Original: ${err.message}`,
+      );
+    }
+  }
+
+  /**
+   * Reads the violation line text from the currently open out-of-policy tooltip.
+   * The tooltip is teleported to a body-level popper, so this is not scoped to the drawer.
+   * @param {number} [timeout=15000] - Maximum wait time in milliseconds
+   * @returns {Promise<string>} The tooltip violation text, whitespace-collapsed
+   */
+  async getBaggageOOPTooltipText(timeout = 15000) {
+    const line = this.page.locator(SELECTORS.OOP_TOOLTIP_VIOLATION_LINE).first();
+    try {
+      await line.waitFor({ state: 'visible', timeout });
+    } catch (err) {
+      throw new Error(
+        `[CartPage.getBaggageOOPTooltipText] Could not read the baggage out-of-policy tooltip ` +
+        `(selector: ${SELECTORS.OOP_TOOLTIP_VIOLATION_LINE}). No violation line was visible within ${timeout}ms — ` +
+        `likely the hover did not land on the badge's info icon, or the tooltip closed before it was read. ` +
+        `Original: ${err.message}`,
+      );
+    }
+    return ((await line.innerText()) ?? '').replace(/\s+/g, ' ').trim();
   }
 
   /**
