@@ -60,6 +60,11 @@ const SELECTORS = {
   // Used by name-based selection helpers as a fallback when no checkbox/radio matches the card name.
   SELECT_CREDIT_CARD_BOX: '.box-card',
 
+  // "Expiration date" label in the "Add card details" form. The month and year selects sit under
+  // this single label (the year column's own label is a non-breaking space), so the label plus the
+  // two dropdowns together make up the expiration date field.
+  EXPIRATION_DATE_LABEL: 'label.label:has-text("Expiration date")',
+
   // Button names (used with getByRole)
   ADD_PAYMENT_METHOD_BTN_NAME: "Add payment method",
   ADD_CARD_DETAILS_BTN_NAME: "Add card details",
@@ -1083,6 +1088,14 @@ class CartPaymentPage {
       names.push((await cards.nth(i).textContent()).trim());
     }
     return names;
+  }
+
+  /**
+   * Gets the "Expiration date" label of the add-card-details form.
+   * @returns {import('@playwright/test').Locator}
+   */
+  getExpirationDateLabel() {
+    return this.page.locator(SELECTORS.EXPIRATION_DATE_LABEL);
   }
 
   /**

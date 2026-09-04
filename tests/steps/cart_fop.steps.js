@@ -111,6 +111,11 @@ Then("CVV should display {string}", async function (cvv) {
   await CartPayment.verifyCVVValue(this.page, cvv);
 });
 
+Then("the expiration date field should be displayed", async function () {
+  logger.info("Verifying the expiration date field is displayed in the card details form");
+  await CartPayment.verifyExpirationDateFieldVisible(this.page);
+});
+
 Then("the card details text should be visible", async function () {
   logger.info("Verifying card details text is visible");
   await CartPayment.waitForCardDetailsToBeVisible(this.page);

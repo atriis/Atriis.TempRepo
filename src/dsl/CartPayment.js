@@ -468,6 +468,19 @@ class CartPayment {
   }
 
   /**
+   * Verifies the expiration date field of the "Add card details" form is displayed — the
+   * "Expiration date" label plus both the month and the year dropdowns it labels.
+   * @param {import('@playwright/test').Page} page
+   */
+  static async verifyExpirationDateFieldVisible(page) {
+    if (!page) throw new Error("page is required");
+    const paymentPage = getPageObject(page, CartPaymentPage);
+    await expect(paymentPage.getExpirationDateLabel()).toBeVisible();
+    await expect(paymentPage.getExpirationMonthDropdown()).toBeVisible();
+    await expect(paymentPage.getExpirationYearDropdown()).toBeVisible();
+  }
+
+  /**
    * Verifies the "In order to proceed, please add all required information" warning is visible.
    * @param {import('@playwright/test').Page} page
    */
