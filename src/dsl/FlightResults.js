@@ -2913,6 +2913,78 @@ async verifyFareComponentTextColorInPricingOptions(page, expectedColor, index = 
     }
   },
 
+  /**
+   * Verifies that every flight result flies the requested route on one leg.
+   *
+   * Used to prove the per-leg airport filter is scoped to its own leg: after filtering the
+   * outbound leg to a single origin/destination airport pair, no result may keep a different
+   * pair on that leg.
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @param {number} legIndex - Zero-based leg index (0 = outbound, 1 = inbound)
+   * @param {string} originCode - Expected leg origin airport code, e.g. "LIN"
+   * @param {string} destinationCode - Expected leg destination airport code, e.g. "LCY"
+   * @returns {Promise<{legIndex: number, originCode: string, destinationCode: string, routes: Array<{departureCode: string, arrivalCode: string}>}>}
+   */
+  async verifyAllResultsLegRoute(page, legIndex, originCode, destinationCode) {
+    if (!page) throw new Error('[FlightResults.verifyAllResultsLegRoute] "page" is required, got: ' + typeof page);
+    if (!Number.isInteger(legIndex) || legIndex < 0) {
+      throw new Error(`[FlightResults.verifyAllResultsLegRoute] "legIndex" must be a non-negative integer, got: ${legIndex}`);
+    }
+    if (!originCode || typeof originCode !== 'string') {
+      throw new Error(`[FlightResults.verifyAllResultsLegRoute] "originCode" must be a non-empty string, got: ${typeof originCode}`);
+    }
+    if (!destinationCode || typeof destinationCode !== 'string') {
+      throw new Error(`[FlightResults.verifyAllResultsLegRoute] "destinationCode" must be a non-empty string, got: ${typeof destinationCode}`);
+    }
+
+    const expectedOrigin = originCode.trim().toUpperCase();
+    const expectedDestination = destinationCode.trim().toUpperCase();
+
+    logger.debug('Reading per-leg airport codes from every flight result', {
+      legIndex,
+      expectedOrigin,
+      expectedDestination,
+    });
+
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+
+    let routes;
+    try {
+      routes = await flightResultsPage.getLegLocationCodesPerResult(legIndex);
+    } catch (error) {
+      throw new Error(
+        `[FlightResults.verifyAllResultsLegRoute] Could not read the leg ${legIndex} airport codes from the flight ` +
+        `results, so the per-leg airport filter cannot be verified against ${expectedOrigin} to ` +
+        `${expectedDestination}. Original: ${error.message}`
+      );
+    }
+
+    // Thrown Errors, not expect(value, message): this repo's @playwright/test discards expect's
+    // custom message, and here the offending result numbers and codes ARE the diagnostic.
+    if (routes.length === 0) {
+      throw new Error(
+        `[FlightResults.verifyAllResultsLegRoute] No flight results were available to verify the per-leg airport ` +
+        `filter against ${expectedOrigin} to ${expectedDestination}. The filter may have emptied the results list.`
+      );
+    }
+
+    const mismatches = routes
+      .map((route, index) => ({ ...route, resultNumber: index + 1 }))
+      .filter((route) => route.departureCode !== expectedOrigin || route.arrivalCode !== expectedDestination);
+
+    if (mismatches.length > 0) {
+      throw new Error(
+        `[FlightResults.verifyAllResultsLegRoute] Expected all ${routes.length} flight results to fly ` +
+        `${expectedOrigin} to ${expectedDestination} on leg ${legIndex}, but ${mismatches.length} did not: ` +
+        `${mismatches.map((route) => `#${route.resultNumber} ${route.departureCode}-${route.arrivalCode}`).join(', ')}. ` +
+        `The airport filter is leaking across legs, or it did not apply to this leg at all.`
+      );
+    }
+
+    return { legIndex, originCode: expectedOrigin, destinationCode: expectedDestination, routes };
+  },
+
   // Regression guard: every filtered result must show the eligibility tag.
   async verifyAllResultsShowUnusedTicketTag(page) {
     if (!page) throw new Error('page is required');

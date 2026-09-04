@@ -2519,6 +2519,80 @@ async clickSelectForFareWithBaggagePricingOptions(baggageText) {
     return (await arrivalLocationCode.textContent())?.trim() ?? '';
   }
 
+  /**
+   * Reads one leg's origin and destination airport codes from every flight result card.
+   *
+   * Each result card renders one `.flight-info-container` per itinerary leg
+   * (flight-preview.vue: one section per `flightResult.segments` entry), and each leg renders
+   * exactly two `.loc-code` nodes - [0] the leg origin, [1] the leg destination
+   * (flight-preview-segment.vue). Connections are collapsed into the leg's stops, so the pair
+   * is always the leg's endpoints and never an intermediate airport.
+   *
+   * @param {number} legIndex - Zero-based leg index within each card (0 = outbound, 1 = inbound)
+   * @param {{ timeout?: number }} options
+   * @returns {Promise<Array<{departureCode: string, arrivalCode: string}>>} one entry per result card
+   */
+  async getLegLocationCodesPerResult(legIndex = 0, { timeout = 60000 } = {}) {
+    if (!Number.isInteger(legIndex) || legIndex < 0) {
+      throw new Error(
+        `[FlightResultsPage.getLegLocationCodesPerResult] "legIndex" must be a non-negative integer, got: ${legIndex}`
+      );
+    }
+
+    try {
+      await this.waitForFlightResults(timeout);
+    } catch (error) {
+      throw new Error(
+        `[FlightResultsPage.getLegLocationCodesPerResult] No flight result card became visible within ${timeout}ms ` +
+        `(selector: ${SELECTORS.FLIGHT_PREVIEW}). The search may have returned no results, or the airport filter ` +
+        `may still be reloading the results list. Original: ${error.message}`
+      );
+    }
+
+    const cards = this.page.locator(SELECTORS.FLIGHT_PREVIEW);
+    const cardCount = await cards.count();
+    const routes = [];
+
+    for (let cardIndex = 0; cardIndex < cardCount; cardIndex++) {
+      const leg = cards.nth(cardIndex).locator(SELECTORS.FLIGHT_PREVIEW_SEGMENT).nth(legIndex);
+
+      try {
+        await leg.waitFor({ state: 'visible', timeout });
+      } catch (error) {
+        throw new Error(
+          `[FlightResultsPage.getLegLocationCodesPerResult] Result card ${cardIndex + 1} of ${cardCount} has no ` +
+          `visible leg at index ${legIndex} within ${timeout}ms (selector: ${SELECTORS.FLIGHT_PREVIEW} > ` +
+          `${SELECTORS.FLIGHT_PREVIEW_SEGMENT}). The card may render fewer legs than requested - a one-way result ` +
+          `has no inbound leg. Original: ${error.message}`
+        );
+      }
+
+      const locationCodes = leg.locator(SELECTORS.FLIGHT_LOCATION_CODE);
+
+      try {
+        await locationCodes.nth(1).waitFor({ state: 'visible', timeout });
+      } catch (error) {
+        throw new Error(
+          `[FlightResultsPage.getLegLocationCodesPerResult] Leg ${legIndex} of result card ${cardIndex + 1} did not ` +
+          `render both airport codes within ${timeout}ms (selector: ${SELECTORS.FLIGHT_LOCATION_CODE}). The leg ` +
+          `layout may have changed. Original: ${error.message}`
+        );
+      }
+
+      const [departureCode, arrivalCode] = await Promise.all([
+        locationCodes.nth(0).textContent(),
+        locationCodes.nth(1).textContent(),
+      ]);
+
+      routes.push({
+        departureCode: (departureCode ?? '').trim().toUpperCase(),
+        arrivalCode: (arrivalCode ?? '').trim().toUpperCase(),
+      });
+    }
+
+    return routes;
+  }
+
   async selectAirportOptionByCode(airportCode, timeout = 60000) {
     if (!airportCode || typeof airportCode !== 'string') {
       throw new Error(`[FlightResultsPage.selectAirportOptionByCode] airportCode must be a non-empty string, got: ${typeof airportCode}`);

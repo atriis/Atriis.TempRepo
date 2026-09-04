@@ -1105,6 +1105,12 @@ Then('all flight results should be from airline {string}', async function (airli
   await FlightResults.verifyAllResultsFromAirline(this.page, airlineName);
 });
 
+Then('all outbound flight results are from {string} to {string}', async function (originCode, destinationCode) {
+  logger.info('Verifying all flight results fly the requested outbound route', { originCode, destinationCode });
+  await FlightResults.verifyAllResultsLegRoute(this.page, 0, originCode, destinationCode);
+});
+
+
 Then('all flight results should show the unused tickets eligibility tag', async function () {
   logger.info('Verifying all flight results show the unused tickets eligibility tag');
   await FlightResults.verifyAllResultsShowUnusedTicketTag(this.page);

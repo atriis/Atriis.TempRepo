@@ -5,7 +5,7 @@
 # Created: 2024-12-26T12:17:57Z
 # Updated: 2024-12-26T12:33:15Z
 
-@regression @flights @general @galileo @filters
+@regression @flights @general @filters
 Feature: 55725 Flights - Filter by airport should be per leg
   As a corporate traveler
   I want airport filters to be applied per leg
@@ -17,7 +17,7 @@ Feature: 55725 Flights - Filter by airport should be per leg
     When I search for a round trip flight from "MIL" to "LON"
     Then the airport filter route label "Milan to London" should be visible
     And the airport filter sections "Milan Airports" and "London Airports" should be visible for route "Milan to London"
-    When I filter airports for route "Milan to London" by "BGY" in "Milan Airports" and "STN" in "London Airports"
-    Then all flight results should be from airline "Ryanair"
-    When I filter results by carrier "British Airways"
+    When I filter airports for route "Milan to London" by "LIN" in "Milan Airports" and "LCY" in "London Airports"
+    Then all outbound flight results are from "LIN" to "LCY"
+    When I filter results by carrier "Ryanair"
     Then the no results found message should be displayed
