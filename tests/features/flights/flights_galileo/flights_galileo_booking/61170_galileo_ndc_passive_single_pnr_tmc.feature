@@ -15,7 +15,7 @@ Feature: 61170 Galileo and NDC passive booked in single PNR with TMC permission
   Scenario: Hotel booked then flight held creates single PNR
     Given I am logged in as "corpSingle@pnr.gdg" booking a new trip
     And I have added a random guest traveler
-    When I search for a hotel in "Amsterdam" for 1 night
+    When I search for a hotel in "London" for 1 night
     And I select the first hotel result
     And I add a refundable room to my cart
     Then the booking status should be "Pending booking"
@@ -23,7 +23,7 @@ Feature: 61170 Galileo and NDC passive booked in single PNR with TMC permission
     And I complete the booking
     Then the booking status should be "Confirmed"
     And I click to add a flight to my trip from cart
-    When I edit the flight search from "LHR" to "AMS" with the same dates as the hotel search
+    When I edit the flight search from "SIN" to "ZRH" with the same dates as the hotel search
     And flight results should be available
     And I add the first flight to cart
     Then the booking status should be "Pending booking"
