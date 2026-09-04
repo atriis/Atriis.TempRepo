@@ -15,14 +15,14 @@ Feature: 29776 Amadeus - Baggage amount OOP with 1 baggage included
   Scenario: Adding extra baggage triggers OOP and requires justification
     Given I am logged in as "shani@testimcorpnl.com" booking a new trip
     And I have added traveler by name "lary bagto"
-    #TODO or reuse When I search for a round trip flight from "TLV" to "BUD" in 2 months
+    When I search for a round trip flight from "TLV" to "BUD" with outbound in 60 days and return in 63 days
     And I click proceed button if visible
     Then flight results should be available
     And I filter results by carrier "EL AL"
     And I click to open first pricing options
-    And I select the pricing option containing "1PC"
+    And I select the pricing option containing "1 PC"
     And I should see the heading "Flight To Tel Aviv"
-    And I select the pricing option containing "1PC"
+    And I select the pricing option containing "1 PC"
     And I add to trip from pricing options
     And the booking status should be "Pending booking"
     Then the out of policy indicator should not be visible in cart
@@ -31,11 +31,12 @@ Feature: 29776 Amadeus - Baggage amount OOP with 1 baggage included
     And I click dropdown option "CHECKED BAG 2nd"
     Then the out of policy indicator should be visible in baggage section from extras
     And when I hovering over the out of policy indicator in baggage section from extras it should contain message "Luggage Amount is greater than or equals 2"
-    #TODO And "Luggage Amount is greater than or equals 2" is the title of the out of policy justification
     And I click the save button
     And I should see a success notification
+    Then the OOP policy reason should be "Luggage Amount is greater than or equals 2"
     Then "Out Of Policy*" is displayed above "Select your justification dropdown"
     Then the out of policy tooltip in cart should be "Luggage Amount is greater than or equals 2"
+    When I open the OOP justification dropdown and verify there are 13 options
     And the OOP justification dropdown should contain the following options:
     | No train available to destination                       |
     | Train not an option for same day return                 |
