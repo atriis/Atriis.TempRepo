@@ -4915,6 +4915,26 @@ class CartPage {
   }
 
   /**
+   * Reads the enabled option labels from the currently open baggage dropdown —
+   * the luggage descriptions (e.g. "1 x hold bag (15kg) - 67.98EUR", "LUGGAGE - USD41.39").
+   * Assumes the dropdown is already open (e.g. via clickNumberOfBaggage); the options
+   * are only viewed, never selected.
+   * @param {number} [timeout=10000] - Per-action timeout in ms
+   * @returns {Promise<string[]>} The visible baggage option labels, in display order
+   */
+  async getVisibleBaggageDropdownOptionTexts(timeout = 10000) {
+    const panel = this.page.locator(SELECTORS.BAGGAGE_DROPDOWN_PANEL).last();
+    await panel.waitFor({ state: 'visible', timeout });
+
+    const options = panel.locator(SELECTORS.BAGGAGE_DROPDOWN_ENABLED_OPTION);
+    await options.first().waitFor({ state: 'visible', timeout });
+
+    return (await options.allInnerTexts())
+      .map((t) => t.replace(/\s+/g, ' ').trim())
+      .filter(Boolean);
+  }
+
+  /**
    * Waits for the Save button to be visible in extras section.
    */
   async waitForSaveButton() {

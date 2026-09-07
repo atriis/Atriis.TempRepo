@@ -10872,7 +10872,39 @@ const Cart = {
 
     const cartPage = getPageObject(page, CartPage);
     await cartPage.ensureExtrasExpanded();
+
+    // Once the panel is expanded the row header stops rendering its Add/Edit button, so
+    // clicking to open an already-open panel waits forever on an element that is gone.
+    // This happens whenever the panel is revisited without a page reload — e.g. reading
+    // the baggage options again after holding the trip (73504).
+    if (await cartPage.isBaggageExtrasOpen()) {
+      await cartPage.waitForBaggageContent();
+      return;
+    }
+
     await cartPage.clickEditBaggageExtrasButton();
+  },
+
+  /**
+   * Reads the luggage option descriptions shown in the currently open baggage dropdown
+   * (opened via the "Number of baggage" field), without selecting any of them.
+   * @param {import('playwright').Page} page
+   * @returns {Promise<string[]>} The visible baggage option labels, in display order
+   */
+  async getOpenBaggageDropdownOptions(page) {
+    if (!page) throw new Error('[Cart.getOpenBaggageDropdownOptions] "page" is required.');
+
+    const cartPage = getPageObject(page, CartPage);
+    try {
+      const options = await cartPage.getVisibleBaggageDropdownOptionTexts();
+      logger.info('Read baggage dropdown options', { count: options.length });
+      return options;
+    } catch (err) {
+      throw new Error(
+        `[Cart.getOpenBaggageDropdownOptions] Could not read the baggage dropdown options — ` +
+        `the "Number of baggage" dropdown may not be open. ${err.message}`
+      );
+    }
   },
 
   /**

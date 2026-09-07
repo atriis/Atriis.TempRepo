@@ -478,6 +478,33 @@ When("I select the {string} baggage option for the {string} flight", { timeout: 
   await Cart.selectBaggageOptionForFlightDirection(this.page, optionText, direction);
 });
 
+Then("the luggage description should be displayed", async function () {
+  const options = await Cart.getOpenBaggageDropdownOptions(this.page);
+  logger.info("Verifying distinct luggage descriptions are displayed in the baggage dropdown", {
+    count: options.length,
+  });
+
+  expect(options.length, "The baggage dropdown showed no options").toBeGreaterThan(0);
+
+  // The luggage description is the label text before the price separator, e.g.
+  // "1 x hold bag (15kg)" from "1 x hold bag (15kg) - 67.98EUR". Bug #73504 renders
+  // every option's description as the generic word "LUGGAGE", differing only by price
+  // (see "LUGGAGE - USD41.39", "LUGGAGE - USD106.44", ...). So — ignoring price — we
+  // assert the descriptions are non-empty AND not all identical.
+  const descriptions = options.map((label) => label.split(/\s+-\s+/)[0].trim()).filter(Boolean);
+  expect(
+    descriptions.length,
+    `Some baggage options had an empty luggage description: ${JSON.stringify(options)}`
+  ).toBe(options.length);
+
+  const distinctDescriptions = new Set(descriptions.map((d) => d.toLowerCase()));
+  expect(
+    distinctDescriptions.size,
+    `All ${options.length} baggage options show the same luggage description ("${descriptions[0]}") ` +
+      `instead of distinct descriptions — see bug #73504. Options: ${JSON.stringify(options)}`
+  ).toBeGreaterThan(1);
+});
+
 When("I wait for the save button", async function () {
   logger.info("Waiting for save button to be visible");
   const cartPage = getPageObject(this.page, CartPage);
