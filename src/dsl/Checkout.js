@@ -439,6 +439,41 @@ const Checkout = {
   },
 
   /**
+   * Verifies the booker notification phone on checkout contains the expected digits.
+   * The "send notifications on behalf of" section pre-populates the booker phone
+   * (dial code + area code + number); the concatenated value must contain the
+   * expected number (spaces ignored).
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} expectedPhone - Expected phone digits, may be space-separated (e.g. "975 251 4545")
+   */
+  async verifyBookerNotificationPhoneContains(page, expectedPhone) {
+    if (!page) throw new Error('page is required');
+    if (typeof expectedPhone !== 'string' || !expectedPhone.trim()) {
+      throw new Error('expectedPhone must be a non-empty string, got: ' + typeof expectedPhone);
+    }
+
+    const { expect } = require("@playwright/test");
+    const checkoutPage = getPageObject(page, CheckoutPage);
+
+    // Ensure the checkout page (and its booking-details section) is fully loaded before
+    // reading the phone fields, to avoid a false read on a not-yet-rendered page.
+    await checkoutPage.waitForBookingDetailsText();
+
+    const expected = expectedPhone.replace(/\s+/g, '');
+
+    // getBookerNotificationPhoneValues() returns null while the notifications-on-behalf
+    // section has not rendered — coerce it to '' so the poll keeps retrying instead of
+    // throwing on the first pass.
+    await expect
+      .poll(async () => (await checkoutPage.getBookerNotificationPhoneValues()) ?? '', {
+        message: `[Checkout.verifyBookerNotificationPhoneContains] Expected the booker notification phone on checkout to contain "${expectedPhone}", but the booker phone fields never showed it. The "send notifications on behalf of" section may not render for this user, or the booker profile phone is not surfaced on checkout.`,
+        timeout: 15000,
+      })
+      .toContain(expected);
+  },
+
+  /**
    * Unchecks the "Don't share contact details with airlines" checkbox
    * and fills in the traveler phone number on the checkout page.
    *

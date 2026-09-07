@@ -548,6 +548,11 @@ Then("the out of policy indicator should be visible in baggage section from extr
   await Cart.verifyBaggageExtrasOOPIndicatorVisible(this.page);
 });
 
+Then("the out of policy indicator should not be visible in baggage section from extras", async function () {
+  logger.info("Verifying OOP indicator is not visible in the baggage extras drawer");
+  await Cart.verifyBaggageExtrasOOPIndicatorNotVisible(this.page);
+});
+
 Then(
   "when I hovering over the out of policy indicator in baggage section from extras it should contain message {string}",
   async function (expectedMessage) {
@@ -1537,6 +1542,11 @@ Then("the all-inclusive rate link should not be visible in cart", async function
 Then("the out of policy free text justification should not be visible in cart", async function () {
   logger.info("Verifying OOP free text justification is not visible in cart");
   await Cart.verifyOOPFreeTextJustificationNotVisibleInCart(this.page);
+});
+
+Then("justification entire section should not be visible in cart", async function () {
+  logger.info("Verifying the entire OOP justification section is not visible in cart");
+  await Cart.verifyOOPJustificationSectionNotVisibleInCart(this.page);
 });
 
 Then("the OOP justification text should be {string}", async function (expectedText) {

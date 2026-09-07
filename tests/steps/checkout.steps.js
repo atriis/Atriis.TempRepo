@@ -161,6 +161,11 @@ Then("the booker notification phone on checkout should contain numbers", async f
   await Checkout.verifyBookerNotificationPhoneContainsNumbers(this.page);
 });
 
+Then("the booker notification phone on checkout should contain {string}", async function (phone) {
+  logger.info("Verifying booker notification phone on checkout contains expected numbers", { phone });
+  await Checkout.verifyBookerNotificationPhoneContains(this.page, phone);
+});
+
 Then('the checkout total price should match the saved flight cart total', async function () {
   if (typeof this.flightCartTotalForCheckout !== 'number') {
     throw new Error("No stored flight cart total found. Run 'I save the current flight cart total for checkout comparison' before this step.");

@@ -2226,6 +2226,41 @@ const Cart = {
   },
 
   /**
+   * Verifies the out-of-policy indicator is NOT shown inside the baggage extras drawer.
+   * Negative twin of verifyBaggageExtrasOOPIndicatorVisible — used after picking a
+   * within-policy baggage option (the policy only trips from the 2nd bag on).
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @returns {Promise<void>}
+   */
+  async verifyBaggageExtrasOOPIndicatorNotVisible(page) {
+    if (!page) {
+      throw new Error('[Cart.verifyBaggageExtrasOOPIndicatorNotVisible] "page" is required.');
+    }
+
+    logger.debug('Verifying the out-of-policy badge is NOT shown in the baggage extras drawer');
+
+    try {
+      const cartPage = getPageObject(page, CartPage);
+      // isBaggageOOPBadgeVisible swallows its own wait timeout and returns false, so the
+      // shorter budget is just how long a badge is given to appear before we call it absent.
+      const isVisible = await cartPage.isBaggageOOPBadgeVisible(5000);
+      expect(
+        isVisible,
+        `Out-of-policy indicator was shown in the baggage extras drawer. ` +
+        `Selecting "CHECKED BAG 1st" must NOT breach the travel policy, yet the badge ` +
+        `(${CART_SELECTORS.BAGGAGE_OOP_BADGE}) appeared within 5000ms — either the policy limit changed, ` +
+        `or a previous baggage selection was still in place when the option was picked.`
+      ).toBe(false);
+    } catch (err) {
+      if (err.matcherResult) throw err;
+      throw new Error(
+        `[Cart.verifyBaggageExtrasOOPIndicatorNotVisible] Failed to verify the baggage extras out-of-policy indicator is absent: ${err.message}`
+      );
+    }
+  },
+
+  /**
    * Hovers over the Out of Policy info icon and gets tooltip text.
    * Returns the tooltip text for validation in step definitions.
    * @param {import('playwright').Page} page - Playwright page instance
@@ -2350,6 +2385,39 @@ const Cart = {
     const cartPage = getPageObject(page, CartPage);
     const isVisible = await cartPage.getOOPJustificationTextbox().isVisible();
     expect(isVisible).toBe(false);
+  },
+
+  /**
+   * Verifies the whole out-of-policy justification block is absent from the cart.
+   * A quote that breaks no travel policy rule never renders the justification section at all,
+   * so this is a count check and not a visibility check.
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @returns {Promise<void>}
+   */
+  async verifyOOPJustificationSectionNotVisibleInCart(page) {
+    if (!page) {
+      throw new Error('[Cart.verifyOOPJustificationSectionNotVisibleInCart] "page" is required.');
+    }
+
+    logger.debug('Verifying the out-of-policy justification section is absent from the cart');
+
+    try {
+      const cartPage = getPageObject(page, CartPage);
+      // Count-based on purpose: the selector is not :visible-filtered, so toBeHidden() would be
+      // a strict-mode violation on a cart holding more than one quote.
+      await expect(
+        cartPage.getOOPJustificationSection(),
+        `The out-of-policy justification section (${CART_SELECTORS.OOP_JUSTIFICATION_SECTION}) is rendered in the cart. ` +
+        `After saving a within-policy baggage option the quote must carry no travel policy violation, ` +
+        `so no justification block (title, dropdown or free text) should exist at all.`
+      ).toHaveCount(0);
+    } catch (err) {
+      if (err.matcherResult) throw err;
+      throw new Error(
+        `[Cart.verifyOOPJustificationSectionNotVisibleInCart] Failed to verify the out-of-policy justification section is absent from the cart: ${err.message}`
+      );
+    }
   },
 
   /**

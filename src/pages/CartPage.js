@@ -5019,9 +5019,12 @@ class CartPage {
     if (!optionDropdown || typeof optionDropdown !== 'string') {
       throw new Error('optionDropdown must be a non-empty string');
     }
-    // Use hasText for partial matching - allows "BAG" to match "CHECKED BAG 2nd - USD80.00"
+    // Use hasText for partial matching - allows "BAG" to match "CHECKED BAG 2nd - USD80.00".
+    // Scope to :visible - reopening the extras drawer leaves the previous el-select popper in
+    // the DOM, so an unscoped .first() resolves to the stale hidden option and never becomes
+    // clickable. Same scoping as getVisibleDropdownOptions() and the FOP option click below.
     await this.page
-      .locator(SELECTORS.DROPDOWN_OPTION, { hasText: optionDropdown })
+      .locator(`${SELECTORS.DROPDOWN_OPTION}:visible`, { hasText: optionDropdown })
       .first()
       .click();
   }
