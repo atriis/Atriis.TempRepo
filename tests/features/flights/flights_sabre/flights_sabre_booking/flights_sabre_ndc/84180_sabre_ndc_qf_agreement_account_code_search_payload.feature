@@ -1,10 +1,10 @@
 @regression @flights @sabre @sabre-ndc @payload
 Feature: 84180 Attach the Corporate ABN/QCI to Every Qantas Sabre NDC Shopping Request
   As a corporate traveler with a Sabre NDC Qantas agreement
-  I want my QF agreement account code sent in the NDC flight search
+  I want my QF agreement account code and corporate ABN sent in the NDC flight search
   So that Qantas returns the agreement fares my company is entitled to
 
-  Scenario: Round trip Sabre NDC search sends the QF agreement account code
+  Scenario: Round trip Sabre NDC search sends the QF agreement account code and the corporate ABN
     Given I am logged in as "QF@sabre.corp" booking a new trip
     And I have added myself as the traveler
     When I search for a round trip flight from "SYD" to "MEL"
@@ -20,7 +20,13 @@ Feature: 84180 Attach the Corporate ABN/QCI to Every Qantas Sabre NDC Shopping R
                 "CarrierSpecificQualifiers": [
                   {
                     "CarrierCode": "QF",
-                    "AccountCodes": ["FSP92"]
+                    "AccountCodes": ["FSP92"],
+                    "Qualifier": [
+                      {
+                        "Name": "ABN",
+                        "Value": "123456789"
+                      }
+                    ]
                   }
                 ]
               }
