@@ -48,6 +48,12 @@ const SELECTORS = {
   // the sibling nav entries are v-if gated by permissions, so the index shifts per user.
   EXPENSES_NAV_ITEM:
     '.app-side-nav .top-container .icon-container:has(.material-symbols-outlined:text-is("account_balance_wallet"))',
+  // The label inside EXPENSES_NAV_ITEM. app-side-nav.vue renders the entry as exactly two spans:
+  // the wallet glyph (.material-symbols-outlined) and an unclassed
+  // `<span>{{ expenseDisplayName }} - {{ $t('common.expenses') }}</span>`. Excluding the glyph span
+  // is what makes an exact-text assertion possible — the icon's text content is the ligature name
+  // ("account_balance_wallet"), so reading the container's own text would include it.
+  EXPENSES_NAV_ITEM_LABEL: 'span:not(.material-symbols-outlined)',
 };
 
 class MenuPage {
@@ -177,6 +183,17 @@ class MenuPage {
    */
   getExpensesNavItem(expenseName) {
     return this.page.locator(SELECTORS.EXPENSES_NAV_ITEM).filter({ hasText: expenseName }).first();
+  }
+
+  /**
+   * Gets the label span of the corporate expenses side-nav entry — the "<expenseName> - Expenses"
+   * text on its own, without the wallet glyph's ligature text.
+   *
+   * @param {string} expenseName - The corporate expense display name (e.g. "MESH")
+   * @returns {import('@playwright/test').Locator}
+   */
+  getExpensesNavItemLabel(expenseName) {
+    return this.getExpensesNavItem(expenseName).locator(SELECTORS.EXPENSES_NAV_ITEM_LABEL).first();
   }
 
   /**

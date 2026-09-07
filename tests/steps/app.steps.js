@@ -169,10 +169,38 @@ When("I open the {string} expenses link from the side navigation", async functio
   logger.info("Opening the corporate expenses link from the side navigation", { expenseName });
   // Kept for the Then step's failure message ("<name> - Expenses").
   this.expensesName = expenseName;
-  this.expensesSsoTab = await App.openExpensesLinkFromSideNav(this.page, expenseName);
+  const opened = await App.openExpensesLinkFromSideNav(this.page, expenseName);
+  this.expensesSsoTab = opened.ssoTab;
+  // The URL the app asked the browser to open. Kept because the opened tab's own url() is not the
+  // configured value once the provider is unreachable or redirects — see App.verifyExpensesTabUrl.
+  this.expensesRequestedUrl = opened.requestedUrl;
 });
 
 // ===== THEN STEPS =====
+
+/**
+ * Asserts the corporate expenses entry is in the side navigation, labelled "<name> - Expenses".
+ * Read-only, so it can precede the step that opens the link in the same scenario.
+ * The parameter is the expense DISPLAY NAME only ("MESH"), matching the open step above.
+ */
+Then("the homepage menu should display the {string} expenses link", async function (expenseName) {
+  logger.info("Verifying the corporate expenses link is displayed in the homepage menu", { expenseName });
+  await App.verifyExpensesLinkDisplayedInSideNav(this.page, expenseName);
+});
+
+/**
+ * Asserts the expenses link opened a new tab targeting an exact expected URL. The expected value
+ * must include the scheme, because it is compared against the app's window.open target verbatim.
+ * Use when the corporation's configured expenses URL is known; use the SSO-provider step below
+ * when it is not (that one asserts only that the tab left the app's own origin).
+ */
+Then("the expenses link should open a new tab with the url {string}", async function (expectedUrl) {
+  logger.info("Verifying the URL of the tab opened by the expenses link", { expectedUrl });
+  // The DSL closes the opened tab in its finally block, so drop the World references afterwards.
+  await App.verifyExpensesTabUrl(this.expensesSsoTab, this.page, expectedUrl, this.expensesRequestedUrl);
+  this.expensesSsoTab = null;
+  this.expensesRequestedUrl = null;
+});
 
 Then("the expenses link should open the SSO provider page in a new tab", async function () {
   logger.info("Verifying the expenses link opened the SSO provider in a new tab");

@@ -549,6 +549,50 @@ const App = {
   },
 
   /**
+   * Verifies the corporate expenses entry is present in the side navigation, labelled exactly
+   * "<expenseName> - Expenses".
+   *
+   * Read-only: it does NOT click, so it can run before the open step in the same scenario.
+   * The entry is rendered only once the async per-corporation user-expense lookup resolves
+   * (and only on desktop viewports), hence the long visibility wait.
+   *
+   * @param {import('playwright').Page} page - The app tab showing the side navigation
+   * @param {string} expenseName - The corporate expense display name (e.g. "MESH")
+   * @returns {Promise<{label: string}>}
+   */
+  async verifyExpensesLinkDisplayedInSideNav(page, expenseName) {
+    if (!page) throw new Error('[App.verifyExpensesLinkDisplayedInSideNav] page is required');
+    if (!expenseName || typeof expenseName !== 'string') {
+      throw new Error(`[App.verifyExpensesLinkDisplayedInSideNav] "expenseName" must be a non-empty string, got: ${typeof expenseName} (${JSON.stringify(expenseName)})`);
+    }
+
+    const expectedLabel = `${expenseName} - Expenses`;
+    logger.debug('Verifying the corporate expenses link is displayed in the side navigation', { expenseName });
+
+    const menuPage = getPageObject(page, MenuPage);
+    const label = menuPage.getExpensesNavItemLabel(expenseName);
+
+    await expect(
+      label,
+      `Expected the side navigation to show the "${expectedLabel}" entry, but it never became visible. ` +
+      `That entry renders only when BOTH an expense display name and an expense URL come back from the ` +
+      `per-corporation user-expense lookup (getUserExpense), and only on desktop viewports — so this can ` +
+      `mean this user's corporation has no expenses provider configured rather than a broken selector.`
+    ).toBeVisible({ timeout: 30000 });
+
+    // Exact text, not a substring: the display name is what the corporation configured, and a
+    // partial match would pass on a differently-named provider that happens to contain it.
+    await expect(
+      label,
+      `Expected the expenses side-nav entry to read exactly "${expectedLabel}". The label is ` +
+      `"<expenseDisplayName> - <translated 'Expenses'>", so a mismatch means either a different ` +
+      `display name for this corporation or a non-English display language on the profile.`
+    ).toHaveText(expectedLabel, { timeout: 15000 });
+
+    return { label: expectedLabel };
+  },
+
+  /**
    * Opens the corporate expenses provider from the side navigation ("<expenseName> - Expenses").
    *
    * Clicking that entry does NOT navigate the app tab: the app calls openNewWindow(..., '_blank'),
@@ -558,7 +602,8 @@ const App = {
    *
    * @param {import('playwright').Page} page - The app tab showing the side navigation
    * @param {string} expenseName - The corporate expense display name (e.g. "MESH")
-   * @returns {Promise<import('playwright').Page>} The newly opened SSO provider tab
+   * @returns {Promise<{ssoTab: import('playwright').Page, requestedUrl: string|null}>} The newly
+   *   opened SSO provider tab, plus the URL the app actually asked the browser to open
    */
   async openExpensesLinkFromSideNav(page, expenseName) {
     if (!page) throw new Error('[App.openExpensesLinkFromSideNav] page is required');
@@ -582,6 +627,24 @@ const App = {
         throw new Error('[App.openExpensesLinkFromSideNav] page context is null');
       }
 
+      // Record what the app asks the browser to open, BEFORE the click. The nav entry is a bare
+      // <div @click="expenseRedirect"> with no href, and on desktop the app reaches the provider
+      // through utilService.openNewWindow -> window.open(expense.Url, '_blank') — so this hook is
+      // the ONLY place the configured URL is observable verbatim. The opened tab's own url() is
+      // not a substitute: a provider that is unreachable or that redirects leaves the tab on
+      // chrome-error://chromewebdata/ or on a post-redirect URL, neither of which is the
+      // configured value. Patching at call time is safe because openNewWindow resolves
+      // window.open on every call rather than capturing it at module load.
+      await page.evaluate(() => {
+        if (window.__atriisOpenedUrls) return;
+        window.__atriisOpenedUrls = [];
+        const nativeOpen = window.open;
+        window.open = function (url, ...rest) {
+          window.__atriisOpenedUrls.push(url === undefined || url === null ? '' : String(url));
+          return nativeOpen.call(window, url, ...rest);
+        };
+      });
+
       // Arm new-tab detection BEFORE the click, otherwise the tab can open before we listen.
       const ssoTabPromise = context.waitForEvent('page', { timeout: 20000 });
       // Keep that rejection handled. The click below can take longer than the 20s wait, so if the
@@ -595,8 +658,14 @@ const App = {
       // The provider is third-party: "domcontentloaded" is enough, and failures here are not
       // fatal — the URL assertion in verifyExpensesSsoTabOpened is what decides the outcome.
       await ssoTab.waitForLoadState('domcontentloaded', { timeout: 30000 }).catch(() => {});
-      logger.info('Corporate expenses SSO tab opened', { expenseName, url: ssoTab.url() });
-      return ssoTab;
+
+      // Read the hook back after the click. Left null rather than defaulted when nothing was
+      // recorded, so verifyExpensesTabUrl fails loudly instead of comparing against a placeholder.
+      const openedUrls = await page.evaluate(() => window.__atriisOpenedUrls || []).catch(() => []);
+      const requestedUrl = openedUrls.length ? openedUrls[openedUrls.length - 1] : null;
+
+      logger.info('Corporate expenses SSO tab opened', { expenseName, requestedUrl, url: ssoTab.url() });
+      return { ssoTab, requestedUrl };
     } catch (err) {
       throw new Error(
         `[App.openExpensesLinkFromSideNav] Failed to open the "${expenseName} - Expenses" side-nav link and capture the ` +
@@ -699,6 +768,88 @@ const App = {
     }
 
     return { url: ssoUrl };
+  },
+
+  /**
+   * Verifies the expenses side-nav link opened a new tab targeting an EXACT expected URL, then
+   * closes that tab and returns focus to the app.
+   *
+   * Use this instead of verifyExpensesSsoTabOpened when the scenario knows the expenses URL that
+   * the corporation is configured with. The two are deliberately separate: verifyExpensesSsoTabOpened
+   * asserts only that the tab left the app's own origin (the right check when the provider URL is
+   * unknown), and that structural check would FAIL for an expenses URL served from the app origin,
+   * which an exact expected URL is free to be.
+   *
+   * WHAT IS COMPARED: the URL the app asked the browser to open (the window.open target recorded by
+   * openExpensesLinkFromSideNav) — NOT the URL the opened tab settles on. Those differ whenever the
+   * configured provider is unreachable or redirects: staging's "vvv" corporation is configured with
+   * https://abc, which resolves to nothing, so the tab settles on chrome-error://chromewebdata/ and
+   * an assertion on the settled URL can never pass even though the app behaved correctly. The
+   * requested URL is also the stricter signal — it is the configured value verbatim, before any
+   * provider-side redirect or session parameters are appended.
+   *
+   * The tab is still required: this asserts the link genuinely opened one, not merely that the app
+   * computed a URL. The tab's settled URL is logged for diagnosis but never asserted on.
+   *
+   * The comparison is exact string equality, so if a run ever fails with only extra query
+   * parameters, the fix is to loosen this to a prefix check — never to drop the assertion.
+   *
+   * @param {import('playwright').Page} ssoTab - The tab captured when the expenses link was clicked
+   * @param {import('playwright').Page} appPage - The app tab; refocused after the assertion
+   * @param {string} expectedUrl - The exact URL the link must open, scheme included
+   * @param {string} requestedUrl - The window.open target recorded at click time
+   * @returns {Promise<{url: string, settledUrl: string}>}
+   */
+  async verifyExpensesTabUrl(ssoTab, appPage, expectedUrl, requestedUrl) {
+    if (!ssoTab) {
+      throw new Error(
+        '[App.verifyExpensesTabUrl] "ssoTab" is required — no opened tab was stored. Ensure the ' +
+        '"I open the ... expenses link from the side navigation" step ran first.'
+      );
+    }
+    if (!appPage) {
+      throw new Error('[App.verifyExpensesTabUrl] "appPage" is required — it is refocused after the assertion.');
+    }
+    if (!expectedUrl || typeof expectedUrl !== 'string') {
+      throw new Error(`[App.verifyExpensesTabUrl] "expectedUrl" must be a non-empty string, got: ${typeof expectedUrl} (${JSON.stringify(expectedUrl)})`);
+    }
+
+    logger.debug('Verifying the URL of the tab opened by the expenses link', { expectedUrl, requestedUrl });
+
+    const settledUrl = ssoTab.url();
+    try {
+      if (!requestedUrl || typeof requestedUrl !== 'string') {
+        throw new Error(
+          `[App.verifyExpensesTabUrl] No window.open target was recorded for the expenses link, so the ` +
+          `configured URL cannot be read. On desktop the app reaches the provider through ` +
+          `utilService.openNewWindow -> window.open, so an empty recording means the click took the mobile ` +
+          `router.push branch (check the viewport) or the window.open hook was installed after the click. ` +
+          `The tab that did open settled on "${settledUrl}".`
+        );
+      }
+
+      // Thrown rather than expect(value, message): this repo's @playwright/test silently discards
+      // expect's custom message, and the bare "expected/received" diff would not say that the value
+      // compared is corporation config rather than anything the test controls.
+      if (requestedUrl !== expectedUrl) {
+        throw new Error(
+          `[App.verifyExpensesTabUrl] Expected the expenses link to open exactly "${expectedUrl}", but the ` +
+          `app asked the browser to open "${requestedUrl}". That value is corporation config (expense.Url ` +
+          `from the per-corporation user-expense lookup, prefixed with the app's expense endpoint only when ` +
+          `it has no http(s) scheme), so a mismatch means this corporation is configured with a different ` +
+          `URL — check the expenses provider on the corporation rather than the selector. The opened tab ` +
+          `settled on "${settledUrl}" (not asserted on: an unreachable or redirecting provider moves it).`
+        );
+      }
+    } finally {
+      logger.info('Tab opened by the expenses link', { expectedUrl, requestedUrl, settledUrl });
+      // A foreground target="_blank" tab throttles the app page and swallows the next interaction,
+      // so always close it and hand focus back to the app.
+      await ssoTab.close().catch(() => {});
+      await appPage.bringToFront().catch(() => {});
+    }
+
+    return { url: requestedUrl, settledUrl };
   },
 
   /**
