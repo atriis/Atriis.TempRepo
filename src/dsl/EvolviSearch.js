@@ -392,12 +392,20 @@ const EvolviSearch = {
    * @param {import('playwright').Page} page
    * @param {string|object} routeInput
    * @param {object} options
+   * @param {boolean} [options.skipSearchClick=false] - Fill the form (tab, route, dates) but leave
+   *   the Search button unclicked. ADO #80167: selecting a per-passenger railcard AFTER results have
+   *   already loaded re-triggers the fare search (the discount depends on which railcards are
+   *   combined) — with two or more travellers assigned a railcard, that's two or more re-fetches
+   *   stacked back to back, which can outrun even a generous results-load timeout. The recorded flow
+   *   (records/80167_1.js) instead picks every railcard BEFORE the one and only Search click, so
+   *   results load once, already correct. Pair with EvolviSearch.clickEvolviSearchButton once railcard
+   *   selection is done.
    * @returns {Promise<object>} Search result metadata
    */
   async searchEvolviOneWay(
     page,
     routeInput = evolviRoutes.defaultRoute,
-    { departureIndex = SEARCH_DEFAULTS.RAIL.DEPARTURE_INDEX } = {},
+    { departureIndex = SEARCH_DEFAULTS.RAIL.DEPARTURE_INDEX, skipSearchClick = false } = {},
   ) {
     // Resolve route (key or inline object)
     const { from, to } = resolveRoute(
@@ -433,9 +441,33 @@ const EvolviSearch = {
     // bug. Confirming the form left the screen is the only reliable proof the click took. Round
     // trips already went through this; one way needs it for the same reason. See
     // clickSearchUntilSubmitted.
-    await clickSearchUntilSubmitted(searchPage, evolviSearchPage);
+    //
+    // Skipped when skipSearchClick is set (ADO #80167): a per-passenger railcard is then selected
+    // between filling the form and firing this click, via EvolviSearch.clickEvolviSearchButton.
+    if (!skipSearchClick) {
+      await clickSearchUntilSubmitted(searchPage, evolviSearchPage);
+    }
 
-    return { searched: true, routeInput, from, to, departureIndex };
+    return { searched: !skipSearchClick, routeInput, from, to, departureIndex };
+  },
+
+  /**
+   * Clicks the Evolvi search form's Search button. Paired with `searchEvolviOneWay(page, route,
+   * { skipSearchClick: true })` so railcard selection can happen between filling the form and firing
+   * the search — see that option's doc comment for why (ADO #80167).
+   *
+   * @param {import('playwright').Page} page
+   * @returns {Promise<{searched: true}>}
+   */
+  async clickEvolviSearchButton(page) {
+    if (!page) throw new Error('[EvolviSearch.clickEvolviSearchButton] "page" is required.');
+    const searchPage = getPageObject(page, SearchPage);
+    const evolviSearchPage = getPageObject(page, EvolviSearchPage);
+    // Not a bare waitAndClickSearchButton: the railcard selections just made can still be settling
+    // (popper close + form revalidation) right as this fires, which is the same swallowed-click
+    // window clickSearchUntilSubmitted exists for elsewhere in this file. See its doc comment.
+    await clickSearchUntilSubmitted(searchPage, evolviSearchPage);
+    return { searched: true };
   },
 
   /**
@@ -546,6 +578,50 @@ const EvolviSearch = {
     await fillRoundTripStationsAndDates(page, { from, to, departureIndex, returnIndex });
 
     return { searched: false, routeInput, from, to, departureIndex, returnIndex };
+  },
+
+  /**
+   * Selects a rail card for one traveller in the UK Rail search form (evolvi-search-inputs.vue
+   * renders one rail-card select per traveller in `railInfo.numOfTravellers` order).
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @param {number} travelerIndex - 0-based traveller row
+   * @param {string} railcardOption - Railcard identifier in "{code} - {name}" form, e.g.
+   *   "YNG - 16-25 Railcard" — the same identifier used everywhere else (search step data, the
+   *   Railcard Assignment Cart Extra, ADO). The search dropdown itself only renders the bare
+   *   `railCardName` ("16-25 Railcard", no code prefix) — see evolvi-search-inputs.vue's
+   *   `railCardsOptionsToShow` vs. uk-rail-railcard-assignment.ts's `railCardLabel()`, which is the
+   *   only place in the app that prepends the code. The leading "{code} - " is stripped here so
+   *   the option lookup matches what's actually rendered at search.
+   * @returns {Promise<{selected: true, travelerIndex: number, railcardOption: string}>}
+   */
+  async selectRailcardForTraveler(page, travelerIndex, railcardOption) {
+    if (!page) {
+      throw new Error('[EvolviSearch.selectRailcardForTraveler] "page" is required.');
+    }
+    if (!Number.isInteger(travelerIndex) || travelerIndex < 0) {
+      throw new Error(
+        `[EvolviSearch.selectRailcardForTraveler] "travelerIndex" must be a non-negative integer, got: ${travelerIndex}`,
+      );
+    }
+    if (!railcardOption || typeof railcardOption !== "string") {
+      throw new Error(
+        `[EvolviSearch.selectRailcardForTraveler] "railcardOption" must be a non-empty string, got: ${typeof railcardOption}`,
+      );
+    }
+
+    const searchOptionLabel = railcardOption.replace(/^[A-Z]{2,4}\s*-\s*/, "");
+
+    const evolviSearchPage = getPageObject(page, EvolviSearchPage);
+    await evolviSearchPage.openRailcardDropdown(travelerIndex);
+    await evolviSearchPage.selectOpenPopperOption(searchOptionLabel);
+
+    logger.info("[EvolviSearch.selectRailcardForTraveler] Selected rail card for traveller", {
+      travelerIndex,
+      railcardOption,
+    });
+
+    return { selected: true, travelerIndex, railcardOption };
   },
 };
 

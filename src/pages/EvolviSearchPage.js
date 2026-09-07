@@ -94,6 +94,18 @@ const SELECTORS = {
   SPLIT_TICKET_TYPE_TOOLTIP: ".el-popper.is-light:visible:not(.app-tooltip)",
 
   SEARCH_FORM,
+  // Rail-card selects live in the SECOND .app-column of `.extra-details-container` — one per
+  // traveller, in traveller order (v-for="(passenger, passengerIdx) in railInfo.numOfTravellers").
+  // Like TRAVELERS_COUNT_SELECT, app-select passes no `name`/testid here, so position is the only
+  // stable handle; `nth(travelerIndex)` (0-based) picks the row for a given traveller.
+  RAILCARD_SELECT:
+    ".uk-rail-search:visible .extra-details-container > .app-column:nth-child(2) .el-select",
+  // Same popper markup TRAVELERS_COUNT_OPTION targets — app-select always renders its open options
+  // through the shared .app-select-popper regardless of which select opened it. Kept as its own
+  // named constant (rather than reusing TRAVELERS_COUNT_OPTION) so a reader of the rail-card methods
+  // below isn't misled into thinking they're scoped to the traveller-count select.
+  OPEN_POPPER_OPTION:
+    ".app-select-popper:visible .el-select-dropdown__item:visible",
 };
 
 class EvolviSearchPage {
@@ -326,6 +338,72 @@ class EvolviSearchPage {
       await tooltip.waitFor({ state: "visible", timeout });
     }
     return ((await tooltip.innerText()) ?? "").replace(/\s+/g, " ").trim();
+  }
+
+  /**
+   * Opens the rail-card select for a given traveller row and waits for its options to render.
+   *
+   * @param {number} travelerIndex - 0-based traveller row
+   * @param {number} [timeout=30000]
+   */
+  async openRailcardDropdown(travelerIndex, timeout = 30000) {
+    const select = this.page.locator(SELECTORS.RAILCARD_SELECT).nth(travelerIndex);
+    await select.waitFor({ state: "visible", timeout });
+
+    // A prior traveller's railcard select re-flows this container (rows above/below shift as their
+    // el-select fills with a value), so this row's own select can still be settling into its final
+    // position right as we click it — Playwright's stability check then sees it move mid-click and
+    // times out even though a real click at that point would have landed fine. Same fallback pattern
+    // as SearchPage.clickCalendarNextArrow: force the click once normal actionability gives up.
+    try {
+      await select.click({ timeout: 5000 });
+    } catch (error) {
+      if (!(error instanceof Error) || !/not stable|intercepts pointer events|timeout/i.test(error.message)) {
+        throw error;
+      }
+      await select.click({ force: true, timeout: 5000 });
+    }
+
+    await this.page
+      .locator(SELECTORS.OPEN_POPPER_OPTION)
+      .first()
+      .waitFor({ state: "visible", timeout });
+  }
+
+  /**
+   * Clicks the option matching the given text in the currently open rail-card/traveller-count
+   * popper (both share the same app-select-popper markup).
+   *
+   * @param {string} optionText - Exact option label, e.g. "YNG - 16-25 Railcard"
+   * @param {number} [timeout=15000]
+   */
+  async selectOpenPopperOption(optionText, timeout = 15000) {
+    const option = this.page
+      .locator(SELECTORS.OPEN_POPPER_OPTION)
+      .filter({ hasText: optionText })
+      .first();
+    await option.waitFor({ state: "visible", timeout });
+
+    // app-select (evolvi-search-inputs.vue) closes the popper (blur()) the instant Vue processes the
+    // option's select event — which can start tearing down the popper mid-click, before Playwright's
+    // own hover/stability check finishes. A real user's click still lands (the app reacts on
+    // mousedown), but Playwright's synthetic click keeps re-checking stability and eventually sees the
+    // option go from "not stable" to "not visible" without ever completing — same race documented in
+    // SearchPage.clickCalendarNextArrow. Force the click once normal actionability gives up so the
+    // pointer event dispatches immediately instead of waiting out a close animation that never settles.
+    try {
+      await option.click({ timeout: 5000 });
+    } catch (error) {
+      if (!(error instanceof Error) || !/not stable|not visible|intercepts pointer events|timeout/i.test(error.message)) {
+        throw error;
+      }
+      await this.page
+        .locator(SELECTORS.OPEN_POPPER_OPTION)
+        .filter({ hasText: optionText })
+        .first()
+        .click({ force: true, timeout: 5000 })
+        .catch(() => {});
+    }
   }
 }
 

@@ -18,6 +18,24 @@ When("I add an Evolvi round trip to the trip", async function () {
   await EvolviResults.addEvolviRoundtripToTrip(this.page);
 });
 
+// Traveler {int} is 1-based in Gherkin; converted to a 0-based row index at the step, same
+// convention as "I select railcard {string} for traveler {int} at search".
+When("I assign railcard {string} to traveler {int} in the Railcard Assignment extra", async function (railcardOption, travelerNumber) {
+  logger.info("Assigning railcard in Railcard Assignment extra", { railcardOption, travelerNumber });
+  await EvolviResults.assignRailcardInExtra(this.page, travelerNumber - 1, railcardOption);
+});
+
+// No page/DSL action needed — the row's select is clearable with no default, so an untouched row
+// is already "no railcard assigned". Kept as an explicit step for Gherkin readability.
+When("I leave traveler {int} without a railcard in the Railcard Assignment extra", async function (travelerNumber) {
+  logger.info("Leaving traveler without a railcard in Railcard Assignment extra", { travelerNumber });
+});
+
+When("I save the Railcard Assignment extra", async function () {
+  logger.info("Saving Railcard Assignment extra");
+  await EvolviResults.saveRailcardAssignmentExtra(this.page);
+});
+
 // ===== ROUND TRIP LEG SELECTION (test 34400) =====
 //
 // Where each leg's resolved journey is parked on the Cucumber World, so the selection step picks

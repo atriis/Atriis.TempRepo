@@ -21,6 +21,20 @@ When("I search for a one way Evolvi train from {string}", async function (routeK
   await EvolviSearch.searchEvolviOneWay(this.page, routeKey);
 });
 
+// Fills the one-way search form (tab, route, dates) but leaves the Search button unclicked, so a
+// per-passenger railcard can be picked before the search fires — matching the recorded flow and
+// avoiding the re-fetch-per-railcard-selection cost of picking cards after results already loaded
+// (ADO #80167). Pair with "I click the Evolvi search button" once railcard selection is done.
+When("I search for a one way Evolvi train from {string} without clicking search", async function (routeKey) {
+  logger.info("Filling one-way Evolvi search form without clicking search", { routeKey });
+  await EvolviSearch.searchEvolviOneWay(this.page, routeKey, { skipSearchClick: true });
+});
+
+When("I click the Evolvi search button", async function () {
+  logger.info("Clicking the Evolvi search button");
+  await EvolviSearch.clickEvolviSearchButton(this.page);
+});
+
 When("I search for a round trip Evolvi train from {string}", async function (routeKey) {
   logger.info("Searching for round trip Evolvi train", { routeKey });
   await EvolviSearch.searchEvolviRoundTrip(this.page, routeKey);
@@ -80,6 +94,13 @@ Then("I hover over split ticket info from {string} to see message {string}", asy
 Then("I also see message {string} when hover over split ticket info from {string}", async function (expectedMessage, radioLabel) {
   logger.info("Re-reading the Evolvi split type info tooltip", { radioLabel, expectedMessage });
   await EvolviSearch.expectSplitTicketTypeTooltipMessage(this.page, expectedMessage);
+});
+
+// Traveler {int} is 1-based in Gherkin (matches how travelers are described everywhere else in
+// the framework); the DSL/page layer below is 0-based, so the conversion happens here at the step.
+When("I select railcard {string} for traveler {int} at search", async function (railcardOption, travelerNumber) {
+  logger.info("Selecting railcard for traveler at search", { railcardOption, travelerNumber });
+  await EvolviSearch.selectRailcardForTraveler(this.page, travelerNumber - 1, railcardOption);
 });
 
 // ===== TODO STUBS — need DSL/Page implementation =====

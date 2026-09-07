@@ -1713,6 +1713,107 @@ class DynamicAndReferenceFieldsPage {
   }
 
   /**
+   * Selects the FIRST available option for EVERY traveller's copy of a mandatory reference-field
+   * dropdown OR fills EVERY traveller's still-empty copy of a free-text reference field with the
+   * given value — whichever widget the field actually renders as (e.g. "Travel Type" on a UK Rail
+   * booking is a plain text field, not a dropdown). Exists alongside
+   * selectFirstTravellerReferenceFieldOption (one named traveller) and selectFirstReferenceFieldOption
+   * (unscoped `.first()`, always the same traveller) for the case where the trip has multiple
+   * travellers, the field must be filled for ALL of them before "Book and Finalise" unblocks, and —
+   * unlike Payment Group/Bank account — the traveller names are not all known ahead of time (a random
+   * guest traveller's name isn't fixed in the test).
+   *
+   * @param {string} fieldName - Field label repeated once per traveller (e.g. "Travel Type")
+   * @param {string} [textValue="abc"] - Value typed into a free-text copy of the field. Ignored for a
+   *   dropdown copy, which always takes its first available option instead.
+   * @param {object} [options]
+   * @param {number} [options.timeout=15000]
+   * @returns {Promise<{filledCount: number}>} How many traveller copies were filled (already-filled ones are skipped)
+   */
+  async selectFirstAvailableOptionForAllTravelers(fieldName, textValue = 'abc', { timeout = 15000 } = {}) {
+    if (!fieldName || typeof fieldName !== 'string') {
+      throw new Error(
+        `[DynamicAndReferenceFieldsPage.selectFirstAvailableOptionForAllTravelers] "fieldName" must be a non-empty string, got: ${typeof fieldName} (${fieldName})`
+      );
+    }
+
+    // The Booking Details page renders the Travellers Reference Questions section asynchronously
+    // (a skeleton placeholder shows first) — wait for it to actually mount before doing anything
+    // else, the same way travellerFieldContainer waits for its own scoped container.
+    try {
+      await this.page.locator(SELECTORS.TRAVELER_FIELD_SECTION).first().waitFor({ state: 'visible', timeout });
+    } catch (err) {
+      throw new Error(
+        `[DynamicAndReferenceFieldsPage.selectFirstAvailableOptionForAllTravelers] The Travellers Reference Questions ` +
+        `section (${SELECTORS.TRAVELER_FIELD_SECTION}) never rendered within ${timeout}ms — the Booking Details page ` +
+        `may still be loading, or this trip has no reference questions to answer. Original: ${err.message}`
+      );
+    }
+
+    // Every traveller's section must be expanded first — a collapsed one leaves its copy of the field
+    // attached but not interactable.
+    await this.expandAllCollapsedTravelerSections();
+
+    const exactLabel = this.page.locator(SELECTORS.FIELD_LABEL).filter({ hasText: exactFieldLabelRegex(fieldName) });
+    const containers = this.page
+      .locator(SELECTORS.TRAVELER_FIELD_SECTION)
+      .locator(SELECTORS.FIELD_CONTAINER)
+      .filter({ has: exactLabel, visible: true });
+
+    const count = await containers.count();
+    if (count === 0) {
+      throw new Error(
+        `[DynamicAndReferenceFieldsPage.selectFirstAvailableOptionForAllTravelers] No traveller shows a reference field ` +
+        `labelled "${fieldName}" in the Travellers Reference Questions section (searched ${SELECTORS.FIELD_CONTAINER} ` +
+        `inside ${SELECTORS.TRAVELER_FIELD_SECTION}).`
+      );
+    }
+
+    let filledCount = 0;
+    for (let i = 0; i < count; i++) {
+      const container = containers.nth(i);
+      const selectWrapper = container.locator(SELECTORS.EL_SELECT).first();
+      const isDropdown = (await selectWrapper.count()) > 0;
+
+      if (isDropdown) {
+        // Element Plus renders a selected value in its own `.el-select__selected-item` node, separate
+        // from the placeholder span (which stays in the DOM, just visually hidden, once a value is
+        // set) — so its presence is a reliable "already filled" signal, unlike checking innerText,
+        // which is non-empty for an untouched select too (the placeholder text itself).
+        const hasValue = (await selectWrapper.locator('.el-select__selected-item').count()) > 0;
+        if (hasValue) continue;
+
+        await container.scrollIntoViewIfNeeded({ timeout: 5000 });
+        await selectWrapper.click({ timeout: 5000 });
+        await this.page.keyboard.press('ArrowDown');
+        await this.page.keyboard.press('Enter');
+        await this.page.waitForTimeout(300);
+        filledCount += 1;
+        continue;
+      }
+
+      // Not a dropdown — a free-text field (input-textbox.vue), e.g. "Travel Type".
+      const input = container.locator('input').first();
+      if ((await input.count()) === 0) {
+        throw new Error(
+          `[DynamicAndReferenceFieldsPage.selectFirstAvailableOptionForAllTravelers] Traveller copy #${i + 1} of ` +
+          `"${fieldName}" is neither a dropdown (${SELECTORS.EL_SELECT}) nor a text field (input) — unrecognized ` +
+          `reference-field widget.`
+        );
+      }
+      const existingValue = (await input.inputValue().catch(() => '')).trim();
+      if (existingValue) continue;
+
+      await container.scrollIntoViewIfNeeded({ timeout: 5000 });
+      await input.fill(textValue, { timeout: 5000 });
+      await input.blur();
+      filledCount += 1;
+    }
+
+    return { filledCount };
+  }
+
+  /**
    * Reads the current value of ONE traveller's reference field. The traveller-scoped counterpart of
    * getFieldValueByLabel, which resolves duplicated labels page-wide with `.first()` and so reports
    * the first traveller's value for every traveller asked about.

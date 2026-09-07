@@ -233,6 +233,16 @@ When("I select the first available option for the {string} reference field for t
   logger.info(`Selected traveller-scoped reference field option`, { fieldName, travelerName, selectedOption: result?.selectedOption });
 });
 
+// Fills EVERY traveller's still-empty copy of a mandatory reference field, for the case where the
+// field must be answered by all travellers before checkout unblocks but not every traveller's name is
+// known ahead of time (e.g. a randomly-generated guest). See the traveler-scoped step above when every
+// traveller's name IS known and only one specific copy should be filled.
+When("I select the first available option for the {string} reference field for all travelers", async function (fieldName) {
+  logger.info(`Selecting the first available option for reference field "${fieldName}" for all travelers (no proceed)`);
+  const result = await DynamicAndReferenceFields.selectFirstAvailableOptionForAllTravelers(this.page, fieldName);
+  logger.info(`Selected reference field option for all travelers`, { fieldName, filledCount: result?.filledCount });
+});
+
 // Fills a TEXT reference field in the search-gating reference-fields popup by its label (as written in
 // the feature, e.g. "* Custom Regular Expression 1"). Blurs after filling so a custom-regex validation
 // fires on entry. Follow with the validation-error / message assertion steps below.

@@ -659,6 +659,39 @@ const DynamicAndReferenceFields = {
   },
 
   /**
+   * Selects the first available option for EVERY traveller's copy of a mandatory reference-field
+   * dropdown, or (whichever widget the field actually renders as) fills every still-empty copy of a
+   * free-text field with the given value (ADO #80167 — a UK Rail multi-traveller booking needs its
+   * "Travel Type" question — a plain text field, not a dropdown — answered for all travellers,
+   * including a randomly-generated guest whose name isn't known ahead of time in the test, so neither
+   * the unscoped `.first()` variant nor the named-traveller variant above can be used here).
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} fieldName - Field label repeated once per traveller (e.g. "Travel Type")
+   * @param {string} [textValue="abc"] - Value typed into a free-text copy of the field; ignored for a dropdown copy
+   * @returns {Promise<{filledCount: number}>}
+   */
+  async selectFirstAvailableOptionForAllTravelers(page, fieldName, textValue = 'abc') {
+    if (!page) throw new Error('[DynamicAndReferenceFields.selectFirstAvailableOptionForAllTravelers] "page" is required.');
+    if (!fieldName || typeof fieldName !== 'string') {
+      throw new Error(
+        `[DynamicAndReferenceFields.selectFirstAvailableOptionForAllTravelers] "fieldName" must be a non-empty string, got: ${typeof fieldName} (${fieldName})`
+      );
+    }
+
+    const dynamicFieldsPage = getPageObject(page, DynamicAndReferenceFieldsPage);
+    logger.debug('Selecting/filling the first available value for all travellers\' copy of a reference field', { fieldName, textValue });
+    try {
+      return await dynamicFieldsPage.selectFirstAvailableOptionForAllTravelers(fieldName, textValue);
+    } catch (err) {
+      throw new Error(
+        `[DynamicAndReferenceFields.selectFirstAvailableOptionForAllTravelers] Could not fill the mandatory "${fieldName}" ` +
+        `reference field for every traveller, so the travel request cannot be submitted. Original: ${err.message}`
+      );
+    }
+  },
+
+  /**
    * Dismisses the open reference-fields popup via its Back/Close button, returning to the new-trip
    * page without proceeding. Used when the traveller set must be changed (e.g. adding a guest) before
    * re-running the search. Follow with an "add traveller" step and a fresh search.

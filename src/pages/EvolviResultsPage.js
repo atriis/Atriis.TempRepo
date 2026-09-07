@@ -61,6 +61,34 @@ const SELECTORS = {
   SELECTED_SUMMARY: ".selected-prices > .selected-price",
   SELECTED_SUMMARY_PICKED: ".has-price",
 
+  // "Railcard Assignment" Cart Extra (uk-rail-railcard-assignment.vue) — rendered on the Cart /
+  // Trip Overview, not the results grid above, but kept in this Evolvi-specific page rather than
+  // the generic CartPage since it is UK Rail-only. Each row is one traveller in trip.passengers
+  // order; the row's select carries a dynamic `uk-rail.railcard-assignment.select-${passenger.id}`
+  // testid (passenger.id is not known ahead of time), so rows are addressed positionally instead.
+  //
+  // extras-layout.vue renders every Cart Extra collapsed by default — an "Add"/"Edit"/"View" span
+  // that calls open() — and only its OPEN state exposes the #extra-content slot the rows above live
+  // in. `.railcard-row` never appears until that opener is clicked, which is what
+  // RAILCARD_ASSIGNMENT_OPENER exists to click first. Scoped by the extra's own title text (`.extra`
+  // wraps one Cart Extra card each — Delivery Method, Seating, Railcard Assignment, ... — sharing
+  // the same extras-layout markup) so this can't accidentally click a sibling extra's opener.
+  RAILCARD_ASSIGNMENT_OPENER: ".extra:has-text('Railcard Assignment') .extra__btns .is-clickable",
+  // NOT scoped by a `[data-testid="uk-rail.railcard-assignment.rows"]` ancestor: the source template
+  // has that attribute, but it is absent from the deployed app (confirmed live — 0 matches for the
+  // attribute, 3 for `.railcard-row` alone, immediately, no wait needed). `.railcard-row` is specific
+  // enough on its own; every timeout raised chasing this before finding that out was solving nothing.
+  RAILCARD_ASSIGNMENT_ROWS: ".railcard-row",
+  RAILCARD_ASSIGNMENT_ROW_SELECT: ".el-select",
+  // Same deployed-vs-source testid gap as RAILCARD_ASSIGNMENT_ROWS (confirmed live: 0 matches for
+  // either testid, but real `<button>Save</button>` / `<button>Cancel</button>` elements exist).
+  // `.extras-card` is the el-card class the Vue template renders around the rows AND these buttons,
+  // regardless of the outer extras-layout open/close state — stable enough to scope by, filtered to
+  // the Railcard Assignment card specifically since every Cart Extra shares that same el-card class.
+  RAILCARD_ASSIGNMENT_SAVE_BTN: ".extras-card:has-text('Railcard Assignment') button:has-text('Save')",
+  // Same shared app-select-popper markup EvolviSearchPage's rail-card select opens into.
+  RAILCARD_ASSIGNMENT_OPEN_POPPER_OPTION: ".app-select-popper:visible .el-select-dropdown__item:visible",
+
   // ===== Named fare groups (a fare type addressed by its title, e.g. "Anytime Return") =====
   //
   // uk-rail-results.vue renders one .main-rows group per entry of formattedTickets, keyed by the
@@ -268,13 +296,19 @@ class EvolviResultsPage {
    *
    * Waits until the "Outbound" text is visible, which indicates
    * the outbound results section has been rendered.
+   *
+   * A per-passenger railcard picked at search (evolvi-search-inputs.vue's
+   * `handleCardTypeSelect`) re-runs the fare search, since the discount depends on which railcards
+   * are combined — with two or more travellers assigned a railcard, that means two or more
+   * re-fetches stacked back to back before the grid settles. 90s (vs. the base 60s) gives that
+   * enough room without masking a genuinely broken search elsewhere.
    */
-  async waitForOutboundText() {
+  async waitForOutboundText(timeout = 90000) {
     await waitForText(
       this.page,
       SELECTORS.OUTBOUND_TEXT,
       "Outbound",
-      60000,
+      timeout,
     );
   }
 
@@ -1151,6 +1185,89 @@ class EvolviResultsPage {
       .locator("> .title-cell :is(.title, .splittix-title)")
       .allInnerTexts();
     return titles.map((text) => normalizeText(text ?? "")).filter((text) => text !== "");
+  }
+
+  /**
+   * Opens the rail-card select for one traveller row in the "Railcard Assignment" Cart Extra and
+   * waits for its options to render.
+   *
+   * @param {number} travelerIndex - 0-based row, in trip.passengers order
+   * @param {number} [timeout=30000]
+   */
+  async openRailcardAssignmentDropdown(travelerIndex, timeout = 30000) {
+    assertIndex("openRailcardAssignmentDropdown", "travelerIndex", travelerIndex);
+
+    // extras-layout.vue renders every Cart Extra collapsed behind an "Add"/"Edit"/"View" opener;
+    // the rows this method waits for below only exist once that's been clicked. Only the FIRST
+    // traveler assigned in a quote needs this — by the second call the extra is already open and
+    // the opener span is gone, so a timeout here (already open) is expected and swallowed; the row
+    // wait below is what actually reports a genuine failure.
+    const opener = this.page.locator(SELECTORS.RAILCARD_ASSIGNMENT_OPENER).first();
+    try {
+      await opener.waitFor({ state: "visible", timeout });
+      await opener.click();
+    } catch {
+      // Either already open (no opener left for a later traveler) or genuinely never appeared -
+      // the row wait immediately below fails loudly in the latter case instead of this swallowing it.
+    }
+
+    const row = this.page.locator(SELECTORS.RAILCARD_ASSIGNMENT_ROWS).nth(travelerIndex);
+    await row.waitFor({ state: "visible", timeout });
+    const select = row.locator(SELECTORS.RAILCARD_ASSIGNMENT_ROW_SELECT);
+
+    // Same reflow race as EvolviSearchPage.openRailcardDropdown — a previously-assigned row above
+    // this one can still be settling into place when this row's select is clicked. Force-click on a
+    // stability timeout rather than waiting out a reflow that Playwright never sees finish.
+    try {
+      await select.click({ timeout: 5000 });
+    } catch (error) {
+      if (!(error instanceof Error) || !/not stable|intercepts pointer events|timeout/i.test(error.message)) {
+        throw error;
+      }
+      await select.click({ force: true, timeout: 5000 });
+    }
+
+    await this.page
+      .locator(SELECTORS.RAILCARD_ASSIGNMENT_OPEN_POPPER_OPTION)
+      .first()
+      .waitFor({ state: "visible", timeout });
+  }
+
+  /**
+   * Clicks the option matching the given text in the currently open Railcard Assignment popper.
+   *
+   * @param {string} optionText - Exact option label, e.g. "YNG - 16-25 Railcard"
+   * @param {number} [timeout=15000]
+   */
+  async selectRailcardAssignmentOption(optionText, timeout = 15000) {
+    const option = this.page
+      .locator(SELECTORS.RAILCARD_ASSIGNMENT_OPEN_POPPER_OPTION)
+      .filter({ hasText: optionText })
+      .first();
+    await option.waitFor({ state: "visible", timeout });
+
+    // Same close-on-select race as EvolviSearchPage.selectOpenPopperOption (shared app-select
+    // component) — the popper can start closing before Playwright's stability check completes.
+    try {
+      await option.click({ timeout: 5000 });
+    } catch (error) {
+      if (!(error instanceof Error) || !/not stable|not visible|intercepts pointer events|timeout/i.test(error.message)) {
+        throw error;
+      }
+      await this.page
+        .locator(SELECTORS.RAILCARD_ASSIGNMENT_OPEN_POPPER_OPTION)
+        .filter({ hasText: optionText })
+        .first()
+        .click({ force: true, timeout: 5000 })
+        .catch(() => {});
+    }
+  }
+
+  /** Clicks "Save" on the Railcard Assignment Cart Extra. */
+  async clickRailcardAssignmentSave(timeout = 15000) {
+    const saveBtn = this.page.locator(SELECTORS.RAILCARD_ASSIGNMENT_SAVE_BTN);
+    await saveBtn.waitFor({ state: "visible", timeout });
+    await saveBtn.click();
   }
 }
 

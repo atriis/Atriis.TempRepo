@@ -1009,6 +1009,49 @@ const EvolviResults = {
 
     return { labels, fareGroups };
   },
+
+  /**
+   * Assigns a rail card to one traveller row in the "Railcard Assignment" Cart Extra.
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @param {number} travelerIndex - 0-based row, in trip.passengers order
+   * @param {string} railcardOption - Exact option label as rendered, e.g. "YNG - 16-25 Railcard"
+   * @returns {Promise<{assigned: true, travelerIndex: number, railcardOption: string}>}
+   */
+  async assignRailcardInExtra(page, travelerIndex, railcardOption) {
+    if (!page) throw new Error("[EvolviResults.assignRailcardInExtra] page is required");
+    if (!Number.isInteger(travelerIndex) || travelerIndex < 0) {
+      throw new Error(
+        `[EvolviResults.assignRailcardInExtra] "travelerIndex" must be a non-negative integer, got: ${travelerIndex}`,
+      );
+    }
+    if (!railcardOption || typeof railcardOption !== "string") {
+      throw new Error(
+        `[EvolviResults.assignRailcardInExtra] "railcardOption" must be a non-empty string, got: ${typeof railcardOption}`,
+      );
+    }
+
+    const resultsPage = getPageObject(page, EvolviResultsPage);
+    await resultsPage.openRailcardAssignmentDropdown(travelerIndex);
+    await resultsPage.selectRailcardAssignmentOption(railcardOption);
+
+    return { assigned: true, travelerIndex, railcardOption };
+  },
+
+  /**
+   * Saves the "Railcard Assignment" Cart Extra with whatever assignments are currently set.
+   * Rows left untouched (no railcard assigned) simply stay empty — the select is clearable and
+   * has no default value, so "leaving a traveller without a railcard" needs no explicit action.
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @returns {Promise<{saved: true}>}
+   */
+  async saveRailcardAssignmentExtra(page) {
+    if (!page) throw new Error("[EvolviResults.saveRailcardAssignmentExtra] page is required");
+    const resultsPage = getPageObject(page, EvolviResultsPage);
+    await resultsPage.clickRailcardAssignmentSave();
+    return { saved: true };
+  },
 };
 
 module.exports = EvolviResults;
