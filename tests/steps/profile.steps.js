@@ -404,6 +404,30 @@ Then("I should see a masked loyalty number ending in {string}", async function (
   await Profile.verifyMaskedLoyaltyEnding(targetPage, lastDigits);
 });
 
+// --- DOB / passport encryption steps (35195) ---
+// All three are activePage-scoped: "I open the traveler profile for" opens the other user's
+// profile in a NEW TAB and parks it on this.activePage, so the trip page (this.page) is the wrong
+// target. That is also why the Passports & Visas tab needs its own phrase here rather than
+// reusing "...in my profile", which is bound to this.page.
+
+When("I open the passports and visas tab in the traveler profile", async function () {
+  logger.info("Opening Passports & Visas tab in traveler profile");
+  const targetPage = this.activePage || this.profilePage || this.page;
+  await Profile.openPassportsAndVisasTab(targetPage);
+});
+
+Then("the birth date should be encrypted in the traveler profile", async function () {
+  logger.info("Verifying the birth date is encrypted in the traveler profile");
+  const targetPage = this.activePage || this.profilePage || this.page;
+  await Profile.verifyBirthDateEncrypted(targetPage);
+});
+
+Then("the passport number should be encrypted showing only the last 3 digits", async function () {
+  logger.info("Verifying the passport number is encrypted with only the last 3 digits visible");
+  const targetPage = this.activePage || this.profilePage || this.page;
+  await Profile.verifyPassportNumberEncrypted(targetPage);
+});
+
 // --- Mandatory field popup steps ---
 
 Then("the profile popup should display {string} as a mandatory field", async function (fieldName) {

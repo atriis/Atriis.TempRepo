@@ -2357,6 +2357,102 @@ const Profile = {
   },
 
   /**
+   * Birth Date encryption on ANOTHER user's profile (AB#35195).
+   *
+   * Deliberately NOT folded into verifyLoyaltyNumbersMasked: personal-details-form.vue binds the
+   * app-datepicker's `format` prop to the literal '*********' while the value is untouched, so the
+   * input displays nine asterisks and NO digits at all. The loyalty/passport rendering
+   * ('*********' + last 3) does not apply here, so the *********XXX regex would never match.
+   *
+   * The encryption is IDENTITY-based, not privilege-based — user-profile.ts's
+   * isUserHasEncryptedFields returns false only when you are looking at your own profile. So a
+   * readable date means the wrong profile is open, not a missing privilege.
+   */
+  async verifyBirthDateEncrypted(page) {
+    if (!page) throw new Error('[Profile.verifyBirthDateEncrypted] "page" is required.');
+
+    logger.debug('[Profile.verifyBirthDateEncrypted] Reading the Birth Date input value');
+
+    const profilePage = getPageObject(page, ProfilePage);
+    let value;
+
+    try {
+      value = await profilePage.getDobInputValue();
+    } catch (err) {
+      throw new Error(`[Profile.verifyBirthDateEncrypted] Failed to read the Birth Date input: ${err.message}`);
+    }
+
+    const birthDateValue = (value || '').trim();
+
+    // An empty field must fail loudly — a traveller with no saved birth date would otherwise read
+    // as "not a date" and pass an inverted assertion by accident.
+    if (!birthDateValue) {
+      throw new Error(
+        '[Profile.verifyBirthDateEncrypted] The Birth Date input is EMPTY, so encryption cannot be confirmed. ' +
+        'Either the traveller has no birth date saved on their profile, or the Personal Details form did not finish rendering.'
+      );
+    }
+
+    if (birthDateValue !== '*********') {
+      throw new Error(
+        `[Profile.verifyBirthDateEncrypted] Expected the Birth Date input to read "*********" but got "${birthDateValue}". ` +
+        'Encryption is identity-based (user-profile.ts isUserHasEncryptedFields), so a readable date means the logged-in ' +
+        "user is viewing their OWN profile — check that the traveller-name link opened the traveller's profile, not the booker's."
+      );
+    }
+
+    logger.info('[Profile.verifyBirthDateEncrypted] Birth Date confirmed encrypted as "*********"');
+    return { birthDateValue };
+  },
+
+  /**
+   * Passport-number encryption on ANOTHER user's profile (AB#35195).
+   *
+   * passport-visa-form.vue binds :value to utilService.getEncryptedStr(), i.e.
+   * '*********' + the last 3 characters — the same shape verifyLoyaltyNumbersMasked asserts.
+   * Reads the FIRST saved passport only: getEncryptedStr is str.substr(-3), so a shorter passport
+   * number yields fewer than 3 trailing characters and would break an every-row assertion.
+   *
+   * Call openPassportsAndVisasTab first.
+   */
+  async verifyPassportNumberEncrypted(page) {
+    if (!page) throw new Error('[Profile.verifyPassportNumberEncrypted] "page" is required.');
+
+    logger.debug('[Profile.verifyPassportNumberEncrypted] Reading the passport number input value');
+
+    const profilePage = getPageObject(page, ProfilePage);
+    let value;
+
+    try {
+      value = await profilePage.getPassportNumberInputValue();
+    } catch (err) {
+      throw new Error(`[Profile.verifyPassportNumberEncrypted] Failed to read the passport number input: ${err.message}`);
+    }
+
+    const passportNumberValue = (value || '').trim();
+
+    if (!passportNumberValue) {
+      throw new Error(
+        '[Profile.verifyPassportNumberEncrypted] The passport number input is EMPTY, so encryption cannot be confirmed. ' +
+        'Either the traveller has no saved passport (the tab then renders only "Add new passport"), or the ' +
+        'Passports & Visas form did not finish rendering.'
+      );
+    }
+
+    if (!/^\*{9}.{3}$/.test(passportNumberValue)) {
+      throw new Error(
+        `[Profile.verifyPassportNumberEncrypted] Expected the passport number to be encrypted as "*********XXX" ` +
+        `(nine asterisks plus the last 3 characters) but got "${passportNumberValue}". ` +
+        'Encryption is identity-based (user-profile.ts isUserHasEncryptedFields), so a readable number means the ' +
+        'logged-in user is viewing their OWN profile rather than the traveller\'s.'
+      );
+    }
+
+    logger.info(`[Profile.verifyPassportNumberEncrypted] Passport number confirmed encrypted: "${passportNumberValue}"`);
+    return { passportNumberValue };
+  },
+
+  /**
    * Adds a credit card using name (alias), type, number, expiry month and year only.
    * Does not require billing address fields (uses defaults for non-mandatory fields).
    * Call openFormOfPaymentTab first.

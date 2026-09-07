@@ -156,6 +156,11 @@ const SELECTORS = {
   PASSPORTS_VISAS_TAB: "[id='tab-passportsAndVisas'] p",
   PASSPORT_VISA_FORM: '.passport-visa-form',
   PASSPORT_INPUTS: '.passport-inputs',
+  // Label-anchored: .visa-inputs-container is nested INSIDE .passport-inputs
+  // (passport-visa-form.vue), so a bare '.passport-inputs .el-input input' would also
+  // match the visa number and the two datepicker inputs. The label is "Passport number"
+  // with a lower-case n (assets/locale/en.json).
+  PASSPORT_NUMBER_INPUT: '.passport-inputs .field:has(label.label:text-is("Passport number")) input',
   VISA_INPUTS_CONTAINER: '.visa-inputs-container',
   VISA_INPUTS: '.visa-inputs',
   VISA_COUNTRY_SELECT: '.visa-inputs .field.app-column:nth-child(1) .el-select',
@@ -1923,6 +1928,22 @@ class ProfilePage {
       throw new Error(
         `[ProfilePage.waitForPassportVisaForm] Passport & Visa form did not appear (selector: ${SELECTORS.PASSPORT_VISA_FORM}). ` +
         `The tab may not have switched or the form failed to load. Original: ${err.message}`
+      );
+    }
+  }
+
+  // Reads the passport number of the FIRST saved passport only — a traveller with several
+  // saved passports renders one .passport-inputs block per passport.
+  async getPassportNumberInputValue() {
+    try {
+      const input = this.page.locator(SELECTORS.PASSPORT_NUMBER_INPUT).first();
+      await input.waitFor({ state: 'visible', timeout: 10000 });
+      return await input.inputValue();
+    } catch (err) {
+      throw new Error(
+        `[ProfilePage.getPassportNumberInputValue] Could not read the passport number input value ` +
+        `(selector: ${SELECTORS.PASSPORT_NUMBER_INPUT}). ` +
+        `The Passports & Visas tab may not be open, or the traveller has no saved passport. Original: ${err.message}`
       );
     }
   }
