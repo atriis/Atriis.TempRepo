@@ -754,6 +754,18 @@ Then("the seats without the economy comfort characteristic should keep their exi
   logger.info("Non-economy-comfort seat colors verified", result);
 });
 
+Then("the extra legroom seats should be shown in the extra legroom color and not the preferred color", async function () {
+  logger.info("Verifying extra-legroom seats use the extra-legroom (blue) color, not preferred (green)");
+  const result = await Cart.verifyExtraLegroomSeatsShownInExtraLegroomColor(this.page);
+  logger.info("Extra-legroom seat color verified", result);
+});
+
+Then("the seat map aisle should be displayed", async function () {
+  logger.info("Verifying the seat map aisle is displayed");
+  const result = await Cart.verifySeatMapAisleDisplayed(this.page);
+  logger.info("Seat map aisle verified", result);
+});
+
 When("I click next flight button", async function () {
   logger.info("Clicking next flight button to advance to the next segment");
   const cartPage = getPageObject(this.page, CartPage);

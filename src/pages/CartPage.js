@@ -1068,6 +1068,15 @@ const SELECTORS = {
   // Any seat carrying at least one of the three coloured categories — the population the
   // colour-precedence assertions read.
   CATEGORY_SEAT: '.deck-wrapper .plane-seat.economy-comfort, .deck-wrapper .plane-seat.preferred, .deck-wrapper .plane-seat.extra-leg-room',
+  // Extra-legroom (Economy Comfort) seat sections — coloured blue ($primary-400) via the
+  // `extra-leg-room` class in plane-seat.vue seatImageClass. ADO 72357/80662.
+  EXTRA_LEGROOM_SEAT: '.deck-wrapper .plane-seat.extra-leg-room',
+  // Extra-legroom seat sections that ALSO carry the green `preferred` class ($green-500). This is the
+  // defect under test: Economy Comfort / extra-legroom seats must be blue, never green preferred.
+  EXTRA_LEGROOM_PREFERRED_SEAT: '.deck-wrapper .plane-seat.extra-leg-room.preferred',
+  // Aisle-marked seat cells — flight-deck.vue getSeatClass adds the `aisle` class to the seat wrapper
+  // to render the aisle gap between seat blocks. ADO 72357/80662.
+  SEAT_MAP_AISLE: '.deck-wrapper .aisle',
   // Visible seat tooltip container (Element Plus el-popper with light effect, visible state)
   SEAT_TOOLTIP_VISIBLE: '.el-popper.is-light:not([aria-hidden="true"])',
   // First available seat in the deck (has a seat number visible)
@@ -7102,6 +7111,41 @@ class CartPage {
    */
   async getSelectedSeatCount() {
     return this.page.locator(SELECTORS.SELECTED_SEAT).count();
+  }
+
+  /**
+   * Counts the extra-legroom (Economy Comfort) seat sections currently rendered in the seat map.
+   * @returns {Promise<number>}
+   */
+  async countExtraLegroomSeats() {
+    return await this.page.locator(SELECTORS.EXTRA_LEGROOM_SEAT).count();
+  }
+
+  /**
+   * Counts extra-legroom seat sections that also carry the green `preferred` class — the defect
+   * where Economy Comfort / extra-legroom seats are shown green instead of blue. ADO 72357/80662.
+   * @returns {Promise<number>}
+   */
+  async countExtraLegroomPreferredSeats() {
+    return await this.page.locator(SELECTORS.EXTRA_LEGROOM_PREFERRED_SEAT).count();
+  }
+
+  /**
+   * Counts the aisle-marked seat cells rendered in the seat map (the aisle gap). ADO 72357/80662.
+   * @returns {Promise<number>}
+   */
+  async countAisleSeats() {
+    return await this.page.locator(SELECTORS.SEAT_MAP_AISLE).count();
+  }
+
+  /**
+   * Whether an actual seat map (deck) is currently rendered for the active leg — false when the
+   * leg shows the "seat map unavailable" empty state instead. Call after waitForSeatMapToLoad.
+   * Used to skip legs without a seat map when validating across a multi-leg itinerary. ADO 72357/80662.
+   * @returns {Promise<boolean>}
+   */
+  async isSeatMapPresent() {
+    return await this.page.locator(SELECTORS.SEAT_MAP_CONTAINER).first().isVisible().catch(() => false);
   }
 
   /**

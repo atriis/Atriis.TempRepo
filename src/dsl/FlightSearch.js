@@ -495,6 +495,37 @@ const FlightSearch = {
   },
 
   /**
+   * Round-trip flight search from a fixed origin to a destination chosen at random from a
+   * comma-separated candidate list, so each run exercises a different route (e.g. "BKK,LIM").
+   * Composes searchFlightRoundTrip with the picked {from, to}.
+   *
+   * @param {Object} page - Playwright page object
+   * @param {string} from - Origin airport code (e.g. "AMS")
+   * @param {string} destinationsCsv - Comma-separated destination codes (e.g. "BKK,LIM")
+   */
+  async searchFlightRoundTripToRandomDestination(page, from, destinationsCsv) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+    if (!from || typeof from !== 'string') {
+      throw new Error(`from must be a non-empty string, got: ${typeof from}`);
+    }
+    if (!destinationsCsv || typeof destinationsCsv !== 'string') {
+      throw new Error(`destinationsCsv must be a non-empty string, got: ${typeof destinationsCsv}`);
+    }
+
+    const destinations = destinationsCsv.split(',').map((code) => code.trim()).filter(Boolean);
+    if (destinations.length === 0) {
+      throw new Error('destinationsCsv must contain at least one destination code');
+    }
+
+    const to = destinations[Math.floor(Math.random() * destinations.length)];
+    logger.info('Selected random destination for round-trip search', { from, to, candidates: destinations });
+
+    return await this.searchFlightRoundTrip(page, { from, to });
+  },
+
+  /**
    * Round-trip flight search with explicit near-term dates, given as an offset in days
    * from today, instead of the default "nth available date" index. Routes whose default
    * (month-out) date spread returns no availability for a given carrier can be retried

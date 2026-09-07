@@ -3719,6 +3719,118 @@ const Cart = {
   },
 
   /**
+   * Walks every leg of the seat map drawer (each segment tab, or the single leg when the drawer has
+   * no tabs), loading each leg in turn and running `perLegFn(legIndex)` only on legs that actually
+   * render a seat map. Legs whose seat map is unavailable (e.g. codeshare / not returned) are
+   * skipped, so validations stay reliable across any itinerary — non-stop or connecting, any
+   * aircraft. Returns the collected per-leg results. ADO 72357/80662.
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @param {(legIndex: number) => Promise<any>} perLegFn - Assertion/collection run per rendered leg
+   * @returns {Promise<Array<any>>}
+   */
+  async forEachSeatMapLeg(page, perLegFn) {
+    if (!page) throw new Error('page is required');
+    if (typeof perLegFn !== 'function') {
+      throw new Error(`perLegFn must be a function, got: ${typeof perLegFn}`);
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+    const tabCount = await cartPage.getSeatMapSegmentTabCount();
+    const legCount = Math.max(tabCount, 1);
+    const results = [];
+
+    for (let i = 0; i < legCount; i++) {
+      if (tabCount > 1) {
+        await cartPage.clickSeatMapSegmentTab(i);
+      }
+      await cartPage.waitForSeatMapToLoad();
+
+      if (!(await cartPage.isSeatMapPresent())) {
+        logger.info('Skipping leg without an available seat map', { legIndex: i, tabCount });
+        continue;
+      }
+
+      results.push(await perLegFn(i));
+    }
+
+    return results;
+  },
+
+  /**
+   * Verifies extra-legroom (Economy Comfort) seats are shown in their own extra-legroom colour
+   * (blue) and never in the green "preferred" colour, on EVERY leg of the itinerary. Encodes ADO
+   * 72357/80662: a seat that carries the `extra-leg-room` class must not also carry the green
+   * `preferred` class. The tooltip text is intentionally left untouched — only the seat colour is
+   * under test. Robust to non-stop vs connecting flights and to mixed aircraft across legs.
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @returns {Promise<{perLeg: Array<object>, totalExtraLegroom: number}>}
+   */
+  async verifyExtraLegroomSeatsShownInExtraLegroomColor(page) {
+    if (!page) throw new Error('page is required');
+    logger.info('Verifying extra-legroom seats use the extra-legroom (blue) colour, not preferred (green), on every leg');
+
+    const cartPage = getPageObject(page, CartPage);
+
+    const perLeg = await this.forEachSeatMapLeg(page, async (legIndex) => {
+      const extraLegroomCount = await cartPage.countExtraLegroomSeats();
+      const greenPreferredCount = await cartPage.countExtraLegroomPreferredSeats();
+
+      expect(
+        greenPreferredCount,
+        `Leg ${legIndex}: expected no extra-legroom seat to also carry the green "preferred" class, but found ${greenPreferredCount}`,
+      ).toBe(0);
+
+      return { legIndex, extraLegroomCount, greenPreferredCount };
+    });
+
+    const totalExtraLegroom = perLeg.reduce((sum, leg) => sum + leg.extraLegroomCount, 0);
+    expect(
+      totalExtraLegroom,
+      'Expected at least one extra-legroom (Economy Comfort) seat across all legs so the colour is actually validated',
+    ).toBeGreaterThan(0);
+
+    logger.debug('Extra-legroom seat colour verified on all legs', { perLeg, totalExtraLegroom });
+    return { perLeg, totalExtraLegroom };
+  },
+
+  /**
+   * Verifies the seat map renders the aisle on EVERY leg of the itinerary — flight-deck.vue marks
+   * aisle seat cells with the `aisle` class to draw the aisle gap. Encodes ADO 72357/80662, where
+   * the aisle was not being drawn at all. Robust to non-stop vs connecting flights and to mixed
+   * aircraft across legs; legs without a seat map are skipped.
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @returns {Promise<{perLeg: Array<object>}>}
+   */
+  async verifySeatMapAisleDisplayed(page) {
+    if (!page) throw new Error('page is required');
+    logger.info('Verifying the seat map aisle is displayed on every leg');
+
+    const cartPage = getPageObject(page, CartPage);
+
+    const perLeg = await this.forEachSeatMapLeg(page, async (legIndex) => {
+      const aisleCount = await cartPage.countAisleSeats();
+
+      expect(
+        aisleCount,
+        `Leg ${legIndex}: expected the seat map to render an aisle (at least one aisle-marked seat cell)`,
+      ).toBeGreaterThan(0);
+
+      return { legIndex, aisleCount };
+    });
+
+    expect(
+      perLeg.length,
+      'Expected at least one leg with a rendered seat map to validate the aisle',
+    ).toBeGreaterThan(0);
+
+    logger.debug('Seat map aisle verified on all legs', { perLeg });
+    return { perLeg };
+  },
+
+  /**
    * Selects the first available seat with a price (containing $, €, or £).
    * Clicks the .is-flex ancestor div which carries the Vue handleSeatSelect click handler.
    *
