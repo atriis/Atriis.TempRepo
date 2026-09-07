@@ -20,6 +20,7 @@ const Cart = require("@dsl/Cart");
 const FlightResults = require("@dsl/FlightResults");
 const Results = require("@dsl/Results");
 const DynamicAndReferenceFields = require("@dsl/DynamicAndReferenceFields");
+const Homepage = require("@dsl/Homepage");
 const { getPricePerNightAndTotal } = require("../support/scenarioState");
 const logger = require("@utils/logger").child("Common");
 
@@ -435,3 +436,67 @@ When("I scroll down the travel request form", async function () {
   const commonPage = getPageObject(this.page, CommonPage);
   await commonPage.scrollTo();
 });
+
+// ===== DOCUMENT EXPIRY WARNINGS (AB#65307) =====
+
+/**
+ * Steps for the passport / visa / credit-card expiry warnings.
+ *
+ * The warning stack is located by HomePage and every verdict is made by the Homepage DSL: one
+ * component (document-expiry-alerts) serves both the homepage and the trip search screen, so
+ * splitting it across two page objects would only duplicate its selectors.
+ *
+ * Warnings are addressed by their visible TITLE rather than by document type, because the title is
+ * the only thing that separates the two surfaces the same component serves — the traveller's own
+ * homepage warning reads "Passport expired", while a booker's trip search warning for the same
+ * document reads "<Traveller Name>'s passport expired". A booker's trip with two affected
+ * travellers puts two otherwise-identical cards in one stack, and only the name tells them apart.
+ */
+
+// --- Homepage (the signed-in traveller's own documents) ---
+
+Then("the {string} document expiry warning should be displayed on the homepage", async function (title) {
+  logger.info("Verifying a document expiry warning is displayed on the homepage", { title });
+  await Homepage.verifyDocumentExpiryAlertDisplayed(this.page, title, "homepage");
+});
+
+// --- Trip search page (a booker's selected travellers) ---
+
+Then(
+  "the {string} document expiry warning should be displayed on the trip search page",
+  async function (title) {
+    logger.info("Verifying a document expiry warning is displayed on the trip search page", { title });
+    await Homepage.verifyDocumentExpiryAlertDisplayed(this.page, title, "tripSearchPage");
+  },
+);
+
+// --- Warning content ---
+
+// Scoped to one named card on purpose: every warning renders the same documentExpiry.message
+// string, so an unscoped "the message is shown" check would pass against any card in the stack
+// instead of the one the scenario just asserted.
+Then(
+  "the {string} document expiry warning should show the message {string}",
+  async function (title, expectedMessage) {
+    logger.info("Verifying the body message of a document expiry warning", { title, expectedMessage });
+    await Homepage.verifyDocumentExpiryAlertMessage(this.page, title, expectedMessage);
+  },
+);
+
+// --- Acting on a warning ---
+
+// The CTA opens the affected traveller's profile through utilService.openNewWindow — a new tab on
+// desktop. this.page is repointed at it (the convention "I open the traveler profile from the
+// traveler name" follows) so the remaining assertions, and the After hook's failure screenshot,
+// target the profile that was just opened.
+When(
+  "I click the {string} button in the {string} document expiry warning",
+  async function (ctaLabel, title) {
+    logger.info("Clicking the call-to-action of a document expiry warning", { ctaLabel, title });
+    this.page = await Homepage.openProfileFromDocumentExpiryAlert(this.page, ctaLabel, title);
+  },
+);
+
+// Where the CTA LANDS is asserted by "the user profile of {string} should open in a new tab on the
+// passports and visas section", which lives in profile.steps.js — it drives the profile screen and
+// belongs with the rest of that screen's steps.

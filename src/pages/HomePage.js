@@ -44,6 +44,31 @@ const SELECTORS = {
   // stack); this suite runs desktop headless. :visible restricts the count to the active pane, as
   // el-tabs keeps inactive panes in the DOM but hidden.
   TRIP_CARD: '.trip-tabs-container .trip-list-home .trip-preview-home:visible',
+
+  // Document expiry warning stack (AB#65307). One `document-expiry-alerts` component is mounted
+  // app-wide in logged-in-page.vue but renders on two surfaces only: the homepage, showing the
+  // signed-in traveller's own passport / visa / credit-card warnings, titled WITHOUT a name
+  // ("Passport expired"); and the trip search screen, showing a warning per selected traveller per
+  // affected document, titled WITH that traveller's name ("Pini Atr's passport expired").
+  //
+  // One card per affected document (document-expiry-alert.vue). Both branches are needed, and
+  // neither alone is enough: main stamps `data-testid="profile.document-expiry-alert.<type>-<status>"`
+  // on every card, but the build deployed to atriis-dev.app predates it and renders the class alone
+  // (verified 2026-09-03). The testid branch is prefix-matched because its suffix is the document
+  // type and status, which a title lookup must span rather than pin — and `section`-scoped because
+  // the card's own children extend that same prefix (`...-update` on the CTA, `...-dismiss` on the
+  // close icon), so an unscoped prefix match would return three nodes per card.
+  //
+  // Cards are never scoped to their stack: the stack is their only parent, and its own testid is
+  // missing from the same older build. `.document-expiry-alert` does not match the stack's
+  // `.document-expiry-alerts` — class matching is per whole token, not by prefix.
+  DOCUMENT_EXPIRY_ALERT:
+    "section[data-testid^=\"profile.document-expiry-alert.\"], section.document-expiry-alert",
+  // Inside a card (document-expiry-alert.vue). The newer build also puts a data-testid on the CTA,
+  // but .alert-cta is on both.
+  DOCUMENT_EXPIRY_ALERT_TITLE: ".alert-title",
+  DOCUMENT_EXPIRY_ALERT_MESSAGE: ".alert-message",
+  DOCUMENT_EXPIRY_ALERT_CTA: ".alert-cta",
 };
 
 /**
@@ -67,6 +92,21 @@ const PRODUCTS = {
   Parking: { label: "Parking", tabId: "tab-parking" },
   "Manual Quote": { label: "Manual quote", tabId: "tab-manual", urlContains: "manual-quote" },
 };
+
+/**
+ * Builds an anchored, whitespace-tolerant regex for a document expiry warning title.
+ *
+ * A regex rather than a plain `hasText` string is deliberate: Playwright matches a string
+ * case-insensitively AND as a substring, so "Passport expired" would also match a booker's
+ * "Pini Atr's passport expired" card. That is exactly the distinction these scenarios rest on —
+ * the unnamed title is the traveller's own homepage warning, the named one belongs to a selected
+ * traveller — so the two must never satisfy each other's assertion.
+ *
+ * @param {string} title
+ * @returns {RegExp}
+ */
+const exactDocumentExpiryTitle = (title) =>
+  new RegExp(`^\\s*${title.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\s*$`);
 
 class HomePage {
   constructor(page) {
@@ -386,6 +426,124 @@ class HomePage {
   async isProductTabActive(tabId, timeout = 15000) {
     // The el-tabs item carries id `tab-<product>` and gains .is-active when selected.
     return this._isTabActiveBySelector(`#${tabId}`, timeout);
+  }
+
+  /**
+   * Locates a single document expiry warning card by its exact visible title, e.g.
+   * "Passport expired" or "Pini Atr's passport expired" — see exactDocumentExpiryTitle for why the
+   * match is anchored.
+   *
+   * Warnings are addressed by their title rather than by document type because the title is the
+   * only thing that tells the two surfaces (and two travellers on the same surface) apart. Neither
+   * the component class nor the `data-testid` distinguishes them: the testid carries only
+   * `<type>-<status>`, so a booker's trip with two expired passports puts two cards with the same
+   * testid in one stack.
+   *
+   * @param {string} title
+   * @returns {import('@playwright/test').Locator}
+   */
+  getDocumentExpiryAlertByTitle(title) {
+    return this.page.locator(SELECTORS.DOCUMENT_EXPIRY_ALERT).filter({
+      has: this.page.locator(SELECTORS.DOCUMENT_EXPIRY_ALERT_TITLE, {
+        hasText: exactDocumentExpiryTitle(title),
+      }),
+    });
+  }
+
+  /**
+   * Returns whether a document expiry warning with the given title is visible.
+   * @param {string} title
+   * @param {number} [timeout=20000]
+   * @returns {Promise<boolean>}
+   */
+  async isDocumentExpiryAlertVisibleByTitle(title, timeout = 20000) {
+    try {
+      await this.getDocumentExpiryAlertByTitle(title).first().waitFor({ state: "visible", timeout });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Titles of every document expiry warning currently in the stack. Lets the DSL name what WAS
+   * rendered when the expected warning is missing, instead of leaving a bare timeout.
+   * @returns {Promise<string[]>}
+   */
+  async getDocumentExpiryAlertTitles() {
+    const titles = await this.page
+      .locator(`${SELECTORS.DOCUMENT_EXPIRY_ALERT} ${SELECTORS.DOCUMENT_EXPIRY_ALERT_TITLE}`)
+      .allTextContents();
+    return titles.map((title) => title.replace(/\s+/g, " ").trim()).filter(Boolean);
+  }
+
+  /**
+   * Reads the body message of the document expiry warning with the given title. Every card shows
+   * the same `documentExpiry.message` string, but it is read per card so a scenario can prove the
+   * message belongs to the warning it just asserted rather than to a neighbour in the stack.
+   * @param {string} title
+   * @param {number} [timeout=15000]
+   * @returns {Promise<string>}
+   */
+  async getDocumentExpiryAlertMessage(title, timeout = 15000) {
+    const message = this.getDocumentExpiryAlertByTitle(title)
+      .first()
+      .locator(SELECTORS.DOCUMENT_EXPIRY_ALERT_MESSAGE);
+    try {
+      await message.waitFor({ state: "visible", timeout });
+    } catch (err) {
+      throw new Error(
+        `[HomePage.getDocumentExpiryAlertMessage] The "${title}" document expiry warning has no visible body ` +
+          `message (${SELECTORS.DOCUMENT_EXPIRY_ALERT} ${SELECTORS.DOCUMENT_EXPIRY_ALERT_MESSAGE}). ` +
+          `Original: ${err.message}`,
+      );
+    }
+    return (await message.textContent()).replace(/\s+/g, " ").trim();
+  }
+
+  /**
+   * Reads the call-to-action label of the document expiry warning with the given title
+   * ("Update Passport", "Update Visa", "Update Card").
+   * @param {string} title
+   * @param {number} [timeout=15000]
+   * @returns {Promise<string>}
+   */
+  async getDocumentExpiryAlertCtaLabel(title, timeout = 15000) {
+    const cta = this.getDocumentExpiryAlertByTitle(title)
+      .first()
+      .locator(SELECTORS.DOCUMENT_EXPIRY_ALERT_CTA);
+    try {
+      await cta.waitFor({ state: "visible", timeout });
+    } catch (err) {
+      throw new Error(
+        `[HomePage.getDocumentExpiryAlertCtaLabel] The "${title}" document expiry warning has no visible ` +
+          `call-to-action button (${SELECTORS.DOCUMENT_EXPIRY_ALERT} ${SELECTORS.DOCUMENT_EXPIRY_ALERT_CTA}). ` +
+          `Original: ${err.message}`,
+      );
+    }
+    return (await cta.textContent()).replace(/\s+/g, " ").trim();
+  }
+
+  /**
+   * Clicks the call-to-action button of the document expiry warning with the given title. The click
+   * opens the affected traveller's profile through utilService.openNewWindow, so the caller must
+   * have armed new-tab detection first.
+   * @param {string} title
+   */
+  async clickDocumentExpiryAlertCta(title) {
+    const cta = this.getDocumentExpiryAlertByTitle(title)
+      .first()
+      .locator(SELECTORS.DOCUMENT_EXPIRY_ALERT_CTA);
+    try {
+      await cta.waitFor({ state: "visible", timeout: 15000 });
+      await cta.click({ timeout: 10000 });
+    } catch (err) {
+      throw new Error(
+        `[HomePage.clickDocumentExpiryAlertCta] Could not click the call-to-action button of the "${title}" ` +
+          `document expiry warning (${SELECTORS.DOCUMENT_EXPIRY_ALERT} ${SELECTORS.DOCUMENT_EXPIRY_ALERT_CTA}). ` +
+          `Original: ${err.message}`,
+      );
+    }
   }
 }
 

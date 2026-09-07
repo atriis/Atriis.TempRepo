@@ -2,7 +2,41 @@ const { getPageObject } = require("@utils/pageObjectCache");
 const LoginPage = require("@pages/LoginPage");
 const { HomePage } = require("@pages/HomePage");
 const QuickLinksPage = require("@pages/QuickLinksPage");
+const ProfilePage = require("@pages/ProfilePage");
 const logger = require("@utils/logger").child("Homepage");
+
+/**
+ * Document expiry warnings (AB#65307)
+ *
+ * The passport / visa / credit-card expiry warnings the app shows on two surfaces:
+ *  - the homepage, for the signed-in traveller's own documents;
+ *  - the trip search screen, for each traveller a booker has selected, naming them.
+ *
+ * Both surfaces are served by ONE component (document-expiry-alerts, mounted app-wide in
+ * logged-in-page.vue) whose cards are located by HomePage, so both live here rather than being
+ * split across two page objects that would only duplicate the same selectors.
+ *
+ * The whole feature sits behind the "Atriis.App.OBT.IsDocumentExpiryRemindersEnabled" flag
+ * (document-expiry-alerts.ts), so with the flag off the stack never renders and every verification
+ * below fails with "no warning was rendered at all" — the message says so explicitly, because that
+ * is the single most likely reason for a failure here.
+ */
+
+/** Where a document expiry warning is allowed to render, matched against the page URL. */
+const DOCUMENT_EXPIRY_SURFACES = {
+  homepage: {
+    label: "homepage",
+    urlPattern: /\/home(?:[/?#]|$)/i,
+    // The traveller's own warnings are titled without a name (documentExpiry.<type>.<status>).
+    hint: "The homepage shows the signed-in traveller's OWN documents, titled without a name (e.g. \"Passport expired\").",
+  },
+  tripSearchPage: {
+    label: "trip search page",
+    urlPattern: /\/trips\/\d+/i,
+    // The booker's warnings always name their traveller (documentExpiry.<type>.<status>ForTraveller).
+    hint: "The trip search page shows a warning per SELECTED traveller, always naming them (e.g. \"Pini Atr's passport expired\").",
+  },
+};
 
 /**
  * Homepage DSL
@@ -304,6 +338,202 @@ const Homepage = {
         `[Homepage.getQuickLinkCardImageSrc] Failed to read image src from quick link card tooltip. Original: ${err.message}`
       );
     }
+  },
+  /**
+   * Verifies a document expiry warning with the given title is displayed on the named surface.
+   *
+   * Warnings are addressed by their visible TITLE rather than by document type, because the title
+   * is the only thing that separates the two surfaces the same component serves.
+   *
+   * The surface is confirmed by URL first: a warning found on the wrong screen would satisfy the
+   * card lookup while proving nothing, because one component serves both screens.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} title - the warning's exact visible title, e.g. "Passport expired"
+   * @param {'homepage'|'tripSearchPage'} surface
+   * @returns {Promise<{ title: string, titles: string[] }>}
+   */
+  async verifyDocumentExpiryAlertDisplayed(page, title, surface) {
+    if (!page) throw new Error("[Homepage.verifyDocumentExpiryAlertDisplayed] \"page\" is required.");
+    if (!title || typeof title !== "string") {
+      throw new Error(
+        `[Homepage.verifyDocumentExpiryAlertDisplayed] "title" must be a non-empty string, got: ${typeof title}`,
+      );
+    }
+    const config = DOCUMENT_EXPIRY_SURFACES[surface];
+    if (!config) {
+      throw new Error(
+        `[Homepage.verifyDocumentExpiryAlertDisplayed] Unknown surface "${surface}". ` +
+          `Valid surfaces: ${Object.keys(DOCUMENT_EXPIRY_SURFACES).join(", ")}.`,
+      );
+    }
+
+    logger.info(`Verifying the "${title}" document expiry warning on the ${config.label}`);
+
+    // The cookie banner can overlay the top of both surfaces, and the warning stack renders right
+    // under the header — dismiss it so the card is on screen for the click that may follow.
+    await getPageObject(page, LoginPage).acceptCookiesIfPresent(5000);
+
+    try {
+      await page.waitForURL(config.urlPattern, { timeout: 30000 });
+    } catch {
+      throw new Error(
+        `[Homepage.verifyDocumentExpiryAlertDisplayed] Expected to be on the ${config.label} ` +
+          `(URL matching ${config.urlPattern}) before looking for the "${title}" warning, but the page is on ` +
+          `${page.url()}. The step order is wrong, or the previous navigation never completed.`,
+      );
+    }
+
+    const homePage = getPageObject(page, HomePage);
+
+    if (await homePage.isDocumentExpiryAlertVisibleByTitle(title)) {
+      const titles = await homePage.getDocumentExpiryAlertTitles();
+      logger.info(`"${title}" is displayed on the ${config.label}`, { titles });
+      return { title, titles };
+    }
+
+    // Distinguish "no warnings at all" from "warnings, but not this one" — the two have completely
+    // different causes and only the second one is about the title.
+    const titles = await homePage.getDocumentExpiryAlertTitles();
+    if (!titles.length) {
+      throw new Error(
+        "[Homepage.verifyDocumentExpiryAlertDisplayed] No document expiry warning was rendered on the " +
+          `${config.label} at all (${page.url()}). Either the ` +
+          "\"Atriis.App.OBT.IsDocumentExpiryRemindersEnabled\" flag is off for this corporation, or no " +
+          "passport, visa or credit card on the profile(s) in scope is expired or within 60 days of " +
+          `expiring. Expected: "${title}".`,
+      );
+    }
+
+    throw new Error(
+      `[Homepage.verifyDocumentExpiryAlertDisplayed] Expected a document expiry warning titled "${title}" ` +
+        `on the ${config.label}, but the warnings present are ${JSON.stringify(titles)}. ${config.hint}`,
+    );
+  },
+
+  /**
+   * Verifies the body message of the document expiry warning with the given title, and that it
+   * offers a call-to-action button. Both are read from the same card, so the message cannot be
+   * satisfied by a neighbouring warning in the stack.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} title
+   * @param {string} expectedMessage
+   * @returns {Promise<{ message: string, ctaLabel: string }>}
+   */
+  async verifyDocumentExpiryAlertMessage(page, title, expectedMessage) {
+    if (!page) throw new Error("[Homepage.verifyDocumentExpiryAlertMessage] \"page\" is required.");
+    if (!title || typeof title !== "string") {
+      throw new Error(
+        `[Homepage.verifyDocumentExpiryAlertMessage] "title" must be a non-empty string, got: ${typeof title}`,
+      );
+    }
+    if (!expectedMessage || typeof expectedMessage !== "string") {
+      throw new Error(
+        `[Homepage.verifyDocumentExpiryAlertMessage] "expectedMessage" must be a non-empty string, got: ${typeof expectedMessage}`,
+      );
+    }
+
+    logger.info(`Verifying the body of the "${title}" document expiry warning`);
+
+    const homePage = getPageObject(page, HomePage);
+    const message = await homePage.getDocumentExpiryAlertMessage(title);
+
+    if (message !== expectedMessage) {
+      throw new Error(
+        `[Homepage.verifyDocumentExpiryAlertMessage] The "${title}" warning reads "${message}" but ` +
+          `"${expectedMessage}" was expected. The documentExpiry.message locale string has changed, or the ` +
+          "locale under test is not English.",
+      );
+    }
+
+    // A card is only actionable through its CTA, which is the whole point of the warning — read it
+    // here so a message-only assertion cannot pass against a card the user cannot act on.
+    const ctaLabel = await homePage.getDocumentExpiryAlertCtaLabel(title);
+
+    logger.info(`"${title}" reads "${message}" and offers the "${ctaLabel}" button`);
+    return { message, ctaLabel };
+  },
+
+  /**
+   * Clicks the named call-to-action button of the document expiry warning with the given title and
+   * returns the page showing the affected traveller's profile.
+   *
+   * The CTA label is verified before the click so the feature file's "Update Passport" is a real
+   * assertion rather than decoration — a visa or credit-card card in the same stack carries a
+   * different label and must not be the one clicked.
+   *
+   * document-expiry-alert.ts routes through utilService.openNewWindow, which opens a new tab on
+   * desktop and navigates in place on mobile; both are handled, and the returned page is whichever
+   * one holds the profile.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} ctaLabel - e.g. "Update Passport"
+   * @param {string} title - e.g. "Pini Atr's passport expired"
+   * @returns {Promise<import('playwright').Page>}
+   */
+  async openProfileFromDocumentExpiryAlert(page, ctaLabel, title) {
+    if (!page) throw new Error("[Homepage.openProfileFromDocumentExpiryAlert] \"page\" is required.");
+    if (!ctaLabel || typeof ctaLabel !== "string") {
+      throw new Error(
+        `[Homepage.openProfileFromDocumentExpiryAlert] "ctaLabel" must be a non-empty string, got: ${typeof ctaLabel}`,
+      );
+    }
+    if (!title || typeof title !== "string") {
+      throw new Error(
+        `[Homepage.openProfileFromDocumentExpiryAlert] "title" must be a non-empty string, got: ${typeof title}`,
+      );
+    }
+
+    logger.info(`Clicking "${ctaLabel}" on the "${title}" document expiry warning`);
+
+    const homePage = getPageObject(page, HomePage);
+    const actualLabel = await homePage.getDocumentExpiryAlertCtaLabel(title);
+
+    if (actualLabel !== ctaLabel) {
+      throw new Error(
+        `[Homepage.openProfileFromDocumentExpiryAlert] The "${title}" warning's call-to-action reads ` +
+          `"${actualLabel}", not "${ctaLabel}". The label is derived from the document type ` +
+          "(documentExpiry.<type>.cta), so this warning is for a different document than the scenario expects.",
+      );
+    }
+
+    const context = page.context();
+    // Arm new-tab detection BEFORE the click so the desktop case is never missed.
+    const newPagePromise = context.waitForEvent("page", { timeout: 15000 }).catch(() => null);
+
+    await homePage.clickDocumentExpiryAlertCta(title);
+
+    const newTab = await newPagePromise;
+    const targetPage = newTab || page;
+
+    if (newTab) {
+      await newTab.waitForLoadState("domcontentloaded", { timeout: 30000 });
+      logger.info("The profile opened in a new tab");
+    } else {
+      // No new tab is only legitimate on the mobile branch of utilService.openNewWindow, which
+      // router-pushes to /user/:userId in place. Anything else means the click never navigated.
+      await page.waitForLoadState("domcontentloaded", { timeout: 30000 });
+      if (!page.url().includes("/user/")) {
+        throw new Error(
+          `[Homepage.openProfileFromDocumentExpiryAlert] Clicking "${ctaLabel}" did not open the profile: no ` +
+            `new tab opened and the current tab is still on ${page.url()}. The click was swallowed, or the ` +
+            "alert carried no userId so the resolved route went nowhere.",
+        );
+      }
+      logger.info("The profile rendered in the same tab (mobile branch)");
+    }
+
+    try {
+      await getPageObject(targetPage, ProfilePage).waitForUserProfilePage();
+    } catch (err) {
+      throw new Error(
+        `[Homepage.openProfileFromDocumentExpiryAlert] "${ctaLabel}" opened ${targetPage.url()} but the user ` +
+          `profile did not render there. Original: ${err.message}`,
+      );
+    }
+
+    return targetPage;
   },
 };
 

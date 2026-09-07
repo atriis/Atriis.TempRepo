@@ -1807,6 +1807,95 @@ const Profile = {
   },
 
   /**
+   * Asserts the standalone profile page is open on the expected tab, and that it belongs to the
+   * expected traveller.
+   *
+   * This is the landing check for a profile deep link — today the document-expiry warnings'
+   * "Update Passport" / "Update Visa" / "Update Card" buttons (AB#65307), which resolve
+   * /user/:userId?tab=<section> and let user-profile.ts turn that query into the active el-tab.
+   * `expectedTab` is a dataTabMap value ("passportsAndVisas", "formOfPayment", ...), so one check
+   * covers every document type rather than one method per tab.
+   *
+   * Three things are asserted, because each can fail on its own:
+   *
+   *  1. the URL carries `tab=<expectedTab>` — proves the link was built for the right section;
+   *  2. that tab is the SELECTED one — proves the app honoured it rather than falling back to
+   *     Personal Details (which is what happens when the query value is not in
+   *     user-profile.ts#dataTabMap, or when outstanding mandate fields hijack the opening tab);
+   *  3. the <h1> names `expectedOwnerName` when one is given — proves a booker's warning opened the
+   *     TRAVELLER's profile and not the booker's own, which is the whole point of the multi-user
+   *     case and the one thing the tab assertion cannot tell apart.
+   *
+   * Dialog counterpart: verifyUserProfilePopupActiveTab / verifyUserProfilePopupBelongsTo.
+   *
+   * @param {import('playwright').Page} page - the page the profile opened on
+   * @param {string} expectedTab - dataTabMap value, e.g. "passportsAndVisas"
+   * @param {string} [expectedOwnerName] - traveller name as shown in the profile heading; skipped when omitted
+   * @returns {Promise<{ ownerName: string, activeTab: string, url: string }>}
+   */
+  async verifyUserProfileOpenOnTab(page, expectedTab, expectedOwnerName) {
+    if (!page) {
+      throw new Error('[Profile.verifyUserProfileOpenOnTab] "page" is required.');
+    }
+    if (!expectedTab || typeof expectedTab !== 'string') {
+      throw new Error(
+        `[Profile.verifyUserProfileOpenOnTab] "expectedTab" must be a non-empty string, got: ${typeof expectedTab} (${JSON.stringify(expectedTab)})`
+      );
+    }
+    if (expectedOwnerName !== undefined && typeof expectedOwnerName !== 'string') {
+      throw new Error(
+        `[Profile.verifyUserProfileOpenOnTab] "expectedOwnerName" must be a string when given, got: ${typeof expectedOwnerName}`
+      );
+    }
+
+    const profilePage = getPageObject(page, ProfilePage);
+    await profilePage.waitForUserProfilePage();
+
+    // Read as a query parameter rather than pattern-matched out of the URL: it is exact regardless
+    // of parameter order, and keeps expectedTab out of a RegExp it would otherwise need escaping for.
+    const url = page.url();
+    const requestedTab = new URL(url).searchParams.get('tab');
+    if (requestedTab !== expectedTab) {
+      throw new Error(
+        `[Profile.verifyUserProfileOpenOnTab] The profile opened on ${url}, whose "tab" query is ` +
+        `${requestedTab === null ? 'absent' : `"${requestedTab}"`} rather than "${expectedTab}". The deep link was ` +
+        `built for the wrong section (or without one), so the profile lands on Personal Details and the user still ` +
+        `has to find the document themselves.`
+      );
+    }
+
+    const activeTab = await profilePage.getActiveProfilePageTabName();
+    if (activeTab !== expectedTab) {
+      throw new Error(
+        `[Profile.verifyUserProfileOpenOnTab] The profile at ${url} requested "${expectedTab}" but opened on ` +
+        `"${activeTab || '(no tab selected)'}". user-profile.ts only honours a "tab" query whose value is in its ` +
+        `dataTabMap, and outstanding mandate fields override the opening tab.`
+      );
+    }
+
+    const ownerName = await profilePage.getUserProfilePageOwnerName();
+
+    if (expectedOwnerName) {
+      // Compared case-insensitively on collapsed whitespace: feature files name travellers the way a
+      // tester types them ("pini atr"), while the heading renders the stored capitalisation.
+      const normalise = (value) => value.replace(/\s+/g, ' ').trim().toLowerCase();
+      if (normalise(ownerName) !== normalise(expectedOwnerName)) {
+        throw new Error(
+          `[Profile.verifyUserProfileOpenOnTab] The profile that opened belongs to ` +
+          `"${ownerName || '(no name rendered)'}" but "${expectedOwnerName}" was expected (${url}). The deep link's ` +
+          `userId points at the wrong traveller — on a booker's trip that usually means the alert was attributed to ` +
+          `the logged-in booker instead of the selected traveller.`
+        );
+      }
+    }
+
+    logger.info(
+      `[Profile.verifyUserProfileOpenOnTab] Profile of "${ownerName}" is open on the "${activeTab}" tab (${url})`
+    );
+    return { ownerName, activeTab, url };
+  },
+
+  /**
    * Asserts the open traveller profile page is read-only — the outcome for a booker who may VIEW
    * another traveller's profile but not edit it. Checks two INDEPENDENT sources, deliberately:
    *

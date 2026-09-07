@@ -247,6 +247,12 @@ const SELECTORS = {
   // The tabbed forms mount inside the section; used to wait out the profile load before counting
   // editability signals, mirroring PROFILE_DIALOG_ANY_INPUT's role for the dialog.
   USER_PROFILE_PAGE_TABS: "section.user-profile:not(.blend-into-modal) .tabs-container",
+  // The <h1> above the tabs, holding "<firstName> <lastName>" of the profile being viewed
+  // (user-profile.vue .title-wrapper). It is the only place on the page that names the OWNER of the
+  // profile, so it is what proves a deep link landed on the intended traveller rather than on the
+  // viewer's own profile. Rendered only when hideProfileHeader is false — true for the embedded
+  // profile dialog, false for the standalone /user/:userId page this selector targets.
+  USER_PROFILE_PAGE_OWNER_NAME: ".user-profile-title .title-wrapper h1",
   // Birth Date is the one Personal Details control that renders WITHOUT `disabled` on a read-only
   // profile — personal-details-form.vue passes :disabled="disableEdit" to every other field but not
   // to its birth-date app-datepicker. The field is inert anyway (the picker does not open), so the
@@ -1799,6 +1805,55 @@ class ProfilePage {
         `within ${timeout}ms (still ${actual}). The delete request may not have completed. Original: ${err.message}`
       );
     }
+  }
+
+  /**
+   * Reads the profile owner's name from the <h1> above the tabs on the standalone /user/:userId
+   * page. Returns an empty string when the header is absent (the embedded dialog renders with
+   * hideProfileHeader), so the DSL owns the "who does this profile belong to" verdict.
+   * @param {number} [timeoutMs=20000]
+   * @returns {Promise<string>}
+   */
+  async getUserProfilePageOwnerName(timeoutMs = 20000) {
+    const heading = this.page.locator(SELECTORS.USER_PROFILE_PAGE_OWNER_NAME).first();
+    try {
+      await heading.waitFor({ state: 'visible', timeout: timeoutMs });
+    } catch {
+      return '';
+    }
+    return ((await heading.textContent()) || '').replace(/\s+/g, ' ').trim();
+  }
+
+  /**
+   * Name of the SELECTED tab on the standalone /user/:userId page, e.g. "passportsAndVisas" — the
+   * el-tabs item id with its `tab-` prefix stripped, matching the keys of user-profile.ts#dataTabMap
+   * and the `?tab=` query those routes carry.
+   *
+   * Page-side sibling of getActiveDialogTabName: same `.el-tabs__item.is-active` signal, scoped to
+   * the page section instead of a dialog. Returning the NAME rather than a per-tab boolean is what
+   * lets one DSL check serve every deep link — the document-expiry warnings alone target two
+   * different tabs (passport/visa -> passportsAndVisas, credit card -> formOfPayment).
+   *
+   * @param {number} [timeoutMs=20000]
+   * @returns {Promise<string|null>} null when no tab is selected — the DSL turns that into a
+   *   descriptive failure.
+   */
+  async getActiveProfilePageTabName(timeoutMs = 20000) {
+    const activeTab = this.page
+      .locator(SELECTORS.USER_PROFILE_PAGE)
+      // DIALOG_ACTIVE_TAB is the generic el-tabs "selected header" marker despite its name — the
+      // scoping above, not the constant, is what makes this the page rather than the dialog.
+      .locator(SELECTORS.DIALOG_ACTIVE_TAB)
+      .first();
+    // The section paints before the profile loads (v-if="userProfile" guards the tab strip), so
+    // reading straight away finds no active tab.
+    try {
+      await activeTab.waitFor({ state: 'visible', timeout: timeoutMs });
+    } catch {
+      // Deliberately swallowed: the caller turns a null tab name into a descriptive failure.
+    }
+    const id = await activeTab.getAttribute('id').catch(() => null);
+    return id ? id.replace(/^tab-/, '') : null;
   }
 
   // --- Passports & Visas Tab ---
