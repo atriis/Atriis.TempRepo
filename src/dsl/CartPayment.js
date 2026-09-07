@@ -750,6 +750,26 @@ class CartPayment {
   }
 
   /**
+   * Asserts that the CVV field IS displayed in the payment panel.
+   * Positive counterpart of verifyCVVFieldNotVisible: use it to prove the selected card requires a
+   * CVV (form-of-payment.ts only renders the input when the quote validation returns isCvvRequired).
+   * Unlike fillCreditCardCVV this asserts only — it leaves the field empty so a following
+   * proceed-to-checkout can prove the CVV is mandatory and not merely offered.
+   * @param {import('@playwright/test').Page} page
+   */
+  static async verifyCVVFieldVisible(page) {
+    if (!page) throw new Error('[CartPayment.verifyCVVFieldVisible] "page" is required.');
+    const paymentPage = getPageObject(page, CartPaymentPage);
+    const isVisible = await paymentPage.isCVVFieldVisible({ timeout: 20000 });
+    expect(
+      isVisible,
+      'Expected the CVV field to be displayed for the selected card, but it is not. ' +
+        'This means the card was saved as a form of payment that does not require a CVV ' +
+        '(random-CVV configured in admin, invoice, or billback).'
+    ).toBe(true);
+  }
+
+  /**
    * Fills the CVV field and asserts it is visible — fails the test if CVV field is not shown.
    * Use this when CVV is required (not optional). Complements fillCreditCardCVVifNeeded.
    * @param {import('@playwright/test').Page} page

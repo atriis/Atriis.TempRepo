@@ -306,6 +306,13 @@ Then("the CVV field should not be displayed", async function () {
   await CartPayment.verifyCVVFieldNotVisible(this.page);
 });
 
+// Positive counterpart of the step above: the selected card DOES ask for a CVV. On its own this only
+// proves the field is offered — leaving it empty and proceeding to checkout is what proves it mandatory.
+Then("the CVV field should be displayed", async function () {
+  logger.info("Verifying CVV field is displayed");
+  await CartPayment.verifyCVVFieldVisible(this.page);
+});
+
 When("I open the credit card expiration year dropdown", async function () {
   logger.info("Opening credit card expiration year dropdown");
   await CartPayment.openExpirationYearDropdown(this.page);
