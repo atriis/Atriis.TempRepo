@@ -94,6 +94,13 @@ When("I edit the flight search from {string} to {string}", async function (from,
   await FlightSearch.editFlightSearch(this.page, from, to);
 });
 
+// Separates the added flight from the one already in the trip: quotes sharing a date can land on
+// overlapping segments, which the supplier refuses to price into one PNR.
+When("I edit the flight search from {string} to {string} in {int} days", async function (from, to, departureDaysFromNow) {
+  logger.info('Editing flight search in modal with an explicit days-from-now date', { from, to, departureDaysFromNow });
+  this.editedFlightSearch = await FlightSearch.editFlightSearch(this.page, from, to, { departureDaysFromNow });
+});
+
 When("I edit the flight search from {string} to {string} with the same dates as the hotel search", async function (from, to) {
   logger.info('Editing flight search in modal with hotel search dates', {
     from,

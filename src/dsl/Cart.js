@@ -3041,9 +3041,15 @@ const Cart = {
    * - Get and return booking status
    *
    * @param {import('playwright').Page} page - Playwright page instance
+   * @param {Object} [bookingContext] - Product/sub-product used to classify supplier booking errors
+   * @param {Object} [options]
+   * @param {boolean} [options.expectMergedQuote=false] - Wait for the held quotes to MERGE into one
+   *   card instead of for another "on hold" badge to appear. A single-PNR hold folds the quote being
+   *   held into the one already on hold, so the badge count never grows and the default wait below
+   *   can only time out.
    * @returns {Promise<{held: boolean, status: string}>} Hold status and booking status
    */
-  async holdTrip(page, bookingContext = {}) {
+  async holdTrip(page, bookingContext = {}, { expectMergedQuote = false } = {}) {
     if (!page) {
       throw new Error('page is required');
     }
@@ -3100,13 +3106,27 @@ const Cart = {
     // added still Pending booking (test 55056, second hold). Waiting for the count to
     // GROW is the same check for a first hold (0 -> 1) and correct for every later one.
     const heldBefore = await onHoldStatusLabels.count().catch(() => 0);
+    const visibleQuoteCards = page.locator(CART_SELECTORS.QUOTE_PAYMENT_CARD_VISIBLE);
+
+    // A merge is done when the two cards have collapsed into ONE that reads "on hold" - the
+    // condition is false while the quote being held is still its own Pending booking card, so it
+    // cannot pass before the click has taken effect.
+    const mergedIntoSingleHeldQuote = async () => {
+      const quotes = await visibleQuoteCards.count().catch(() => 0);
+      const held = await onHoldStatusLabels.count().catch(() => 0);
+      return quotes === 1 && held === 1;
+    };
 
     // Initial hold action.
     await cartPage.waitForHoldButton();
     await cartPage.clickHoldButton().catch(() => {});
 
     while (Date.now() < deadline) {
-      if ((await onHoldStatusLabels.count().catch(() => heldBefore)) > heldBefore) {
+      const holdSettled = expectMergedQuote
+        ? await mergedIntoSingleHeldQuote()
+        : (await onHoldStatusLabels.count().catch(() => heldBefore)) > heldBefore;
+
+      if (holdSettled) {
         const status = await cartPage.getBookingStatus({ page });
         return {
           held: true,
@@ -3134,6 +3154,16 @@ const Cart = {
       }
 
       await page.waitForTimeout(1000);
+    }
+
+    if (expectMergedQuote) {
+      const quotes = await visibleQuoteCards.count().catch(() => 0);
+      const held = await onHoldStatusLabels.count().catch(() => 0);
+      throw new Error(
+        `The held quotes did not merge into a single on-hold quote within ${timeout}ms `
+          + `(${quotes} quote cards visible, ${held} of them on hold), and no booking error or `
+          + 'price-change dialog appeared.',
+      );
     }
 
     throw new Error(`Neither on hold status, booking error modal, nor price-change recovery completed within ${timeout}ms.`);
@@ -6213,6 +6243,38 @@ const Cart = {
     }
 
     return pnrCodes;
+  },
+
+  /**
+   * Verifies two flight quotes were merged into a single PNR.
+   *
+   * A merge is only visible as ONE quote card carrying a PNR. When it fails, the app leaves the two
+   * quotes as separate cards and only the originally booked one has a PNR - so reading a "first" and
+   * a "second" PNR code cannot see the difference: after a successful merge there is a single code
+   * on screen and the comparison ends up being against itself.
+   *
+   * @param {import('playwright').Page} page
+   * @returns {Promise<{quotes: number, pnrCodes: string[]}>}
+   */
+  async verifyQuotesMergedIntoSinglePnr(page) {
+    if (!page) throw new Error('page is required');
+
+    const cartPage = getPageObject(page, CartPage);
+    const { quotes, pnrCodes } = await cartPage.getVisibleQuotesWithPnrCodes();
+
+    expect(
+      quotes,
+      `Expected the flights to be merged into a single quote, but the trip shows ${quotes} quote cards `
+        + `(PNR codes found: ${pnrCodes.join(', ') || 'none'}).`,
+    ).toBe(1);
+
+    expect(
+      pnrCodes.length,
+      `Expected the merged quote to display exactly one PNR, got ${pnrCodes.length} `
+        + `(${pnrCodes.join(', ') || 'none'}).`,
+    ).toBe(1);
+
+    return { quotes, pnrCodes };
   },
 
   /**

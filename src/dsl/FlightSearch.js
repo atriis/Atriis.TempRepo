@@ -1311,12 +1311,25 @@ const FlightSearch = {
    * @param {string} from - New origin airport code
    * @param {string} to - New destination airport code
    */
-  async editFlightSearch(page, from, to, { departureDate = undefined, returnDate = undefined } = {}) {
+  async editFlightSearch(
+    page,
+    from,
+    to,
+    { departureDate = undefined, returnDate = undefined, departureDaysFromNow = undefined } = {},
+  ) {
     if (!page) throw new Error('page is required');
     if (!from || typeof from !== 'string') throw new Error('from must be a non-empty string, got: ' + from);
     if (!to || typeof to !== 'string') throw new Error('to must be a non-empty string, got: ' + to);
     if ((departureDate && !returnDate) || (!departureDate && returnDate)) {
       throw new Error('departureDate and returnDate must either both be provided or both be omitted');
+    }
+    if (departureDaysFromNow !== undefined) {
+      if (!Number.isInteger(departureDaysFromNow) || departureDaysFromNow < 0) {
+        throw new Error('departureDaysFromNow must be a non-negative integer, got: ' + departureDaysFromNow);
+      }
+      if (departureDate || returnDate) {
+        throw new Error('departureDaysFromNow cannot be combined with an explicit departureDate/returnDate');
+      }
     }
     if (departureDate !== undefined && typeof departureDate !== 'string') {
       throw new Error('departureDate must be a string when provided, got: ' + typeof departureDate);
@@ -1351,7 +1364,20 @@ const FlightSearch = {
     await searchPage.editFromField(from);
     await searchPage.editToField(to);
 
-    if (departureDate && returnDate) {
+    if (departureDaysFromNow !== undefined) {
+      const today = new Date();
+      const targetDate = new Date(
+        today.getFullYear(),
+        today.getMonth(),
+        today.getDate() + departureDaysFromNow,
+      );
+
+      // A one-way edit drawer renders the SINGLE-month picker, whose header splits year and month
+      // into two labels - selectDatesByInputValues drives the range calendar and cannot parse it.
+      await searchPage.clickDepartureDateField();
+      const monthTableIndex = await advanceSinglePickerCalendarUntilMonthVisible(page, targetDate);
+      await clickDayInVisibleMonth(page, targetDate, monthTableIndex);
+    } else if (departureDate && returnDate) {
       await searchPage.clickDepartureDateField();
       await selectDatesByInputValues(page, {
         startDateValue: departureDate,
@@ -1361,7 +1387,7 @@ const FlightSearch = {
 
     await searchPage.waitAndClickEditSearchButton();
 
-    return { searched: true, from, to, departureDate, returnDate };
+    return { searched: true, from, to, departureDate, returnDate, departureDaysFromNow };
   },
 
   /**

@@ -150,9 +150,8 @@ When("I click the send for approval button", { timeout: CHECKOUT_STEP_TIMEOUT_MS
   await Cart.clickSendForApproval(this.page);
 });
 
-When("I hold the trip", { timeout: CHECKOUT_STEP_TIMEOUT_MS }, async function () {
-  logger.info("Holding the trip");
-  const scenarioTags = Array.isArray(this.scenarioTags) ? this.scenarioTags : [];
+async function holdTripFromCart(world, { expectMergedQuote = false } = {}) {
+  const scenarioTags = Array.isArray(world.scenarioTags) ? world.scenarioTags : [];
   const bookingContext = {
     product: scenarioTags.includes('@transportation') ? 'transportation' : scenarioTags.includes('@hotels') ? 'hotels' : scenarioTags.includes('@flights') ? 'flights' : null,
     subProduct: scenarioTags.includes('@cars')
@@ -166,12 +165,12 @@ When("I hold the trip", { timeout: CHECKOUT_STEP_TIMEOUT_MS }, async function ()
             : null,
   };
 
-  const result = await Cart.holdTrip(this.page, bookingContext);
-  this.bookingOutcome = result;
+  const result = await Cart.holdTrip(world.page, bookingContext, { expectMergedQuote });
+  world.bookingOutcome = result;
 
   if (result?.knownBookingError && result.shouldSkip) {
-    await Checkout.verifyBookingErrorMessage(this.page, result.bookingErrorText || result.supplier || null);
-    await Checkout.clickBackToTripButton(this.page);
+    await Checkout.verifyBookingErrorMessage(world.page, result.bookingErrorText || result.supplier || null);
+    await Checkout.clickBackToTripButton(world.page);
     return 'pending';
   }
 
@@ -187,6 +186,21 @@ When("I hold the trip", { timeout: CHECKOUT_STEP_TIMEOUT_MS }, async function ()
   }
 
   expect(result.status.toLowerCase()).toContain(tripStatus.label.onHold.status.toLowerCase());
+
+  return undefined;
+}
+
+When("I hold the trip", { timeout: CHECKOUT_STEP_TIMEOUT_MS }, async function () {
+  logger.info("Holding the trip");
+  return holdTripFromCart(this);
+});
+
+// Use for the SECOND hold on a single-PNR trip. "I hold the trip" waits for another "on hold" badge
+// to appear, but a single-PNR hold folds the new quote into the one already held - leaving one card
+// and one badge - so that wait can only time out. This waits for that merge instead.
+When("I hold the trip into the existing PNR", { timeout: CHECKOUT_STEP_TIMEOUT_MS }, async function () {
+  logger.info("Holding the trip into the PNR of the quote already on hold");
+  return holdTripFromCart(this, { expectMergedQuote: true });
 });
 
 // Holds ONE quote by its 1-based position in the cart ("I hold quote 1" = topmost card), and
@@ -1939,6 +1953,15 @@ Then("the stored quote PNR codes should match", async function () {
     secondQuotePnrCode: this.storedSecondQuotePnrCode,
   });
   await Cart.verifyQuotePnrCodesMatch(this.page, this.storedFirstQuotePnrCode, this.storedSecondQuotePnrCode);
+});
+
+// Asserts the merge itself, not two PNR codes: after a successful merge the cart holds ONE quote
+// card with ONE PNR, so there is no second code left to compare against. A failed merge is what
+// leaves two cards behind - one carrying the PNR, one without.
+Then("the flight quotes should be merged into a single PNR", async function () {
+  logger.info("Verifying the flight quotes were merged into a single PNR");
+  const result = await Cart.verifyQuotesMergedIntoSinglePnr(this.page);
+  logger.info("Flight quotes are merged into a single PNR", result);
 });
 
 Then("the stored quote PNR codes should not match", async function () {

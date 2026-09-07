@@ -124,6 +124,35 @@ When("I filter results by carrier {string}", async function (carrier) {
   await applyResultsSearchFilter(this, carrier);
 });
 
+// Some carriers intermittently fail to sell into an existing PNR ("Couldn't confirm segments"),
+// which makes a test pinned to one carrier fail for a reason it does not test. Drawing from a pool
+// keeps the assertion honest while giving the run a second viable carrier. The drawn carrier is
+// logged and stored so a failure report can name the one that was actually used.
+When("I filter results by a random carrier from {string}", async function (carrierList) {
+  const carriers = carrierList
+    .split(",")
+    .map((carrier) => carrier.trim())
+    .filter(Boolean);
+
+  if (carriers.length < 2) {
+    throw new Error(
+      `[I filter results by a random carrier from] Expected a comma-separated list of at least 2 carriers, got: "${carrierList}"`,
+    );
+  }
+
+  const carrier = carriers[Math.floor(Math.random() * carriers.length)];
+  logger.info("Filtering results by a randomly drawn carrier", { pool: carriers, carrier });
+
+  this.currentCarrier = carrier;
+
+  if (!this.carriers) this.carriers = [];
+  if (!this.carriers.includes(carrier)) {
+    this.carriers.push(carrier);
+  }
+
+  await applyResultsSearchFilter(this, carrier);
+});
+
 When("I filter results to non-stop flights only", async function () {
   logger.info("Filtering results to non-stop flights only");
   await FlightResults.filterByNoStops(this.page);
