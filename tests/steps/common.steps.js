@@ -460,6 +460,17 @@ Then("the {string} document expiry warning should be displayed on the homepage",
   await Homepage.verifyDocumentExpiryAlertDisplayed(this.page, title, "homepage");
 });
 
+// An EXACT count, not a lower bound: the story requires one warning per affected document, so this
+// is what proves nothing was merged and nothing dropped. It says nothing about WHICH documents —
+// the per-title steps carry that.
+Then(
+  "{int} document expiry warnings should be displayed on the homepage",
+  async function (expectedCount) {
+    logger.info("Verifying how many document expiry warnings the homepage shows", { expectedCount });
+    await Homepage.verifyDocumentExpiryAlertCount(this.page, expectedCount, "homepage");
+  },
+);
+
 // --- Trip search page (a booker's selected travellers) ---
 
 Then(
@@ -480,6 +491,17 @@ Then(
   async function (title, expectedMessage) {
     logger.info("Verifying the body message of a document expiry warning", { title, expectedMessage });
     await Homepage.verifyDocumentExpiryAlertMessage(this.page, title, expectedMessage);
+  },
+);
+
+// Locating the card by title and reading the button off THAT card is the point: the label is derived
+// from the document type, so this pairs each title with the action it is supposed to offer. It also
+// stands in for a "displayed" check, since a missing card cannot yield a button.
+Then(
+  "the {string} document expiry warning should carry the {string} button",
+  async function (title, expectedCtaLabel) {
+    logger.info("Verifying the call-to-action of a document expiry warning", { title, expectedCtaLabel });
+    await Homepage.verifyDocumentExpiryAlertCta(this.page, title, expectedCtaLabel);
   },
 );
 

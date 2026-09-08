@@ -39,6 +39,44 @@ const DOCUMENT_EXPIRY_SURFACES = {
 };
 
 /**
+ * Resolves the named surface and confirms the page is actually on it, returning the surface config.
+ *
+ * Every warning assertion needs this first, and for the same reason: one component serves both the
+ * homepage and the trip search screen, so a card found on the wrong screen would satisfy the lookup
+ * while proving nothing. Dismissing the cookie banner belongs here too — it overlays the top of
+ * both surfaces, exactly where the stack renders.
+ *
+ * @param {import('playwright').Page} page
+ * @param {'homepage'|'tripSearchPage'} surface
+ * @param {string} caller - the calling method name, for the error prefix
+ * @param {string} purpose - what the caller was about to do, e.g. 'looking for the "Passport expired" warning'
+ * @returns {Promise<{ label: string, urlPattern: RegExp, hint: string }>}
+ */
+async function ensureOnDocumentExpirySurface(page, surface, caller, purpose) {
+  const config = DOCUMENT_EXPIRY_SURFACES[surface];
+  if (!config) {
+    throw new Error(
+      `[Homepage.${caller}] Unknown surface "${surface}". ` +
+        `Valid surfaces: ${Object.keys(DOCUMENT_EXPIRY_SURFACES).join(", ")}.`,
+    );
+  }
+
+  await getPageObject(page, LoginPage).acceptCookiesIfPresent(5000);
+
+  try {
+    await page.waitForURL(config.urlPattern, { timeout: 30000 });
+  } catch {
+    throw new Error(
+      `[Homepage.${caller}] Expected to be on the ${config.label} (URL matching ${config.urlPattern}) ` +
+        `before ${purpose}, but the page is on ${page.url()}. The step order is wrong, or the previous ` +
+        "navigation never completed.",
+    );
+  }
+
+  return config;
+}
+
+/**
  * Homepage DSL
  *
  * High-level actions the user performs on the application homepage
@@ -345,9 +383,6 @@ const Homepage = {
    * Warnings are addressed by their visible TITLE rather than by document type, because the title
    * is the only thing that separates the two surfaces the same component serves.
    *
-   * The surface is confirmed by URL first: a warning found on the wrong screen would satisfy the
-   * card lookup while proving nothing, because one component serves both screens.
-   *
    * @param {import('playwright').Page} page
    * @param {string} title - the warning's exact visible title, e.g. "Passport expired"
    * @param {'homepage'|'tripSearchPage'} surface
@@ -360,29 +395,15 @@ const Homepage = {
         `[Homepage.verifyDocumentExpiryAlertDisplayed] "title" must be a non-empty string, got: ${typeof title}`,
       );
     }
-    const config = DOCUMENT_EXPIRY_SURFACES[surface];
-    if (!config) {
-      throw new Error(
-        `[Homepage.verifyDocumentExpiryAlertDisplayed] Unknown surface "${surface}". ` +
-          `Valid surfaces: ${Object.keys(DOCUMENT_EXPIRY_SURFACES).join(", ")}.`,
-      );
-    }
+
+    const config = await ensureOnDocumentExpirySurface(
+      page,
+      surface,
+      "verifyDocumentExpiryAlertDisplayed",
+      `looking for the "${title}" warning`,
+    );
 
     logger.info(`Verifying the "${title}" document expiry warning on the ${config.label}`);
-
-    // The cookie banner can overlay the top of both surfaces, and the warning stack renders right
-    // under the header — dismiss it so the card is on screen for the click that may follow.
-    await getPageObject(page, LoginPage).acceptCookiesIfPresent(5000);
-
-    try {
-      await page.waitForURL(config.urlPattern, { timeout: 30000 });
-    } catch {
-      throw new Error(
-        `[Homepage.verifyDocumentExpiryAlertDisplayed] Expected to be on the ${config.label} ` +
-          `(URL matching ${config.urlPattern}) before looking for the "${title}" warning, but the page is on ` +
-          `${page.url()}. The step order is wrong, or the previous navigation never completed.`,
-      );
-    }
 
     const homePage = getPageObject(page, HomePage);
 
@@ -409,6 +430,102 @@ const Homepage = {
       `[Homepage.verifyDocumentExpiryAlertDisplayed] Expected a document expiry warning titled "${title}" ` +
         `on the ${config.label}, but the warnings present are ${JSON.stringify(titles)}. ${config.hint}`,
     );
+  },
+
+  /**
+   * Verifies the surface shows exactly `expectedCount` document expiry warnings — one per affected
+   * document, none merged and none missing.
+   *
+   * The exact count is the assertion, not a lower bound: the story requires one warning per
+   * document, so two cards for a profile with three expired documents is as much a failure as four.
+   * A mismatch names every title that rendered, since which one is missing is the whole diagnosis.
+   *
+   * @param {import('playwright').Page} page
+   * @param {number} expectedCount
+   * @param {'homepage'|'tripSearchPage'} surface
+   * @returns {Promise<{ count: number, titles: string[] }>}
+   */
+  async verifyDocumentExpiryAlertCount(page, expectedCount, surface) {
+    if (!page) throw new Error("[Homepage.verifyDocumentExpiryAlertCount] \"page\" is required.");
+    if (!Number.isInteger(expectedCount) || expectedCount < 1) {
+      throw new Error(
+        `[Homepage.verifyDocumentExpiryAlertCount] "expectedCount" must be a positive integer, got: ${JSON.stringify(expectedCount)}`,
+      );
+    }
+
+    const config = await ensureOnDocumentExpirySurface(
+      page,
+      surface,
+      "verifyDocumentExpiryAlertCount",
+      "counting warnings",
+    );
+
+    logger.info(`Expecting ${expectedCount} document expiry warning(s) on the ${config.label}`);
+
+    const homePage = getPageObject(page, HomePage);
+    const count = await homePage.waitForDocumentExpiryAlertCount(expectedCount);
+
+    if (count !== expectedCount) {
+      const titles = await homePage.getDocumentExpiryAlertTitles();
+      throw new Error(
+        `[Homepage.verifyDocumentExpiryAlertCount] Expected ${expectedCount} document expiry warning(s) on ` +
+          `the ${config.label} but found ${count}: ${JSON.stringify(titles)}. ` +
+          (count === 0
+            ? "With none, either the \"Atriis.App.OBT.IsDocumentExpiryRemindersEnabled\" flag is off for this " +
+              "corporation, or no document on the profile(s) in scope is expired or within 60 days of expiring."
+            : "document-expiry.logic.ts raises one alert per affected document — a passport, each of its visas, " +
+              "and each personal credit card — so a short count means a document is not in the state the test " +
+              "data assumes, and a long one means something extra on the profile also needs attention."),
+      );
+    }
+
+    const titles = await homePage.getDocumentExpiryAlertTitles();
+    logger.info(`${count} document expiry warning(s) on the ${config.label}`, { titles });
+    return { count, titles };
+  },
+
+  /**
+   * Verifies the document expiry warning with the given title carries the expected call-to-action
+   * label.
+   *
+   * Locating by title and reading the button off that same card is what proves the pairing: the CTA
+   * is derived from the document type (documentExpiry.<type>.cta), so "Credit card expired" offering
+   * "Update Passport" would mean the card was built from the wrong document — invisible to a check
+   * that only counted cards or only looked for titles.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} title
+   * @param {string} expectedCtaLabel - e.g. "Update Card"
+   * @returns {Promise<{ ctaLabel: string }>}
+   */
+  async verifyDocumentExpiryAlertCta(page, title, expectedCtaLabel) {
+    if (!page) throw new Error("[Homepage.verifyDocumentExpiryAlertCta] \"page\" is required.");
+    if (!title || typeof title !== "string") {
+      throw new Error(
+        `[Homepage.verifyDocumentExpiryAlertCta] "title" must be a non-empty string, got: ${typeof title}`,
+      );
+    }
+    if (!expectedCtaLabel || typeof expectedCtaLabel !== "string") {
+      throw new Error(
+        `[Homepage.verifyDocumentExpiryAlertCta] "expectedCtaLabel" must be a non-empty string, got: ${typeof expectedCtaLabel}`,
+      );
+    }
+
+    logger.info(`Verifying the "${title}" document expiry warning offers "${expectedCtaLabel}"`);
+
+    const homePage = getPageObject(page, HomePage);
+    const ctaLabel = await homePage.getDocumentExpiryAlertCtaLabel(title);
+
+    if (ctaLabel !== expectedCtaLabel) {
+      throw new Error(
+        `[Homepage.verifyDocumentExpiryAlertCta] The "${title}" warning's call-to-action reads "${ctaLabel}" ` +
+          `but "${expectedCtaLabel}" was expected. getCtaKey() derives the label from the document type, so ` +
+          "the card was built for a different document than its title claims.",
+      );
+    }
+
+    logger.info(`"${title}" offers the "${ctaLabel}" button`);
+    return { ctaLabel };
   },
 
   /**

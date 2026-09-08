@@ -1,3 +1,5 @@
+const { expect } = require("@playwright/test");
+
 /**
  * Page Object for the application homepage.
  * Contains only UI-level interactions with homepage widgets
@@ -463,6 +465,31 @@ class HomePage {
     } catch {
       return false;
     }
+  }
+
+  /**
+   * Waits for the warning stack to hold exactly `expectedCount` cards, then reports how many it
+   * actually holds. Never throws on a mismatch — the Homepage DSL owns the verdict, and can name
+   * the titles that DID render, which a bare count comparison cannot.
+   *
+   * The wait matters in both directions. A profile with three expired documents commits its alerts
+   * to the store in one go, so reading too early is unlikely but not impossible; reading without a
+   * wait at all would also let a genuine shortfall (two warnings where three are expected) pass as
+   * "not settled yet". Polling until the count matches, then reporting it, fails only on a real
+   * mismatch. Mirrors ProfilePage.waitForBahnCardRowCount.
+   *
+   * @param {number} expectedCount
+   * @param {number} [timeout=20000]
+   * @returns {Promise<number>} the count after the wait, matching or not
+   */
+  async waitForDocumentExpiryAlertCount(expectedCount, timeout = 20000) {
+    const alerts = this.page.locator(SELECTORS.DOCUMENT_EXPIRY_ALERT);
+    try {
+      await expect.poll(async () => alerts.count(), { timeout }).toBe(expectedCount);
+    } catch {
+      // Deliberately swallowed: the caller turns the settled count into a descriptive failure.
+    }
+    return alerts.count();
   }
 
   /**

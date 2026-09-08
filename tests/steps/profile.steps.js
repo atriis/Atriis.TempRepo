@@ -574,9 +574,20 @@ Then("the traveler profile page is not editable", async function () {
 // /user/:userId?tab=passportsAndVisas in a new tab. Page-scoped, like the three steps above, and
 // deliberately NOT with the document-expiry steps in common.steps.js: what is asserted here is
 // the profile screen.
-// The traveller name is required rather than optional — on a booker's trip, "a profile opened on
-// the right tab" is satisfied just as well by the booker's own profile, which is the bug this
-// step exists to catch.
+//
+// Two variants, because whose profile opened only matters on one of the two surfaces. A warning on
+// the traveller's own homepage can only ever open their own profile, so naming them would assert
+// nothing. A warning on a booker's trip search screen belongs to a SELECTED traveller, and "a
+// profile opened on the right tab" is satisfied just as well by the booker's own — which is the
+// bug the named variant exists to catch.
+Then(
+  "the user profile should open in a new tab on the passports and visas section",
+  async function () {
+    logger.info("Verifying the profile opened on the passports and visas section");
+    await Profile.verifyUserProfileOpenOnTab(this.page, "passportsAndVisas");
+  }
+);
+
 Then(
   "the user profile of {string} should open in a new tab on the passports and visas section",
   async function (travellerName) {
