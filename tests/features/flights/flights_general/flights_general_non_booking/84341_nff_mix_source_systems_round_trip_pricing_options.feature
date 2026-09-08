@@ -1,13 +1,11 @@
+@flights @nff
+Feature: 84341 Mix Source Systems - Complete a round trip search and add to cart via pricing options with the new flight flow
 
-
-@flights
-Feature: Mix Source Systems - Complete a round trip search and add to cart via pricing options with the new flight flow
-
-  As a corporate traveler 
+  As a corporate traveler
   I want to search and add to cart a round trip flight via pricing options with the new flight flow
   So that I must go through pricing options to complete the search for both outbound and inbound legs
 
-  Scenario Outline: Mix Source Systems - Complete a round trip search and add to cart via pricing options with the new flight flow
+  Scenario: 84341 Mix Source Systems - Complete a round trip search and add to cart via pricing options with the new flight flow
     Given I am logged in as "amsnewflowamalh@ra.com" booking a new trip
     And I have added myself as the traveler
     When I search for a round trip flight from "MUC" to "LON"
@@ -20,4 +18,3 @@ Feature: Mix Source Systems - Complete a round trip search and add to cart via p
     And I select the inbound first option from pricing options new flight flow
     And I add to cart from pricing options new flight flow
     Then the booking status should be "Pending booking"
-      
