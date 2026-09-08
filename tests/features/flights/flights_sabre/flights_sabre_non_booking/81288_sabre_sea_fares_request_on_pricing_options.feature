@@ -16,7 +16,6 @@ Feature: 81288 Sabre - SEA fares requested on click pricing options
     When I search for a one way flight from "DXB" to "HKG"
     Then flight results should be available
     When I filter results by "Marine fare" checkbox
-    # This user is on the new flight flow: results offer "Select flight", not a Pricing Options button
     When I select the first flight result in new flight flow
     And I wait for the outbound leg in pricing options page
     When I capture the "request" payload for request type "*RevalidateItinerary*" from Storage
