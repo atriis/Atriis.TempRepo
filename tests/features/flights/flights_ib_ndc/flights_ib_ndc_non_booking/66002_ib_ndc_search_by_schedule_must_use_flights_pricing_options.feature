@@ -15,7 +15,7 @@ Feature: 66002 IB NDC - Search By Schedule with 'Must Use Flights Pricing Option
   Scenario: Round trip by schedule shows pricing options on Select Flight for outbound and inbound
     Given I am logged in as "ibndcuser@soniatest.com" booking a new trip
     And I have added myself as the traveler
-    When I search for a flight by schedule from "MAD" to "BCN"
+    When I search for a flight by schedule from "LHR" to "MEX"
     And flight results should be available
     Then the Select Flight button should be visible in results
     And the Add to trip and Pricing Options buttons should not be visible in results
