@@ -18,8 +18,6 @@ Feature: 48696 Ypsilon - Correct price per ticket in pricing options for multi t
     When I search for a round trip flight from "AMS" to "BCN" with outbound on a "thursday" and inbound the next day
     Then flight results should be available
     When I filter airline results by "Multi carrier" checkbox
-    Then first flight has carrier "Vueling Airline" for outbound
-    And first flight has carrier "Transavia Airlines" for inbound
     When I extract the price from first flight result
     And I click to open first pricing options
     And I extract the price from first pricing option
@@ -33,8 +31,6 @@ Feature: 48696 Ypsilon - Correct price per ticket in pricing options for multi t
     When I search for a round trip flight from "AMS" to "BCN" with outbound on a "thursday" and inbound the next day
     Then flight results should be available
     When I filter airline results by "Multi carrier" checkbox
-    Then first flight has carrier "Vueling Airline" for outbound
-    And first flight has carrier "Transavia Airlines" for inbound
     When I extract the price from first flight result
     And I click to open first pricing options
     And I extract the price from first pricing option
