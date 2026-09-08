@@ -6,7 +6,7 @@
 # Created: 2025-08-29T04:55:34Z
 # Updated: 2025-08-29T05:42:18Z
 
-@regression @flights @iberia @ndc @fare-rules @hold
+@regression @flights @iberia @ndc @fare-rules @hold @full-purchase
 Feature: 66133 Iberia NDC - Complete trip booking with fare rules verification
   As a corporate traveler
   I want to verify fare rules across results, pricing options, flight details, cart, and price breakdown
@@ -15,7 +15,7 @@ Feature: 66133 Iberia NDC - Complete trip booking with fare rules verification
   Scenario: Verify fare rules in every entry point and hold the Iberia NDC trip
     Given I am logged in as "bsiberia@bsiberia.com" booking a new trip
     And I have added myself as the traveler
-    When I search for a one way flight from "LON" to "MAD"
+    When I search for a one way flight from "LHR" to "MEX"
     And flight results should be available
     And I click to open fare rules
     Then I should see the fare rules note about strictest terms
