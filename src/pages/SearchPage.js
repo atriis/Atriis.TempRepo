@@ -21,6 +21,7 @@ const SELECTORS = {
   // (e.g. cart page after removing a traveler) — same click handler opens the same edit-traveler
   // dialog either way (confirmed against Atriis.App source, trip-traveler-tag.vue).
   EMPTY_TRAVELER_SLOT: ".traveler-name.has-text-weight-semibold.is-clickable",
+
   // The empty traveler slot's placeholder <p> (trip-traveler-tag.vue), used when a test must open
   // the edit dialog for the ALREADY-EMPTY slot rather than appending a new one. Same class combo
   // as EMPTY_TRAVELER_SLOT above on purpose: trip-traveler-tag.vue in Atriis.App gives this <p> a
@@ -29,6 +30,15 @@ const SELECTORS = {
   // class combo alone also matches a FILLED traveler name whenever the booker may view that
   // profile. Switch to "p.traveler-name.select-traveler" once staging ships that class.
   SELECT_TRAVELER_SLOT: "p.traveler-name.has-text-weight-semibold.is-clickable",
+  // The trip-cart page has NO trip-travelers-list widget for a flight-only trip: Atriis.App mounts
+  // trip-travelers-list.vue only inside trip-search-control.vue (the search form). On the trip/cart
+  // page the travellers live in cart-info-bar.vue's avatar-list, which renders one trailing EMPTY
+  // avatar as the add-traveller affordance ("isPopover: idx === passengers.length"). app-avatar.vue
+  // puts 'is-clickable' on .passenger-avatar only when that avatar is empty, so this selector cannot
+  // land on a filled traveller. Clicking it opens the very same trip-edit-traveler dialog the
+  // travellers-list route opens, which is why only the trigger differs downstream.
+  TRIP_INFO_BAR_AVATAR: '.cart-info-bar .app-avatar',
+  TRIP_INFO_BAR_ADD_TRAVELER_AVATAR: '.cart-info-bar .app-avatar .passenger-avatar.is-clickable',
   ADD_ME_BUTTON: ".imt-btn",
   STAR_ICON: ".star-icon",
   REMOVE_TRAVELER_BUTTON: ".btn--default .material-symbols-outlined",
@@ -424,6 +434,68 @@ class SearchPage {
         await this.closeVisibleEditTravelerModal();
 
         await this.page.waitForTimeout(300);
+      }
+    }
+  }
+
+  /**
+   * How many traveller avatars the trip/cart info bar renders. The count INCLUDES the trailing
+   * empty add-traveller avatar, so it is only meaningful as a before/after delta.
+   * @returns {Promise<number>}
+   */
+  async getTripInfoBarAvatarCount() {
+    return this.page.locator(`${SELECTORS.TRIP_INFO_BAR_AVATAR}:visible`).count();
+  }
+
+  /**
+   * How many of the trip/cart info bar's avatars are still EMPTY (i.e. clickable add-traveller
+   * slots). Falls to zero on a single-traveller trip once its one slot is filled.
+   * @returns {Promise<number>}
+   */
+  async getTripInfoBarEmptyAvatarCount() {
+    return this.page.locator(`${SELECTORS.TRIP_INFO_BAR_ADD_TRAVELER_AVATAR}:visible`).count();
+  }
+
+  /**
+   * Opens the edit-traveler dialog from the trip/cart info bar's empty avatar — the only
+   * add-traveller affordance the trip page has for a flight-only trip (see
+   * TRIP_INFO_BAR_ADD_TRAVELER_AVATAR). Same dialog as clickAddTravelerButton().
+   * @param {{ retries?: number }} [options]
+   */
+  async clickTripInfoBarAddTravelerAvatar({ retries = 1 } = {}) {
+    await this.closeVisibleEditTravelerModal();
+
+    for (let attempt = 0; attempt <= retries; attempt++) {
+      const trigger = this.page.locator(`${SELECTORS.TRIP_INFO_BAR_ADD_TRAVELER_AVATAR}:visible`).first();
+
+      try {
+        await trigger.waitFor({ state: 'visible', timeout: 15000 });
+      } catch (err) {
+        const avatars = await this.getTripInfoBarAvatarCount().catch(() => 0);
+        throw new Error(
+          `[SearchPage.clickTripInfoBarAddTravelerAvatar] No empty add-traveller avatar in the trip ` +
+          `info bar (${SELECTORS.TRIP_INFO_BAR_ADD_TRAVELER_AVATAR}); the bar renders ${avatars} ` +
+          `avatar(s). Likely causes: the trip page has not finished loading, the trip is already at ` +
+          `its traveller cap, or this trip/user cannot have travellers added. Original: ${err.message}`
+        );
+      }
+
+      await trigger.click();
+
+      const modal = this.getEditTravelerModal();
+      await modal.waitFor({ state: 'visible', timeout: 10000 });
+
+      try {
+        await modal.locator(SELECTORS.EDIT_TRAVELER_DIALOG).first().waitFor({ state: 'visible', timeout: 3000 });
+        return;
+      } catch (error) {
+        if (attempt === retries) {
+          throw error;
+        }
+
+        // No fixed wait between attempts: closeVisibleEditTravelerModal() already waits for the
+        // dialog to go, and the next attempt's own waitFor gates on the trigger being visible.
+        await this.closeVisibleEditTravelerModal();
       }
     }
   }

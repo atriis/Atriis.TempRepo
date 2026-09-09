@@ -239,9 +239,9 @@ Given("I have added a random guest traveler with email {string}", async function
   this.selectedTravelerCount = result.selectedTravelerCount;
 });
 
-async function addGuestWithNameAndEmailStep(world, fullName, email) {
-  logger.info("Adding guest traveler with fixed name and email", { fullName, email });
-  const result = await Search.addGuestWithNameAndEmail(world.page, fullName, email);
+async function addGuestWithNameAndEmailStep(world, fullName, email, options = {}) {
+  logger.info("Adding guest traveler with fixed name and email", { fullName, email, ...options });
+  const result = await Search.addGuestWithNameAndEmail(world.page, fullName, email, options);
   expect(result.added, "Guest traveler should be added").toBe(true);
   world.guestTravelerCount = (world.guestTravelerCount ?? 0) + 1;
   world.selectedTravelerCount = result.selectedTravelerCount;
@@ -256,6 +256,14 @@ Given("I have added a guest traveler named {string} with email {string}", async 
 
 Given("I add guest traveller from cart named {string} with email {string}", async function (fullName, email) {
   await addGuestWithNameAndEmailStep(this, fullName, email);
+});
+
+// Third phrasing for the same dialog, opened from the trip header's traveller avatars. Needed by
+// any trip page that renders NO travellers section — a flight-only trip is one (test 82591): the
+// two steps above look for the travellers-list widget, which Atriis.App mounts only inside the
+// search form, so on such a page they time out with nothing to click.
+Given("I add a guest traveller to the trip named {string} with email {string}", async function (fullName, email) {
+  await addGuestWithNameAndEmailStep(this, fullName, email, { trigger: "tripInfoBar" });
 });
 
 Given("I have added a guest passenger without date of birth named {string} {string}", async function (firstName, lastName) {

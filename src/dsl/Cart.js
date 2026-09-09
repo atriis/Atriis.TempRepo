@@ -711,12 +711,18 @@ const Cart = {
 
     await cartPage.clickFirstCancelledQuoteCheckPriceButton();
     const title = await cartPage.getCheckPriceDialogTitle();
-    const proceedVisible = await cartPage.isCheckPriceProceedButtonVisible();
 
-    expect(
-      proceedVisible,
-      `Proceed button should be visible in the check price dialog. Dialog title: "${title}"`,
-    ).toBe(true);
+    // Same retry rationale as verifyPriceCheckOffersProceed: the title renders on `!isLoading`,
+    // Proceed on `priceCheckResult?.success && !isNoAvailability`, so a point-in-time read here
+    // could miss a button that is about to paint.
+    try {
+      await expect(cartPage.getCheckPriceProceedButton()).toBeVisible({ timeout: 15000 });
+    } catch (err) {
+      throw new Error(
+        `Proceed button never became visible in the check price dialog. Dialog title: "${title}". ` +
+        `Original: ${err.message}`
+      );
+    }
 
     await cartPage.clickCheckPriceProceedButton();
   },
@@ -765,6 +771,85 @@ const Cart = {
     }
 
     await cartPage.waitForCheckPriceDialogToDisappear();
+  },
+
+  /**
+   * Clicks "Check Price" on ONE quote, addressed by its 1-based cart position, then waits for the
+   * dialog to finish loading (its title only renders once the re-shop call has returned).
+   *
+   * Both expired and COPIED quotes are gated behind that price check — trip-cart.ts
+   * syncPriceCheckGate() treats them alike, because a copied quote carries the SOURCE trip's offer
+   * and ticketing time limit. The dialog handles one quote at a time, so a trip holding several
+   * gated quotes needs one call per quote, and the position is what makes each call address the
+   * quote the scenario means rather than whichever card happens to sit on top.
+   *
+   * Position is the same 1-based cart position used by verifyQuoteStatusByPosition and
+   * holdQuoteByPosition. Re-pricing does not shuffle the quotes above the one being priced:
+   * sortQuotes() sinks gated quotes to the bottom and leaves equally-gated ones in place, so a
+   * quote that has just been re-priced keeps its position and the still-gated ones keep theirs.
+   *
+   * @param {import('playwright').Page} page
+   * @param {number} position - 1-based quote position (quote 1 = topmost card)
+   * @returns {Promise<string>} The dialog title that was rendered
+   */
+  async clickCheckPriceOnQuote(page, position) {
+    if (!page) throw new Error('[Cart.clickCheckPriceOnQuote] "page" is required.');
+    if (!Number.isInteger(position) || position < 1) {
+      throw new Error(
+        `[Cart.clickCheckPriceOnQuote] "position" must be an integer >= 1 (1-based quote position), ` +
+        `got: ${position}`
+      );
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+    await cartPage.clickCheckPriceButtonByQuotePosition(position);
+
+    const title = await cartPage.getCheckPriceDialogTitle();
+    logger.info('Price check dialog finished loading', { position, title });
+    return title;
+  },
+
+  /**
+   * Verifies the price check came back with a bookable offer, i.e. the dialog offers "Proceed".
+   *
+   * Deliberately does NOT require the "Price is still available" title: check-price.ts titles the
+   * dialog "Price change" whenever the re-shopped total differs from the quote's own, which happens
+   * as soon as a traveller has been added to the trip. Both of those outcomes render Proceed and are
+   * a pass here; "No availability" renders no Proceed button and is the outcome that must fail.
+   *
+   * @param {import('playwright').Page} page
+   * @param {Object} [options]
+   * @param {number} [options.timeout=15000] - How long to wait for Proceed to render
+   * @returns {Promise<string>} The dialog title that was read
+   */
+  async verifyPriceCheckOffersProceed(page, { timeout = 15000 } = {}) {
+    if (!page) throw new Error('[Cart.verifyPriceCheckOffersProceed] "page" is required.');
+    if (!Number.isInteger(timeout) || timeout <= 0) {
+      throw new Error(`[Cart.verifyPriceCheckOffersProceed] "timeout" must be a positive integer, got: ${timeout}`);
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+    const title = await cartPage.getCheckPriceDialogTitle();
+
+    // Asserted on the LOCATOR rather than on a captured isVisible() boolean so the check retries:
+    // the title above only needs `!isLoading`, while Proceed is gated on
+    // `priceCheckResult?.success && !isNoAvailability`, so it can paint a tick later. Wrapped in
+    // try/catch because expect()'s own message never reaches the Cucumber report, and the dialog's
+    // title/subtitle IS the whole diagnostic for this failure.
+    try {
+      await expect(cartPage.getCheckPriceProceedButton()).toBeVisible({ timeout });
+    } catch (err) {
+      const subtitle = await cartPage.getCheckPriceDialogSubtitle().catch(() => '');
+      throw new Error(
+        `[Cart.verifyPriceCheckOffersProceed] The price check dialog never offered "Proceed" within ` +
+        `${timeout}ms. Dialog title: "${title}", subtitle: "${subtitle}". A "No availability" title ` +
+        `means the supplier no longer sells this offer, so the quote cannot be re-priced. ` +
+        `Original: ${err.message}`
+      );
+    }
+
+    logger.info('Price check dialog offers Proceed', { title });
+    return title;
   },
 
   async expectHotelToBeRefundableInCart(page) {

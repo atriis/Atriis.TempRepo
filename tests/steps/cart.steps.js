@@ -289,6 +289,22 @@ When("I click proceed on the price check dialog", async function () {
   await Cart.clickProceedOnCheckPriceDialog(this.page);
 });
 
+// Counterpart of "I click check price button in cart", which is scoped to the CANCELLED quotes
+// section. This one takes a quote by its 1-based cart position anywhere in the cart, which is what a
+// COPIED quote is (test 82591) — the copy carries the source trip's offer and ticketing time limit,
+// so the cart gates it exactly like an expired quote. The dialog handles one quote at a time, so
+// price-checking several quotes means one call per position.
+When("I click check price on quote {int}", async function (position) {
+  logger.info("Clicking check price on a quote by cart position", { position });
+  this.priceCheckDialogTitle = await Cart.clickCheckPriceOnQuote(this.page, position);
+  logger.info("Price check dialog title", { position, title: this.priceCheckDialogTitle });
+});
+
+Then("the price check should offer to proceed", async function () {
+  logger.info("Verifying the price check dialog offers Proceed");
+  this.priceCheckDialogTitle = await Cart.verifyPriceCheckOffersProceed(this.page);
+});
+
 When("I click to open price breakdown in cart", async function () {
   logger.info("Clicking to open price breakdown in cart");
   await Cart.clickToOpenPriceBreakdown(this.page);

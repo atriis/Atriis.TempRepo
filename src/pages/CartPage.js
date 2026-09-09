@@ -4388,6 +4388,50 @@ class CartPage {
   }
 
   /**
+   * The "Check Price" button belonging to one quote card. Only quotes the cart gates behind a
+   * price check render it — flight-extra-info.ts isCheckPrice: Cancelled, Expired or COPIED status,
+   * or a no-availability error.
+   * @param {number} position - 1-based quote position
+   * @returns {import('playwright').Locator}
+   */
+  getCheckPriceButtonByQuotePosition(position) {
+    return this.getQuoteCardByPosition(position).locator(SELECTORS.CHECK_AVAILABILITY_BUTTON).first();
+  }
+
+  /**
+   * Clicks one quote card's own "Check Price" button, addressed by 1-based cart position.
+   *
+   * Card-scoped on purpose: clickCheckAvailabilityButton() takes the first such button on the PAGE,
+   * so on a multi-quote trip where several quotes are gated it always re-opens the topmost one's
+   * dialog — there is no way to price-check quote 2 through it.
+   * @param {number} position - 1-based quote position
+   * @param {{ timeout?: number }} [options]
+   */
+  async clickCheckPriceButtonByQuotePosition(position, { timeout = 15000 } = {}) {
+    // The CookieHub (ch2) consent banner can overlay the button and intercept the
+    // click's pointer events; dismiss it first (best-effort, never throws).
+    await this.dismissCookieBannerIfPresent();
+    await this.waitForQuoteCardByPosition(position, { timeout: 30000 });
+
+    const button = this.getCheckPriceButtonByQuotePosition(position);
+
+    try {
+      await button.waitFor({ state: 'visible', timeout });
+    } catch (err) {
+      const status = await this.getQuoteStatusByPosition(position).catch(() => 'unknown');
+      throw new Error(
+        `[CartPage.clickCheckPriceButtonByQuotePosition] Quote ${position} renders no "Check Price" ` +
+        `button within ${timeout}ms (selector: ${SELECTORS.CHECK_AVAILABILITY_BUTTON} inside ` +
+        `${SELECTORS.QUOTE_PAYMENT_CARD_VISIBLE}). That quote reads status "${status}" — only a quote ` +
+        `gated behind a price check (Cancelled / Expired / Copied) offers the button, and a locked ` +
+        `trip hides it entirely. Original: ${err.message}`
+      );
+    }
+
+    await button.click();
+  }
+
+  /**
    * The status badge belonging to one quote card (e.g. "PENDING BOOKING", "ON HOLD").
    * @param {number} position - 1-based quote position
    * @returns {import('playwright').Locator}
@@ -9573,7 +9617,21 @@ class CartPage {
   }
 
   /**
+   * The Proceed button in the check price dialog, as a locator so the DSL can assert on it with
+   * expect(...).toBeVisible() and get Playwright's auto-retry. check-price.vue gates this button on
+   * `priceCheckResult?.success && !isNoAvailability` — a different reactive condition from the
+   * dialog title's `!isLoading` — so it can paint a tick after the title becomes readable.
+   * @returns {import('playwright').Locator}
+   */
+  getCheckPriceProceedButton() {
+    return this.page.locator(SELECTORS.CHECK_PRICE_PROCEED_BUTTON).first();
+  }
+
+  /**
    * Checks if the Proceed button is visible in the check price dialog.
+   *
+   * Point-in-time read with no wait: prefer getCheckPriceProceedButton() + expect().toBeVisible()
+   * whenever the result is asserted on, so the assertion retries instead of racing the render.
    * @returns {Promise<boolean>}
    */
   async isCheckPriceProceedButtonVisible() {

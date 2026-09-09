@@ -709,25 +709,36 @@ const Search = {
    * Adds a new guest traveler with a specific full name and a specific email address. Unlike
    * addRandomGuestWithName/addRandomGuestWithEmail (which fix one field and randomize the rest),
    * this fixes both — used when a scenario later asserts the exact email against a specific
-   * passenger. Works identically whether the "Add Traveller" button is on the pre-search widget
-   * or the cart page's own Travellers section: both render the same shared trip-travelers-list.vue
-   * / trip-edit-traveler.vue components (confirmed against Atriis.App source — same classes,
-   * same dialog markup). Date of birth is fixed to exactly 30 years old (not the random 25-60
-   * range) so every guest passenger lands in the same fare/age bracket (test 62001).
+   * passenger. Works across every place the app offers to add a traveller — the pre-search widget,
+   * a cart page's own Travellers section, and the trip header's avatar list — all of which open the
+   * same trip-edit-traveler.vue dialog (confirmed against Atriis.App source: same classes, same
+   * dialog markup). Which one it clicks is chosen by `options.trigger`. Date of birth is fixed to
+   * exactly 30 years old (not the random 25-60 range) so every guest passenger lands in the same
+   * fare/age bracket (test 62001).
    *
    * @param {import('playwright').Page} page
    * @param {string} fullName - Guest's full name, e.g. "Ellen Murphy" (split on whitespace into
    *   first name + last name; a middle name would be folded into the last name)
    * @param {string} email - Guest's email address
+   * @param {Object} [options]
+   * @param {'travelersList'|'tripInfoBar'} [options.trigger='travelersList'] - Which add-traveller
+   *   affordance to open the dialog from. 'travelersList' is the round add-btn / empty-slot widget
+   *   (search form, and the cart page of a trip that renders a travellers section). 'tripInfoBar'
+   *   is the empty avatar in the trip header's avatar-list — the ONLY route on a flight-only trip
+   *   page, which mounts no travellers list at all. Only the trigger and the post-add verification
+   *   differ; the dialog and every field in it are the same.
    * @returns {{ added: boolean, starIconVisible: boolean, guestData: Object }}
    */
-  async addGuestWithNameAndEmail(page, fullName, email) {
+  async addGuestWithNameAndEmail(page, fullName, email, { trigger = 'travelersList' } = {}) {
     if (!page) throw new Error('[Search.addGuestWithNameAndEmail] "page" is required.');
     if (!fullName || typeof fullName !== 'string' || !fullName.trim()) {
       throw new Error(`[Search.addGuestWithNameAndEmail] "fullName" must be a non-empty string, got: ${JSON.stringify(fullName)}`);
     }
     if (!email || typeof email !== 'string') {
       throw new Error(`[Search.addGuestWithNameAndEmail] "email" must be a non-empty string, got: ${typeof email}`);
+    }
+    if (trigger !== 'travelersList' && trigger !== 'tripInfoBar') {
+      throw new Error(`[Search.addGuestWithNameAndEmail] "trigger" must be 'travelersList' or 'tripInfoBar', got: ${JSON.stringify(trigger)}`);
     }
 
     const [firstName, ...rest] = fullName.trim().split(/\s+/);
@@ -739,6 +750,16 @@ const Search = {
     const searchPage = getPageObject(page, SearchPage);
     const { phone } = generateRandomGuestData();
     const dateOfBirth = getFixedAgeDateOfBirth(30);
+    const fromTripInfoBar = trigger === 'tripInfoBar';
+    // Avatar counts before the add, so the info-bar route has something to verify against: it cannot
+    // use the star icon / traveller-tag count below, since neither widget exists on that page.
+    // BOTH counts are needed because the add lands in one of two shapes: on a trip that can hold
+    // more travellers the guest APPENDS an avatar (total grows, an empty one still trails), while on
+    // a single-traveller trip — which is what a copied trip is — the guest FILLS the one empty slot
+    // and the total does not move at all (test 82591). Either an increased total or a consumed empty
+    // slot proves the guest landed.
+    const avatarsBefore = fromTripInfoBar ? await searchPage.getTripInfoBarAvatarCount() : 0;
+    const emptyAvatarsBefore = fromTripInfoBar ? await searchPage.getTripInfoBarEmptyAvatarCount() : 0;
 
     // NOTE: if a prior traveler (e.g. added by name via the autocomplete) hasn't fully rendered yet,
     // trip-travelers-list.vue's addEmptyTraveler() can compute firstEmptyTravelerIdx off the
@@ -751,7 +772,11 @@ const Search = {
     // stale, not-yet-rendered state it would be trying to wait out.
     const settleTripReload = armTripReloadSettle(page);
     try {
-      await searchPage.clickAddTravelerButton();
+      if (fromTripInfoBar) {
+        await searchPage.clickTripInfoBarAddTravelerAvatar();
+      } else {
+        await searchPage.clickAddTravelerButton();
+      }
       await searchPage.clickAddGuestTravelerButton();
       await searchPage.fillInRandomFirstName(firstName);
       await searchPage.fillInRandomLastName(lastName);
@@ -762,10 +787,39 @@ const Search = {
       await searchPage.clickAddGuestButton();
     } catch (err) {
       throw new Error(
-        `[Search.addGuestWithNameAndEmail] Failed to add guest traveler "${fullName}" with email "${email}". Original: ${err.message}`
+        `[Search.addGuestWithNameAndEmail] Failed to add guest traveler "${fullName}" with email "${email}" ` +
+        `via the ${trigger} trigger. Original: ${err.message}`
       );
     }
     await settleTripReload();
+
+    if (fromTripInfoBar) {
+      const avatarsAfter = await searchPage.getTripInfoBarAvatarCount();
+      const emptyAvatarsAfter = await searchPage.getTripInfoBarEmptyAvatarCount();
+      const counts = { avatarsBefore, avatarsAfter, emptyAvatarsBefore, emptyAvatarsAfter };
+
+      if (avatarsAfter <= avatarsBefore && emptyAvatarsAfter >= emptyAvatarsBefore) {
+        throw new Error(
+          `[Search.addGuestWithNameAndEmail] Guest "${fullName}" did not land on the trip: the info bar ` +
+          `still renders ${avatarsAfter} avatar(s) of which ${emptyAvatarsAfter} are empty (was ` +
+          `${avatarsBefore} / ${emptyAvatarsBefore} empty before the add), so the dialog closed without ` +
+          `the traveller being saved.`
+        );
+      }
+
+      logger.info('[Search.addGuestWithNameAndEmail] Added guest traveler from the trip info bar', {
+        fullName,
+        email,
+        ...counts,
+      });
+
+      return {
+        added: true,
+        starIconVisible: false,
+        selectedTravelerCount: avatarsAfter - emptyAvatarsAfter,
+        guestData: { firstName, lastName, dateOfBirth, email, phone },
+      };
+    }
 
     const starIconVisible = await searchPage.isStarIconVisible();
     const selectedTravelerCount = await searchPage.getSelectedTravelerCount();
