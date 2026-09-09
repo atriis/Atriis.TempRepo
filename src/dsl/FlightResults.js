@@ -2011,6 +2011,69 @@ const FlightResults = {
   },
 
   /**
+   * Verifies the open pricing-options drawer shows exactly ONE leg tab per searched leg, with no
+   * duplicated journey legs (ADO 71514).
+   *
+   * The app builds one tab per priced segment and then dedupes them on
+   * `origin-destCode-leg-carrier` (flight.service.ts). A regression there re-renders the same leg
+   * twice, so the check is deliberately strict on both counts:
+   *   - every tab route headline is distinct
+   *   - the tab count EQUALS the number of searched legs (not >=, which is what
+   *     verifyMultiCitySegmentsVisibleInPricingOptions asserts and why that one cannot catch this)
+   *
+   * Read-only: it does not select a fare, so it can run before the wizard advances any tab.
+   *
+   * The tab route is matched on distinctness and count only, never against the searched city
+   * codes: a tab shows the priced segment's AIRPORT ("HEL - LHR"), so a city-code search leg like
+   * "HEL-LON" never equals its own tab and which airport a city resolves to varies per quote.
+   *
+   * Limitation that follows from that: legs are told apart by their route text alone, so a trip
+   * that legitimately flies the SAME origin-destination pair twice (e.g. multi-city LON-PAR on two
+   * dates) would read as a duplicate. Use this only for trips whose legs have distinct routes.
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @param {number} expectedLegCount - Number of searched journey legs (one tab each)
+   * @returns {Promise<{expectedLegCount: number, tabRoutes: string[]}>}
+   */
+  async verifyPricingOptionsLegTabsNotDuplicated(page, expectedLegCount) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+
+    if (!Number.isInteger(expectedLegCount) || expectedLegCount < 1) {
+      throw new Error(`expectedLegCount must be an integer >= 1, got: ${expectedLegCount}`);
+    }
+
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+
+    // The tabs render one leg at a time as the pricing response resolves, so settle on the
+    // expected count before asserting on it — otherwise a slow second leg reads as a miscount.
+    await flightResultsPage.waitForPricingOptionsTabCount(expectedLegCount, 60000);
+
+    const tabRoutes = await flightResultsPage.getPricingOptionsTabRouteTexts();
+    const rendered = tabRoutes.length ? tabRoutes.join(' | ') : '(none)';
+
+    // Diagnostics are the whole point of this failure (which leg came back twice, what the drawer
+    // actually rendered), and expect()'s custom message is dropped in this repo — so throw.
+    const duplicates = [...new Set(tabRoutes.filter((route, index) => tabRoutes.indexOf(route) !== index))];
+    if (duplicates.length) {
+      throw new Error(
+        `Pricing options journey legs are duplicated: ${duplicates.join(', ')}. ` +
+        `Expected ${expectedLegCount} distinct leg tab(s), got ${tabRoutes.length}: ${rendered}`
+      );
+    }
+
+    if (tabRoutes.length !== expectedLegCount) {
+      throw new Error(
+        `Expected exactly ${expectedLegCount} pricing options leg tab(s), one per searched journey leg, ` +
+        `got ${tabRoutes.length}: ${rendered}`
+      );
+    }
+
+    return { expectedLegCount, tabRoutes };
+  },
+
+  /**
    * Shares the selected pricing option and closes the modal.
    * 
    * Flow:

@@ -219,6 +219,8 @@ const SELECTORS = {
   PRICING_OPTIONS_LEG_CARD: '.pricing-options .leg-pricing-option',
   PRICING_OPTIONS_LEG_CARD_BRAND_NAME: '.brand-name',
   PRICING_OPTIONS_TAB: '.pricing-options .pricing-options-tabs .el-tabs__item',
+  // Per-tab "ORIGIN - DEST" headline inside the leg tab label (pricing-options.vue)
+  PRICING_OPTIONS_TAB_ROUTE: '.origin-dest',
   PRICING_OPTIONS_TAB_ACTIVE_CLASS: 'is-active',
   PRICING_OPTIONS_TAB_SELECTED_ICON: '.material-symbols-outlined.green',
   PRICING_OPTIONS_ADD_TO_TRIP_BTN: '.pricing-options .app-footer .add-btn',
@@ -1675,6 +1677,29 @@ class FlightResultsPage {
     const overlay = this.getPricingOptionsOverlay();
     await overlay.waitFor({ state: 'visible', timeout: 30000 });
     return await overlay.locator(SELECTORS.PRICING_OPTIONS_TAB).count();
+  }
+
+  /**
+   * Reads the "ORIGIN - DEST" headline of every pricing-options leg tab, in tab order.
+   *
+   * Only the route line is read, not the whole tab label, so the carrier name and the
+   * "Select fare" / selected-brand line cannot make two tabs for the same leg look different.
+   *
+   * Waits for "attached", not "visible": the route <p> sits in a wrapper the component gives an
+   * inline `height: 0` (pricing-options.vue), so it has no bounding box and Playwright reports it
+   * hidden even though the text paints on screen. textContent reads fine either way.
+   *
+   * @param {number} timeout - Max wait for the drawer and the first tab (default: 30000)
+   * @returns {Promise<string[]>} Whitespace-normalized route texts (e.g. ["HEL - LHR", "EWR - LGW"])
+   */
+  async getPricingOptionsTabRouteTexts(timeout = 30000) {
+    const overlay = this.getPricingOptionsOverlay();
+    await overlay.waitFor({ state: 'visible', timeout });
+
+    const routes = overlay.locator(`${SELECTORS.PRICING_OPTIONS_TAB} ${SELECTORS.PRICING_OPTIONS_TAB_ROUTE}`);
+    await routes.first().waitFor({ state: 'attached', timeout });
+
+    return (await routes.allTextContents()).map((text) => text.replace(/\s+/g, ' ').trim());
   }
 
   /**

@@ -711,6 +711,14 @@ Then('all pricing option segments {string} and {string} and {string} should be v
   await FlightResults.verifyMultiCitySegmentsVisibleInPricingOptions(this.page, segmentRoutes);
 });
 
+// Strict one-tab-per-leg check (ADO 71514): fails when the drawer repeats a journey leg, which the
+// "visible and selectable" step above cannot catch because it asserts the tab count with >=.
+Then('the pricing options should show {int} leg tabs with no duplicated journey leg', async function (expectedLegCount) {
+  logger.info('Verifying pricing options leg tabs are not duplicated', { expectedLegCount });
+  const result = await FlightResults.verifyPricingOptionsLegTabsNotDuplicated(this.page, expectedLegCount);
+  logger.info('Pricing options leg tabs verified', result);
+});
+
 // ========================================
 // THEN STEPS - ASSERTIONS
 // ========================================
