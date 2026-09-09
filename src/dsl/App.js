@@ -853,6 +853,104 @@ const App = {
   },
 
   /**
+   * Verifies the tab opened by the expenses link SETTLES on an expected URL prefix, then closes
+   * that tab and returns focus to the app.
+   *
+   * This is the third of three deliberately separate expenses-tab verifications. The other two:
+   * verifyExpensesTabUrl asserts the window.open TARGET (the configured expense.Url, before any
+   * redirect), and verifyExpensesSsoTabOpened asserts only that the tab left the app's own origin.
+   *
+   * WHAT IS COMPARED: the URL the opened tab LANDS on, after any provider-side redirect. Use this
+   * when the corporation is configured with an SSO bounce endpoint rather than the provider itself
+   * - e.g. the Mesh corporation configures the relative "/MeshLogin/MeshLogin", which the app
+   * prefixes with its expense endpoint, and which then hands off to Mesh. In that setup the
+   * configured URL and the landing URL are different hosts, so verifyExpensesTabUrl cannot express
+   * "the user reached the provider" and this method is the only one that can.
+   *
+   * A PREFIX, not equality: the landing URL is provider-controlled and routinely carries a path or
+   * query the handshake appended, so pinning it exactly would break on a provider change that is
+   * not a regression. Pass the longest prefix that still proves the right provider was reached
+   * (origin at minimum). If a run ever fails because the provider moved to a different path, widen
+   * the prefix - never drop the assertion or fall back to the configured URL, which would stop
+   * testing the handoff entirely.
+   *
+   * The URL is polled: the tab starts on about:blank and passes THROUGH the bounce endpoint before
+   * the provider, so the first http(s) URL it reports is usually not the landing one.
+   *
+   * @param {import('playwright').Page} ssoTab - The tab captured when the expenses link was clicked
+   * @param {import('playwright').Page} appPage - The app tab; refocused after the assertion
+   * @param {string} expectedUrlPrefix - The URL prefix the tab must land on, scheme included
+   * @returns {Promise<{landedUrl: string, expectedUrlPrefix: string}>}
+   */
+  async verifyExpensesTabLandingUrl(ssoTab, appPage, expectedUrlPrefix) {
+    if (!ssoTab) {
+      throw new Error(
+        '[App.verifyExpensesTabLandingUrl] "ssoTab" is required - no opened tab was stored. Ensure the ' +
+        '"I open the ... expenses link from the side navigation" step ran first.'
+      );
+    }
+    if (!appPage) {
+      throw new Error('[App.verifyExpensesTabLandingUrl] "appPage" is required - it is refocused after the assertion.');
+    }
+    if (!expectedUrlPrefix || typeof expectedUrlPrefix !== 'string') {
+      throw new Error(
+        `[App.verifyExpensesTabLandingUrl] "expectedUrlPrefix" must be a non-empty string, got: ` +
+        `${typeof expectedUrlPrefix} (${JSON.stringify(expectedUrlPrefix)})`
+      );
+    }
+    const hasScheme = expectedUrlPrefix.startsWith('http://') || expectedUrlPrefix.startsWith('https://');
+    if (!hasScheme) {
+      throw new Error(
+        `[App.verifyExpensesTabLandingUrl] "expectedUrlPrefix" must include an http(s) scheme so it cannot ` +
+        `accidentally match a relative or about:blank URL, got: "${expectedUrlPrefix}"`
+      );
+    }
+
+    logger.debug('Verifying the landing URL of the tab opened by the expenses link', { expectedUrlPrefix });
+
+    // startsWith rather than a substring/regex match: the prefix must anchor at the start, so it can
+    // never be satisfied mid-URL by something like "?next=https://provider" on a page that in fact
+    // never left the bounce endpoint.
+    let lastSeenUrl = '';
+    let landedUrl;
+
+    try {
+      try {
+        await expect
+          .poll(
+            () => {
+              lastSeenUrl = ssoTab.url();
+              return lastSeenUrl.startsWith(expectedUrlPrefix);
+            },
+            { timeout: 30000 }
+          )
+          .toBe(true);
+      } catch (err) {
+        // expect.poll's own message can only report "expected true, received false", which would not
+        // say WHERE the tab actually stopped - the single most useful fact for diagnosing this.
+        throw new Error(
+          `[App.verifyExpensesTabLandingUrl] Expected the tab opened by the expenses link to land on a URL ` +
+          `starting with "${expectedUrlPrefix}", but after 30s it was still on "${lastSeenUrl}". The tab ` +
+          `starts on about:blank and passes through the corporation's configured bounce endpoint first, so ` +
+          `stopping short means the handoff to the provider did not complete - the bounce endpoint errored, ` +
+          `the provider is unreachable, or this corporation is configured with a different provider. Check ` +
+          `the expenses provider on the corporation rather than the selector. Original: ${err.message}`
+        );
+      }
+
+      landedUrl = lastSeenUrl;
+    } finally {
+      logger.info('Tab opened by the expenses link settled', { expectedUrlPrefix, landedUrl: landedUrl || null });
+      // A foreground target="_blank" tab throttles the app page and swallows the next interaction,
+      // so always close it and hand focus back to the app.
+      await ssoTab.close().catch(() => {});
+      await appPage.bringToFront().catch(() => {});
+    }
+
+    return { landedUrl, expectedUrlPrefix };
+  },
+
+  /**
    * Reloads the current page. Centralized here so retries, post-reload
    * waits, or instrumentation can be added in one place.
    * @param {import('playwright').Page} page

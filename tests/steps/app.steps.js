@@ -210,6 +210,21 @@ Then("the expenses link should open the SSO provider page in a new tab", async f
 });
 
 /**
+ * Asserts the expenses link's new tab LANDS on an expected URL prefix, after any provider-side
+ * redirect. Use when the corporation is configured with an SSO bounce endpoint rather than the
+ * provider itself, so the configured URL and the URL the user ends on are different hosts - the
+ * exact-URL step above compares the window.open target and cannot express "the user reached the
+ * provider". A prefix, not equality: the landing URL is provider-controlled.
+ */
+Then("the expenses link should land on the url starting with {string}", async function (expectedUrlPrefix) {
+  logger.info("Verifying the landing URL of the tab opened by the expenses link", { expectedUrlPrefix });
+  // The DSL closes the opened tab in its finally block, so drop the World references afterwards.
+  await App.verifyExpensesTabLandingUrl(this.expensesSsoTab, this.page, expectedUrlPrefix);
+  this.expensesSsoTab = null;
+  this.expensesRequestedUrl = null;
+});
+
+/**
  * Verifies that the user has been redirected to the login page
  * Checks if the current URL contains "login"
  * Use this after logout or when testing authentication guards
