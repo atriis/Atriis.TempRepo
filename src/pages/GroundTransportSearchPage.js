@@ -16,10 +16,16 @@ const SELECTORS = {
   TO_AIRPORT_TEXT: "To airport",
   VEHICLE_TYPE_FIELD:  ".el-select__selection:has(.el-select__placeholder span:has-text(\"Vehicle Type\")) input[role=\"combobox\"]",
   VEHICLE_TYPE_DROPDOWN_OPTION: (vehicleType) => `li.el-select-dropdown__item span:text("${vehicleType}")`,
-  // Scoped to the Ground Transport tab's own form: el-tabs keeps the other product panes mounted,
-  // and the flight tab's traveller select reads "1 Traveller" too as soon as a traveller has been
-  // added — an unscoped lookup matches both and fails Playwright's strict mode.
-  TRAVELLER_DROPDOWN: ".ground-transport-search .el-select__wrapper:has-text(\"Traveller\")",
+  // Keyed on the select's own app-select prefix icon (iconPath="group" in
+  // groundService-search-inputs.vue:161), NOT on the "1 Traveller" placeholder: el-select prints the
+  // placeholder in the same node it later prints the chosen value in, so once a traveller count has
+  // been committed the field reads "1" and the placeholder text is gone. A fresh form still shows
+  // it, which is why the old text-based selector passed everywhere except a re-search over an
+  // already-submitted form (73419: breadcrumb back to the search page, then search again).
+  // Scoped to .ground-transport-search for the same reason as LUGGAGE_DROPDOWN below: el-tabs keeps
+  // the other product panes mounted, and the flight tab's traveller select reads "1 Traveller" too.
+  TRAVELLER_DROPDOWN:
+    ".ground-transport-search .app-select:has(.select-icon:text-is('group')) .el-select__wrapper",
   TRAVELLER_DROPDOWN_OPTION:
     (travellerNumbers) => `li.el-select-dropdown__item span:text("${travellerNumbers}")`,
   // The luggage select is keyed on its own app-select prefix icon, not on the "0 Luggage"

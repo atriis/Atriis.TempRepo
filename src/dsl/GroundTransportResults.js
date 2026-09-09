@@ -38,6 +38,47 @@ const GroundTransportResults = {
   },
 
   /**
+   * Verifies the results on screen belong to the given route, by reading the pick-up/drop-off pair
+   * the info bar echoes above them.
+   *
+   * This is what makes "results are displayed" mean something after a search has been edited: a
+   * refilled form that changed the visible location text without re-resolving the location would
+   * leave the previous route in the store, re-run it, and render results all the same.
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @param {object} options
+   * @param {string} options.pickup - Substring the pick-up address must contain
+   * @param {string} options.dropOff - Substring the drop-off address must contain
+   * @param {number} [options.timeout=60000] - Maximum time to wait per address, in milliseconds
+   * @throws {Error} If page/pickup/dropOff are missing, or either address never matches
+   * @returns {Promise<{pickup: string, dropOff: string}>}
+   */
+  async expectResultsRoute(page, { pickup, dropOff, timeout = 60000 } = {}) {
+    if (!page) {
+      throw new Error('[GroundTransportResults.expectResultsRoute] "page" is required.');
+    }
+
+    if (!pickup || typeof pickup !== 'string') {
+      throw new Error(
+        `[GroundTransportResults.expectResultsRoute] "pickup" must be a non-empty string, got: ${pickup}`
+      );
+    }
+
+    if (!dropOff || typeof dropOff !== 'string') {
+      throw new Error(
+        `[GroundTransportResults.expectResultsRoute] "dropOff" must be a non-empty string, got: ${dropOff}`
+      );
+    }
+
+    logger.info('Verifying the ground transport results belong to the searched route', { pickup, dropOff });
+
+    const resultsPage = getPageObject(page, GroundTransportResultsPage);
+    await resultsPage.waitForInfoBarRouteToContain(pickup, dropOff, timeout);
+
+    return { pickup, dropOff };
+  },
+
+  /**
    * Verifies that the ground transport result card shows its price, type of payment, pick-up
    * date/time and "Add to trip" button, laid out in the expected reading order.
    *

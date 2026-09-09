@@ -128,28 +128,79 @@ class GroundTransportResultsPage {
    * @throws {Error} If the drop-off never picks up the expected text
    */
   async waitForInfoBarDropOffToContain(expected, timeout = 60000) {
+    await this.#waitForInfoBarLocationToContain(
+      'waitForInfoBarDropOffToContain',
+      1,
+      'drop-off',
+      expected,
+      timeout
+    );
+  }
+
+  /**
+   * Waits until BOTH info bar addresses carry the expected text, i.e. the results on screen belong
+   * to the given route.
+   *
+   * Needed whenever a search is re-run with the pick-up and drop-off swapped: the drop-off alone
+   * cannot tell a reversed search apart from a repeat of the previous one, since a form refill that
+   * changed the visible text without re-resolving the location would leave the old route in the
+   * store and still render results.
+   *
+   * @param {string} pickup - Substring the pick-up address must contain (case-insensitive)
+   * @param {string} dropOff - Substring the drop-off address must contain (case-insensitive)
+   * @param {number} [timeout=60000]
+   * @throws {Error} If either address never picks up its expected text
+   */
+  async waitForInfoBarRouteToContain(pickup, dropOff, timeout = 60000) {
+    await this.#waitForInfoBarLocationToContain(
+      'waitForInfoBarRouteToContain',
+      0,
+      'pick-up',
+      pickup,
+      timeout
+    );
+    await this.#waitForInfoBarLocationToContain(
+      'waitForInfoBarRouteToContain',
+      1,
+      'drop-off',
+      dropOff,
+      timeout
+    );
+  }
+
+  /**
+   * Waits until the info bar address at `index` contains `expected`.
+   *
+   * @param {string} caller - Public method name, used in the error messages
+   * @param {number} index - 0 for the pick-up address, 1 for the drop-off
+   * @param {string} label - Human name of that address, used in the error messages
+   * @param {string} expected - Substring the address must contain (case-insensitive)
+   * @param {number} timeout
+   * @throws {Error} If `expected` is not a non-empty string, or the address never carries it
+   */
+  async #waitForInfoBarLocationToContain(caller, index, label, expected, timeout) {
     if (!expected || typeof expected !== 'string') {
       throw new Error(
-        `[GroundTransportResultsPage.waitForInfoBarDropOffToContain] "expected" must be a non-empty string, got: ${expected}`
+        `[GroundTransportResultsPage.${caller}] "expected" must be a non-empty string, got: ${expected}`
       );
     }
 
     // `hasText` with a plain string is a case-insensitive substring match, so this resolves only
-    // once the SECOND address (the drop-off) carries the expected text.
-    const dropOff = this.page
+    // once the address at `index` carries the expected text.
+    const location = this.page
       .locator(SELECTORS.INFO_BAR_LOCATION)
-      .nth(1)
+      .nth(index)
       .filter({ hasText: expected });
 
     try {
-      await dropOff.waitFor({ state: 'visible', timeout });
+      await location.waitFor({ state: 'visible', timeout });
     } catch (error) {
       const rendered = await this.page
         .locator(SELECTORS.INFO_BAR_LOCATION)
         .allInnerTexts()
         .catch(() => []);
       throw new Error(
-        `[GroundTransportResultsPage.waitForInfoBarDropOffToContain] The results info bar's drop-off ` +
+        `[GroundTransportResultsPage.${caller}] The results info bar's ${label} ` +
         `never contained "${expected}" within ${timeout}ms. The bar reads: ` +
         `${rendered.map((text) => `"${normalizeText(text)}"`).join(' -> ') || '(nothing)'}. ` +
         `The edited search was probably never submitted, or it re-ran the previous criteria. ` +

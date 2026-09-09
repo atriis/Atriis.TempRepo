@@ -61,6 +61,19 @@ When("I search for ground transport from specific address {string} to specific a
   });
 });
 
+// The reverse of "from airport {string} to specific address {string}". Both direction radios are
+// set explicitly by searchGroundTransport, so this also covers re-submitting the form after a
+// previous search left it pointing the other way round (73419).
+When("I search for ground transport from specific address {string} to airport {string}", async function (from, to) {
+  logger.info("Searching for ground transport from specific address to airport", { from, to });
+  await GroundTransportSearch.searchGroundTransport(this.page, {
+    fromMode: "specificAddress",
+    toMode: "airport",
+    from,
+    to,
+  });
+});
+
 // Opens the search from the cart's product carousel (NOT the cross-sell suggestion, which is
 // "I click search button from {string}"): the drawer that tile opens is the one the app pre-fills
 // from the flight already in the trip, which is what makes the pick-up time assertion meaningful.
@@ -214,6 +227,14 @@ When("I extract the ground transport results price and VAT", async function () {
 Then("ground transport results should be displayed", async function () {
   logger.info("Verifying ground transport results are displayed");
   await GroundTransportResults.expectResultsDisplayed(this.page);
+});
+
+// Route gate for a re-run search: "results should be displayed" alone cannot tell a reversed
+// search apart from a repeat of the previous one, so this reads the pick-up/drop-off pair the
+// results info bar echoes above the list (73419).
+Then("the ground transport results should be for pickup {string} and drop off {string}", async function (pickup, dropOff) {
+  logger.info("Verifying the ground transport results belong to the searched route", { pickup, dropOff });
+  await GroundTransportResults.expectResultsRoute(this.page, { pickup, dropOff });
 });
 
 // Results-page counterpart of "the cart terms and conditions should include {string}" — the results
