@@ -954,7 +954,7 @@ class SearchPage {
 
   async fillInGuestMiddleName(middleName) {
     const input = this.page.locator(SELECTORS.MIDDLE_NAME_INPUT);
-    await input.waitFor({ state: 'visible', timeout: 10000 });
+    await input.waitFor({ state: "visible", timeout: 10000 });
     await input.fill(middleName);
     const actual = await input.inputValue();
     if (actual !== middleName) {
@@ -1281,7 +1281,7 @@ class SearchPage {
     const normalizedValue = value.trim().toUpperCase();
     const input = this.getEditAirportInput(index);
 
-    await input.waitFor({ state: 'visible', timeout: 10000 });
+    await input.waitFor({ state: "visible", timeout: 10000 });
     await input.scrollIntoViewIfNeeded();
     await input.focus();
     await input.press('Control+A');
@@ -2638,7 +2638,27 @@ class SearchPage {
    * @returns {Promise<string>}
    */
   async getAmtrakTimeValue(index) {
-    return (await this.page.locator(SELECTORS.AMTRAK_TIME_INPUT).nth(index).inputValue()).trim();
+    return (await this.getAmtrakTimeFieldState(index)).value;
+  }
+
+  /**
+   * Reads both halves of one Amtrak time field: the committed value and the placeholder.
+   *
+   * The Amtrak form has no explicit "Anytime" option — app-timepicker renders a readonly input
+   * whose :placeholder is amtrak.anytime and whose :value is the selected time, so "no time
+   * preference" IS an empty value with that placeholder showing. Both are needed to tell it
+   * apart from a time that simply failed to commit.
+   *
+   * @param {number} index - 0 = departure segment, 1 = return segment
+   * @returns {Promise<{value: string, placeholder: string}>}
+   */
+  async getAmtrakTimeFieldState(index) {
+    const input = this.page.locator(SELECTORS.AMTRAK_TIME_INPUT).nth(index);
+    await input.waitFor({ state: 'visible', timeout: 10000 });
+    return {
+      value: (await input.inputValue()).trim(),
+      placeholder: ((await input.getAttribute("placeholder")) || "").trim(),
+    };
   }
 
   /**

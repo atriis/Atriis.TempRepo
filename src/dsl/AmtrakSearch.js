@@ -187,6 +187,25 @@ const AmtrakSearch = {
   },
 
   /**
+   * Reads what both Amtrak time selectors currently show.
+   *
+   * There is no selectable "Anytime" entry in the picker — it is the time field's placeholder, so
+   * an untouched field means "no time preference" and reads as an empty value with that
+   * placeholder showing. Returning both lets a caller tell that apart from a failed selection.
+   *
+   * @param {import('playwright').Page} page
+   * @returns {Promise<{departure: {value: string, placeholder: string}, return: {value: string, placeholder: string}}>}
+   */
+  async getTimeSelectorStates(page) {
+    if (!page) throw new Error('[AmtrakSearch.getTimeSelectorStates] "page" is required.');
+    const searchPage = getPageObject(page, SearchPage);
+    return {
+      departure: await searchPage.getAmtrakTimeFieldState(0),
+      return: await searchPage.getAmtrakTimeFieldState(1),
+    };
+  },
+
+  /**
    * Raises the traveller count in the Amtrak search form and waits for the extra, still-unfilled
    * traveller slot the trip header renders in response.
    * @param {import('playwright').Page} page

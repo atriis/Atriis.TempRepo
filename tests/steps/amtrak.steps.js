@@ -42,6 +42,49 @@ When("I validate the return time selector in Amtrak search by changing the hour"
   expect(time, `Return time input should read 02:00, got "${time}"`).toContain("02:00");
 });
 
+// ===== AMTRAK TIME PICKER (test 71537) =====
+
+// Feature files name a time once, as 24h "HH:MM"; the picker labels its hour and minute options
+// with the zero-padded parts, so the step splits it before handing it to the DSL. Minutes come in
+// steps of 15 (amtrak-search-inputs.vue passes steps="00:15"), so only :00/:15/:30/:45 exist.
+function splitClockTime(stepName, value) {
+  const parts = /^(\d{2}):(\d{2})$/.exec(String(value).trim());
+  if (!parts) {
+    throw new Error(
+      `[${stepName}] time must be a 24h zero-padded "HH:MM", got: ${JSON.stringify(value)}`,
+    );
+  }
+  return { hour: parts[1], minute: parts[2] };
+}
+
+// No assertion of its own: setAmtrakTimeFieldTo throws when the value does not commit, and the
+// minute is proved by the supplier payload the scenario goes on to assert.
+When("I set the Amtrak departure time to {string}", async function (clockTime) {
+  const { hour, minute } = splitClockTime("I set the Amtrak departure time", clockTime);
+  logger.info("Setting the Amtrak departure time", { clockTime });
+  const { time } = await AmtrakSearch.setDepartureTime(this.page, hour, minute);
+  logger.info("Amtrak departure time committed", { clockTime, displayed: time });
+});
+
+When("I set the Amtrak return time to {string}", async function (clockTime) {
+  const { hour, minute } = splitClockTime("I set the Amtrak return time", clockTime);
+  logger.info("Setting the Amtrak return time", { clockTime });
+  const { time } = await AmtrakSearch.setReturnTime(this.page, hour, minute);
+  logger.info("Amtrak return time committed", { clockTime, displayed: time });
+});
+
+// "Anytime" is the time field PLACEHOLDER, never a selectable option, so the default state is an
+// empty value with that placeholder showing. Asserted as one object so the failure diff names the
+// leg that drifted, and so a stray committed time cannot hide behind a correct placeholder.
+Then("the Amtrak departure and return time selectors should both show {string}", async function (expectedPlaceholder) {
+  logger.info("Verifying both Amtrak time selectors are unset", { expectedPlaceholder });
+  const states = await AmtrakSearch.getTimeSelectorStates(this.page);
+  expect(states).toEqual({
+    departure: { value: "", placeholder: expectedPlaceholder },
+    return: { value: "", placeholder: expectedPlaceholder },
+  });
+});
+
 When("I add a second traveler through the Amtrak search form", async function () {
   logger.info("Raising the Amtrak traveller count to 2");
   const { emptySlotVisible } = await AmtrakSearch.setTravelersCount(this.page, 2);
