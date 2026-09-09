@@ -594,6 +594,16 @@ Then("the captured {string} types do not contain request type {string}", async f
   });
 });
 
+When("I capture the fare families described in {string} from Storage", async function (requestType) {
+  await runPayloadValidationStep(this, "captureFareFamilyDescriptions", { requestType }, async () => {
+    logger.info("Capturing the fare families the search reply describes", {
+      requestType,
+      ...getScenarioIdentifiers(this),
+    });
+    const result = await PayloadValidation.captureFareFamilyDescriptions(this, requestType);
+    logger.info("Fare families captured", { count: result.families.length });
+  });
+});
 When("I capture the number of {string} requests sent for the trip", async function (requestType) {
   await runPayloadValidationStep(this, "captureRequestCount", { requestType }, async () => {
     logger.info("Capturing baseline request count", { requestType, ...getScenarioIdentifiers(this) });

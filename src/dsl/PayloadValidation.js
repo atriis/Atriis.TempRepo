@@ -375,8 +375,11 @@ function collectParameterValues(payload, parameterName) {
  * breaks the rule could be the one that was dropped, so a partial read would silently pass.
  *
  * @param {string} purpose Completes the sentence "Cannot <purpose>: ..." in the truncation error.
+ * @param {"request"|"response"} [source] Which side to download. Defaults to "request": the
+ *        count and uniqueness assertions inspect what was SENT. Pass "response" when the value
+ *        under test is only in the reply.
  */
-async function fetchAllRequestsForTrip(world, requestType, purpose) {
+async function fetchAllRequestsForTrip(world, requestType, purpose, source = "request") {
   const identifiers = getScenarioIdentifiers(world);
   if (!identifiers.tripId) {
     throw new Error(
@@ -385,7 +388,7 @@ async function fetchAllRequestsForTrip(world, requestType, purpose) {
   }
 
   const result = await fetchPayloadFromStorage({
-    source: "request",
+    source,
     requestType,
     tripId: identifiers.tripId,
     transactionId: identifiers.transactionId,
@@ -2099,6 +2102,78 @@ const PayloadValidation = {
     ).toBe(baselineRecord.count);
   },
 
+  /**
+   * Reads every fare family the Amadeus EDIFACT search reply describes and stores it on the world
+   * for a later UI assertion.
+   *
+   * Guards ADO 82771 / 84218. Each familyInformation node carries the filed code in
+   * "fareFamilyname" and, when the airline files one, a market-facing name in "description".
+   * Which of the two must appear on screen depends on whether the description is there at all, so
+   * the expectation cannot be hard-coded in Gherkin - it is derived here, per fare family.
+   *
+   * @param {object} world
+   * @param {string} requestType - e.g. "Amadeus4.Fare_MasterPricerTravelBoardSearch9"
+   * @returns {Promise<{families: Array<{code: string, description: string|null}>}>}
+   */
+  async captureFareFamilyDescriptions(world, requestType) {
+    assertWorld(world);
+    const normalizedRequestType = normalizeRequestType(requestType);
+
+    // The response, not the request: a MasterPricer REQUEST carries the fare family criteria the
+    // OBT asks for (bare codes, no descriptions), which would read as "nothing was described".
+    const result = await fetchAllRequestsForTrip(
+      world,
+      normalizedRequestType,
+      "read the fare families the search reply describes",
+      "response"
+    );
+
+    // One familyInformation node per fare family. Reusing the block extractor keeps this
+    // namespace-agnostic and stops a bare <description> elsewhere in the reply being read as a
+    // fare family name - a MasterPricer reply carries several unrelated ones.
+    const families = [];
+    const seen = new Map();
+
+    for (const match of result.matches) {
+      for (const block of extractXmlBlocksByTag(match.payload, "familyInformation")) {
+        const code = (collectParameterValues(block, "fareFamilyname")[0]?.value || "").trim();
+        if (!code) continue;
+
+        const description = (collectParameterValues(block, "description")[0]?.value || "").trim();
+        const carrier = (collectParameterValues(block, "carrier")[0]?.value || "").trim();
+        const key = `${carrier.toUpperCase()}|${code.toUpperCase()}`;
+        const existing = seen.get(key);
+
+        // The same family repeats across a multi-sid search. Keep the first entry, but let a
+        // described copy fill in for one that arrived bare, so a later bare copy cannot mask it.
+        if (existing) {
+          if (!existing.description && description) existing.description = description;
+          continue;
+        }
+
+        const family = { carrier: carrier || null, code, description: description || null };
+        seen.set(key, family);
+        families.push(family);
+      }
+    }
+
+    logger.info("Captured fare families from the search reply", {
+      requestType: normalizedRequestType,
+      described: families.filter((f) => f.description).length,
+      withoutDescription: families.filter((f) => !f.description).map((f) => f.code),
+      families,
+    });
+
+    expect(
+      families.length,
+      `No familyInformation node was found in any "${normalizedRequestType}" reply for this trip, so ` +
+      `there is nothing to compare the screen against. Confirm the itinerary offers branded fares ` +
+      `and that the content is Amadeus EDIFACT.`
+    ).toBeGreaterThan(0);
+
+    world.capturedFareFamilies = families;
+    return { families };
+  },
   /**
    * Asserts that no two requests of the given type carry the same value for a named parameter.
    *

@@ -80,6 +80,17 @@ async function measureFareOptionsRender({ maxSeconds, what, waitForCards, countC
  * @param {object|null} appState - The app's own view, from FlightResultsPage.readEuRailSearchState
  * @returns {string}
  */
+// Mirrors the front end's brand-name casing exactly (_flight-brand-builder.logic.ts and
+// _flight-pricing-processor.logic.ts both do this): lowercase, then capitalise the first
+// character of every word. Any divergence here would show up as a false failure, so it is copied
+// rather than reinterpreted - the word boundary treats an apostrophe as one, so "DELTA'S"
+// becomes "Delta'S" on screen too.
+// Word-start matcher for the Title-Case helper below.
+const TITLE_CASE_WORD_START = /\b(\w)/g;
+
+function titleCaseBrandName(value) {
+  return String(value || '').toLowerCase().replace(TITLE_CASE_WORD_START, (character) => character.toUpperCase());
+}
 function describeRailSearchOutcome(railSearch, appState) {
   if (railSearch) {
     const details = JSON.stringify(railSearch);
@@ -288,6 +299,11 @@ const FlightResults = {
 
     const flightResultsPage = getPageObject(page, FlightResultsPage);
     const resultsPage = getPageObject(page, ResultsPage);
+    // This budget must stay BELOW the Cucumber timeout of whichever step calls it, or Cucumber
+    // kills the step before the catch below can run - the no-results branch becomes unreachable and
+    // "zero availability", "empty state rendered" and "never left the search form" all report as
+    // the same opaque harness timeout. The callers give it headroom rather than shrinking it here,
+    // so a slow-but-successful search keeps its full 120s (see RESULTS_STEP_TIMEOUT_MS).
     const timeout = 120000;
     const startTime = Date.now();
 
@@ -3820,6 +3836,137 @@ async verifyFareComponentTextColorInPricingOptions(page, expectedColor, index = 
     const flightResultsPage = getPageObject(page, FlightResultsPage);
     await flightResultsPage.waitForNewFlightFlowBrandCards(1);
     return { inboundBrandCardsVisible: true };
+  },
+
+  /**
+   * Asserts every fare family label on screen is the one the supplier's search reply calls for.
+   *
+   * Guards ADO 82771 / 84218. For a family the airline files a description for, the screen must
+   * show that description; for one filed without a description, the code itself is correct (AC3 /
+   * R2). Which applies is therefore a property of the payload, not something Gherkin can state -
+   * run captureFareFamilyDescriptions first and this compares against what it found.
+   *
+   * The label is Title-Cased by the front end (_flight-brand-builder.logic.ts), so the comparison
+   * Title-Cases the payload values the same way.
+   *
+   * @param {import('playwright').Page} page
+   * @param {object} world - Must carry capturedFareFamilies from the capture step
+   * @param {{flow?: 'newFlightFlow'|'pricingOptions', legIndex?: number}} [options]
+   * @returns {Promise<{names: string[], offenders: string[], flow: string, legIndex: number}>}
+   */
+  async verifyBrandNamesMatchFareFamilyDescriptions(page, world, options = {}) {
+    if (!page) {
+      throw new Error('[FlightResults.verifyBrandNamesMatchFareFamilyDescriptions] "page" is required.');
+    }
+    if (!world || !Array.isArray(world.capturedFareFamilies)) {
+      throw new Error(
+        '[FlightResults.verifyBrandNamesMatchFareFamilyDescriptions] No fare families captured. Run the ' +
+        'capture step for the Amadeus search reply before this assertion.',
+      );
+    }
+
+    const { flow = 'newFlightFlow', legIndex = 0 } = options;
+    if (!['newFlightFlow', 'pricingOptions'].includes(flow)) {
+      throw new Error(`[FlightResults.verifyBrandNamesMatchFareFamilyDescriptions] "flow" must be newFlightFlow or pricingOptions, got: ${flow}`);
+    }
+    if (![0, 1].includes(legIndex)) {
+      throw new Error(`[FlightResults.verifyBrandNamesMatchFareFamilyDescriptions] "legIndex" must be 0 or 1, got: ${legIndex}`);
+    }
+
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+
+    // The legacy drawer renders one leg at a time and its reader is already leg-scoped; the new
+    // flow renders both legs at once and needs the index.
+    let rawNames;
+    if (flow === 'pricingOptions') {
+      // Same order as verifyPricingOptionsLegOffersMultipleFares: the drawer renders its leg
+      // asynchronously, so reading without this can catch the previous leg's cards.
+      await flightResultsPage.waitForPricingOptionsDrawerLeg();
+      rawNames = await flightResultsPage.getPricingOptionsLegFareNames();
+    } else {
+      rawNames = legIndex === 1
+        ? await flightResultsPage.getInboundBrandCardNames()
+        : await flightResultsPage.getOutboundBrandCardNames();
+    }
+
+    // Both readers yield null for a card with no label, to stay index-aligned with the cards.
+    const names = rawNames.filter(Boolean);
+
+    // Only families whose description actually differs from the filed code can be judged. UA files
+    // ECONOMY with the description "ECONOMY", so its correct label and its filed code Title-Case to
+    // the same string - listing that as forbidden would fail a screen that is right.
+    const described = world.capturedFareFamilies.filter(
+      (family) => family.description
+        && titleCaseBrandName(family.description) !== titleCaseBrandName(family.code),
+    );
+
+    // A code whose family HAS a description must never reach the screen - that is 84218 exactly.
+    const forbidden = new Map(
+      described.map((family) => [titleCaseBrandName(family.code), family]),
+    );
+
+    logger.info('[FareFamilyName] Comparing labels against the search reply', {
+      flow,
+      legIndex,
+      names,
+      describedFamilies: described.length,
+      forbiddenLabels: [...forbidden.keys()],
+    });
+
+    // An empty set would satisfy the assertion below without proving anything.
+    expect(
+      names.length,
+      `No fare family label was read for the ${flow} leg ${legIndex}, so the labels cannot be judged. ` +
+      'Confirm the itinerary really offers branded fares on this leg.',
+    ).toBeGreaterThan(0);
+
+    expect(
+      described.length,
+      'The search reply described no fare family with a name that differs from its filed code, so ' +
+      'this assertion could only pass vacuously. Pick an itinerary whose carrier files real fare ' +
+      'family descriptions.',
+    ).toBeGreaterThan(0);
+
+    const offenders = names.filter((name) => forbidden.has(name));
+
+    expect(
+      offenders,
+      `${offenders.length} label(s) show the filed code although the airline filed a description: ` +
+      offenders.map((name) => {
+        const family = forbidden.get(name);
+        return `"${name}" should read "${titleCaseBrandName(family.description)}" (${family.carrier || '?'} ${family.code})`;
+      }).join('; ') +
+      `. The whole set read was [${names.join(', ')}].`,
+    ).toEqual([]);
+
+    // The casing rule, asserted on its own. It holds whatever the label's provenance: a family the
+    // airline described, a filed code the pricing reply returned bare (Fare_InformativePricingWithoutPNR
+    // and Fare_PriceUpsellWithoutPNR carry no description, so the code is Title-Cased instead - the
+    // AC3/R2 fallback), or the brand builder's "<Cabin> (<class>)" for a fare with no brand at all.
+    // Every one of those must reach the screen with only the first letter of each word capitalised,
+    // so a raw MAINEXTRA is caught here even when no captured family can explain the label.
+    const miscased = names.filter((name) => titleCaseBrandName(name) !== name);
+
+    expect(
+      miscased,
+      `${miscased.length} label(s) are not Title-Cased: ` +
+      miscased.map((name) => `"${name}" should read "${titleCaseBrandName(name)}"`).join('; ') +
+      `. The whole set read was [${names.join(', ')}].`,
+    ).toEqual([]);
+
+    // Not asserted: that every label is one of the captured families. The brand builder's cabin
+    // fallback above is legitimate and matches no fare family, so an unrecognised label is not
+    // necessarily wrong - it is logged, and it is what exposes a label whose family the search
+    // reply never described.
+    const expected = new Set(world.capturedFareFamilies.map(
+      (family) => titleCaseBrandName(family.description || family.code),
+    ));
+    const unrecognised = names.filter((name) => !expected.has(name));
+    if (unrecognised.length > 0) {
+      logger.warn('[FareFamilyName] Labels not matching any captured fare family', { unrecognised });
+    }
+
+    return { names, offenders, miscased, flow, legIndex };
   },
 
   /**

@@ -87,6 +87,14 @@ Then("the pricing options leg should offer more than one fare", async function (
   logger.info("[PricingOptions] Multiple fares verified on the current leg", result);
 });
 
+Then("every fare name in pricing options should match its fare family description", async function () {
+  logger.info("[PricingOptions] Comparing fare names with the captured fare families");
+  const result = await FlightResults.verifyBrandNamesMatchFareFamilyDescriptions(this.page, this, {
+    flow: "pricingOptions",
+  });
+  logger.info("[PricingOptions] Fare names match the search reply", result);
+});
+
 Then("the outbound leg brand cards are displayed", async function () {
   logger.info("[NewFlightFlow] Verifying outbound leg brand cards are visible");
   const result = await FlightResults.verifyOutboundLegBrandCardsVisible(this.page);
@@ -122,6 +130,19 @@ Then("every outbound leg brand card name should contain {string}", async functio
   const result = await FlightResults.verifyOutboundBrandCardNamesContain(this.page, expectedText);
   logger.info("[NewFlightFlow] Outbound brand card names verified", result);
 });
+
+Then(
+  "every brand card name on the {string} leg should match its fare family description",
+  async function (legName) {
+    const legIndex = legName.toLowerCase() === "inbound" ? 1 : 0;
+    logger.info("[NewFlightFlow] Comparing brand card names with the captured fare families", { legName });
+    const result = await FlightResults.verifyBrandNamesMatchFareFamilyDescriptions(this.page, this, {
+      flow: "newFlightFlow",
+      legIndex,
+    });
+    logger.info("[NewFlightFlow] Brand card names match the search reply", result);
+  }
+);
 
 Then("the inbound leg brand cards should be visible", async function () {
   logger.info("[NewFlightFlow] Verifying inbound leg brand cards are visible");
