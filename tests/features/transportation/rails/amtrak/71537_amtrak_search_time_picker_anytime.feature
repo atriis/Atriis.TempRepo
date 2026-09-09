@@ -50,6 +50,7 @@ Feature: 71537 Amtrak - Search component time-picker "Anytime"
     Then in the captured "request" payload for request type "Sabre Amtrak Search (Outbound)", path "searchCriteria[0].journeyCriteria.departure.dateTime" should contain "T00:00"
     And in the captured "request" payload for request type "Sabre Amtrak Search (Outbound)", path "searchCriteria[1].journeyCriteria.departure.dateTime" should contain "T00:00"
 
+  #Blocked by bug 84632
   # Departure and return set to different times, on the hour and then off it. The off-the-hour row
   # is what proves the minutes reach the supplier: the picker offers them in steps of 15.
   #
