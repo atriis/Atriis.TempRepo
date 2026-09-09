@@ -1,6 +1,13 @@
+const { expect } = require("@playwright/test");
+const { faker } = require("@faker-js/faker");
 const { getPageObject } = require("@utils/pageObjectCache");
 const ProfilePage = require("@pages/ProfilePage");
 const LoginPage = require("@pages/LoginPage");
+// Only for the trip page this DSL returns to after closing a profile tab — the profile itself never
+// touches the search form. See closeTravelerProfileAndReturn. Destructured, unlike ProfilePage
+// above: SearchPage.js exports { SearchPage, SELECTORS }, so the bare module object is not a
+// constructor and getPageObject rejects it.
+const { SearchPage } = require("@pages/SearchPage");
 const logger = require("@utils/logger").child("Profile");
 const {
   parseDateValue,
@@ -1958,6 +1965,226 @@ const Profile = {
 
     logger.info('[Profile.verifyTravelerProfilePageNotEditable] Traveller profile page is read-only, as expected');
   },
+  /**
+   * Asserts the open standalone profile page belongs to the traveller whose FIRST NAME is given.
+   *
+   * The privilege scenarios that use this open one traveller's profile after another from the trip's
+   * name tags, and every one of them can fail the same way: the tag routes to /user/:userId with the
+   * BOOKER's id, so a profile loads, renders, and is even editable — just not the traveller's. That
+   * is invisible to verifyTravelerProfilePageOpen, which only proves a profile page rendered.
+   *
+   * Keyed on the First Name INPUT rather than on the page heading, unlike verifyUserProfileOpenOnTab
+   * which compares a full name against the <h1>: these travellers are identified by the term the
+   * autocomplete was searched with ("View", "Edit"), and no scenario knows their surnames.
+   *
+   * Compared case-insensitively — the feature file names the traveller the way a tester types the
+   * search term, while the field renders the stored capitalisation.
+   *
+   * @param {import('playwright').Page} page - the page the profile opened on
+   * @param {string} expectedFirstName - first name as stored on the traveller's profile
+   * @returns {Promise<{ firstName: string }>}
+   */
+  async verifyTravelerProfilePageBelongsTo(page, expectedFirstName) {
+    if (!page) {
+      throw new Error('[Profile.verifyTravelerProfilePageBelongsTo] "page" is required.');
+    }
+    if (!expectedFirstName || typeof expectedFirstName !== 'string') {
+      throw new Error(
+        `[Profile.verifyTravelerProfilePageBelongsTo] "expectedFirstName" must be a non-empty string, got: ` +
+        `${typeof expectedFirstName} (${JSON.stringify(expectedFirstName)})`
+      );
+    }
+
+    const profilePage = getPageObject(page, ProfilePage);
+    await profilePage.waitForUserProfilePage();
+
+    const firstName = await profilePage.getProfileFirstNameValue();
+
+    if (firstName.toLowerCase() !== expectedFirstName.trim().toLowerCase()) {
+      // The heading is read only to describe the failure — it names whoever DID open, which is the
+      // one thing that makes "wrong traveller" distinguishable from "profile never loaded".
+      const ownerName = await profilePage.getUserProfilePageOwnerName();
+      throw new Error(
+        `[Profile.verifyTravelerProfilePageBelongsTo] The profile that opened has first name ` +
+        `"${firstName || '(no value rendered)'}" but "${expectedFirstName}" was expected ` +
+        `(heading: "${ownerName || 'none'}", url: ${page.url()}). Clicking the traveller's name tag routed to ` +
+        `the wrong /user/:userId — usually the booker's own id instead of the selected traveller's, which ` +
+        `would let a privilege check pass against a profile the booker is always allowed to edit.`
+      );
+    }
+
+    logger.info(`[Profile.verifyTravelerProfilePageBelongsTo] Profile of "${firstName}" is open (${page.url()})`);
+    return { firstName };
+  },
+
+  /**
+   * Types a fresh random value into the profile's Middle Name field and returns it, so the caller
+   * can assert the same value survived the save.
+   *
+   * Middle Name is the field these privilege scenarios change because it is the only Personal
+   * Details input that is neither mandatory nor identity-bearing — editing it proves the profile is
+   * writable without risking a save the app would reject for reasons of its own.
+   *
+   * The value is alphabetic only: personal-details-form.vue validates middleName with
+   * `isAlphaAndSpace`, so faker's person names would intermittently yield a hyphen or apostrophe and
+   * fail the save for the wrong reason.
+   *
+   * Saving is left to the caller (savePersonalDetails) — the fill and the save are separate steps in
+   * every scenario, which is what lets a read-only profile be caught at the fill.
+   *
+   * @param {import('playwright').Page} page - the page the profile is open on
+   * @returns {Promise<{ value: string }>} the value typed, to be handed to verifyMiddleName
+   */
+  async enterRandomMiddleName(page) {
+    if (!page) {
+      throw new Error('[Profile.enterRandomMiddleName] "page" is required.');
+    }
+
+    const profilePage = getPageObject(page, ProfilePage);
+    const value = faker.string.alpha({ length: 8, casing: 'lower' });
+
+    logger.debug(`[Profile.enterRandomMiddleName] Typing middle name "${value}"`);
+    await profilePage.fillMiddleName(value);
+
+    logger.info(`[Profile.enterRandomMiddleName] Middle name set to "${value}"`);
+    return { value };
+  },
+
+  /**
+   * Asserts the profile's Middle Name field holds `expectedValue`.
+   *
+   * Run AFTER the save and its success notification: the toast only proves the request was accepted,
+   * while re-reading the field is what proves the change was persisted and reflected back. A booker
+   * whose privilege was ignored server-side gets the toast and the old value.
+   *
+   * @param {import('playwright').Page} page - the page the profile is open on
+   * @param {string} expectedValue - the value enterRandomMiddleName returned
+   * @returns {Promise<void>}
+   */
+  async verifyMiddleName(page, expectedValue) {
+    if (!page) {
+      throw new Error('[Profile.verifyMiddleName] "page" is required.');
+    }
+    if (!expectedValue || typeof expectedValue !== 'string') {
+      throw new Error(
+        `[Profile.verifyMiddleName] "expectedValue" must be a non-empty string, got: ` +
+        `${typeof expectedValue} (${JSON.stringify(expectedValue)}). The step must pass the value the ` +
+        `matching "I enter a random middle name in the traveler profile" step stored on the World.`
+      );
+    }
+
+    const profilePage = getPageObject(page, ProfilePage);
+
+    await expect(
+      profilePage.getMiddleNameLocator(),
+      `Middle Name should read back as "${expectedValue}" — the Save was accepted (the success ` +
+      `notification appeared) but the field still has to show the saved value. The old value here means ` +
+      `the profile update was refused server-side despite the toast, which is exactly what a booker ` +
+      `whose edit privilege is not honoured would see.`
+    ).toHaveValue(expectedValue, { timeout: 15000 });
+
+    logger.info(`[Profile.verifyMiddleName] Middle name reads back as "${expectedValue}"`);
+  },
+
+  /**
+   * Asserts the required-field message under the profile popup's Gender select reads
+   * `expectedMessage`.
+   *
+   * WHICH field is flagged is the whole point: the popup renders the identical wording under every
+   * empty mandatory field, so a bare "a required error is shown" check passes just as happily for a
+   * traveller missing something else. The message is passed in rather than hardcoded so the feature
+   * file states what the traveller is expected to be refused for.
+   *
+   * No Save attempt is needed first — personal-details-form.vue renders the Gender message from
+   * `v$.formData.gender.required && v$.formData.gender.$invalid` alone, unlike firstName/lastName,
+   * which additionally wait on the form's markFields flag.
+   *
+   * @param {import('playwright').Page} page - the page holding the open profile popup
+   * @param {string} expectedMessage - e.g. "This field is required"
+   * @returns {Promise<void>}
+   */
+  async verifyGenderRequiredError(page, expectedMessage) {
+    if (!page) {
+      throw new Error('[Profile.verifyGenderRequiredError] "page" is required.');
+    }
+    if (!expectedMessage || typeof expectedMessage !== 'string') {
+      throw new Error(
+        `[Profile.verifyGenderRequiredError] "expectedMessage" must be a non-empty string, got: ` +
+        `${typeof expectedMessage} (${JSON.stringify(expectedMessage)})`
+      );
+    }
+
+    const profilePage = getPageObject(page, ProfilePage);
+
+    await expect(
+      profilePage.getGenderRequiredErrorLocator(),
+      `The Gender select should show "${expectedMessage}" — this traveller has no gender on file and the ` +
+      `corporation mandates it, so the profile popup must refuse the add and name Gender as the missing ` +
+      `field. Nothing under Gender means the mandate rule was not applied to it.`
+    ).toHaveText(expectedMessage, { timeout: 15000 });
+
+    logger.info(`[Profile.verifyGenderRequiredError] Gender shows "${expectedMessage}"`);
+  },
+
+  /**
+   * Closes the traveller profile the trip's name tag opened and hands back the page the trip is on.
+   *
+   * Clicking a traveller name window.open()s /user/:userId, so a scenario that opens several profiles
+   * in turn has to close each one: left open, the next "I click the traveler name" step would assert
+   * against a stale tab, and the After hook would screenshot the profile rather than the trip.
+   *
+   * Both branches of openTravelerProfileFromLastTravelerTag are handled — on desktop the profile is a
+   * separate tab and is closed, while on a mobile viewport utilService.openNewWindow router-pushes in
+   * place, so there is nothing to close and the same tab is navigated back instead.
+   *
+   * Tab lifecycle is context-level rather than page-object work, so it sits here (as it does in
+   * App.completeSsoLogin and Administration's linked-tab helpers) rather than in a page object.
+   *
+   * @param {import('playwright').Page} profileTab - the page the profile opened on
+   * @param {import('playwright').Page} tripPage - the page the trip/search form is on
+   * @returns {Promise<import('playwright').Page>} the page the caller should continue on
+   */
+  async closeTravelerProfileAndReturn(profileTab, tripPage) {
+    if (!profileTab) {
+      throw new Error('[Profile.closeTravelerProfileAndReturn] "profileTab" is required.');
+    }
+    if (!tripPage) {
+      throw new Error(
+        '[Profile.closeTravelerProfileAndReturn] "tripPage" is required — the step must pass the page the ' +
+        'trip was on before the profile opened.'
+      );
+    }
+
+    const openedInNewTab = profileTab !== tripPage;
+
+    if (openedInNewTab) {
+      if (tripPage.isClosed()) {
+        throw new Error(
+          '[Profile.closeTravelerProfileAndReturn] The trip page has already been closed, so there is ' +
+          'nothing to return to. Closing the profile tab would leave the scenario with no page to ' +
+          'continue on.'
+        );
+      }
+      if (!profileTab.isClosed()) {
+        await profileTab.close();
+      }
+    } else {
+      // Same-tab (mobile) branch: the profile replaced the trip in place, so step back to it.
+      await profileTab.goBack({ waitUntil: 'domcontentloaded', timeout: 30000 });
+    }
+
+    await tripPage.bringToFront();
+
+    const searchPage = getPageObject(tripPage, SearchPage);
+    await searchPage.waitForSearchControl();
+
+    logger.info(
+      `[Profile.closeTravelerProfileAndReturn] Profile ${openedInNewTab ? 'tab closed' : 'navigated back'}; ` +
+      `continuing on the trip page (${tripPage.url()})`
+    );
+    return tripPage;
+  },
+
 
   /**
    * Navigates to the Travel Preferences tab on the traveler profile page.

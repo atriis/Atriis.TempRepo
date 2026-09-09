@@ -120,6 +120,62 @@ const Search = {
 
     logger.info(`[Search.selectTravelerFromAutocomplete] Selected "${name}" from autocomplete`);
   },
+  /**
+   * Picks a named traveller through the emptied slot's own "Select traveller" placeholder and stops
+   * there — no wait for the traveller tag, no primary-traveller assertion.
+   *
+   * The empty-slot counterpart of selectTravelerFromAutocomplete, and deliberately NOT a variant of
+   * addTravelerAsPrimaryViaSelectTravelerSlot: that method proves the add SUCCEEDED (it waits for
+   * the traveller's tag and asserts the primary flag), while this one is for travellers the app is
+   * expected to REFUSE. A traveller missing a mandate field raises the user-profile popup instead of
+   * being added, so a tag that never appears is the expected outcome rather than a failure.
+   *
+   * Routed through the placeholder rather than the "Add traveller" button because a scenario that
+   * has just cleared its travellers is left holding one empty slot (see removeAllTravelers): using
+   * the button there appends a SECOND slot, and the surplus one flags red and blocks the search.
+   *
+   * @param {Object} page - Playwright page instance
+   * @param {string} name - Autocomplete search term for the traveller, e.g. "no gender"
+   * @param {string} [label='Select traveller'] - Placeholder label; en renders "Select traveller",
+   *   en-US "Select traveler"
+   * @returns {Promise<{ via: string }>} How the dialog was opened, from openEmptyTravelerSlotDialog
+   */
+  async selectTravelerFromEmptySlot(page, name, label = 'Select traveller') {
+    if (!page) {
+      throw new Error('[Search.selectTravelerFromEmptySlot] "page" is required.');
+    }
+    if (!name || typeof name !== 'string') {
+      throw new Error(
+        `[Search.selectTravelerFromEmptySlot] "name" must be a non-empty string, got: ${typeof name} (${JSON.stringify(name)})`
+      );
+    }
+    if (!label || typeof label !== 'string') {
+      throw new Error(
+        `[Search.selectTravelerFromEmptySlot] "label" must be a non-empty string, got: ${typeof label}`
+      );
+    }
+
+    logger.debug(`[Search.selectTravelerFromEmptySlot] Selecting "${name}" through the "${label}" slot`);
+
+    const searchPage = getPageObject(page, SearchPage);
+
+    let via;
+    try {
+      ({ via } = await searchPage.openEmptyTravelerSlotDialog(label));
+      await searchPage.fillInEditTravelerName(name);
+      await searchPage.selectEditTravelerOption(name);
+    } catch (err) {
+      throw new Error(
+        `[Search.selectTravelerFromEmptySlot] Failed to select traveller "${name}" through the "${label}" ` +
+        `slot: ${err.message} Ensure the travellers were cleared first (which is what leaves the empty ` +
+        `slot behind) and that the autocomplete returned a match for "${name}".`
+      );
+    }
+
+    logger.info(`[Search.selectTravelerFromEmptySlot] Selected "${name}" through the empty traveller slot`);
+    return { via };
+  },
+
 
   /**
    * Removes the logged-in traveler from the trip.

@@ -556,6 +556,11 @@ Then("the mandatory details are missing popup wording is identical to the one re
 // the profile that was just opened.
 When("I click the traveler name on the search page", async function () {
   logger.info("Opening the last added traveller's profile from their name tag on the search page");
+  // Recorded before this.page is repointed: the trip page is otherwise unreachable by name, and
+  // "I close the traveler profile tab and return to the search page" needs it to come back to the
+  // right tab. Reading it back out of context.pages() instead would be a guess in a scenario that
+  // opens several profiles in turn.
+  this.travelerProfileOpenerPage = this.page;
   this.page = await Profile.openTravelerProfileFromLastTravelerTag(this.page);
 });
 
@@ -568,6 +573,53 @@ Then("the traveler profile page is not editable", async function () {
   logger.info("Verifying the traveller profile page is read-only");
   await Profile.verifyTravelerProfilePageNotEditable(this.page);
 });
+// Identity check for the page the step above opened. The privilege scenarios open one traveller's
+// profile after another, and the failure they exist to catch — the tag routing to the BOOKER's
+// /user/:userId — renders a perfectly valid profile page, so "the traveler profile page is
+// displayed" cannot tell it apart. Named by first name because that is the term the traveller was
+// searched with; the full-name heading check lives in "I should see the heading {string}".
+Then("the traveler profile page belongs to {string}", async function (expectedFirstName) {
+  logger.info("Verifying whose traveller profile opened", { expectedFirstName });
+  await Profile.verifyTravelerProfilePageBelongsTo(this.page, expectedFirstName);
+});
+
+// The value is generated in the DSL and stored on the World, so the read-back step below asserts
+// the exact string that was typed rather than "something changed" — a save that silently kept the
+// old value would satisfy the looser check on any profile that already had a middle name.
+When("I enter a random middle name in the traveler profile", async function () {
+  logger.info("Entering a random middle name in the open traveller profile");
+  const { value } = await Profile.enterRandomMiddleName(this.page);
+  this.enteredMiddleName = value;
+});
+
+Then("the middle name in the traveler profile should be the value I entered", async function () {
+  logger.info("Verifying the middle name was saved", { expectedValue: this.enteredMiddleName });
+  await Profile.verifyMiddleName(this.page, this.enteredMiddleName);
+});
+
+// Undoes "I click the traveler name on the search page": closes the profile tab and repoints
+// this.page back at the trip it was opened from, so the next traveller's profile is opened from a
+// live search page and the After hook screenshots the trip on failure.
+When("I close the traveler profile tab and return to the search page", async function () {
+  logger.info("Closing the traveller profile and returning to the search page");
+  if (!this.travelerProfileOpenerPage) {
+    throw new Error(
+      'No search page was recorded to return to. This step must follow "I click the traveler name on ' +
+      'the search page", which is what stores the page the profile was opened from.'
+    );
+  }
+  this.page = await Profile.closeTravelerProfileAndReturn(this.page, this.travelerProfileOpenerPage);
+  this.travelerProfileOpenerPage = null;
+});
+
+// Gender rather than a generic "a required field" assertion: the popup prints the same wording
+// under every empty mandatory field, so naming the field is what proves the mandate rule was
+// applied to the one the traveller is actually missing.
+Then("the gender field shows the required-field error {string}", async function (expectedMessage) {
+  logger.info("Verifying the Gender select shows the required-field error", { expectedMessage });
+  await Profile.verifyGenderRequiredError(this.page, expectedMessage);
+});
+
 
 // Landing check for a profile deep link that names its section — today the document-expiry
 // warnings' "Update Passport" / "Update Visa" buttons (AB#65307), which open

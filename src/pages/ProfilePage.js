@@ -264,6 +264,26 @@ const SELECTORS = {
   // read-only check counts it separately instead of treating it as a privilege leak, and proves the
   // inertness by clicking it. If the binding is ever added, this simply counts zero.
   BIRTH_DATE_EDITABLE_INPUT: ".personal-details-form-content .birth-date-date-picker input:visible:not([disabled])",
+  // --- Personal Details fields, addressed by their own label ---
+  // Same `.field:has(> label:text-is(...))` scoping as PROFILE_DIALOG_EMAIL_INPUT above, and for the
+  // same reason: personal-details-form.vue renders Title/First/Middle/Last as four sibling
+  // .field.app-column blocks inside .name-inputs-container, so a positional selector flips as soon
+  // as a field is added or the mandate config reorders them. The label text is the only stable
+  // anchor, and en.json and en-US.json agree on all three of these ("First Name", "Middle Name",
+  // "Gender"), so neither English locale needs its own selector.
+  // Both work on the standalone page and inside the profile dialog — the form content class is the
+  // same in either host; the caller decides which page object it holds.
+  PROFILE_FIRST_NAME_INPUT: ".personal-details-form-content .field:has(> label:text-is(\"First Name\")) input",
+  PROFILE_MIDDLE_NAME_INPUT: ".personal-details-form-content .field:has(> label:text-is(\"Middle Name\")) input",
+  // The required-field message under the Gender select. personal-details-form.vue renders it from
+  // `v$.formData.gender.required && v$.formData.gender.$invalid` — NOT gated on the form's
+  // markFields flag the way firstName/lastName are, so it paints as soon as a profile whose
+  // corporation mandates Gender loads without one, with no Save attempt needed. Scoped to the
+  // Gender field rather than matched as a bare `.help`, because every other mandatory field in the
+  // same form renders the identical wording.
+  PROFILE_GENDER_REQUIRED_ERROR:
+    ".personal-details-form-content .field:has(> label:text-is(\"Gender\")) .form-validation-msg .help",
+
 };
 
 class ProfilePage {
@@ -1828,6 +1848,61 @@ class ProfilePage {
     }
     return ((await heading.textContent()) || '').replace(/\s+/g, ' ').trim();
   }
+  /**
+   * Value of the Personal Details "First Name" input on whichever profile is loaded.
+   *
+   * The identity signal for the standalone /user/:userId page, and the page-side counterpart of
+   * PROFILE_DIALOG_EMAIL_INPUT's role for the dialog. Read from the input rather than from the
+   * USER_PROFILE_PAGE_OWNER_NAME heading on purpose: the heading concatenates first + last name,
+   * so it can only be asserted as a full name, while the travellers these privilege scenarios open
+   * are identified by the first name the autocomplete was searched with ("View", "Edit").
+   *
+   * Works on a read-only profile too — the input carries `disabled` but keeps its value.
+   *
+   * @param {number} [timeoutMs=20000]
+   * @returns {Promise<string>} The trimmed input value, or '' when the field never rendered — the
+   *   DSL turns that into a descriptive failure.
+   */
+  async getProfileFirstNameValue(timeoutMs = 20000) {
+    const input = this.page.locator(SELECTORS.PROFILE_FIRST_NAME_INPUT).first();
+    try {
+      await input.waitFor({ state: 'visible', timeout: timeoutMs });
+    } catch {
+      return '';
+    }
+    return ((await input.inputValue()) || '').trim();
+  }
+
+  /** Replaces the Personal Details "Middle Name" input value. */
+  async fillMiddleName(value, { timeout = 15000 } = {}) {
+    const input = this.page.locator(SELECTORS.PROFILE_MIDDLE_NAME_INPUT).first();
+    try {
+      await input.waitFor({ state: 'visible', timeout });
+      await input.fill(value);
+    } catch (err) {
+      throw new Error(
+        `[ProfilePage.fillMiddleName] Could not type "${value}" into the Middle Name field ` +
+        `(selector: ${SELECTORS.PROFILE_MIDDLE_NAME_INPUT}). The Personal Details tab may not be the ` +
+        `active one, or the profile is read-only — personal-details-form.vue binds :disabled="disableEdit" ` +
+        `on this input, so a profile the booker may only VIEW rejects the fill. Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * The Personal Details "Middle Name" input. Returned as a locator rather than a read value so the
+   * DSL can assert on it with a retrying web-first assertion — the field is re-read after a save,
+   * where the form repaints from the save response a beat after the success toast appears.
+   */
+  getMiddleNameLocator() {
+    return this.page.locator(SELECTORS.PROFILE_MIDDLE_NAME_INPUT).first();
+  }
+
+  /** The required-field message rendered under the Gender select. */
+  getGenderRequiredErrorLocator() {
+    return this.page.locator(SELECTORS.PROFILE_GENDER_REQUIRED_ERROR).first();
+  }
+
 
   /**
    * Name of the SELECTED tab on the standalone /user/:userId page, e.g. "passportsAndVisas" — the

@@ -41,6 +41,16 @@ When("I add a traveler by name {string} from the search autocomplete", async fun
   await Search.selectTravelerFromAutocomplete(this.page, name);
 });
 
+// Empty-slot sibling of the autocomplete step above, for travellers the add is expected to be
+// REFUSED for: a traveller missing a mandate field raises the user-profile popup instead of being
+// added, so nothing is asserted about a traveller tag here. Routed through the slot rather than the
+// "Add traveller" button because a scenario that has just run "I remove all travelers" still holds
+// one empty slot, and the button would append a second one that blocks the next search.
+When("I add a traveler by name {string} through the empty traveler slot", async function (name) {
+  logger.info("Selecting traveler through the empty traveler slot (profile popup expected)", { name });
+  await Search.selectTravelerFromEmptySlot(this.page, name);
+});
+
 Then("the traveler {string} should not be available to add", async function (travelerName) {
   logger.info("Verifying traveler is not available to add", { travelerName });
   const available = await Search.isTravelerAvailableToAdd(this.page, travelerName);
