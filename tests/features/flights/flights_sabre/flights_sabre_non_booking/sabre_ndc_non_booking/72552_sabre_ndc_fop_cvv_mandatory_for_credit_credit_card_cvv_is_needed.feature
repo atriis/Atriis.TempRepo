@@ -4,7 +4,7 @@
 # Owner: Bruna Santos
 
 @regression @flights @sabre-ndc @cvv @fop
-Feature: Sabre NDC - FOP - Credit card CVV is needed
+Feature: 72552 Sabre NDC - FOP - Credit card CVV is needed
   As a corporate traveler
   I want the cart to require a CVV once I pay a British Airways Sabre NDC flight by credit card
   So that a booking can never be sent to checkout without the card security code
