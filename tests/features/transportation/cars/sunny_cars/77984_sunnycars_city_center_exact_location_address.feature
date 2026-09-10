@@ -1,7 +1,7 @@
 # ADO #77984 - SunnyCars - Cars - City Centre Exact Location
 # Reference test case: ADO #77984
 
-@daily_cars @provider:sunnycars @regression @transportation @cars @ado:77984
+@daily_cars @provider:sunnycars @regression @transportation @cars @ado:77984 @full_purchase
 Feature: 77984 SunnyCars - Cars - City Centre Exact Location
   As a corporate traveler using SunnyCars city center search
   I want location formatting to remain consistent from results to cart and booking
