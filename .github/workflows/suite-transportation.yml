@@ -49,13 +49,15 @@ jobs:
       # deutsche_bahn and distribusion as supplier folders.
       #
       # Deliberately NOT run: cars/cars_blocked/, cars/payload_test/,
-      # rails/amtrak/amtrak_blocked/, rails/benerail/benerail_blocked/ and
-      # rails/evolvi/evolvi_blocked/. Those rail suites therefore glob *.feature
-      # at the folder root rather than passing the folder, which would recurse
+      # cars/sunny_cars/sunny_cars_blocked/, rails/amtrak/amtrak_blocked/,
+      # rails/benerail/benerail_blocked/ and rails/evolvi/evolvi_blocked/.
+      # Those suites therefore glob *.feature at the folder root rather than
+      # passing the folder, which would recurse
       # into the _blocked/ subfolder — for evolvi that would pull in 4 extra
       # features carrying 2 undefined steps, which fails the run outright rather
       # than skipping them; for amtrak it would add 3 blocked features (the
-      # folder path dry-runs 8 scenarios, the glob 5).
+      # folder path dry-runs 8 scenarios, the glob 5). Sunny Cars is the same
+      # case: sunny_cars_blocked/ holds 66119, so that suite globs the root too.
       #
       # The older warning about 37290's filename no longer applies: it was
       # renamed from `[merge]` to `_merge_`, so nothing in either folder is read
@@ -105,7 +107,7 @@ jobs:
             { "suite_id": "cars-galileo",    "suite_name": "Cars Galileo",    "test_path": "tests/features/transportation/cars/galileo/",                                                             "parallel": 2, "retry": 3, "job_timeout_minutes": 75,  "step_timeout_minutes": 70 },
             { "suite_id": "cars-general",    "suite_name": "Cars General",    "test_path": "tests/features/transportation/cars/general/",                                                             "parallel": 2, "retry": 3, "job_timeout_minutes": 110, "step_timeout_minutes": 105 },
             { "suite_id": "cars-sabre",      "suite_name": "Cars Sabre",      "test_path": "tests/features/transportation/cars/sabre/",                                                               "parallel": 2, "retry": 3, "job_timeout_minutes": 120, "step_timeout_minutes": 115 },
-            { "suite_id": "cars-sunny-cars", "suite_name": "Cars Sunny Cars", "test_path": "tests/features/transportation/cars/sunny_cars/",                                                          "parallel": 2, "retry": 3, "job_timeout_minutes": 75,  "step_timeout_minutes": 70 },
+            { "suite_id": "cars-sunny-cars", "suite_name": "Cars Sunny Cars", "test_path": "tests/features/transportation/cars/sunny_cars/*.feature",                                                  "parallel": 2, "retry": 3, "job_timeout_minutes": 75,  "step_timeout_minutes": 70 },
             { "suite_id": "rails-amtrak",    "suite_name": "Rails Amtrak",    "test_path": "tests/features/transportation/rails/amtrak/*.feature",                                                    "parallel": 2, "retry": 3, "job_timeout_minutes": 60,  "step_timeout_minutes": 55 },
             { "suite_id": "rails-benerail",  "suite_name": "Rails Benerail",  "test_path": "tests/features/transportation/rails/benerail/*.feature",                                                  "parallel": 3, "retry": 3, "job_timeout_minutes": 180, "step_timeout_minutes": 175 },
             { "suite_id": "rails-evolvi",    "suite_name": "Rails Evolvi",    "test_path": "tests/features/transportation/rails/evolvi/*.feature",                                                    "parallel": 2, "retry": 3, "job_timeout_minutes": 180, "step_timeout_minutes": 175 },

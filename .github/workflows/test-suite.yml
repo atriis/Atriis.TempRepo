@@ -89,11 +89,14 @@ jobs:
           # Other
           - suite_id: cars-daily
             suite_name: Cars Daily
-            # cars_blocked/ and payload_test/ are deliberately excluded.
+            # cars_blocked/, payload_test/ and sunny_cars/sunny_cars_blocked/ are
+            # deliberately excluded — sunny_cars therefore globs *.feature at its
+            # root rather than passing the folder, which would recurse into the
+            # blocked subfolder.
             test_path: >-
               tests/features/transportation/cars/amadeus/ tests/features/transportation/cars/galileo/
               tests/features/transportation/cars/general/
-              tests/features/transportation/cars/sabre/ tests/features/transportation/cars/sunny_cars/
+              tests/features/transportation/cars/sabre/ tests/features/transportation/cars/sunny_cars/*.feature
           # daily_rails/ dissolved into the per-supplier amtrak/, benerail/ and
           # evolvi/ folders. Only benerail runs; glob *.feature at the folder
           # root so benerail_blocked/ is not recursed into.

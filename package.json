@@ -25,7 +25,7 @@
     "bdd:flights:lufthansa": "npx cucumber-js tests/features/flights/lufthansa/",
     "bdd:hotels:general": "npx cucumber-js tests/features/hotels/",
     "bdd:hotels:galileo": "npx cucumber-js tests/features/hotels/galileo/",
-    "bdd:cars:general": "npx cucumber-js tests/features/transportation/cars/amadeus/ tests/features/transportation/cars/galileo/ tests/features/transportation/cars/general/ tests/features/transportation/cars/sabre/ tests/features/transportation/cars/sunny_cars/",
+    "bdd:cars:general": "npx cucumber-js tests/features/transportation/cars/amadeus/ tests/features/transportation/cars/galileo/ tests/features/transportation/cars/general/ tests/features/transportation/cars/sabre/ tests/features/transportation/cars/sunny_cars/*.feature",
     "bdd:cars:galileo": "npx cucumber-js tests/features/transportation/cars/galileo/",
     "bdd:rails:benerail": "npx cucumber-js tests/features/transportation/rails/benerail/*.feature",
     "bdd:manual_quote": "npx cucumber-js tests/features/manual_quote/"
