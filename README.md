@@ -562,6 +562,28 @@ This project includes **20 custom AI agents** that automate the test lifecycle. 
 | `@testim-converter` | Paste Testim test | Legacy Testim tests → Cucumber BDD format |
 | `@context-bridge` | — | Coverage gaps, selector discovery, bug-to-test |
 
+### Playwright MCP (live browser for the agents)
+
+[`.mcp.json`](.mcp.json) registers the [Playwright MCP](https://github.com/microsoft/playwright-mcp) server, which
+lets an AI agent drive a real Chrome window — navigate, click, fill forms, read the rendered page, inspect network
+requests — instead of inferring page structure from source. Use it to explore staging, diagnose a failing scenario on
+the real page, or capture accurate selectors before writing a feature.
+
+It is configured to mirror `App.createBrowserSession()` (Chrome, 1920x1080, `data-testid`, HTTPS errors ignored,
+clipboard granted), so what the agent sees matches what a test run sees.
+
+**Enabling it.** Project MCP servers require one-time approval: Claude Code prompts on first use, or add
+`"enabledMcpjsonServers": ["playwright"]` to your own `.claude/settings.local.json` to skip the prompt. Restart the
+session afterwards — MCP servers are loaded at startup, not mid-session. Confirm with `/mcp`.
+
+**Notes**
+
+- Configured for **native Windows**: the `cmd /c` wrapper is required to spawn `npx`. On macOS/Linux, remove `"cmd"`
+  and `"/c"` from the args and set `"command": "npx"`.
+- It drives **real staging**. Searches, bookings and profile edits are real; treat it like a manual session.
+- Output (traces, screenshots) is written to `test-results/mcp/`, which is gitignored.
+- Unrelated to [.vscode/mcp.json](.vscode/mcp.json), which registers VS Code's own `playwright-test` server for Copilot.
+
 ---
 
 ## Contributing

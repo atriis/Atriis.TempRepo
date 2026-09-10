@@ -1,0 +1,26 @@
+{
+  "mcpServers": {
+    "playwright": {
+      "type": "stdio",
+      "command": "cmd",
+      "args": [
+        "/c",
+        "npx",
+        "-y",
+        "@playwright/mcp@0.0.80",
+        "--browser",
+        "chrome",
+        "--viewport-size",
+        "1920x1080",
+        "--ignore-https-errors",
+        "--test-id-attribute",
+        "data-testid",
+        "--output-dir",
+        "test-results/mcp",
+        "--grant-permissions",
+        "clipboard-read",
+        "clipboard-write"
+      ]
+    }
+  }
+}
