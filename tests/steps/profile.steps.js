@@ -620,6 +620,14 @@ Then("the gender field shows the required-field error {string}", async function 
   await Profile.verifyGenderRequiredError(this.page, expectedMessage);
 });
 
+// Negative counterpart of "I click the traveler name on the search page". For a traveller the
+// booker may not view, the tag is not a link at all, so this cannot be split into a click step and
+// an assertion step: the click having no effect IS the assertion, and the click step above would
+// time out on the is-clickable class the tag deliberately lacks.
+Then("the traveler name {string} on the search page should not be clickable", async function (name) {
+  logger.info("Verifying the traveller name offers no route to their profile", { name });
+  await Profile.verifyTravelerNameTagNotClickable(this.page, name);
+});
 
 // Landing check for a profile deep link that names its section — today the document-expiry
 // warnings' "Update Passport" / "Update Visa" buttons (AB#65307), which open

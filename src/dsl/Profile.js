@@ -2185,6 +2185,95 @@ const Profile = {
     return tripPage;
   },
 
+  /**
+   * Asserts the named traveller's tag on the search page offers no route to their profile.
+   *
+   * Three things are checked, because each can fail on its own and the first two would each be
+   * satisfied by the wrong app behaviour:
+   *
+   *  1. the tag IS present — a tag missing entirely would pass a bare "nothing clickable" check
+   *     while actually meaning the traveller never reached the trip;
+   *  2. it carries no `is-clickable` class — trip-traveler-tag.vue binds that class to
+   *     isUserCanViewProfile, so its absence is the affordance being withheld in the markup;
+   *  3. clicking it opens nothing — no new tab, and the page stays off /user/. goToUserApp returns
+   *     before utilService.openNewWindow on the same computed, and only the click proves the
+   *     handler agrees with the class. A withheld class over a live handler would still leak the
+   *     profile to anyone who clicks the name.
+   *
+   * @param {import('playwright').Page} page - the search page holding the traveller tags.
+   * @param {string} name - the traveller name as rendered on the tag, e.g. "View Profile".
+   */
+  async verifyTravelerNameTagNotClickable(page, name) {
+    if (!page) {
+      throw new Error('[Profile.verifyTravelerNameTagNotClickable] "page" is required.');
+    }
+    if (!name || typeof name !== 'string') {
+      throw new Error(
+        `[Profile.verifyTravelerNameTagNotClickable] "name" must be a non-empty string, got: ${typeof name} (${JSON.stringify(name)})`
+      );
+    }
+
+    const profilePage = getPageObject(page, ProfilePage);
+    const { present, clickable } = await profilePage.getTravelerNameTagState(name);
+
+    if (!present) {
+      const tagNames = await profilePage.getFilledTravelerNameLinkTexts();
+      throw new Error(
+        `[Profile.verifyTravelerNameTagNotClickable] No traveller tag named "${name}" is on the trip, so ` +
+        `there is nothing to prove unreachable. Clickable tags present: ` +
+        `${tagNames.length ? JSON.stringify(tagNames) : 'none'}. The traveller was never added, or the tag ` +
+        `renders a different name than the one this step was given.`
+      );
+    }
+
+    if (clickable) {
+      throw new Error(
+        `[Profile.verifyTravelerNameTagNotClickable] The traveller tag "${name}" is rendered as a link to ` +
+        `their profile: it carries the is-clickable class, which trip-traveler-tag.vue only adds when ` +
+        `isUserCanViewProfile is true — i.e. when the traveller IS the logged-in user, or the booker holds ` +
+        `CanViewProfile / CanEditAndViewProfile. This booker is expected to hold neither, so verify the ` +
+        `privilege set on the booker and that "${name}" is not their own profile.`
+      );
+    }
+
+    const urlBefore = page.url();
+    // 5s is generous rather than arbitrary: goToUserApp calls utilService.openNewWindow
+    // synchronously inside the click handler, so a tab that was going to open has already been
+    // created by the time the click resolves. The wait exists to give the 'page' event a chance to
+    // surface, not to wait on the app deciding — and since this is proving a NEGATIVE, the timeout
+    // is the passing path, so it is kept short enough not to tax every green run.
+    const newPagePromise = page.context().waitForEvent('page', { timeout: 5000 }).catch(() => null);
+
+    await profilePage.clickTravelerNameTag(name);
+
+    const newTab = await newPagePromise;
+
+    if (newTab) {
+      const openedUrl = newTab.url();
+      await newTab.close();
+      throw new Error(
+        `[Profile.verifyTravelerNameTagNotClickable] Clicking the traveller tag "${name}" opened a new tab ` +
+        `on ${openedUrl}. The tag rendered without the is-clickable class, so it does not LOOK like a link, ` +
+        `but goToUserApp still reached openNewWindow — the profile is reachable by anyone who clicks the ` +
+        `name, regardless of privilege.`
+      );
+    }
+
+    const urlAfter = page.url();
+
+    if (urlAfter.includes('/user/')) {
+      throw new Error(
+        `[Profile.verifyTravelerNameTagNotClickable] Clicking the traveller tag "${name}" navigated the ` +
+        `current tab to the profile route (${urlAfter}, was ${urlBefore}). Access to another traveller's ` +
+        `profile is not prevented — it opened in place instead of in a new tab.`
+      );
+    }
+
+    logger.info(
+      `[Profile.verifyTravelerNameTagNotClickable] Traveller tag "${name}" is not a profile link, and clicking ` +
+      `it opened nothing (still on ${urlAfter})`
+    );
+  },
 
   /**
    * Navigates to the Travel Preferences tab on the traveler profile page.

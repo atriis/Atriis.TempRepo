@@ -3,6 +3,10 @@ const { EL_SELECT_DISABLED_INNER } = require("@utils/elementPlus");
 // The header dropdown's Log out button is owned by MenuPage (App.clickLogout clicks it there).
 // Imported rather than redeclared so the two never drift apart.
 const { SELECTORS: MENU_SELECTORS } = require("@pages/MenuPage");
+// The traveller chip on the search page is owned by SearchPage (trip-traveler-tag.vue); this file
+// only cares whether that chip links to a profile. Its name node is imported rather than
+// redeclared, for the same reason MENU_SELECTORS is — one copy of the markup's selector.
+const { SELECTORS: SEARCH_SELECTORS } = require("@pages/SearchPage");
 
 const SELECTORS = {
   // Navigation to profile.
@@ -1230,6 +1234,69 @@ class ProfilePage {
   async getFilledTravelerNameLinkTexts() {
     const texts = await this.page.locator(SELECTORS.FILLED_TRAVELER_NAME_LINK).allTextContents();
     return texts.map((text) => text.trim()).filter(Boolean);
+  }
+
+  /**
+   * Whether the named traveller's filled tag is on the trip, and whether it is rendered as a link
+   * to their profile.
+   *
+   * Both halves are read together because the assertion needs both: `is-clickable` being absent
+   * only proves a profile is unreachable if the tag is there in the first place. Matched on the
+   * rendered "FirstName LastName" rather than by position (unlike clickLastTravelerNameLink),
+   * because the caller names the traveller whose access is under test.
+   *
+   * The presence wait defaults to 40s, deliberately matching SearchPage.waitForTravelerNameVisible
+   * rather than the 15s used elsewhere in this file: the chip renders a loading state until the
+   * traveller's profile resolves (trip-traveler-tag.vue's isTravelerLoading), and on slower
+   * corporations that has been observed to outlast 15s. Since a timeout here is reported as
+   * `present: false`, too short a wait would blame a still-loading chip on the traveller never
+   * having been added.
+   *
+   * @param {string} name - the name as rendered on the tag, e.g. "View Profile". Matched with
+   *   `hasText`, so it is case-insensitive and matches on substrings — pass the full rendered name.
+   * @param {object} [options]
+   * @param {number} [options.timeout=40000] - how long to wait for the chip to render.
+   * @returns {Promise<{ present: boolean, clickable: boolean }>}
+   */
+  async getTravelerNameTagState(name, { timeout = 40000 } = {}) {
+    const tag = this.page.locator(SEARCH_SELECTORS.SELECTED_TRAVELER_NAME).filter({ hasText: name });
+
+    try {
+      await tag.first().waitFor({ state: 'visible', timeout });
+    } catch {
+      return { present: false, clickable: false };
+    }
+
+    const clickableCount = await this.page
+      .locator(SELECTORS.FILLED_TRAVELER_NAME_LINK)
+      .filter({ hasText: name })
+      .count();
+
+    return { present: true, clickable: clickableCount > 0 };
+  }
+
+  /**
+   * Clicks the named traveller's filled tag whether or not it is rendered as a link.
+   *
+   * clickLastTravelerNameLink cannot be reused for this: its selector requires the `is-clickable`
+   * class, which is exactly what is missing on a tag whose profile may not be opened — so it would
+   * time out instead of performing the click a prevention check has to make.
+   *
+   * @param {string} name - the name as rendered on the tag
+   */
+  async clickTravelerNameTag(name) {
+    const tag = this.page.locator(SEARCH_SELECTORS.SELECTED_TRAVELER_NAME).filter({ hasText: name }).first();
+
+    try {
+      await tag.waitFor({ state: 'visible', timeout: 15000 });
+      await tag.click({ timeout: 10000 });
+    } catch (err) {
+      throw new Error(
+        `[ProfilePage.clickTravelerNameTag] Could not click the traveler name tag "${name}" ` +
+        `(selector: ${SEARCH_SELECTORS.SELECTED_TRAVELER_NAME}). Either the traveller is not on the trip, or the ` +
+        `tag renders a different name than the one given. Original: ${err.message}`
+      );
+    }
   }
 
   /**

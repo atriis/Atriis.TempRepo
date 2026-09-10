@@ -15,9 +15,11 @@
 # covered the view-only, prevent-updating and own-profile-only privileges and a direct-link case;
 # those were dropped rather than converted, so this file is one scenario and not the export's seven.
 #
-# Every step is implemented. Still parked in shell_blocked/user_profile_blocked/, which
-# suite-shell.yml deliberately never runs — move the file to shell_user_profile/ to put it in the
-# chain once the test data below is confirmed on the target environment.
+# Every step is implemented, and the file now lives in shell_user_profile/ — which suite-shell.yml
+# runs as the "shell-user-profile" suite — so it is in the chain rather than parked.
+#
+# The prevent-updating privilege the export also covered is automated separately, in
+# 84300_prevent_access_via_name_of_other_allow_view_own_profile.feature.
 #
 # Preconditions (data, not automatable here):
 #   - "edit@profile.com" holds "Can edit and view profile for other users"
