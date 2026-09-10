@@ -3,6 +3,8 @@
  * Contains only UI-level interactions.
  */
 
+const { waitForText } = require("@utils/wait");
+
 const SELECTORS = {
   // Filter sidebar (parking-filter.vue), rendered inside parking-results.vue
   PARKING_FILTER_CONTAINER: '.parking-filter-container',
@@ -20,6 +22,10 @@ const SELECTORS = {
   FILTER_SECTION: '.filter-container',
   FILTER_SECTION_TITLE: 'h4.filter-title',
   FILTER_SECTION_OPTION_LABEL: '.el-checkbox__label p.filter-title',
+  // parking-sort-bar.vue renders "Showing <b>{{ parkingsToShow.length }}</b> of {{ fullCount }}
+  // results". The bold span is the FILTERED count — the only rendered proof that a filter click
+  // actually narrowed the result set instead of being swallowed by a disabled checkbox.
+  RESULTS_SHOWN_COUNT: '.parking-sort-bar .show-count span.has-text-weight-bold',
 };
 
 class UKParkingResultsPage {
@@ -170,6 +176,41 @@ class UKParkingResultsPage {
       });
     } catch (err) {
       return { error: err.message };
+    }
+  }
+
+  /**
+   * Waits until the parking sort bar reports exactly `expected` results on screen.
+   *
+   * The filter panel emits through Vuex-free local state (parking-results.vue's `filterBy`), so a
+   * click that lands on a disabled checkbox — app-checkbox-group.vue renders a section's lone
+   * option disabled and pre-checked — changes nothing and leaves the full list in place. Gating on
+   * the rendered count is what separates "the filter was applied" from "the click was swallowed".
+   *
+   * @param {number} expected - The result count the sort bar should settle on
+   * @param {number} timeout - Max wait time in ms (default: 15000)
+   */
+  async waitForShownResultsCount(expected, timeout = 15000) {
+    if (!Number.isInteger(expected) || expected < 0) {
+      throw new Error(
+        `[UKParkingResultsPage.waitForShownResultsCount] expected must be a non-negative integer, got: ${expected}`
+      );
+    }
+
+    try {
+      await waitForText(this.page, SELECTORS.RESULTS_SHOWN_COUNT, `${expected}`, timeout);
+    } catch (err) {
+      const shown = await this.page
+        .locator(SELECTORS.RESULTS_SHOWN_COUNT)
+        .first()
+        .textContent()
+        .then((txt) => (txt || '').trim())
+        .catch(() => '<unreadable>');
+      throw new Error(
+        `[UKParkingResultsPage.waitForShownResultsCount] The parking sort bar still shows ` +
+        `"${shown}" result(s) instead of ${expected} after ${timeout}ms, so the filter was not ` +
+        `applied to the result list. Original: ${err.message}`
+      );
     }
   }
 

@@ -162,6 +162,127 @@ const UKParkingResults = {
   },
 
   /**
+   * Narrows the parking results to one service type ("Park and Ride" / "Meet and Greet").
+   *
+   * Why this exists instead of the page-wide `ResultsPage.filterByCheckboxOption`: the parking
+   * "Service type" section is built from `hideIfNoresults` + the per-option result counts
+   * parking.service.ts derives from the search response, and app-checkbox-group.vue assigns its
+   * option list ONCE in created() with no watcher. So the requested label is either rendered
+   * immediately or never, and a hardcoded label turns a supplier inventory shift into a bare
+   * "option not visible" selector timeout that no amount of waiting fixes.
+   *
+   * Three states, all real and all handled here:
+   * - The label is offered alongside the other service type → click it, then gate on the sort
+   *   bar's count so a swallowed click cannot pass.
+   * - The label is the section's ONLY option → app-checkbox-group.vue renders it disabled and
+   *   pre-checked (isShowingOneDisabledSelectedOption), which means every result already has this
+   *   service type. The premise holds with nothing to click.
+   * - The label has zero results, so it is not rendered at all → fall back to the service type the
+   *   search DOES offer. Callers use this to reach a bookable parking quote, and parking-quote-card
+   *   renders both extras cards (contact information + delivery/pickup) for ANY pending parking
+   *   quote, so the service type does not change what the caller then asserts. The fallback is
+   *   logged with the store tallies so the report says which type was booked and why.
+   *
+   * @param {Object} page - Playwright page instance
+   * @param {string} serviceTypeLabel - Preferred service type, "Park and Ride" or "Meet and Greet"
+   * @returns {Promise<{serviceTypeLabel: string, requestedLabel: string, usedFallback: boolean,
+   *   shownResults: number, offeredServiceTypes: string[], wasPreApplied: boolean}>}
+   * @throws {Error} If inputs are invalid, the store is unreachable, or no service type is offered
+   */
+  async filterByServiceType(page, serviceTypeLabel) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+
+    if (!SERVICE_TYPE_SEGMENT_FIELD[serviceTypeLabel]) {
+      throw new Error(
+        `[UKParkingResults.filterByServiceType] Unknown service type "${serviceTypeLabel}". ` +
+        `The parking filter offers only: ` +
+        `${Object.keys(SERVICE_TYPE_SEGMENT_FIELD).map((l) => `"${l}"`).join(', ')}.`
+      );
+    }
+
+    const ukParkingResultsPage = getPageObject(page, UKParkingResultsPage);
+    const resultsPage = getPageObject(page, ResultsPage);
+
+    // The labels that are actually clickable, straight from the sidebar. This throws a section-level
+    // error when app-checkbox-group.vue removed the whole "Service type" group, which is a different
+    // failure from a single missing option and must not be reported as one.
+    const offeredServiceTypes = await ukParkingResultsPage.getFilterSectionOptionLabels(
+      FILTER_SECTION_SERVICE_TYPE
+    );
+
+    const storeRead = await ukParkingResultsPage.getParkingSegmentsFromStore();
+    if (storeRead.error) {
+      throw new Error(
+        `[UKParkingResults.filterByServiceType] Could not read the parking results from the store, so ` +
+        `the expected result count for "${serviceTypeLabel}" cannot be verified: ${storeRead.error}`
+      );
+    }
+    const { segments } = storeRead;
+
+    const tally = (label) =>
+      segments.filter((segment) => segment[SERVICE_TYPE_SEGMENT_FIELD[label]]).length;
+    const breakdown = Object.keys(SERVICE_TYPE_SEGMENT_FIELD)
+      .map((label) => `${label}: ${tally(label)}`)
+      .join('; ');
+
+    // Only the two enum labels can be booked through this flow; anything else the count map added
+    // back (e.g. a blank service type) is not a service type the scenario can use.
+    const usableOffered = offeredServiceTypes.filter((label) => SERVICE_TYPE_SEGMENT_FIELD[label]);
+    if (!usableOffered.length) {
+      throw new Error(
+        `[UKParkingResults.filterByServiceType] The "${FILTER_SECTION_SERVICE_TYPE}" filter offers no ` +
+        `usable service type for this search (rendered options: ` +
+        `${offeredServiceTypes.length ? offeredServiceTypes.map((l) => `"${l}"`).join(', ') : 'none'}). ` +
+        `Store breakdown of ${segments.length} result(s) — ${breakdown}.`
+      );
+    }
+
+    const usedFallback = !usableOffered.includes(serviceTypeLabel);
+    const chosenLabel = usedFallback ? usableOffered[0] : serviceTypeLabel;
+    if (usedFallback) {
+      logger.warn('Requested parking service type has no results — falling back', {
+        requested: serviceTypeLabel,
+        chosen: chosenLabel,
+        offeredServiceTypes,
+        breakdown,
+      });
+    }
+
+    const expectedResults = tally(chosenLabel);
+    const click = await resultsPage.clickFilterSectionOptionByLabel(
+      FILTER_SECTION_SERVICE_TYPE,
+      chosenLabel,
+      { exact: true }
+    );
+
+    // A disabled option is the lone-option case: it is already pre-checked, so every result on
+    // screen carries this service type and the count is unchanged by design.
+    if (!click.wasDisabled) {
+      await ukParkingResultsPage.waitForShownResultsCount(expectedResults);
+    }
+
+    logger.info('Filtered parking results by service type', {
+      serviceType: chosenLabel,
+      requested: serviceTypeLabel,
+      usedFallback,
+      shownResults: expectedResults,
+      wasPreApplied: click.wasDisabled,
+      offeredServiceTypes,
+    });
+
+    return {
+      serviceTypeLabel: chosenLabel,
+      requestedLabel: serviceTypeLabel,
+      usedFallback,
+      shownResults: expectedResults,
+      offeredServiceTypes,
+      wasPreApplied: click.wasDisabled,
+    };
+  },
+
+  /**
    * Navigates back from the UK parking results page to the trip search page by clicking the
    * "Search" link in the results breadcrumb. The search form keeps the criteria that were
    * already submitted, so the caller can change the travelers and re-submit the same search.

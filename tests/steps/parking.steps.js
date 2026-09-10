@@ -31,6 +31,12 @@ When("I select the first parking filter option", async function () {
   await UKParkingResults.selectFirstFilterOption(this.page);
 });
 
+When("I filter parking results by service type {string}", async function (serviceType) {
+  logger.info("Filtering parking results by service type", { serviceType });
+  const result = await UKParkingResults.filterByServiceType(this.page, serviceType);
+  logger.info("Parking results filtered by service type", result);
+});
+
 When("I filter parking results by {string} and a terminal that has none", async function (serviceType) {
   logger.info("Filtering parking results to an empty terminal + service type pair", { serviceType });
   const result = await UKParkingResults.filterToTerminalWithoutServiceType(this.page, serviceType);

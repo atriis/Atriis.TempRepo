@@ -18,7 +18,7 @@ Feature: 19197 UK Parking - Extras and PNR in cart and trip overview
     And I have added myself as the traveler
     When I search for UK parking at "LHR"
     And I wait for add to trip text to be visible
-    And I filter results by "Park and Ride" checkbox
+    And I filter parking results by service type "Park and Ride"
     And I add the first result to trip
     Then the booking status should be "Pending booking"
     When I fill in UK parking trip details with mobile "1234567890", car make "Tesla", model "Car", registration "ABC123", colour "Black", outbound flight "1234", terminal "3", return flight "6777" and return terminal "3"
