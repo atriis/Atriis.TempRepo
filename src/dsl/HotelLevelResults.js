@@ -4,6 +4,7 @@ const { CommonPage } = require("@pages/CommonPage");
 const { expect } = require("@playwright/test");
 const logger = require("@utils/logger");
 const { normalizeText } = require("@utils/text");
+const { parseDateValue } = require("@utils/calendar.helper");
 const {
   resolveGsaPerDiem,
   buildGsaBannerText,
@@ -990,7 +991,7 @@ const HotelLevelResults = {
   /**
    * Verifies that the hotel search check-in date matches the expected date from a flight.
    * Flight dates are in format "EEE, dd MMM" (e.g. "Thu, 11 Dec").
-   * Hotel dates are displayed as "MMM dd-MMM dd" (e.g. "Dec 11- Dec 15").
+   * Hotel dates are displayed as a range in one label (e.g. "06 Dec- 15 Dec").
    *
    * @param {Object} page - Playwright page
    * @param {string} expectedFlightDate - Flight date text like "Thu, 11 Dec"
@@ -1004,23 +1005,17 @@ const HotelLevelResults = {
     const hotelLevelResultsPage = getPageObject(page, HotelLevelResultsPage);
     const dateText = await hotelLevelResultsPage.getHotelInfoBarDateText();
 
-    // Parse flight date "Thu, 11 Dec" → extract day and month
-    const flightMatch = expectedFlightDate.match(/(\d+)\s+(\w+)/);
-    if (!flightMatch) throw new Error(`Could not parse flight date: "${expectedFlightDate}"`);
-    const flightDay = flightMatch[1].padStart(2, '0');
-    const flightMonth = flightMatch[2]; // e.g. "Dec"
+    const flight = parseDateValue(expectedFlightDate);
+    // Check-in is the part of the range before the dash.
+    const hotel = parseDateValue(dateText.split('-')[0]);
 
-    // Hotel dates format: "MMM dd- MMM dd" or "MMM dd-MMM dd"
-    // Check-in is the left part before the dash
-    const hotelCheckIn = dateText.split('-')[0].trim();
-    // hotelCheckIn is like "Dec 11"
-    const hotelMatch = hotelCheckIn.match(/(\w+)\s+(\d+)/);
-    if (!hotelMatch) throw new Error(`Could not parse hotel check-in date from: "${dateText}"`);
-    const hotelMonth = hotelMatch[1];
-    const hotelDay = hotelMatch[2].padStart(2, '0');
-
-    expect(hotelMonth.toLowerCase()).toBe(flightMonth.toLowerCase());
-    expect(hotelDay).toBe(flightDay);
+    // Day and month only: the info bar carries no year, so parseDateValue defaults it to the
+    // current one, which would not match the flight on a trip that crosses into January.
+    expect(
+      [hotel.getDate(), hotel.getMonth()],
+      `Expected the hotel check-in date to match the outbound arrival date "${expectedFlightDate}", ` +
+        `but the hotel info bar showed "${dateText}".`,
+    ).toEqual([flight.getDate(), flight.getMonth()]);
   },
 
   /**
@@ -1038,21 +1033,16 @@ const HotelLevelResults = {
     const hotelLevelResultsPage = getPageObject(page, HotelLevelResultsPage);
     const dateText = await hotelLevelResultsPage.getHotelInfoBarDateText();
 
-    // Parse flight date "Mon, 15 Dec" → extract day and month
-    const flightMatch = expectedFlightDate.match(/(\d+)\s+(\w+)/);
-    if (!flightMatch) throw new Error(`Could not parse flight date: "${expectedFlightDate}"`);
-    const flightDay = flightMatch[1].padStart(2, '0');
-    const flightMonth = flightMatch[2];
+    const flight = parseDateValue(expectedFlightDate);
+    // Check-out is the part of the range after the dash.
+    const hotel = parseDateValue(dateText.split('-')[1] || '');
 
-    // Check-out is the right part after the dash
-    const hotelCheckOut = dateText.split('-')[1].trim();
-    const hotelMatch = hotelCheckOut.match(/(\w+)\s+(\d+)/);
-    if (!hotelMatch) throw new Error(`Could not parse hotel check-out date from: "${dateText}"`);
-    const hotelMonth = hotelMatch[1];
-    const hotelDay = hotelMatch[2].padStart(2, '0');
-
-    expect(hotelMonth.toLowerCase()).toBe(flightMonth.toLowerCase());
-    expect(hotelDay).toBe(flightDay);
+    // Day and month only, for the reason given in verifyHotelCheckInDateMatchesFlight.
+    expect(
+      [hotel.getDate(), hotel.getMonth()],
+      `Expected the hotel check-out date to match the inbound departure date "${expectedFlightDate}", ` +
+        `but the hotel info bar showed "${dateText}".`,
+    ).toEqual([flight.getDate(), flight.getMonth()]);
   },
 
   /**
