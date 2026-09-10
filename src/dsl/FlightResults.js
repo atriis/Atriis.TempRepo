@@ -80,17 +80,15 @@ async function measureFareOptionsRender({ maxSeconds, what, waitForCards, countC
  * @param {object|null} appState - The app's own view, from FlightResultsPage.readEuRailSearchState
  * @returns {string}
  */
-// Mirrors the front end's brand-name casing exactly (_flight-brand-builder.logic.ts and
-// _flight-pricing-processor.logic.ts both do this): lowercase, then capitalise the first
-// character of every word. Any divergence here would show up as a false failure, so it is copied
-// rather than reinterpreted - the word boundary treats an apostrophe as one, so "DELTA'S"
-// becomes "Delta'S" on screen too.
-// Word-start matcher for the Title-Case helper below.
+// Copied from the front end (_flight-brand-builder.logic.ts), not reinterpreted: any divergence
+// reads as a false failure. Note \b treats an apostrophe as a boundary, so "DELTA'S" renders
+// "Delta'S" on screen too.
 const TITLE_CASE_WORD_START = /\b(\w)/g;
 
 function titleCaseBrandName(value) {
   return String(value || '').toLowerCase().replace(TITLE_CASE_WORD_START, (character) => character.toUpperCase());
 }
+
 function describeRailSearchOutcome(railSearch, appState) {
   if (railSearch) {
     const details = JSON.stringify(railSearch);
@@ -3892,30 +3890,21 @@ async verifyFareComponentTextColorInPricingOptions(page, expectedColor, index = 
     // Both readers yield null for a card with no label, to stay index-aligned with the cards.
     const names = rawNames.filter(Boolean);
 
-    // Only families whose description actually differs from the filed code can be judged. UA files
-    // ECONOMY with the description "ECONOMY", so its correct label and its filed code Title-Case to
-    // the same string - listing that as forbidden would fail a screen that is right.
+    // A description equal to its own code (UA files ECONOMY as "ECONOMY") is unjudgeable.
     const described = world.capturedFareFamilies.filter(
       (family) => family.description
         && titleCaseBrandName(family.description) !== titleCaseBrandName(family.code),
     );
 
-    // Every label a correctly-behaving screen may show: the description of a described family, or
-    // the code of one filed without a description (the AC3/R2 fallback).
+    // Every label a correct screen may show: a description, or an undescribed family's code.
     const legitimateLabels = new Set(world.capturedFareFamilies.map(
       (family) => titleCaseBrandName(family.description || family.code),
     ));
 
-    // A code whose family HAS a description must never reach the screen - that is 84218 exactly.
-    //
-    // Except when that code doubles as another family's legitimate description. A reply can carry
-    // AA|MAIN described as "MAIN CABIN" alongside B6|AN described as "MAIN": the label "Main" is
-    // then both AA's filed code and JetBlue's correct name. Cards are read as bare strings with no
-    // carrier attached, so those cases cannot be judged and must be skipped - flagging them failed
-    // a screen showing nothing but correct descriptions.
-    // Skipped too: a family the reply describes in one occurrence and leaves bare in another. A
-    // card label says nothing about which occurrence produced it, so showing the code could be the
-    // correct AC3/R2 fallback for the bare one.
+    // A described family's code must never reach the screen - that is 84218. Skipped when the
+    // label cannot be attributed: card text carries no carrier, so a code that doubles as another
+    // family's description, or a family described in one occurrence and bare in another, is not
+    // judgeable. Worked examples in docs/PayloadValidation.md section 2.10.9.
     const ambiguous = [];
     const forbidden = new Map();
     for (const family of described) {
