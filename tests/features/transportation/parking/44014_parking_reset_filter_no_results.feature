@@ -18,6 +18,8 @@ Feature: 44014 Parking - Reset filter button appears when filters yield no resul
     And I have added myself as the traveler
     When I search for UK parking at "LHR"
     And I wait for add to trip text to be visible
-    And I filter results by "Terminal 4" checkbox
-    And I filter results by "Park and Ride" checkbox
+    # The terminal is chosen from the live result set instead of hardcoded: a terminal with no
+    # results renders no checkbox at all, and which terminal lacks Park and Ride parking is
+    # supplier inventory that shifts with the search dates (which roll forward every run).
+    And I filter parking results by "Park and Ride" and a terminal that has none
     Then the reset filters button should be visible

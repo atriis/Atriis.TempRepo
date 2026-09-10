@@ -15,6 +15,11 @@ const SELECTORS = {
   // parking-results.vue's app-product-loader, rendered while isLoading — the only element that
   // distinguishes results being re-fetched from the previous result set still on screen.
   PARKING_RESULTS_LOADER: '.parking-results .app-product-loader',
+  // One app-checkbox-group.vue filter section inside the parking sidebar ("Terminal",
+  // "Service type"), and the visible label text of the checkboxes it renders.
+  FILTER_SECTION: '.filter-container',
+  FILTER_SECTION_TITLE: 'h4.filter-title',
+  FILTER_SECTION_OPTION_LABEL: '.el-checkbox__label p.filter-title',
 };
 
 class UKParkingResultsPage {
@@ -91,6 +96,81 @@ class UKParkingResultsPage {
     }
 
     return { reloaded: true, loaderSeen: true };
+  }
+
+  /**
+   * Reads the visible checkbox labels of one parking filter section, in rendered order.
+   *
+   * app-checkbox-group.vue drops every option whose result count is zero (filterRelevantOptions,
+   * driven by the `hideIfNoresults` prop parking-filter.vue passes) and removes the whole section
+   * when nothing is left. So this returns exactly the options that are actually clickable for the
+   * current result set — never the full terminal enum.
+   *
+   * @param {string} filterTitle - The section's h4 title, e.g. "Terminal" or "Service type"
+   * @param {number} timeout - Max wait for the section to render (default: 15000)
+   * @returns {Promise<string[]>} Visible option labels, e.g. ["Terminal 2", "Terminal 3"]
+   */
+  async getFilterSectionOptionLabels(filterTitle, timeout = 15000) {
+    if (typeof filterTitle !== 'string' || !filterTitle.trim()) {
+      throw new Error(
+        `[UKParkingResultsPage.getFilterSectionOptionLabels] filterTitle must be a non-empty string, ` +
+        `got: ${typeof filterTitle}`
+      );
+    }
+
+    const section = this.page
+      .locator(SELECTORS.PARKING_FILTER_CONTAINER)
+      .locator(SELECTORS.FILTER_SECTION)
+      .filter({ has: this.page.locator(SELECTORS.FILTER_SECTION_TITLE, { hasText: filterTitle }) })
+      .first();
+
+    try {
+      await section.waitFor({ state: 'visible', timeout });
+    } catch (err) {
+      throw new Error(
+        `[UKParkingResultsPage.getFilterSectionOptionLabels] The "${filterTitle}" parking filter section ` +
+        `never became visible within ${timeout}ms. app-checkbox-group.vue removes a section entirely when ` +
+        `every one of its options has a zero result count, so this also means no "${filterTitle}" option ` +
+        `applies to the current result set. Original: ${err.message}`
+      );
+    }
+
+    const labels = await section.locator(SELECTORS.FILTER_SECTION_OPTION_LABEL).allTextContents();
+    return labels.map((label) => label.trim()).filter(Boolean);
+  }
+
+  /**
+   * Reads the terminal and service type of every parking result from the Vuex store.
+   *
+   * The rendered filter panel cannot answer "which terminal has no Park and Ride parking": the two
+   * sections carry independent per-option counts (parking.service.ts builds them with separate
+   * countFunctions, so they never intersect), and the result cards print the terminal but never the
+   * service type. The store holds the only copy of both fields on the same record.
+   *
+   * @returns {Promise<{segments: Array<{terminal: string, meetAndGreet: boolean, parkAndRide: boolean}>} | {error: string}>}
+   */
+  async getParkingSegmentsFromStore() {
+    try {
+      return await this.page.evaluate(() => {
+        const store = document.querySelector('#app')?.__vue_app__?.config?.globalProperties?.$store;
+        if (!store) return { error: 'Vuex store not reachable from #app.__vue_app__' };
+
+        const parkings = store.getters['parkingStore/parkings'];
+        if (!Array.isArray(parkings)) {
+          return { error: `parkingStore/parkings is not an array (got ${typeof parkings})` };
+        }
+
+        return {
+          segments: parkings.map((parking) => ({
+            terminal: `${parking?.segment?.terminal ?? ''}`,
+            meetAndGreet: !!parking?.segment?.meetAndGreet,
+            parkAndRide: !!parking?.segment?.parkAndRide,
+          })),
+        };
+      });
+    } catch (err) {
+      return { error: err.message };
+    }
   }
 
   /**

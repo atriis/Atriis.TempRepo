@@ -31,6 +31,12 @@ When("I select the first parking filter option", async function () {
   await UKParkingResults.selectFirstFilterOption(this.page);
 });
 
+When("I filter parking results by {string} and a terminal that has none", async function (serviceType) {
+  logger.info("Filtering parking results to an empty terminal + service type pair", { serviceType });
+  const result = await UKParkingResults.filterToTerminalWithoutServiceType(this.page, serviceType);
+  logger.info("Applied a parking filter pair that yields no results", result);
+});
+
 When("I navigate back to parking search via breadcrumb", async function () {
   logger.info("Navigating back to parking search via breadcrumb");
   await UKParkingResults.navigateBackToSearchViaBreadcrumb(this.page);
