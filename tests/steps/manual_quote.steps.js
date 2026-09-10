@@ -142,3 +142,69 @@ When("I add a ground transport manual quote with pickup {string} dropoff {string
     tax,
   });
 });
+
+// ===== GROUND TRANSPORT MANUAL QUOTE — optional "new format" fields (test 74842) =====
+
+// The mandatory half of the ground transport form carries no meaning for test 74842 — it only
+// has to be valid so "Add Quote" enables. These are the values test 41117 already proves work
+// against the vendor/vehicle-type lists on staging.
+const GROUND_TRANSPORT_MANDATORY_DEFAULTS = {
+  hour: "10:00",
+  vehicleType: "All Types",
+  vendor: "aces transporation",
+  vendorPhone: "7183232323",
+  cancellationPolicy: "test cancellation policy",
+  confirmationNumber: "SJ-90885",
+  baseFare: 29,
+  tax: 10,
+};
+
+When("I open the ground transport manual quote form", async function () {
+  logger.info("Opening the ground transport manual quote form");
+  await ManualQuoteSearch.openGroundTransportManualQuoteForm(this.page);
+});
+
+Then("the ground transport manual quote form should show {string} as an optional field", async function (labelText) {
+  logger.info("Verifying a ground transport manual quote field is present and optional", { labelText });
+  await ManualQuoteSearch.expectGroundFieldIsPresentAndOptional(this.page, labelText);
+});
+
+Then("the ground transport manual quote form of payment should be {string}", async function (expectedLabel) {
+  logger.info("Verifying the ground transport manual quote form of payment", { expectedLabel });
+  await ManualQuoteSearch.expectGroundFormOfPayment(this.page, expectedLabel);
+});
+
+When("I select the ground transport manual quote form of payment {string}", async function (label) {
+  logger.info("Selecting the ground transport manual quote form of payment", { label });
+  await ManualQuoteSearch.selectGroundFormOfPayment(this.page, label);
+});
+
+When("I fill the ground transport manual quote from {string} to {string}", async function (pickup, dropoff) {
+  logger.info("Filling the ground transport manual quote form", { pickup, dropoff });
+  await ManualQuoteSearch.fillGroundTransportManualQuoteForm(this.page, {
+    ...GROUND_TRANSPORT_MANDATORY_DEFAULTS,
+    pickup,
+    dropoff,
+    isFormAlreadyOpen: true,
+  });
+});
+
+// The three optional fields are stored on the World so the later cart and share-email steps can
+// assert against exactly what was typed instead of repeating the literals.
+When("I fill the ground transport manual quote flight number {string}, comment {string} and passenger phone {string}", async function (flightNumber, comment, passengerPhone) {
+  logger.info("Filling the optional ground transport manual quote details", {
+    flightNumber,
+    comment,
+    passengerPhone,
+  });
+  this.groundManualQuoteDetails = await ManualQuoteSearch.fillGroundTransportOptionalDetails(this.page, {
+    flightNumber,
+    comment,
+    passengerPhone,
+  });
+});
+
+When("I add the ground transport manual quote", async function () {
+  logger.info("Submitting the ground transport manual quote");
+  await ManualQuoteSearch.submitGroundTransportManualQuote(this.page);
+});

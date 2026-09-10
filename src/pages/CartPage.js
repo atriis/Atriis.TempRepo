@@ -381,6 +381,18 @@ const SELECTORS = {
   MORE_DETAILS_DRAWER_PICKUP_DATETIME:
     ".parking-details-drawer:visible li.pickup-details > p",
 
+  // Ground transport quote card root. One per ground transport quote in the trip, in the order
+  // they were added — test 74842 puts two in the same cart and asserts each one's form of payment
+  // separately, so the card is addressed by index rather than ".first()".
+  GROUND_TRANSPORT_QUOTE_CARD: ".ground-transport-quote-card",
+  // Payment-method column of a ground transport quote card. base-quote-card.vue renders it for
+  // every manual quote (`v-if="quote.isManual || product === Car"`) as "Pre paid" when
+  // quote.isPrePaid and "Pay On Departure" otherwise, and renders it UNCONDITIONALLY inside the
+  // card's extra-info slot — which makes it the readiness anchor for the negative assertion that
+  // the flight number, comment and passenger phone are NOT on the card. Resolved RELATIVE to a
+  // card locator. ":visible" drops the mobile/desktop twin that is not rendered.
+  GROUND_TRANSPORT_QUOTE_CARD_PAYMENT_METHOD: ".payment-method:visible",
+
   // Trip Overview selectors
   TRIP_OVERVIEW_TITLE: ".payments-title",
   TRIP_OVERVIEW_STATUS_LABEL: 'xpath=//*[contains(@class,"payments-title")]/following-sibling::*[contains(@class,"app-label")][1]',
@@ -1055,6 +1067,16 @@ const SELECTORS = {
   // the DOM. Matched by text (the item renders the raw `rail.value`, e.g. "EU Rails"), never by
   // index: which suppliers appear depends on the user's product access.
   RAIL_TYPE_DROPDOWN_ITEM: '.el-dropdown-menu__item:visible',
+  // The carousel only gives its OWN tile to the first five products the user can add
+  // (product-carousel.ts -> firstFiveProducts); everything after that is listed behind this
+  // more_horiz button, which is another <el-dropdown trigger="hover">. Manual quote is the last
+  // branch in that overflow menu, so any trip offering five other products pushes it in here.
+  CAROUSEL_MORE_BUTTON: '.product-carousel button.product-btn.more-btn',
+  // Items in the overflow menu. Unlike the tiles these are plain divs (no button.product-btn), and
+  // Element Plus appends the popper to body, so they are matched globally and filtered by ':visible'
+  // for the same reason as RAIL_TYPE_DROPDOWN_ITEM above. The inner .carousel-item is the element
+  // that carries the @click handler.
+  CAROUSEL_MORE_MENU_ITEM: '.el-dropdown-menu__item:visible .carousel-item',
   ADD_HOTEL_SEARCH_DRAWER: '.app-drawer.atrs-edit-search-drawer',
   MANUAL_QUOTE_PAGE_CONTAINER: '.manual-quote-page',
 
@@ -8118,19 +8140,45 @@ class CartPage {
    * @param {number} [timeout=10000]
    */
   async clickAddManualQuoteFromCarousel({ timeout = 10000 } = {}) {
-    const btn = this.page.locator(SELECTORS.ADD_MANUAL_QUOTE_CAROUSEL_BUTTON);
+    const btn = this.page.locator(SELECTORS.ADD_MANUAL_QUOTE_CAROUSEL_BUTTON).first();
     try {
-      await btn.waitFor({ state: 'visible', timeout });
-      await btn.click();
+      // The carousel is waited for first so the tile check below reads a rendered carousel: with
+      // no wait, a cart still mounting looks exactly like a user whose Manual quote sits in the
+      // overflow menu, and the hover fallback would be entered for the wrong reason.
+      await this.page
+        .locator(SELECTORS.ADD_PRODUCT_CAROUSEL)
+        .first()
+        .waitFor({ state: 'visible', timeout });
+
+      // Manual quote only gets its own tile while it is in the carousel's first five products —
+      // see SELECTORS.CAROUSEL_MORE_BUTTON. On a trip that offers Flight/Hotel/Car/Rail/Transport
+      // it is in the overflow dropdown instead, which is opened by HOVER, not click.
+      const hasOwnTile = await btn.isVisible().catch(() => false);
+
+      if (hasOwnTile) {
+        await btn.click();
+      } else {
+        const moreButton = this.page.locator(SELECTORS.CAROUSEL_MORE_BUTTON).first();
+        await moreButton.waitFor({ state: 'visible', timeout });
+        await moreButton.hover();
+
+        const item = this.page
+          .locator(SELECTORS.CAROUSEL_MORE_MENU_ITEM, { hasText: 'Manual quote' })
+          .first();
+        await item.waitFor({ state: 'visible', timeout });
+        await item.click();
+      }
+
       await this.page
         .locator(SELECTORS.MANUAL_QUOTE_PAGE_CONTAINER)
         .waitFor({ state: 'visible', timeout: 30000 });
     } catch (err) {
       throw new Error(
         `[CartPage.clickAddManualQuoteFromCarousel] Could not navigate to the manual quote page from the cart product carousel ` +
-        `(button selector: ${SELECTORS.ADD_MANUAL_QUOTE_CAROUSEL_BUTTON}). ` +
-        `Likely causes: the "Manual quote" button is not present for this user (no permission / isCanAddManualQuote=false), ` +
-        `it is hidden inside the "more" overflow dropdown, or the manual-quote-page failed to load within 30s. ` +
+        `(tile: ${SELECTORS.ADD_MANUAL_QUOTE_CAROUSEL_BUTTON}, overflow: ${SELECTORS.CAROUSEL_MORE_BUTTON} -> ` +
+        `${SELECTORS.CAROUSEL_MORE_MENU_ITEM}). ` +
+        `Likely causes: "Manual quote" is not available for this user (no permission / isCanAddManualQuote=false), ` +
+        `the overflow hover did not open its dropdown, or the manual-quote-page failed to load within 30s. ` +
         `Original: ${err.message}`
       );
     }
@@ -10543,6 +10591,67 @@ class CartPage {
         `(selector: ${SELECTORS.CAR_BILLBACK_APPLY_CHECKBOX_INNER}). Likely causes: the car billback ` +
         `panel is not expanded, or the panel is in read-only mode (.is-read-only). ` +
         `Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Reads the payment-method label of the Nth ground transport quote card in the cart
+   * ("Pre paid" or "Pay On Departure"). Like the car card, that column renders unconditionally
+   * on a loaded manual quote card, so this read doubles as the readiness gate the negative
+   * "the manual detail fields are not on the card" assertion needs. Throws on timeout — no
+   * anchor means the card never rendered and "no flight number" would be meaningless.
+   *
+   * @param {number} [index=0] - Zero-based index of the ground transport quote card
+   * @param {object} [options]
+   * @param {number} [options.timeout=30000]
+   * @returns {Promise<string>} Whitespace-collapsed payment-method label
+   */
+  async getGroundTransportQuotePaymentMethodLabel(index = 0, { timeout = 30000 } = {}) {
+    if (!Number.isInteger(index) || index < 0) {
+      throw new Error(
+        `[CartPage.getGroundTransportQuotePaymentMethodLabel] "index" must be a non-negative integer, got: ${JSON.stringify(index)}`
+      );
+    }
+    const card = this.page.locator(SELECTORS.GROUND_TRANSPORT_QUOTE_CARD).nth(index);
+    const paymentMethod = card.locator(SELECTORS.GROUND_TRANSPORT_QUOTE_CARD_PAYMENT_METHOD).first();
+    try {
+      await paymentMethod.waitFor({ state: 'visible', timeout });
+      return ((await paymentMethod.textContent()) || '').replace(/\s+/g, ' ').trim();
+    } catch (err) {
+      const cardCount = await this.page.locator(SELECTORS.GROUND_TRANSPORT_QUOTE_CARD).count();
+      throw new Error(
+        `[CartPage.getGroundTransportQuotePaymentMethodLabel] Ground transport quote card #${index + 1} ` +
+        `never showed its payment-method column within ${timeout}ms ` +
+        `(card: ${SELECTORS.GROUND_TRANSPORT_QUOTE_CARD}, column: ${SELECTORS.GROUND_TRANSPORT_QUOTE_CARD_PAYMENT_METHOD}). ` +
+        `The cart currently holds ${cardCount} ground transport quote card(s). Likely causes: the quote ` +
+        `was not added, the cart has not finished loading, or the quote is not a manual quote — ` +
+        `base-quote-card.vue renders that column only for manual and car quotes. Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Reads the whole visible text of the Nth ground transport quote card in the cart, with
+   * whitespace collapsed. Used by the negative assertion in test 74842: the manual quote's
+   * flight number, comment and passenger phone must NOT surface on the card.
+   *
+   * @param {number} [index=0] - Zero-based index of the ground transport quote card
+   * @returns {Promise<string>} Whitespace-collapsed card text
+   */
+  async getGroundTransportQuoteCardText(index = 0) {
+    if (!Number.isInteger(index) || index < 0) {
+      throw new Error(
+        `[CartPage.getGroundTransportQuoteCardText] "index" must be a non-negative integer, got: ${JSON.stringify(index)}`
+      );
+    }
+    const card = this.page.locator(SELECTORS.GROUND_TRANSPORT_QUOTE_CARD).nth(index);
+    try {
+      return ((await card.innerText()) || '').replace(/\s+/g, ' ').trim();
+    } catch (err) {
+      throw new Error(
+        `[CartPage.getGroundTransportQuoteCardText] Could not read ground transport quote card ` +
+        `#${index + 1} (selector: ${SELECTORS.GROUND_TRANSPORT_QUOTE_CARD}). Original: ${err.message}`
       );
     }
   }

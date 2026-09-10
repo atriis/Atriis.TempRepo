@@ -706,7 +706,19 @@ const ManualQuoteSearch = {
     return { added: true, quoteType, comment, baseFare };
   },
 
-  async addGroundTransportManualQuote(page, {
+  /**
+   * Fills every field of the Ground Transport manual quote form WITHOUT submitting it. Split
+   * out of addGroundTransportManualQuote so a test can inspect or extend the filled form — read
+   * the optional "new format" fields, switch the form of payment — before clicking "Add Quote"
+   * (test 74842).
+   *
+   * @param {Object} page - Playwright page instance
+   * @param {Object} options - Ground transport quote details (every mandatory form field)
+   * @param {boolean} [options.isFormAlreadyOpen=false] - Skip the tab navigation when the caller
+   *   already opened the Ground Transport form
+   * @returns {Promise<Object>} Summary of what was filled
+   */
+  async fillGroundTransportManualQuoteForm(page, {
     pickup,
     dropoff,
     monthsToAdvance = 1,
@@ -719,54 +731,59 @@ const ManualQuoteSearch = {
     confirmationNumber,
     baseFare = 0,
     tax = 0,
+    isFormAlreadyOpen = false,
   } = {}) {
     if (!page) {
-      throw new Error('[ManualQuoteSearch.addGroundTransportManualQuote] "page" is required.');
+      throw new Error('[ManualQuoteSearch.fillGroundTransportManualQuoteForm] "page" is required.');
     }
     if (!pickup || typeof pickup !== "string") {
       throw new Error(
-        `[ManualQuoteSearch.addGroundTransportManualQuote] "pickup" must be a non-empty string, got: ${typeof pickup} (${JSON.stringify(pickup)})`,
+        `[ManualQuoteSearch.fillGroundTransportManualQuoteForm] "pickup" must be a non-empty string, got: ${typeof pickup} (${JSON.stringify(pickup)})`,
       );
     }
     if (!dropoff || typeof dropoff !== "string") {
       throw new Error(
-        `[ManualQuoteSearch.addGroundTransportManualQuote] "dropoff" must be a non-empty string, got: ${typeof dropoff} (${JSON.stringify(dropoff)})`,
+        `[ManualQuoteSearch.fillGroundTransportManualQuoteForm] "dropoff" must be a non-empty string, got: ${typeof dropoff} (${JSON.stringify(dropoff)})`,
       );
     }
     if (!vendor || typeof vendor !== "string") {
       throw new Error(
-        `[ManualQuoteSearch.addGroundTransportManualQuote] "vendor" must be a non-empty string, got: ${typeof vendor} (${JSON.stringify(vendor)})`,
+        `[ManualQuoteSearch.fillGroundTransportManualQuoteForm] "vendor" must be a non-empty string, got: ${typeof vendor} (${JSON.stringify(vendor)})`,
       );
     }
     if (!vendorPhone || typeof vendorPhone !== "string") {
       throw new Error(
-        `[ManualQuoteSearch.addGroundTransportManualQuote] "vendorPhone" must be a non-empty string of digits, got: ${typeof vendorPhone} (${JSON.stringify(vendorPhone)})`,
+        `[ManualQuoteSearch.fillGroundTransportManualQuoteForm] "vendorPhone" must be a non-empty string of digits, got: ${typeof vendorPhone} (${JSON.stringify(vendorPhone)})`,
       );
     }
     if (!cancellationPolicy || typeof cancellationPolicy !== "string") {
       throw new Error(
-        `[ManualQuoteSearch.addGroundTransportManualQuote] "cancellationPolicy" must be a non-empty string, got: ${typeof cancellationPolicy} (${JSON.stringify(cancellationPolicy)})`,
+        `[ManualQuoteSearch.fillGroundTransportManualQuoteForm] "cancellationPolicy" must be a non-empty string, got: ${typeof cancellationPolicy} (${JSON.stringify(cancellationPolicy)})`,
       );
     }
     if (!confirmationNumber || typeof confirmationNumber !== "string") {
       throw new Error(
-        `[ManualQuoteSearch.addGroundTransportManualQuote] "confirmationNumber" must be a non-empty string, got: ${typeof confirmationNumber} (${JSON.stringify(confirmationNumber)})`,
+        `[ManualQuoteSearch.fillGroundTransportManualQuoteForm] "confirmationNumber" must be a non-empty string, got: ${typeof confirmationNumber} (${JSON.stringify(confirmationNumber)})`,
       );
     }
 
-    logger.info("Adding Ground Transport manual quote", { pickup, dropoff, vendor, baseFare, tax });
+    logger.info("Filling the Ground Transport manual quote form", { pickup, dropoff, vendor, baseFare, tax });
 
     const searchPage = getPageObject(page, ManualQuoteSearchPage);
 
-    // Navigate to Manual Quote tab → Ground Transport sub-tab
+    // Navigate to Manual Quote tab → Ground Transport sub-tab. Skipped when the caller already
+    // opened the form (openGroundTransportManualQuoteForm) — once the manual quote page has
+    // replaced the search page the outer "#tab-manual" tab is gone, so re-clicking it would fail.
     try {
-      await searchPage.clickManualQuoteTab();
-      await searchPage.waitForManualQuotePageVisible();
-      await searchPage.clickGroundTransportTab();
+      if (!isFormAlreadyOpen) {
+        await searchPage.clickManualQuoteTab();
+        await searchPage.waitForManualQuotePageVisible();
+        await searchPage.clickGroundTransportTab();
+      }
       await searchPage.waitForGroundTransportFormVisible();
     } catch (err) {
       throw new Error(
-        `[ManualQuoteSearch.addGroundTransportManualQuote] Failed to navigate to Ground Transport tab — ` +
+        `[ManualQuoteSearch.fillGroundTransportManualQuoteForm] Failed to navigate to Ground Transport tab — ` +
           `the tab may not be visible or the form didn't load. Original: ${err.message}`,
       );
     }
@@ -776,7 +793,7 @@ const ManualQuoteSearch = {
       await searchPage.fillGroundPickup(pickup);
     } catch (err) {
       throw new Error(
-        `[ManualQuoteSearch.addGroundTransportManualQuote] Failed to fill pickup address "${pickup}" — ` +
+        `[ManualQuoteSearch.fillGroundTransportManualQuoteForm] Failed to fill pickup address "${pickup}" — ` +
           `Google Places autocomplete may not have returned results. Original: ${err.message}`,
       );
     }
@@ -786,7 +803,7 @@ const ManualQuoteSearch = {
       await searchPage.fillGroundDropoff(dropoff);
     } catch (err) {
       throw new Error(
-        `[ManualQuoteSearch.addGroundTransportManualQuote] Failed to fill dropoff address "${dropoff}" — ` +
+        `[ManualQuoteSearch.fillGroundTransportManualQuoteForm] Failed to fill dropoff address "${dropoff}" — ` +
           `Google Places autocomplete may not have returned results. Original: ${err.message}`,
       );
     }
@@ -797,7 +814,7 @@ const ManualQuoteSearch = {
       await selectDateAfterAdvancingMonths(page, { monthsToAdvance, dayIndex });
     } catch (err) {
       throw new Error(
-        `[ManualQuoteSearch.addGroundTransportManualQuote] Failed to select date (months+${monthsToAdvance}, day index ${dayIndex}) — ` +
+        `[ManualQuoteSearch.fillGroundTransportManualQuoteForm] Failed to select date (months+${monthsToAdvance}, day index ${dayIndex}) — ` +
           `the calendar may not have opened or the day was unavailable. Original: ${err.message}`,
       );
     }
@@ -807,7 +824,7 @@ const ManualQuoteSearch = {
       await searchPage.fillGroundHour(hour);
     } catch (err) {
       throw new Error(
-        `[ManualQuoteSearch.addGroundTransportManualQuote] Failed to fill hour "${hour}" — ` +
+        `[ManualQuoteSearch.fillGroundTransportManualQuoteForm] Failed to fill hour "${hour}" — ` +
           `the timepicker input may not be visible. Original: ${err.message}`,
       );
     }
@@ -817,7 +834,7 @@ const ManualQuoteSearch = {
       await searchPage.selectGroundVehicleType(vehicleType);
     } catch (err) {
       throw new Error(
-        `[ManualQuoteSearch.addGroundTransportManualQuote] Failed to select vehicle type "${vehicleType}" — ` +
+        `[ManualQuoteSearch.fillGroundTransportManualQuoteForm] Failed to select vehicle type "${vehicleType}" — ` +
           `the dropdown option may not exist. Original: ${err.message}`,
       );
     }
@@ -827,7 +844,7 @@ const ManualQuoteSearch = {
       await searchPage.selectGroundVendor(vendor);
     } catch (err) {
       throw new Error(
-        `[ManualQuoteSearch.addGroundTransportManualQuote] Failed to select vendor "${vendor}" — ` +
+        `[ManualQuoteSearch.fillGroundTransportManualQuoteForm] Failed to select vendor "${vendor}" — ` +
           `the dropdown option may not exist in the vendor list. Original: ${err.message}`,
       );
     }
@@ -837,7 +854,7 @@ const ManualQuoteSearch = {
       await searchPage.fillGroundVendorPhone(vendorPhone);
     } catch (err) {
       throw new Error(
-        `[ManualQuoteSearch.addGroundTransportManualQuote] Failed to fill vendor phone "${vendorPhone}" — ` +
+        `[ManualQuoteSearch.fillGroundTransportManualQuoteForm] Failed to fill vendor phone "${vendorPhone}" — ` +
           `the phone inputs may not be visible. Original: ${err.message}`,
       );
     }
@@ -847,7 +864,7 @@ const ManualQuoteSearch = {
       await searchPage.fillGroundCancellationPolicy(cancellationPolicy);
     } catch (err) {
       throw new Error(
-        `[ManualQuoteSearch.addGroundTransportManualQuote] Failed to fill cancellation policy — ` +
+        `[ManualQuoteSearch.fillGroundTransportManualQuoteForm] Failed to fill cancellation policy — ` +
           `the input may not be visible. Original: ${err.message}`,
       );
     }
@@ -857,7 +874,7 @@ const ManualQuoteSearch = {
       await searchPage.fillGroundConfirmationNumber(confirmationNumber);
     } catch (err) {
       throw new Error(
-        `[ManualQuoteSearch.addGroundTransportManualQuote] Failed to fill confirmation number "${confirmationNumber}" — ` +
+        `[ManualQuoteSearch.fillGroundTransportManualQuoteForm] Failed to fill confirmation number "${confirmationNumber}" — ` +
           `the input may not be visible. Original: ${err.message}`,
       );
     }
@@ -867,7 +884,7 @@ const ManualQuoteSearch = {
       await searchPage.fillGroundBaseFare(baseFare);
     } catch (err) {
       throw new Error(
-        `[ManualQuoteSearch.addGroundTransportManualQuote] Failed to fill base fare "${baseFare}" — ` +
+        `[ManualQuoteSearch.fillGroundTransportManualQuoteForm] Failed to fill base fare "${baseFare}" — ` +
           `the price section may not be visible. Original: ${err.message}`,
       );
     }
@@ -878,24 +895,212 @@ const ManualQuoteSearch = {
         await searchPage.fillGroundTax(tax);
       } catch (err) {
         throw new Error(
-          `[ManualQuoteSearch.addGroundTransportManualQuote] Failed to fill tax "${tax}" — ` +
+          `[ManualQuoteSearch.fillGroundTransportManualQuoteForm] Failed to fill tax "${tax}" — ` +
             `the tax input may not be visible. Original: ${err.message}`,
         );
       }
     }
 
-    // Click Add Quote
+    return { filled: true, pickup, dropoff, vendor, baseFare, tax };
+  },
+
+  /**
+   * Clicks "Add Quote" on the Ground Transport manual quote form.
+   * @param {Object} page - Playwright page instance
+   */
+  async submitGroundTransportManualQuote(page) {
+    if (!page) {
+      throw new Error('[ManualQuoteSearch.submitGroundTransportManualQuote] "page" is required.');
+    }
+    const searchPage = getPageObject(page, ManualQuoteSearchPage);
     try {
       await searchPage.clickAddQuoteButton();
     } catch (err) {
       throw new Error(
-        `[ManualQuoteSearch.addGroundTransportManualQuote] Failed to click "Add Quote" button — ` +
+        `[ManualQuoteSearch.submitGroundTransportManualQuote] Failed to click "Add Quote" button — ` +
           `the button may be disabled (form validation failed?) or not visible. Original: ${err.message}`,
       );
     }
+    return { added: true };
+  },
 
+  /**
+   * Fills and submits a Ground Transport manual quote in one call.
+   *
+   * @param {Object} page - Playwright page instance
+   * @param {Object} options - Ground transport quote details
+   */
+  async addGroundTransportManualQuote(page, options = {}) {
+    const filled = await this.fillGroundTransportManualQuoteForm(page, options);
+    await this.submitGroundTransportManualQuote(page);
+    const { pickup, dropoff, vendor, baseFare, tax } = filled;
     return { added: true, pickup, dropoff, vendor, baseFare, tax };
   },
+
+  // ===== GROUND TRANSPORT MANUAL QUOTE — optional "new format" fields (test 74842) =====
+
+  /**
+   * Opens the manual quote page and switches to its Ground Transport tab, leaving the empty
+   * form on screen so its fields can be inspected before anything is filled.
+   * @param {Object} page - Playwright page instance
+   */
+  async openGroundTransportManualQuoteForm(page) {
+    if (!page) {
+      throw new Error('[ManualQuoteSearch.openGroundTransportManualQuoteForm] "page" is required.');
+    }
+    logger.info("Opening the Ground Transport manual quote form");
+    const searchPage = getPageObject(page, ManualQuoteSearchPage);
+    try {
+      // Reaching the manual quote page from the cart carousel never passes through the outer
+      // "#tab-manual" tab, and that tab is gone once the manual quote page has replaced the
+      // search page — so only click it while the page is not already on screen.
+      if (!(await searchPage.isManualQuotePageVisible())) {
+        await searchPage.clickManualQuoteTab();
+        await searchPage.waitForManualQuotePageVisible();
+      }
+      await searchPage.clickGroundTransportTab();
+      await searchPage.waitForGroundTransportFormVisible();
+    } catch (err) {
+      throw new Error(
+        `[ManualQuoteSearch.openGroundTransportManualQuoteForm] Failed to open the Ground Transport ` +
+          `manual quote form — the Manual Quote tab, the Ground Transport sub-tab or the form itself ` +
+          `did not render. Original: ${err.message}`,
+      );
+    }
+  },
+
+  /**
+   * Verifies a Ground Transport manual quote field is rendered AND optional. "Optional" is read
+   * off the label: manual-quote-ground-transport.vue appends a red asterisk to every mandatory
+   * label and to no optional one, so a present field whose label carries no asterisk is exactly
+   * what the manual test spells as "present; Not mandatory".
+   *
+   * @param {Object} page - Playwright page instance
+   * @param {string} labelText - Field label, e.g. "Flight number"
+   */
+  async expectGroundFieldIsPresentAndOptional(page, labelText) {
+    if (!page) {
+      throw new Error('[ManualQuoteSearch.expectGroundFieldIsPresentAndOptional] "page" is required.');
+    }
+    if (typeof labelText !== "string" || !labelText.trim()) {
+      throw new Error(
+        `[ManualQuoteSearch.expectGroundFieldIsPresentAndOptional] "labelText" must be a non-empty string, got: ${typeof labelText} (${JSON.stringify(labelText)})`,
+      );
+    }
+    logger.info("Verifying a Ground Transport manual quote field is present and optional", { labelText });
+    const searchPage = getPageObject(page, ManualQuoteSearchPage);
+    const { present, mandatory } = await searchPage.getGroundOptionalFieldState(labelText);
+    if (!present) {
+      throw new Error(
+        `[ManualQuoteSearch.expectGroundFieldIsPresentAndOptional] Expected the Ground Transport ` +
+          `manual quote form to render a "${labelText}" field, but no ".field" whose label contains ` +
+          `that text became visible. Likely causes: the label copy changed, or the form rendered a ` +
+          `different product tab.`,
+      );
+    }
+    if (mandatory) {
+      throw new Error(
+        `[ManualQuoteSearch.expectGroundFieldIsPresentAndOptional] Expected the "${labelText}" field ` +
+          `to be optional, but its label carries the mandatory asterisk ` +
+          `(<span class="has-text-danger">*</span>) that manual-quote-ground-transport.vue renders ` +
+          `only on required fields.`,
+      );
+    }
+  },
+
+  /**
+   * Verifies which form-of-payment radio is selected on the Ground Transport manual quote form.
+   *
+   * @param {Object} page - Playwright page instance
+   * @param {string} expectedLabel - "Pre paid" or "Pay on departure"
+   */
+  async expectGroundFormOfPayment(page, expectedLabel) {
+    if (!page) {
+      throw new Error('[ManualQuoteSearch.expectGroundFormOfPayment] "page" is required.');
+    }
+    if (typeof expectedLabel !== "string" || !expectedLabel.trim()) {
+      throw new Error(
+        `[ManualQuoteSearch.expectGroundFormOfPayment] "expectedLabel" must be a non-empty string, got: ${typeof expectedLabel} (${JSON.stringify(expectedLabel)})`,
+      );
+    }
+    logger.info("Verifying the Ground Transport manual quote form of payment", { expectedLabel });
+    const searchPage = getPageObject(page, ManualQuoteSearchPage);
+    const selected = await searchPage.getGroundSelectedFormOfPayment();
+    if (selected !== expectedLabel) {
+      throw new Error(
+        `[ManualQuoteSearch.expectGroundFormOfPayment] Expected the Ground Transport manual quote ` +
+          `form of payment to be "${expectedLabel}" but the selected radio reads "${selected}". ` +
+          `The two options are "Pay on departure" and "Pre paid"; manual-quote-payment-details.vue ` +
+          `defaults isPrePaid to true.`,
+      );
+    }
+  },
+
+  /**
+   * Selects a form of payment on the Ground Transport manual quote form, then re-reads the group
+   * so a swallowed click fails here instead of surfacing later as a wrong FOP on the cart.
+   *
+   * @param {Object} page - Playwright page instance
+   * @param {string} label - "Pre paid" or "Pay on departure"
+   */
+  async selectGroundFormOfPayment(page, label) {
+    if (!page) {
+      throw new Error('[ManualQuoteSearch.selectGroundFormOfPayment] "page" is required.');
+    }
+    if (typeof label !== "string" || !label.trim()) {
+      throw new Error(
+        `[ManualQuoteSearch.selectGroundFormOfPayment] "label" must be a non-empty string, got: ${typeof label} (${JSON.stringify(label)})`,
+      );
+    }
+    logger.info("Selecting the Ground Transport manual quote form of payment", { label });
+    const searchPage = getPageObject(page, ManualQuoteSearchPage);
+    await searchPage.selectGroundFormOfPayment(label);
+    const selected = await searchPage.getGroundSelectedFormOfPayment();
+    if (selected !== label) {
+      throw new Error(
+        `[ManualQuoteSearch.selectGroundFormOfPayment] Clicked the "${label}" form-of-payment radio ` +
+          `but "${selected}" is still the selected option — the click landed outside the radio or ` +
+          `the group did not react.`,
+      );
+    }
+  },
+
+  /**
+   * Fills the three optional "new format" fields on the Ground Transport manual quote form. A
+   * field left undefined is not touched — the manual test's second quote deliberately leaves all
+   * three alone (the passenger phone is pre-seeded from the traveller's profile, so "not filled"
+   * means "not overwritten", not "empty").
+   *
+   * @param {Object} page - Playwright page instance
+   * @param {Object} details
+   * @param {string} [details.flightNumber]
+   * @param {string} [details.comment]
+   * @param {string} [details.passengerPhone] - Digits only, e.g. "12125550123"
+   */
+  async fillGroundTransportOptionalDetails(page, { flightNumber, comment, passengerPhone } = {}) {
+    if (!page) {
+      throw new Error('[ManualQuoteSearch.fillGroundTransportOptionalDetails] "page" is required.');
+    }
+    logger.info("Filling the optional Ground Transport manual quote details", {
+      flightNumber,
+      comment,
+      passengerPhone,
+    });
+    const searchPage = getPageObject(page, ManualQuoteSearchPage);
+
+    if (flightNumber !== undefined) {
+      await searchPage.fillGroundFlightNumber(flightNumber);
+    }
+    if (passengerPhone !== undefined) {
+      await searchPage.fillGroundPassengerPhone(passengerPhone);
+    }
+    if (comment !== undefined) {
+      await searchPage.fillGroundComment(comment);
+    }
+
+    return { flightNumber, comment, passengerPhone };
+  },
+
 
   // ===== CAR MANUAL QUOTE =====
 

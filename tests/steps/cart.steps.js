@@ -4539,3 +4539,24 @@ Then("the booking should be blocked", async function () {
   logger.info("Verifying the booking is still blocked");
   await Cart.expectBookingBlocked(this.page);
 });
+
+// ===== GROUND TRANSPORT MANUAL QUOTE CARD (test 74842) =====
+
+Then("the ground transport quote {int} in the cart should show the form of payment {string}", async function (position, expectedLabel) {
+  logger.info("Verifying the ground transport quote card form of payment", { position, expectedLabel });
+  await Cart.verifyGroundTransportQuoteFormOfPayment(this.page, position, expectedLabel);
+});
+
+// The values checked here come from "I fill the ground transport manual quote flight number ..."
+// via the World, so a card that leaks what was typed fails even when the field labels are absent.
+Then("the ground transport quote {int} in the cart should not show the flight number, comment or passenger phone", async function (position) {
+  logger.info("Verifying the ground transport quote card hides the manual detail fields", {
+    position,
+    enteredDetails: this.groundManualQuoteDetails,
+  });
+  await Cart.verifyGroundTransportQuoteHidesManualDetails(
+    this.page,
+    position,
+    this.groundManualQuoteDetails || {}
+  );
+});

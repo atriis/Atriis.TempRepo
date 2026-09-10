@@ -10008,6 +10008,124 @@ const Cart = {
    * @param {string} unexpectedMessage - Alert text that must NOT be on the car quote card
    * @returns {Promise<void>}
    */
+  /**
+   * Verifies the form of payment shown on the Nth ground transport quote card in the cart.
+   *
+   * base-quote-card.vue renders that column for every manual quote as "Pre paid" when the quote
+   * is pre-paid and "Pay On Departure" otherwise, so the expected label is passed in from the
+   * feature rather than derived here.
+   *
+   * @param {Object} page - Playwright page instance
+   * @param {number} position - ONE-based position of the ground transport quote card in the cart
+   * @param {string} expectedLabel - e.g. "Pre paid" or "Pay On Departure"
+   */
+  async verifyGroundTransportQuoteFormOfPayment(page, position, expectedLabel) {
+    if (!page) {
+      throw new Error('[Cart.verifyGroundTransportQuoteFormOfPayment] "page" is required.');
+    }
+    if (!Number.isInteger(position) || position < 1) {
+      throw new Error(
+        `[Cart.verifyGroundTransportQuoteFormOfPayment] "position" must be a 1-based integer, got: ${JSON.stringify(position)}`
+      );
+    }
+    if (typeof expectedLabel !== 'string' || !expectedLabel.trim()) {
+      throw new Error(
+        `[Cart.verifyGroundTransportQuoteFormOfPayment] "expectedLabel" must be a non-empty string, got: ${typeof expectedLabel} (${JSON.stringify(expectedLabel)})`
+      );
+    }
+
+    logger.debug('[Cart.verifyGroundTransportQuoteFormOfPayment] Verifying the quote card form of payment', {
+      position,
+      expectedLabel,
+    });
+    const cartPage = getPageObject(page, CartPage);
+    const actual = await cartPage.getGroundTransportQuotePaymentMethodLabel(position - 1);
+
+    if (actual !== expectedLabel) {
+      throw new Error(
+        `[Cart.verifyGroundTransportQuoteFormOfPayment] Expected ground transport quote card ` +
+        `#${position} to show the form of payment "${expectedLabel}" but it reads "${actual}". ` +
+        `base-quote-card.vue prints paymentMethods.prePaid ("Pre paid") when the quote is pre-paid ` +
+        `and cart.premierInn.services.payOnDeparture ("Pay On Departure") when it is not.`
+      );
+    }
+
+    logger.info('Verified the ground transport quote card form of payment', { position, expectedLabel });
+  },
+
+  /**
+   * Verifies the manual-quote-only detail fields do NOT surface on a ground transport quote card
+   * in the cart. ground-transport-quote-card.vue renders the vehicle, provider, capacity and
+   * pick-up/drop-off rows only — the flight number, comment and passenger phone captured on the
+   * manual quote form are carried to the share-quote email but never to the card (test 74842).
+   *
+   * The card's payment-method column is read FIRST as a readiness gate, so "the field is absent"
+   * can never be satisfied by a card that simply has not rendered yet.
+   *
+   * @param {Object} page - Playwright page instance
+   * @param {number} position - ONE-based position of the ground transport quote card in the cart
+   * @param {Object} [values] - Values entered on the manual quote form, checked when supplied
+   * @param {string} [values.flightNumber]
+   * @param {string} [values.comment]
+   * @param {string} [values.passengerPhone]
+   */
+  async verifyGroundTransportQuoteHidesManualDetails(page, position, values = {}) {
+    if (!page) {
+      throw new Error('[Cart.verifyGroundTransportQuoteHidesManualDetails] "page" is required.');
+    }
+    if (!Number.isInteger(position) || position < 1) {
+      throw new Error(
+        `[Cart.verifyGroundTransportQuoteHidesManualDetails] "position" must be a 1-based integer, got: ${JSON.stringify(position)}`
+      );
+    }
+
+    logger.debug('[Cart.verifyGroundTransportQuoteHidesManualDetails] Verifying the manual detail fields are absent', {
+      position,
+      values,
+    });
+    const cartPage = getPageObject(page, CartPage);
+
+    // Readiness gate: never assert absence before the card's payment column has rendered.
+    const paymentLabel = await cartPage.getGroundTransportQuotePaymentMethodLabel(position - 1);
+    logger.info('Ground transport quote card rendered; payment method resolved', { position, paymentLabel });
+
+    const cardText = await cartPage.getGroundTransportQuoteCardText(position - 1);
+    const haystack = cardText.toLowerCase();
+
+    // The field labels the manual test names, plus the values that were typed into them.
+    const forbidden = [
+      { what: 'the "Flight number" label', needle: 'flight number' },
+      { what: 'the "Passenger phone" label', needle: 'passenger phone' },
+      { what: 'the "Comment" label', needle: 'comment' },
+    ];
+    if (values.flightNumber) {
+      forbidden.push({ what: `the entered flight number "${values.flightNumber}"`, needle: values.flightNumber.toLowerCase() });
+    }
+    if (values.comment) {
+      forbidden.push({ what: `the entered comment "${values.comment}"`, needle: values.comment.toLowerCase() });
+    }
+    if (values.passengerPhone) {
+      // The form splits the digits into country/area/number, so match on the number part only —
+      // it is the segment that survives every rendering of the phone.
+      const numberPart = values.passengerPhone.slice(4) || values.passengerPhone;
+      forbidden.push({ what: `the entered passenger phone "${values.passengerPhone}"`, needle: numberPart.toLowerCase() });
+    }
+
+    const found = forbidden.filter(({ needle }) => haystack.includes(needle));
+    if (found.length) {
+      throw new Error(
+        `[Cart.verifyGroundTransportQuoteHidesManualDetails] Ground transport quote card #${position} ` +
+        `shows ${found.map(f => f.what).join(', ')}, but the cart card must not carry the manual ` +
+        `quote's flight number, comment or passenger phone. Card text: "${cardText}"`
+      );
+    }
+
+    logger.info('Verified the ground transport quote card hides the manual detail fields', {
+      position,
+      paymentLabel,
+    });
+  },
+
   async verifyCarOptionalPaymentMessageNotDisplayed(page, unexpectedMessage) {
     if (!page) throw new Error('[Cart.verifyCarOptionalPaymentMessageNotDisplayed] "page" is required.');
     if (!unexpectedMessage || typeof unexpectedMessage !== 'string') {

@@ -121,11 +121,14 @@ const SELECTORS = {
   CAR_PICKUP_CITY_INPUT: ".manual-quote-car input[name=\"hotel-autocomplete-pick-up\"]",
   CAR_PICKUP_DATE_INPUT: ".manual-quote-car input[name=\"date-pick-up\"]",
   CAR_PICKUP_TIME_INPUT: ".manual-quote-car .app-columns:nth-child(1) input.app-timepicker-input",
-  CAR_TIME_SELECTOR_POPPER: ".time-selector-popper:visible",
+  // app-timepicker teleports its el-dropdown to <body> with this popper class, so the popper and
+  // its two el-selects are the SAME for the car and the ground transport manual quote forms — the
+  // per-product part is only which readonly input opens it.
+  TIME_SELECTOR_POPPER: ".time-selector-popper:visible",
   // Hours/minutes el-selects inside the time popper — present in BOTH 12h and 24h
   // formats (the .section-ampm PM button only renders when isAmPm is true).
-  CAR_TIME_HOURS_TRIGGER: ".section-time-select .app-column:nth-child(1) .el-select__wrapper",
-  CAR_TIME_MINUTES_TRIGGER: ".section-time-select .app-column:nth-child(2) .el-select__wrapper",
+  TIME_HOURS_TRIGGER: ".section-time-select .app-column:nth-child(1) .el-select__wrapper",
+  TIME_MINUTES_TRIGGER: ".section-time-select .app-column:nth-child(2) .el-select__wrapper",
   // Neutral, inert element to click to blur/commit the time popper (Escape does not
   // commit the value). Focusing the Comment textarea reliably collapses the picker.
   CAR_COMMIT_BLUR_TARGET: ".manual-quote-car textarea",
@@ -174,10 +177,10 @@ const SELECTORS = {
   GROUND_DATE_INPUT: ".manual-quote-ground-transport .field:has(label:has-text(\"Date\")) input",
   // Time picker (app-timepicker) — input is readonly, opens el-dropdown with time-selector-popper
   GROUND_HOUR_INPUT: ".manual-quote-ground-transport .field:has(label:has-text(\"Hour\")) input.app-timepicker-input",
-  GROUND_TIME_POPPER: ".time-selector-popper",
-  GROUND_TIME_HOURS_SELECT: ".time-selector-popper .section-time-select .app-column:nth-child(1) .el-select__wrapper",
-  GROUND_TIME_MINUTES_SELECT: ".time-selector-popper .section-time-select .app-column:nth-child(2) .el-select__wrapper",
-  GROUND_TIME_PM_BUTTON: ".time-selector-popper .section-ampm .time-part:last-child",
+  // Neutral, inert element to click to blur/commit the time popper (Escape does not commit the
+  // value). The Comment textarea is the ground transport form's equivalent of
+  // CAR_COMMIT_BLUR_TARGET.
+  GROUND_COMMIT_BLUR_TARGET: ".manual-quote-ground-transport textarea",
   // Vendor select (required, filterable app-select-v2)
   GROUND_VENDOR_TRIGGER: ".manual-quote-ground-transport .field:has(label:has-text(\"Vendor\")) .el-select__wrapper",
   GROUND_VENDOR_INPUT: ".manual-quote-ground-transport .field:has(label:has-text(\"Vendor\")) input",
@@ -198,6 +201,30 @@ const SELECTORS = {
   // Base fare and tax (in .price-section)
   GROUND_BASE_FARE_INPUT: ".manual-quote-ground-transport .price-section .field:nth-child(1) input[type=\"number\"]",
   GROUND_TAX_INPUT: ".manual-quote-ground-transport .price-section .field:nth-child(3) input[type=\"number\"]",
+  // ===== GROUND TRANSPORT MANUAL QUOTE — optional "new format" fields (test 74842) =====
+  // manual-quote-ground-transport.vue renders Flight number, Passenger phone and Comment WITHOUT
+  // the `<span class="has-text-danger">*</span>` every mandatory label carries, so the field
+  // wrapper is the presence anchor and the absence of that span inside its own label is what
+  // proves the field is optional. Each label text is unique inside .manual-quote-ground-transport
+  // ("Vendor phone" is the only other phone field and does not contain "Passenger").
+  GROUND_OPTIONAL_FIELD: (labelText) =>
+    `.manual-quote-ground-transport .field:has(label:has-text("${labelText}"))`,
+  GROUND_MANDATORY_ASTERISK: "label .has-text-danger",
+  GROUND_FLIGHT_NUMBER_INPUT: ".manual-quote-ground-transport .field:has(label:has-text(\"Flight number\")) input",
+  GROUND_COMMENT_TEXTAREA: ".manual-quote-ground-transport .field:has(label:has-text(\"Comment\")) textarea",
+  // Passenger phone reuses app-phone-input, the same three-part widget as the vendor phone.
+  GROUND_PASSENGER_PHONE_COUNTRY_BTN: ".manual-quote-ground-transport .field:has(label:has-text(\"Passenger phone\")) .app-phone-input__country",
+  GROUND_PASSENGER_PHONE_AREA: ".manual-quote-ground-transport .field:has(label:has-text(\"Passenger phone\")) .app-phone-input__area",
+  GROUND_PASSENGER_PHONE_NUMBER: ".manual-quote-ground-transport .field:has(label:has-text(\"Passenger phone\")) .app-phone-input__number",
+  // Form of payment. manual-quote-payment-details.vue is mounted INSIDE the ground transport
+  // section and renders an el-radio-group of exactly two radios — "Pay on departure" (isPrePaid
+  // false) and "Pre paid" (isPrePaid true, the component's data default). Element Plus marks the
+  // selected one with `is-checked` on the .el-radio root.
+  GROUND_PAYMENT_DETAILS_SECTION: ".manual-quote-ground-transport .manual-quote-payment-details",
+  GROUND_FOP_RADIO_GROUP: ".manual-quote-ground-transport .manual-quote-payment-details .el-radio-group",
+  GROUND_FOP_CHECKED_RADIO: ".manual-quote-ground-transport .manual-quote-payment-details .el-radio.is-checked",
+  GROUND_FOP_RADIO_BY_LABEL: (label) =>
+    `.manual-quote-ground-transport .manual-quote-payment-details .el-radio:has(.el-radio__label:text-is("${label}"))`,
 };
 
 class ManualQuoteSearchPage {
@@ -1047,17 +1074,17 @@ class ManualQuoteSearchPage {
   }
 
   /**
-   * Opens a car time-picker's popper and returns the visible popper locator.
+   * Opens a manual quote time-picker's popper and returns the visible popper locator.
    * Each timepicker teleports its own .time-selector-popper to <body>, and a
    * just-closed one (e.g. pickup's) can still be transitioning out when the next
    * (dropoff's) opens — so target the LAST visible popper. Retries the open once
    * in case the click's popper closes mid-transition.
    */
-  async _openCarTimePopper(input, triggerSelector) {
+  async _openTimePopper(input, triggerSelector) {
     for (let attempt = 1; attempt <= 2; attempt++) {
       await input.click({ timeout: 10000 });
       await this.page.waitForTimeout(400); // let the open animation settle
-      const popper = this.page.locator(SELECTORS.CAR_TIME_SELECTOR_POPPER).last();
+      const popper = this.page.locator(SELECTORS.TIME_SELECTOR_POPPER).last();
       try {
         await popper.waitFor({ state: "visible", timeout: 5000 });
         await popper.locator(triggerSelector).waitFor({ state: "visible", timeout: 5000 });
@@ -1070,7 +1097,7 @@ class ManualQuoteSearchPage {
   }
 
   /**
-   * Sets a car time-picker to an explicit hour:minute by selecting from the two
+   * Sets a manual quote time-picker to an explicit hour:minute by selecting from the two
    * el-select dropdowns inside the time popper. The time input is readonly, so it
    * can only be set through the popper. Works in BOTH 24-hour ("00:00") and 12-hour
    * ("hh:mm a") display modes — unlike clicking the AM/PM toggle, which only exists
@@ -1088,14 +1115,20 @@ class ManualQuoteSearchPage {
    * @param {object} [opts]
    * @param {string} [opts.hour="10"] - hour option text (24h "10" / 12h "10" both valid)
    * @param {string} [opts.minute="00"] - minute option text
+   * @param {string} [opts.blurTarget=SELECTORS.CAR_COMMIT_BLUR_TARGET] - neutral element to click
+   *   to commit the value; each manual quote form has its own (its Comment textarea)
    */
-  async _setCarTime(timeInputSelector, label, { hour = "10", minute = "00" } = {}) {
+  async _setManualQuoteTime(
+    timeInputSelector,
+    label,
+    { hour = "10", minute = "00", blurTarget = SELECTORS.CAR_COMMIT_BLUR_TARGET } = {}
+  ) {
     try {
       const input = this.page.locator(timeInputSelector).first();
 
       // --- Hour ---
-      let popper = await this._openCarTimePopper(input, SELECTORS.CAR_TIME_HOURS_TRIGGER);
-      await popper.locator(SELECTORS.CAR_TIME_HOURS_TRIGGER).click({ timeout: 5000 });
+      let popper = await this._openTimePopper(input, SELECTORS.TIME_HOURS_TRIGGER);
+      await popper.locator(SELECTORS.TIME_HOURS_TRIGGER).click({ timeout: 5000 });
       await this.page
         .locator(SELECTORS.VISIBLE_DROPDOWN_ITEM, { hasText: new RegExp(`^\\s*${hour}\\s*$`) })
         .first()
@@ -1103,22 +1136,22 @@ class ManualQuoteSearchPage {
       await this.page.waitForTimeout(400);
 
       // --- Minute --- (popper collapses after the hour pick; reopen if needed)
-      popper = this.page.locator(SELECTORS.CAR_TIME_SELECTOR_POPPER).last();
+      popper = this.page.locator(SELECTORS.TIME_SELECTOR_POPPER).last();
       const stillOpen = await popper
-        .locator(SELECTORS.CAR_TIME_MINUTES_TRIGGER)
+        .locator(SELECTORS.TIME_MINUTES_TRIGGER)
         .isVisible()
         .catch(() => false);
       if (!stillOpen) {
-        popper = await this._openCarTimePopper(input, SELECTORS.CAR_TIME_MINUTES_TRIGGER);
+        popper = await this._openTimePopper(input, SELECTORS.TIME_MINUTES_TRIGGER);
       }
-      await popper.locator(SELECTORS.CAR_TIME_MINUTES_TRIGGER).click({ timeout: 5000 });
+      await popper.locator(SELECTORS.TIME_MINUTES_TRIGGER).click({ timeout: 5000 });
       await this.page
         .locator(SELECTORS.VISIBLE_DROPDOWN_ITEM, { hasText: new RegExp(`^\\s*${minute}\\s*$`) })
         .first()
         .click({ timeout: 5000 });
 
       // --- Commit --- blur the picker by focusing a neutral field (Escape won't commit).
-      await this.page.locator(SELECTORS.CAR_COMMIT_BLUR_TARGET).first().click({ timeout: 5000 });
+      await this.page.locator(blurTarget).first().click({ timeout: 5000 });
       await this.page.waitForTimeout(300);
 
       // Verify the value actually committed — closing an unset picker finalizes to
@@ -1138,11 +1171,11 @@ class ManualQuoteSearchPage {
   }
 
   async setCarPickupTime(opts) {
-    await this._setCarTime(SELECTORS.CAR_PICKUP_TIME_INPUT, "setCarPickupTime", opts);
+    await this._setManualQuoteTime(SELECTORS.CAR_PICKUP_TIME_INPUT, "setCarPickupTime", opts);
   }
 
   async setCarDropoffTime(opts) {
-    await this._setCarTime(SELECTORS.CAR_DROPOFF_TIME_INPUT, "setCarDropoffTime", opts);
+    await this._setManualQuoteTime(SELECTORS.CAR_DROPOFF_TIME_INPUT, "setCarDropoffTime", opts);
   }
 
   async selectCarClass(carClass) {
@@ -1361,6 +1394,25 @@ class ManualQuoteSearchPage {
     }
   }
 
+  /**
+   * Reports whether the manual quote page is already on screen. Used to decide whether the
+   * outer "#tab-manual" tab still has to be clicked: reaching the manual quote page from the
+   * cart carousel skips that tab entirely, and once the page has replaced the search page the
+   * tab is no longer in the DOM.
+   * @param {object} [options]
+   * @param {number} [options.timeout=5000]
+   * @returns {Promise<boolean>}
+   */
+  async isManualQuotePageVisible({ timeout = 5000 } = {}) {
+    try {
+      await this.page.locator(SELECTORS.MANUAL_QUOTE_PAGE_SECTION).first()
+        .waitFor({ state: "visible", timeout });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
   async clickGroundTransportTab() {
     try {
       await this.page.locator(SELECTORS.GROUND_TRANSPORT_TAB).click({ timeout: 10000 });
@@ -1435,26 +1487,30 @@ class ManualQuoteSearchPage {
     }
   }
 
+  /**
+   * Sets the ground transport manual quote Hour field.
+   *
+   * Driven through the popper's two hour/minute el-selects rather than the .section-ampm toggle:
+   * that toggle only renders for a 12h user (app-timepicker's `isAmPm`, from the units system), so
+   * a metric booker such as pmac@corp.am gets a 24h picker with no AM/PM section at all.
+   *
+   * @param {string} hour - "HH:mm" as the caller words it (e.g. "10:00"); a bare "HH" is accepted
+   *   and defaults the minutes to "00"
+   */
   async fillGroundHour(hour) {
-    try {
-      // Click the timepicker input to open the dropdown
-      const input = this.page.locator(SELECTORS.GROUND_HOUR_INPUT).first();
-      await input.click({ timeout: 10000 });
-      // Wait for the time selector popper to appear (scope to visible one)
-      const visiblePopper = this.page.locator(SELECTORS.GROUND_TIME_POPPER).locator("visible=true");
-      await visiblePopper.waitFor({ state: "visible", timeout: 5000 });
-      // Default is 12:00 AM — just click PM to get 12:00 PM
-      await visiblePopper.locator(".section-ampm .time-part:last-child").click({ timeout: 5000 });
-      // Close popper by pressing Escape
-      await this.page.keyboard.press("Escape");
-      await this.page.waitForTimeout(300);
-    } catch (err) {
+    const match = /^([0-9]{1,2})(?::([0-9]{2}))?$/.exec(String(hour).trim());
+
+    if (!match) {
       throw new Error(
-        `[ManualQuoteSearchPage.fillGroundHour] Could not fill hour "${hour}" ` +
-        `(selector: ${SELECTORS.GROUND_HOUR_INPUT}). The time popper or PM button were not available. ` +
-        `Original: ${err.message}`
+        `[ManualQuoteSearchPage.fillGroundHour] "hour" must be "HH:mm" or "HH", got: ${JSON.stringify(hour)}`
       );
     }
+
+    await this._setManualQuoteTime(SELECTORS.GROUND_HOUR_INPUT, "fillGroundHour", {
+      hour: match[1].padStart(2, "0"),
+      minute: match[2] || "00",
+      blurTarget: SELECTORS.GROUND_COMMIT_BLUR_TARGET,
+    });
   }
 
   async selectGroundVehicleType(vehicleType) {
@@ -1579,6 +1635,145 @@ class ManualQuoteSearchPage {
       throw new Error(
         `[ManualQuoteSearchPage.fillGroundTax] Could not fill tax "${amount}" ` +
         `(selector: ${SELECTORS.GROUND_TAX_INPUT}). Original: ${err.message}`
+      );
+    }
+  }
+
+  // ===== GROUND TRANSPORT MANUAL QUOTE — optional "new format" fields (test 74842) =====
+
+  /**
+   * Reads whether an optional ground transport field is rendered and whether its label is
+   * marked mandatory. Mandatory labels in manual-quote-ground-transport.vue append
+   * `<span class="has-text-danger">*</span>`; the optional ones do not, so the asterisk count
+   * IS the mandatory flag. Returns `present: false` instead of throwing so the caller can
+   * report "the field is missing" and "the field is mandatory" as two different failures.
+   * @param {string} labelText - Field label, e.g. "Flight number"
+   * @param {object} [options]
+   * @param {number} [options.timeout=15000]
+   * @returns {Promise<{present: boolean, mandatory: boolean}>}
+   */
+  async getGroundOptionalFieldState(labelText, { timeout = 15000 } = {}) {
+    if (!labelText || typeof labelText !== "string") {
+      throw new Error(
+        `[ManualQuoteSearchPage.getGroundOptionalFieldState] "labelText" must be a non-empty string, got: ${typeof labelText}`
+      );
+    }
+    const selector = SELECTORS.GROUND_OPTIONAL_FIELD(labelText);
+    const field = this.page.locator(selector).first();
+    try {
+      await field.waitFor({ state: "visible", timeout });
+    } catch {
+      return { present: false, mandatory: false };
+    }
+    const asteriskCount = await field.locator(SELECTORS.GROUND_MANDATORY_ASTERISK).count();
+    return { present: true, mandatory: asteriskCount > 0 };
+  }
+
+  /**
+   * Reads the label of the currently selected form-of-payment radio ("Pre paid" or
+   * "Pay on departure"). Throws when no radio is selected — the group always has a default,
+   * so an empty read means the payment-details section never rendered.
+   * @param {object} [options]
+   * @param {number} [options.timeout=15000]
+   * @returns {Promise<string>} Whitespace-collapsed radio label
+   */
+  async getGroundSelectedFormOfPayment({ timeout = 15000 } = {}) {
+    const checked = this.page.locator(SELECTORS.GROUND_FOP_CHECKED_RADIO).first();
+    try {
+      await checked.waitFor({ state: "visible", timeout });
+    } catch (err) {
+      throw new Error(
+        `[ManualQuoteSearchPage.getGroundSelectedFormOfPayment] No form-of-payment radio was ` +
+        `selected within ${timeout}ms (selector: ${SELECTORS.GROUND_FOP_CHECKED_RADIO}). Likely ` +
+        `causes: the payment-details section did not render, or the ground transport tab is not ` +
+        `the active manual quote tab. Original: ${err.message}`
+      );
+    }
+    return ((await checked.textContent()) || "").replace(/s+/g, " ").trim();
+  }
+
+  /**
+   * Selects a form-of-payment radio by its visible label.
+   * @param {string} label - "Pre paid" or "Pay on departure"
+   */
+  async selectGroundFormOfPayment(label) {
+    const selector = SELECTORS.GROUND_FOP_RADIO_BY_LABEL(label);
+    try {
+      const radio = this.page.locator(selector).first();
+      await radio.scrollIntoViewIfNeeded();
+      await radio.click({ timeout: 10000 });
+    } catch (err) {
+      throw new Error(
+        `[ManualQuoteSearchPage.selectGroundFormOfPayment] Could not select the form of payment ` +
+        `"${label}" (selector: ${selector}). The radio label must match exactly — the two options ` +
+        `are "Pay on departure" and "Pre paid". Original: ${err.message}`
+      );
+    }
+  }
+
+  async fillGroundFlightNumber(flightNumber) {
+    try {
+      const input = this.page.locator(SELECTORS.GROUND_FLIGHT_NUMBER_INPUT).first();
+      await input.scrollIntoViewIfNeeded();
+      await input.fill(flightNumber);
+    } catch (err) {
+      throw new Error(
+        `[ManualQuoteSearchPage.fillGroundFlightNumber] Could not fill flight number "${flightNumber}" ` +
+        `(selector: ${SELECTORS.GROUND_FLIGHT_NUMBER_INPUT}). Original: ${err.message}`
+      );
+    }
+  }
+
+  async fillGroundComment(comment) {
+    try {
+      const textarea = this.page.locator(SELECTORS.GROUND_COMMENT_TEXTAREA).first();
+      await textarea.scrollIntoViewIfNeeded();
+      await textarea.fill(comment);
+    } catch (err) {
+      throw new Error(
+        `[ManualQuoteSearchPage.fillGroundComment] Could not fill the comment "${comment}" ` +
+        `(selector: ${SELECTORS.GROUND_COMMENT_TEXTAREA}). Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Fills the optional Passenger phone widget. Same three-part app-phone-input as the vendor
+   * phone, and split the same way: 1 digit country code, 3 digits area code, the rest the
+   * number. The field is PRE-POPULATED from the primary traveller's profile
+   * (manual-quote-ground-transport.ts `loadPassengerPhone`), so both text inputs are filled
+   * (not typed into) to overwrite whatever was seeded.
+   * @param {string} phone - Digits only, e.g. "12125550123"
+   */
+  async fillGroundPassengerPhone(phone) {
+    try {
+      const countryCode = phone.substring(0, 1);
+      const areaCode = phone.substring(1, 4);
+      const number = phone.substring(4);
+
+      const countryBtn = this.page.locator(SELECTORS.GROUND_PASSENGER_PHONE_COUNTRY_BTN).first();
+      await countryBtn.scrollIntoViewIfNeeded();
+      await countryBtn.waitFor({ state: "visible", timeout: 10000 });
+      await countryBtn.click();
+
+      const searchInput = this.page.locator(SELECTORS.PHONE_INPUT_POPOVER_SEARCH);
+      await searchInput.waitFor({ state: "visible", timeout: 5000 });
+      await searchInput.fill(countryCode);
+      const option = this.page.locator(SELECTORS.PHONE_INPUT_POPOVER_OPTION)
+        .filter({ hasText: `+${countryCode}` })
+        .first();
+      await option.waitFor({ state: "visible", timeout: 5000 });
+      await option.click();
+
+      const areaInput = this.page.locator(SELECTORS.GROUND_PASSENGER_PHONE_AREA).first();
+      await areaInput.waitFor({ state: "visible", timeout: 5000 });
+      await areaInput.fill(areaCode);
+      const numberInput = this.page.locator(SELECTORS.GROUND_PASSENGER_PHONE_NUMBER).first();
+      await numberInput.fill(number);
+    } catch (err) {
+      throw new Error(
+        `[ManualQuoteSearchPage.fillGroundPassengerPhone] Could not fill the passenger phone "${phone}". ` +
+        `Original: ${err.message}`
       );
     }
   }
