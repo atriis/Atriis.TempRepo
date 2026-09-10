@@ -2203,6 +2203,14 @@ Then("the mandatory notifications popup should be displayed", async function () 
   await Cart.verifyMandatoryNotificationsPopupDisplayed(this.page);
 });
 
+// Negative counterpart of the assertion above: proves a notification filter SUPPRESSED the popup for an
+// item it should not match. Waits 5s rather than the positive assertion's 15s — this runs once the cart
+// already shows the new quote, so a popup that was going to open has had its chance.
+Then("the mandatory notifications popup should not be displayed", async function () {
+  logger.info("Verifying the mandatory notifications popup is NOT displayed");
+  await Cart.verifyMandatoryNotificationsPopupNotDisplayed(this.page);
+});
+
 // Asserts the message shown inside the still-OPEN reminder popup, leaving the popup open for the
 // following "I acknowledge the push notification". Substring-matched case-insensitively — the manual
 // test writes "...in italy" while the app renders "...in Italy".

@@ -7225,6 +7225,39 @@ const Cart = {
   },
 
   /**
+   * Verifies the "Mandatory Notifications" popup is NOT displayed — the negative counterpart of
+   * verifyMandatoryNotificationsPopupDisplayed, for flows where a notification filter is expected to
+   * SUPPRESS the popup: a corporation reminder scoped by country or hotel content source raises the
+   * popup for a matching item and must stay silent for a non-matching one.
+   *
+   * The 5s window is a settle buffer, not a race — callers run this once the cart already shows the new
+   * quote, so a popup that was going to open has had its chance. The positive assertion waits 15s
+   * because it runs straight after an add-to-cart, before the page has settled.
+   *
+   * On failure the popup's own messages are read back, so the report names the reminder that wrongly
+   * fired instead of only reporting that one did.
+   *
+   * @param {import('playwright').Page} page
+   * @param {object} [options]
+   * @param {number} [options.timeout=5000] How long to wait before declaring the popup absent.
+   * @returns {Promise<void>}
+   */
+  async verifyMandatoryNotificationsPopupNotDisplayed(page, { timeout = 5000 } = {}) {
+    if (!page) throw new Error('[Cart.verifyMandatoryNotificationsPopupNotDisplayed] "page" is required.');
+    const commonPage = getPageObject(page, CommonPage);
+    const visible = await commonPage.isMandatoryNotificationsPopupVisible({ timeout });
+    if (visible) {
+      const messages = await commonPage.getMandatoryNotificationMessages({ timeout: 5000 }).catch(() => []);
+      throw new Error(
+        `[Cart.verifyMandatoryNotificationsPopupNotDisplayed] Expected NO "Mandatory Notifications" popup, ` +
+        `but it was displayed. Reminder(s) shown: ` +
+        `${messages.length ? messages.map((m) => `"${m}"`).join(', ') : '(none readable)'}. ` +
+        `A notification filter that should have excluded this item did not.`
+      );
+    }
+  },
+
+  /**
    * Verifies the still-open "Mandatory Notifications" popup (app-reminder-popup.vue) shows a reminder
    * whose text contains the expected message. The match is case-insensitive, whitespace-collapsed and a
    * SUBSTRING: manual test cases spell the country in lower case ("...in italy") while the app renders

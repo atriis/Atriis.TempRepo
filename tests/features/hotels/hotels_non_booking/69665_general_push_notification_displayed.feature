@@ -19,10 +19,12 @@ Feature: 69665 Hotels - Push Notification  'Hotel Content Source' and 'Country' 
     When I search for a hotel in "London, UK" for 1 night
     And I select the first hotel result
     And I add a refundable room to my cart
-    Then a push notification should be displayed
+    Then I should see mandatory notifications with message "TESTIM Test"
+    When I acknowledge the push notification
     Then the booking status should be "Pending booking"
     When I click to add a hotel to my trip from cart
     And I search for a hotel in "Rome, Italy" for 1 night from the cart drawer
     And I select the first hotel result
     And I add a refundable room to my cart
     Then the booking status should be "Pending booking"
+    Then the mandatory notifications popup should not be displayed
