@@ -4,9 +4,13 @@
 # Owner: Sonia Sousa
 # Created: 2026-09-09
 
-# ADO Test Case ID: TBD
+# ADO Test Case ID: TBD - deliberately NOT published. The other three test points are TC 84698
+#         (NFF + complete trip), 84699 (legacy + complete trip) and 84700 (legacy + by schedule);
+#         this one is held back until the defect below is raised and fixed, so it does not sit in a
+#         regression plan as a permanently failing Automated test. It is therefore the only file in
+#         this set still leading with the bug id, which no longer collides with anything.
 # Source: ADO Bug #84218, US #82771 QA Test 1 (AC1/AC2/AC3). See
-#         84218_amadeus_edifact_fare_family_display_name_from_description.feature in this folder for
+#         84698_amadeus_edifact_fare_family_display_name_from_description.feature in this folder for
 #         why the expectation is read from the search reply rather than written here.
 #
 # BLOCKED BY AN OPEN PRODUCT DEFECT - the test is correct and the app is not. Tagged @blocked only

@@ -1,19 +1,19 @@
-# Test Name: 84218 Amadeus EDIFACT - Fare family display name comes from the description, not the filed code
+# Test Name: 84698 Amadeus EDIFACT - Fare family display name comes from the description, not the filed code
 # Status: Draft
 # Labels: Regression,Flights,Amadeus,EDIFACT,Branded Fares,Pricing Options,New Flight Flow
 # Owner: Sonia Sousa
 # Created: 2026-09-09
 
-# ADO Test Case ID: TBD
+# ADO Test Case ID: 84698
 # Source: ADO Bug #84218, with US #82771 QA Test 1 (AC1/AC2/AC3). The traveller-facing fare family
 #         label must come from familyInformation/description in the
 #         Fare_MasterPricerTravelBoardSearch reply, not the fareFamilyname code beside it.
 #         The legacy-flow half of this bug is parked under
 #         flights_blocked/flights_amadeus_blocked/84218_amadeus_edifact_fare_family_display_name_old_flow.feature
 
-@ado:84218
+@ado:84698
 @regression @flights @amadeus @edifact @branded-fares @pricing-options
-Feature: 84218 Amadeus EDIFACT - Fare family names are the airline's, not the filed code
+Feature: 84698 Amadeus EDIFACT - Fare family names are the airline's, not the filed code
   As a corporate traveler comparing Delta fare families on an Amadeus EDIFACT itinerary
   I want each fare named the way Delta names it on its own channels
   So that I can recognise what I am buying instead of reading an internal filing code

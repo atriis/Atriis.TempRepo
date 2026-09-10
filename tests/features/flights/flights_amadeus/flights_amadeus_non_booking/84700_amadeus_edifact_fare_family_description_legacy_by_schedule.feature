@@ -1,17 +1,12 @@
-# Test Name: 84218 Amadeus EDIFACT - Legacy flow, search by schedule - fare family display name from the description
+# Test Name: 84700 Amadeus EDIFACT - Legacy flow, search by schedule - fare family display name from the description
 # Status: Draft
 # Labels: Regression,Flights,Amadeus,EDIFACT,Branded Fares,Pricing Options,Legacy Flow,By Schedule
 # Owner: Sonia Sousa
 # Created: 2026-09-09
 
-# ADO Test Case ID: TBD
+# ADO Test Case ID: 84700
 # Source: ADO Bug #84218, US #82771 QA Test 1 (AC1/AC2/AC3). See the NFF complete-trip file in this
 #         folder for why the expectation is read from the search reply rather than written here.
-#
-# WARNING - all four files in this set currently lead with 84218, which is the BUG id.
-# sync-github-run-to-ado-testplan resolves a test point from the filename's LEADING id and
-# deduplicates worst-outcome-wins, so one failure would stamp itself onto the other three test
-# points. Four test points need four published Test Case ids; renumber all four before merging.
 
 # Route note: ATL-JFK, not the ATL-MSP the complete-trip twin uses. By schedule, ATL-MSP returned
 # no results in 3 of 5 runs on 2026-09-09; ATL-JFK passed 3 of 3 with identical fare families each
@@ -24,9 +19,9 @@
 # One observation, not a reproduction; recorded because it matches the bug's own note that the label
 # reverted "on every option a pricing reply produced", and by-schedule prices per direction.
 
-@ado:84218
+@ado:84700
 @regression @flights @amadeus @edifact @branded-fares @pricing-options @by-schedule
-Feature: 84218 Amadeus EDIFACT - By schedule, legacy flow fare family names are the airline's
+Feature: 84700 Amadeus EDIFACT - By schedule, legacy flow fare family names are the airline's
   As a corporate traveler on a legacy-flow account searching by schedule
   I want each fare named the way the airline names it on its own channels
   So that the naming fix reaches the classic Pricing Options drawer in this search mode too

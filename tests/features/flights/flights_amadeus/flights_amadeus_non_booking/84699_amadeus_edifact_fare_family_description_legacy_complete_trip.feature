@@ -1,10 +1,10 @@
-# Test Name: 84218 Amadeus EDIFACT - Legacy flow, complete trip - fare family display name from the description
+# Test Name: 84699 Amadeus EDIFACT - Legacy flow, complete trip - fare family display name from the description
 # Status: Draft
 # Labels: Regression,Flights,Amadeus,EDIFACT,Branded Fares,Pricing Options,Legacy Flow
 # Owner: Sonia Sousa
 # Created: 2026-09-09
 
-# ADO Test Case ID: TBD
+# ADO Test Case ID: 84699
 # Source: ADO Bug #84218, US #82771 QA Test 1 (AC1/AC2/AC3). See the NFF complete-trip file in this
 #         folder for why the expectation is read from the search reply rather than written here.
 #
@@ -13,9 +13,9 @@
 # deduplicates worst-outcome-wins, so a failure here would stamp itself onto the passing NFF test
 # point. Four test points need four published Test Case ids; renumber all four before merging.
 
-@ado:84218
+@ado:84699
 @regression @flights @amadeus @edifact @branded-fares @pricing-options
-Feature: 84218 Amadeus EDIFACT - Legacy flow complete trip fare family names are the airline's
+Feature: 84699 Amadeus EDIFACT - Legacy flow complete trip fare family names are the airline's
   As a corporate traveler on a legacy-flow account comparing Delta fare families
   I want each fare named the way Delta names it on its own channels
   So that the naming fix reaches the classic Pricing Options drawer too
