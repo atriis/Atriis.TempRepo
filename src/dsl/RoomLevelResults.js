@@ -12,6 +12,28 @@ const {
   splitByGsaLimit,
 } = require("@utils/gsaPerDiem.helper");
 
+// Room-level supplier ids differ from the hotel-level ones for some suppliers, so this list
+// is deliberately its own: room cards render hCorpo under its Amadeus chain id, hotel cards
+// do not. Shared by the presence and absence checks below.
+const ROOM_SUPPLIER_ID_MAP = {
+  expedia: 'EXPEDIA',
+  hcorpo: 'AMADEUS-HD',
+  bookingcom: 'BOOKINGCOM',
+  amadeus: 'AMADEUS',
+  amadeusaggregators: 'AMADEUS-TE',
+  amadeusvaluehotel: 'AMADEUS-AD',
+  ratehawk: 'RATEHAWK',
+};
+
+function resolveRoomSupplierId(supplierName) {
+  const key = supplierName.toLowerCase().replace(/[^a-z0-9]/g, '');
+  const supplierId = ROOM_SUPPLIER_ID_MAP[key];
+  if (!supplierId) {
+    throw new Error('Unknown supplier: ' + supplierName);
+  }
+  return supplierId;
+}
+
 // A page this close to its top reads as being at the top: it absorbs the sticky
 // header offset and sub-pixel rounding, while staying far below one screen of scroll.
 const PAGE_TOP_TOLERANCE_PX = 50;
@@ -493,21 +515,28 @@ const RoomLevelResults = {
     if (!supplierName || typeof supplierName !== 'string') {
       throw new Error('supplierName must be a non-empty string, got: ' + typeof supplierName);
     }
-    const SUPPLIER_ID_MAP = {
-      expedia: 'EXPEDIA',
-      hcorpo: 'AMADEUS-HD',
-      bookingcom: 'BOOKINGCOM',
-      amadeus: 'AMADEUS',
-      amadeusaggregators: 'AMADEUS-TE',
-      ratehawk: 'RATEHAWK',
-    };
-    const key = supplierName.toLowerCase().replace(/[^a-z0-9]/g, '');
-    const supplierId = SUPPLIER_ID_MAP[key];
-    if (!supplierId) {
-      throw new Error('Unknown supplier: ' + supplierName);
-    }
+    const supplierId = resolveRoomSupplierId(supplierName);
     const p = getPageObject(page, RoomLevelResultsPage);
     return p.isSupplierLogoVisible(supplierId);
+  },
+
+  /**
+   * Verifies that a specific supplier logo is NOT visible in room level results.
+   * Matches the whole icon filename, so an absence check for "Amadeus" is not defeated by an
+   * Amadeus aggregator logo ("AMADEUS-AD" and friends) being legitimately present.
+   * @param {import('playwright').Page} page
+   * @param {string} supplierName - Common name of the supplier (e.g. "Amadeus")
+   * @throws {Error} If the supplier logo is visible
+   */
+  async verifySupplierLogoNotVisible(page, supplierName) {
+    if (!page) throw new Error('page is required');
+    if (!supplierName || typeof supplierName !== 'string') {
+      throw new Error('supplierName must be a non-empty string, got: ' + typeof supplierName);
+    }
+    const supplierId = resolveRoomSupplierId(supplierName);
+    const p = getPageObject(page, RoomLevelResultsPage);
+    const isVisible = await p.isSupplierLogoVisible(supplierId, { timeout: 5000, exact: true });
+    if (isVisible) throw new Error(`Supplier logo for "${supplierName}" (${supplierId}) should NOT be visible but was found in room level results`);
   },
 
   /**

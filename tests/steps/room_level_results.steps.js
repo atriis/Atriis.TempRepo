@@ -188,6 +188,11 @@ Then("the {string} supplier logo should be visible in room level results", async
   if (!isVisible) throw new Error(`Supplier logo for "${supplierName}" not visible in room level results`);
 });
 
+Then("the {string} supplier logo should not be visible in room level results", async function (supplierName) {
+  logger.info("Verifying supplier logo is NOT visible in room level results", { supplierName });
+  await RoomLevelResults.verifySupplierLogoNotVisible(this.page, supplierName);
+});
+
 Then("the member rate price should be lower than the regular price", async function () {
   logger.info("Comparing member rate price vs regular price");
   const comparison = await RoomLevelResults.compareMemberVsRegularPrice(this.page);

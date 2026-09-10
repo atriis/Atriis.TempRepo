@@ -17,6 +17,7 @@ const HOTEL_SUPPLIER_ID_MAP = {
   bookingcom: 'BOOKINGCOM',
   amadeus: 'AMADEUS',
   amadeusaggregators: 'AMADEUS-TE',
+  amadeusvaluehotel: 'AMADEUS-AD',
   ratehawk: 'RATEHAWK',
   sabre: 'SABRE',
   hcorpo: 'HCORPO',
@@ -1115,7 +1116,7 @@ const HotelLevelResults = {
     }
     const supplierId = resolveHotelSupplierId(supplierName, { strict: true });
     const p = getPageObject(page, HotelLevelResultsPage);
-    const isVisible = await p.isSupplierLogoVisible(supplierId, { timeout: 5000 });
+    const isVisible = await p.isSupplierLogoVisible(supplierId, { timeout: 5000, exact: true });
     if (isVisible) throw new Error(`Supplier logo for "${supplierName}" (${supplierId}) should NOT be visible but was found in hotel results`);
   },
 
@@ -1124,9 +1125,9 @@ const HotelLevelResults = {
     if (!supplierName || typeof supplierName !== 'string') {
       throw new Error('supplierName must be a non-empty string, got: ' + typeof supplierName);
     }
-    const supplierId = resolveHotelSupplierId(supplierName);
+    const supplierId = resolveHotelSupplierId(supplierName, { strict: true });
     const hotelLevelResultsPage = getPageObject(page, HotelLevelResultsPage);
-    const isVisible = await hotelLevelResultsPage.isSupplierFilterVisible(supplierId, { timeout: 5000 });
+    const isVisible = await hotelLevelResultsPage.isSupplierFilterVisible(supplierId, { timeout: 5000, exact: true });
     if (isVisible) throw new Error(`Supplier filter "${supplierName}" (${supplierId}) should NOT be visible but was found in the hotel filter panel`);
   },
 

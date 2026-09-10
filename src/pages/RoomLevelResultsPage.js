@@ -51,6 +51,11 @@ const SELECTORS = {
   WIFI_INCLUDED: ".room-amenities span:has-text('Wifi included')",
   BREAKFAST_ICON: "img[src*='breakfastIncluded']",
   SUPPLIER_LOGO_IMG: (supplierId) => `.supplier-img img[alt*="${supplierId}"]`,
+  // Same logo, matched on the whole icon filename instead of a substring of it. The alt text is the
+  // icon path app-img was given ("suppliers/AMADEUS.svg"), so a substring match on "AMADEUS" also
+  // matches every "AMADEUS-<chain>.svg" aggregator logo. Absence checks need the narrower match.
+  SUPPLIER_LOGO_IMG_EXACT: (supplierId) =>
+    `.supplier-img img[alt$="/${supplierId}.svg"], .supplier-img img[alt="${supplierId}.svg"]`,
   // Room loyalty programme badge. Three components render it off the same room.loyaltyProgramName:
   // room-preview.vue as .room-loyalty-logo (desktop) / .mobile-loyalty-logo (mobile) when
   // hotel.service.getLoyaltyProgramIcon() maps the programme to a local asset, and as the
@@ -814,11 +819,12 @@ class RoomLevelResultsPage {
     await dialog.waitFor({ state: "hidden", timeout: 10000 });
   }
 
-  async isSupplierLogoVisible(supplierId, { timeout = 15000 } = {}) {
+  async isSupplierLogoVisible(supplierId, { timeout = 15000, exact = false } = {}) {
     if (!supplierId || typeof supplierId !== "string") {
       throw new Error(`supplierId must be a non-empty string, got: ${typeof supplierId}`);
     }
-    const logo = this.page.locator(SELECTORS.SUPPLIER_LOGO_IMG(supplierId)).first();
+    const selector = exact ? SELECTORS.SUPPLIER_LOGO_IMG_EXACT : SELECTORS.SUPPLIER_LOGO_IMG;
+    const logo = this.page.locator(selector(supplierId)).first();
     try {
       await logo.waitFor({ state: "visible", timeout });
       return true;

@@ -21,6 +21,13 @@ const SELECTORS = {
   CO2_LABEL: ".hotel-info .eco-label",
   CO2_VALUE: ".hotel-info .eco-label .is-size-7",
   SUPPLIER_LOGO_IMG: (supplierId) => `.hotel-supplier-carousel img[alt*="${supplierId}"], .supplier-img img[alt*="${supplierId}"]`,
+  // Same logo, matched on the whole icon filename instead of a substring of it. The alt text is the
+  // icon path app-img was given ("suppliers/AMADEUS.svg"), so a substring match on "AMADEUS" also
+  // matches every "AMADEUS-<chain>.svg" aggregator logo. Absence checks need the narrower match:
+  // "Amadeus is not here" must not be satisfied — or defeated — by an Amadeus aggregator being here.
+  SUPPLIER_LOGO_IMG_EXACT: (supplierId) =>
+    `.hotel-supplier-carousel img[alt$="/${supplierId}.svg"], .hotel-supplier-carousel img[alt="${supplierId}.svg"], `
+    + `.supplier-img img[alt$="/${supplierId}.svg"], .supplier-img img[alt="${supplierId}.svg"]`,
   SUSTAINABILITY_FILTER_CHECKBOX: 'input.el-checkbox__original[value="ecoCertificated"]',
   // "Sustainable" eco tag in a hotel card. hotel-info.vue renders it as the el-tooltip trigger,
   // and only for hotels that carry at least one eco label.
@@ -88,6 +95,10 @@ const SELECTORS = {
   SUPPLIER_FILTER_CHECKBOX: '.hotel-filter .suppliers-filter .el-checkbox',
   // Supplier filter checkbox by supplier name (img alt contains supplier ID)
   SUPPLIER_FILTER_ITEM: (supplierId) => `.hotel-filter .suppliers-filter .el-checkbox:has(img[alt*="${supplierId}"])`,
+  // Filter-panel counterpart of SUPPLIER_LOGO_IMG_EXACT, for the same reason.
+  SUPPLIER_FILTER_ITEM_EXACT: (supplierId) =>
+    `.hotel-filter .suppliers-filter .el-checkbox:has(img[alt$="/${supplierId}.svg"]), `
+    + `.hotel-filter .suppliers-filter .el-checkbox:has(img[alt="${supplierId}.svg"])`,
   // Hotel info bar date text (check-in and check-out displayed as "MMM dd-MMM dd")
   HOTEL_INFO_BAR_DATES: '.hotel-info-bar .date-room-wrapper p:first-of-type',
   // Hotel info bar destination/location name (e.g. "New York, NY, USA, (NYC)")
@@ -552,13 +563,16 @@ class HotelLevelResultsPage {
    * @param {string} supplierId - Supplier ID as it appears in the SVG filename (e.g. "EXPEDIARAPID")
    * @param {object} [options]
    * @param {number} [options.timeout=15000]
+   * @param {boolean} [options.exact=false] - Match the whole icon filename rather than a substring
+   *   of it, so "AMADEUS" does not also match the "AMADEUS-<chain>" aggregator logos
    * @returns {Promise<boolean>} True if at least one matching supplier logo is visible
    */
-  async isSupplierLogoVisible(supplierId, { timeout = 15000 } = {}) {
+  async isSupplierLogoVisible(supplierId, { timeout = 15000, exact = false } = {}) {
     if (!supplierId || typeof supplierId !== "string") {
       throw new Error(`supplierId must be a non-empty string, got: ${typeof supplierId}`);
     }
-    const logo = this.page.locator(SELECTORS.SUPPLIER_LOGO_IMG(supplierId)).first();
+    const selector = exact ? SELECTORS.SUPPLIER_LOGO_IMG_EXACT : SELECTORS.SUPPLIER_LOGO_IMG;
+    const logo = this.page.locator(selector(supplierId)).first();
     try {
       await logo.waitFor({ state: "visible", timeout });
       return true;
@@ -916,11 +930,14 @@ class HotelLevelResultsPage {
    * @param {string} supplierId - The supplier ID (e.g. "BOOKINGCOM", "AMADEUS")
    * @param {object} [options]
    * @param {number} [options.timeout=10000]
+   * @param {boolean} [options.exact=false] - Match the whole icon filename rather than a substring
+   *   of it, so "AMADEUS" does not also match the "AMADEUS-<chain>" aggregator logos
    * @returns {Promise<boolean>}
    */
-  async isSupplierFilterVisible(supplierId, { timeout = 10000 } = {}) {
+  async isSupplierFilterVisible(supplierId, { timeout = 10000, exact = false } = {}) {
     if (!supplierId || typeof supplierId !== 'string') throw new Error('supplierId must be a non-empty string');
-    const item = this.page.locator(SELECTORS.SUPPLIER_FILTER_ITEM(supplierId)).first();
+    const selector = exact ? SELECTORS.SUPPLIER_FILTER_ITEM_EXACT : SELECTORS.SUPPLIER_FILTER_ITEM;
+    const item = this.page.locator(selector(supplierId)).first();
     try {
       await item.waitFor({ state: 'visible', timeout });
       return true;
