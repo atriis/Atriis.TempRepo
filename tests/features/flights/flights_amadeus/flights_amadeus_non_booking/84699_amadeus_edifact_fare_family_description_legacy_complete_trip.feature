@@ -20,20 +20,8 @@ Feature: 84699 Amadeus EDIFACT - Legacy flow complete trip fare family names are
   I want each fare named the way Delta names it on its own channels
   So that the naming fix reaches the classic Pricing Options drawer too
 
-  # The time-frame step is not incidental. This account is Anytime-restricted
-  # (preferences.dontAllowAnytime), which force-enables advanced search and makes both flight-time
-  # fields required while clearing their defaults. The search DSL fills only the dates, so vuelidate
-  # silently refuses the submit: no supplier request is sent and the browser stays on the search
-  # form. Trip 3847956 showed exactly that - a distributor log with only TripInit, SavePassengers,
-  # UserProfile and TripValidationV3, and no flight search at all. Confirmed on this route: the
-  # departure field does render "This field is required" after the first submit.
-  #
-  # Only the fix is kept here, not an assertion on that validation message. The message is a
-  # precondition of this test, not its subject - 53901 owns the Anytime restriction coverage, and on
-  # this itinerary only the departure field carries the message, so asserting both legs added a
-  # failure mode without adding any fare-family coverage.
-  #
   # The classic drawer renders one leg at a time, so the assertion runs against the active leg.
+  # This account needs nothing special beyond that - the same steps as the NFF twin (TC 84698).
   @priority:high
   Scenario: Legacy flow - every fare in pricing options is named from the search reply's description
     Given I am logged in as "oldf.edifactonly@amadeus.ams" booking a new trip

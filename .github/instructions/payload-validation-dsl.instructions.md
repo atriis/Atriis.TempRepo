@@ -19,6 +19,7 @@ applyTo: '**/*.feature, **/payload_validation.steps.js, **/PayloadValidation.js'
 - ✅ XML and JSON validation with loose structure matching
 - ✅ Request counting — prove a supplier call was **not** re-sent
 - ✅ Request-type inventory — prove a supplier call was **never sent at all**
+- ✅ Repeated-block field pairs — read what each occurrence of a block carries, to compare a screen against the supplier's own data
 
 ## Supported Step Definitions
 
@@ -224,6 +225,40 @@ Then the captured "request" types do not contain request type "Sabre NDC Flight 
 
 Canonical example: `tests/features/flights/flights_sabre/flights_sabre_non_booking/79477_sabre_ndc_no_active_airlines_no_ndc_search_request.feature`
 
+### 8. Repeated-Block Field Pairs — Compare a Screen Against the Supplier's Own Data
+
+Use when the expectation cannot be written in Gherkin because it depends on what the supplier sent, per item. ADO
+82771 is the case: the Amadeus EDIFACT fare family label must come from `familyInformation/description`, but a family
+filed WITHOUT a description correctly keeps its `fareFamilyname`, so only the reply can say which applies.
+
+```gherkin
+# After the search, BEFORE the screen under test renders
+When I capture the fare families described in "Amadeus4.Fare_MasterPricerTravelBoardSearch9" from Storage
+
+# Then the domain assertion compares the screen against what was captured
+Then every brand card name on the "outbound" leg should match its fare family description
+```
+
+- **Capture the RESPONSE, not the request.** The description exists only in the reply. A MasterPricer *request*
+  carries the fare family criteria the OBT asks for — bare codes, no descriptions — and reading it looks exactly
+  like "the supplier described nothing". `fetchAllRequestsForTrip()` takes a `source` argument for this; it defaults
+  to `"request"`, which is what the count and uniqueness assertions in §5–§7 need.
+- **Read the field from inside its block.** A MasterPricer reply carries several unrelated `description` elements, so
+  a page-wide search for one returns the wrong value. `extractXmlBlocksByTag()` scopes it.
+- **Count occurrences, never merge them.** The same key recurs across a multi-sid search and the copies need not
+  agree. Letting a described copy fill in for a bare one makes the assertion call a code a defect when showing it is
+  the correct fallback for the bare occurrence.
+- **The rule is per item, three cases:** described → the screen must show the description; present but not described
+  → the code is kept and is correct; absent from the reply → not judgeable. A fixed list of forbidden values cannot
+  express this.
+- **Watch for values that are legitimate in one item and wrong in another.** One reply described `AA|MAIN` as "MAIN
+  CABIN" beside `B6|AN` as "MAIN", so the label `Main` was American's filed code and JetBlue's correct name at once.
+  Screen text carries no key, so such values cannot be judged — skip them rather than flag them.
+- **Fail when the block is absent** instead of passing over an empty set.
+
+Canonical example:
+`tests/features/flights/flights_amadeus/flights_amadeus_non_booking/84698_amadeus_edifact_fare_family_display_name_from_description.feature`
+
 ## Scenario Identifiers (world context)
 
 These are automatically captured during booking flow:
@@ -310,6 +345,7 @@ Error: Expected content not found in any of the 3 captured request payload(s) fo
 - ✅ Use multi-line JSON for full structure validation
 - ✅ Use the request-count steps for "must not be re-sent" requirements, always with an anchor
 - ✅ Use the request-type inventory steps for "never sent at all" requirements, with a `*` suffix on the type
+- ✅ Capture repeated-block field pairs when the expectation depends on what the supplier sent per item — and capture the **response**
 
 ### DON'T
 - ❌ Skip the capture step before assertions (content **and** request count)

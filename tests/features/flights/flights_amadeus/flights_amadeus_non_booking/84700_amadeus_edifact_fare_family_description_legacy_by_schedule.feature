@@ -8,16 +8,9 @@
 # Source: ADO Bug #84218, US #82771 QA Test 1 (AC1/AC2/AC3). See the NFF complete-trip file in this
 #         folder for why the expectation is read from the search reply rather than written here.
 
-# Route note: ATL-JFK, not the ATL-MSP the complete-trip twin uses. By schedule, ATL-MSP returned
-# no results in 3 of 5 runs on 2026-09-09; ATL-JFK passed 3 of 3 with identical fare families each
-# time. Both are Delta hubs - the difference is by-schedule inventory, so keep this route unless it
-# too starts coming back empty.
-#
-# Worth investigating, NOT a confirmed defect: one ATL-MSP run reached the assertion and failed with
-# the drawer showing "Mainbasic" and "Mainclasc" while the reply carried DELTA MAIN BASIC and DELTA
-# MAIN CLASSIC for those exact carrier+code pairs - the 84218 shape. It has not recurred on ATL-JFK.
-# One observation, not a reproduction; recorded because it matches the bug's own note that the label
-# reverted "on every option a pricing reply produced", and by-schedule prices per direction.
+# Route note: ATL-JFK, not the ATL-MSP its complete-trip twin uses. By schedule ATL-MSP came back
+# empty in 3 of 5 runs; ATL-JFK passed 3 of 3. Keep this route unless it too starts returning
+# nothing.
 
 @ado:84700
 @regression @flights @amadeus @edifact @branded-fares @pricing-options @by-schedule

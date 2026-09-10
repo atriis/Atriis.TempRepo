@@ -18,16 +18,12 @@ Feature: 84698 Amadeus EDIFACT - Fare family names are the airline's, not the fi
   I want each fare named the way Delta names it on its own channels
   So that I can recognise what I am buying instead of reading an internal filing code
 
-  # The expectation is read from the reply rather than written here, and that is the whole point.
-  # AC3/R2 says a family the airline files WITHOUT a description must show its code Title-Cased, so
-  # "Mainextra" on screen is correct in that case and a defect in the other. A fixed list of
-  # forbidden codes cannot tell those apart and would report a false regression, so the capture step
-  # decides per fare family. Measured on staging, one ATL-MSP reply described six families across
-  # four carriers (F9, DL, AA, UA) - hence the carrier is part of the key, since a filed code is
-  # unique only per airline.
+  # The expectation comes from the reply, not from this file: AC3/R2 keeps the filed code when a
+  # family has no description, so only the payload can say whether a code on screen is a defect.
+  # Families are keyed on carrier+code because one reply mixed four carriers - see docs/
+  # PayloadValidation.md section 2.10.9.
   #
-  # ATL-MSP: both are Delta hubs, so inventory is dense enough for a stable fare family ladder.
-  # The bug's own ATL-DTW search did not reach the supplier on staging in 2 of 3 attempts.
+  # ATL-MSP because both are Delta hubs; the bug's own ATL-DTW search was unreliable on staging.
   @priority:high
   Scenario: New flight flow - every brand card is named from the search reply's description
     Given I am logged in as "nff.edifactonly@amadeus.ams" booking a new trip

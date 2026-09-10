@@ -442,6 +442,35 @@ Distributor logs are published asynchronously, so a single read can land mid-bur
 - **Settling never fails on timeout** — it warns and uses the last read, so an unusually slow log publication could in theory yield a stale count. Check the warning in the logs when a request-count test behaves oddly.
 - **Disabled by the global switch** — with `PAYLOAD_VALIDATION_ENABLED=false` both steps silently no-op, like all other payload steps.
 
+### 2.10.9 `captureFareFamilyDescriptions()` — read a repeated block's field pairs
+
+Reads every `familyInformation` node from the Amadeus EDIFACT search reply and stores what each one carries, so a later UI assertion can be compared against the supplier's own data rather than against a list written in Gherkin. Guards **ADO 82771 / 84218**.
+
+- **Signature:** `(world, requestType)` — pass `"Amadeus4.Fare_MasterPricerTravelBoardSearch9"`.
+- **Step:** `When I capture the fare families described in "{requestType}" from Storage`
+- **Stores** `world.capturedFareFamilies`: one entry per `carrier|fareFamilyname`, each with `description` (or `null`), plus `describedCount` and `bareCount`.
+- **Reads the RESPONSE, not the request.** The description exists only in the reply; a MasterPricer *request* carries the fare family criteria the OBT asks for — bare codes, no descriptions — which reads as "nothing was described". This is why `fetchAllRequestsForTrip()` now takes a `source` argument (§3); it defaults to `"request"` so the count and uniqueness assertions are unchanged.
+- **Uses the block extractor, not a bare `<description>` search.** A MasterPricer reply carries several unrelated `description` elements, so the field is only read from inside a `familyInformation` block.
+- **Occurrences are counted, never merged.** The same `carrier|code` recurs across a multi-sid search and the copies need not agree. Merging (letting a described copy fill in for a bare one) would make the consumer call a code a defect when showing it is the correct fallback for the bare occurrence.
+- **Fails when no node is found**, rather than passing over an empty set — that would clear a trip whose content never offered branded fares.
+
+**How the consumer judges it** (`FlightResults.verifyBrandNamesMatchFareFamilyDescriptions`), per family, never in bulk:
+
+| Family in the reply | Correct UI label | Assertion |
+|---|---|---|
+| has a `description` | the description, Title-Cased | flags the code if it appears |
+| has no `description` | the `fareFamilyname`, Title-Cased | not flagged |
+| absent from the reply | not judgeable | logged only |
+| `description` equals its own code | either | excluded, they are the same string |
+| its code equals **another** family's description | not judgeable | excluded as ambiguous |
+| described in one occurrence, bare in another | not judgeable | excluded as ambiguous |
+
+The last two exclusions are not hypothetical. One reply described `AA|MAIN` as "MAIN CABIN" beside `B6|AN` as "MAIN": the label `Main` is then American's filed code and JetBlue's correct name at once, and because cards are read as bare strings with no carrier attached, flagging it failed a screen showing nothing but correct descriptions.
+
+Casing mirrors the front end exactly — `value.toLowerCase().replace(/\b(\w)/g, c => c.toUpperCase())` (`_flight-brand-builder.logic.ts`). Copy it; `split(' ')` diverges on hyphens.
+
+Canonical example: `tests/features/flights/flights_amadeus/flights_amadeus_non_booking/84698_amadeus_edifact_fare_family_display_name_from_description.feature`
+
 ---
 
 ## 3. Helper Functions (Internal)
@@ -496,6 +525,7 @@ All step definitions are in `tests/steps/payload_validation.steps.js`. Here is t
 | `Then every "{requestType}" request should have "{parameterName}" containing "{expectedValue}"` | `expectEveryRequestParameterContains()` | Assert the parameter value on every request of that type (§2.10.7) |
 | `Then every "{requestType}" request should have "{parameterName}" within "{blockTag}" containing "{expectedValue}"` | `expectEveryRequestParameterContains()` | Same, but only inside the named XML block — tells round-trip legs apart (§2.10.7) |
 | `Then every "{requestType}" request should reference a different "{attributeName}"` | `expectRequestAttributeValuesAreUnique()` | Assert no two requests share the same attribute value (§2.10.8) |
+| `When I capture the fare families described in "{requestType}" from Storage` | `captureFareFamilyDescriptions()` | Read each `familyInformation` node's carrier/code/description from the search **response**, for a later UI comparison (§2.10.9) |
 
 ---
 
