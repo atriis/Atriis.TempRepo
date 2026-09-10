@@ -1651,6 +1651,20 @@ class SearchPage {
   }
 
   /**
+   * The trip-type radio labels of the active product's search widget, returned as a locator so
+   * callers can assert on them instead of only clicking them.
+   *
+   * SELECTORS.TRIP_TYPE_RADIO_LABELS was until now consumed only by clickTripType() — an action.
+   * A DSL assertion must never touch a selector constant, so reaching these labels from the DSL
+   * layer requires this accessor.
+   *
+   * @returns {import('@playwright/test').Locator}
+   */
+  getTripTypeRadioLabels() {
+    return this.page.locator(SELECTORS.TRIP_TYPE_RADIO_LABELS);
+  }
+
+  /**
  * Clicks a trip type radio button by label text (e.g., "One Way", "Round Trip").
  *
  * Waits until the trip type radio labels are visible before attempting

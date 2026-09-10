@@ -2,6 +2,7 @@ const { expect } = require("@playwright/test");
 const { getPageObject } = require("@utils/pageObjectCache");
 const { SearchPage } = require("@pages/SearchPage");
 const { generateRandomGuestData } = require("@utils/data/generateRandomGuestData.js");
+const config = require("@config/config");
 const logger = require("@utils/logger").child("Search");
 
 // Builds a DD/MM/YYYY date of birth for an exact age (guest form's DOB input format), rather than
@@ -1767,12 +1768,54 @@ const Search = {
   },
 
   /**
-   * Asserts the main search button is NOT rendered on the search page — the privilege check for a
-   * role that may only send travel requests.
+   * Navigates to the in-trip SEARCH page (/trips/{tripId}) of an explicitly named trip.
    *
-   * trip-search-control.vue gates the button with `v-if="canUseOnlineSearch"`, so a restricted role
-   * gets no element at all rather than a disabled one — absence, not a disabled state, is what has
-   * to be asserted.
+   * The path gets NO /cart suffix - router/index.ts (108, 299) maps /trips/:tripId to
+   * trip-index.vue, the in-trip search page with the product tabs and trip-type radios, which is
+   * the page this scenario checks (Cart.navigateToTrip can only reach /trips/{id}/cart).
+   *
+   * The url is built from config.baseUrl rather than the current page's origin, mirroring
+   * Cart.navigateToTrip: taking the id as a parameter and the origin from config removes the hidden
+   * precondition that the browser already sits on a trip page, so the step works as an entry point
+   * as well as mid-scenario.
+   *
+   * @param {import('playwright').Page} page
+   * @param {number} tripId - The trip whose in-trip search page should be opened.
+   * @returns {Promise<{tripId: number, url: string}>}
+   */
+  async navigateToTripSearchPage(page, tripId) {
+    if (!page) {
+      throw new Error('[Search.navigateToTripSearchPage] "page" is required.');
+    }
+    if (typeof tripId !== 'number' || tripId <= 0) {
+      throw new Error(
+        `[Search.navigateToTripSearchPage] "tripId" must be a positive number, got: ${tripId}`
+      );
+    }
+
+    const url = `${config.baseUrl}/trips/${tripId}`;
+
+    logger.debug('[Search.navigateToTripSearchPage] Navigating to the in-trip search page', { tripId, url });
+    await page.goto(url, { waitUntil: 'domcontentloaded' });
+
+    // Readiness gate: domcontentloaded only says the document arrived, not that the SPA rendered the
+    // trip search control - anything asserted before this would be racing the app.
+    await getPageObject(page, SearchPage).waitForSearchControl();
+
+    logger.info('[Search.navigateToTripSearchPage] In-trip search page loaded', { tripId, url });
+    return { tripId, url };
+  },
+
+  /**
+   * Asserts the main search button is NOT rendered on the search page.
+   *
+   * trip-search-control.vue:26 gates the button with `v-if="canUseOnlineSearch && !isTripLocked"`,
+   * so the button is absent — not merely disabled — for BOTH reasons a scenario may check here:
+   * a role that may only send travel requests (no online-search privilege), and a completed /
+   * locked trip that can no longer be added to. A rendered button therefore means EITHER the
+   * online-search privilege is still granted OR the app no longer treats the trip as locked, and
+   * the failure message must name both so a locked-trip regression is not misdiagnosed as a
+   * privilege one.
    *
    * The control bar is awaited FIRST. A count-of-zero on a page that has not rendered yet is
    * satisfied instantly, so without that anchor this assertion would pass for a user who does hold
@@ -1793,19 +1836,59 @@ const Search = {
     const searchButtonCount = await searchPage.getSearchControlSearchButton().count();
 
     // Thrown rather than asserted through expect(): this repo's Playwright discards expect's
-    // custom message, and the bare "Expected: 0 Received: 1" diff would not say WHICH privilege
-    // the rendered button proves is still granted.
+    // custom message, and the bare "Expected: 0 Received: 1" diff would not say WHICH of the two
+    // gates the rendered button proves is still open.
     if (searchButtonCount !== 0) {
       throw new Error(
         `[Search.verifySearchButtonNotVisible] The search page renders ${searchButtonCount} main ` +
-        `Search button(s) for a role that may only send travel requests — expected none. ` +
-        `trip-search-control.vue renders it only when canUseOnlineSearch is true, so a present ` +
-        `button means the online-search privilege is still granted to this user.`
+        `Search button(s) — expected none. trip-search-control.vue:26 renders it only when ` +
+        `canUseOnlineSearch && !isTripLocked, so a present button means EITHER this user still ` +
+        `holds the online-search privilege (a role/permission regression) OR the app no longer ` +
+        `treats this trip as locked (a locked/completed-trip regression).`
       );
     }
 
     logger.info('[Search.verifySearchButtonNotVisible] No Search button on the search control — online search is blocked');
     return { searchButtonCount };
+  },
+
+  /**
+   * Asserts a trip-type option (e.g. "Round trip") is displayed on the in-trip search form.
+   *
+   * The options come from flight-search-inputs.vue:7-17, which renders one el-radio per trip type
+   * with its label taken from the i18n bundle (the round-trip entry is the `flight.roundTrip` key).
+   * The assertion matches on that visible label text rather than on Element Plus's auto-generated
+   * radio ids, which change on every render.
+   *
+   * No extra readiness anchor is needed: expect().toBeVisible auto-waits, and
+   * navigateToTripSearchPage already gates on SearchPage.waitForSearchControl().
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} optionLabel - Visible trip-type label to look for, e.g. "Round trip".
+   */
+  async verifyTripTypeOptionDisplayed(page, optionLabel) {
+    if (!page) {
+      throw new Error('[Search.verifyTripTypeOptionDisplayed] "page" is required.');
+    }
+    if (typeof optionLabel !== 'string' || optionLabel.trim() === '') {
+      throw new Error(
+        `[Search.verifyTripTypeOptionDisplayed] "optionLabel" must be a non-empty string, got: ${optionLabel}`
+      );
+    }
+
+    logger.debug('[Search.verifyTripTypeOptionDisplayed] Asserting a trip-type option is displayed', { optionLabel });
+    const searchPage = getPageObject(page, SearchPage);
+
+    await expect(
+      searchPage.getTripTypeRadioLabels().filter({ hasText: optionLabel }).first(),
+      `Expected the trip search form to display the "${optionLabel}" trip type option. The ` +
+      'trip-type radios are rendered by flight-search-inputs.vue:7-17 and labelled from i18n ' +
+      '(the round-trip option comes from the flight.roundTrip key), so a missing option means ' +
+      'either the search widget for the active product tab never rendered, or the label text ' +
+      'changed / is being served in a different locale than the one under test.',
+    ).toBeVisible({ timeout: 30000 });
+
+    logger.info('[Search.verifyTripTypeOptionDisplayed] Trip-type option is displayed', { optionLabel });
   },
 
   /**

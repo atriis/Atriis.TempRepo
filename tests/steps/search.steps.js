@@ -513,7 +513,7 @@ Given(
 // ===== Restricted-role privilege checks on the search page (test 55155) =====
 
 Then("the search button should not be visible", async function () {
-  logger.info("Verifying the main search button is not rendered for this role");
+  logger.info("Verifying the main search button is not rendered on the search page");
   await Search.verifySearchButtonNotVisible(this.page);
 });
 
@@ -521,3 +521,16 @@ Then("the Travel request button should be visible", async function () {
   logger.info("Verifying the Travel request button is visible on the search page");
   await Search.verifyTravelRequestButtonVisible(this.page);
 });
+
+When("I navigate to the search page of trip {int}", async function (tripId) {
+  logger.info("Navigating to the trip search page", { tripId });
+  await Search.navigateToTripSearchPage(this.page, tripId);
+});
+
+Then(
+  "the trip search form should display the {string} trip type option",
+  async function (optionLabel) {
+    logger.info("Verifying the trip search form displays a trip type option", { optionLabel });
+    await Search.verifyTripTypeOptionDisplayed(this.page, optionLabel);
+  }
+);

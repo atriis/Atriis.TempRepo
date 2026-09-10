@@ -16234,6 +16234,97 @@ const Cart = {
     return { verified: true, cardPickupLineText, drawerPickupLineText };
   },
 
+  // ===== Locked trip (test 55667) =====
+
+  /**
+   * Asserts the "Add more services" product carousel is NOT rendered in the trip cart - the
+   * locked-trip guard: a completed trip must offer no way to add another product to it.
+   *
+   * trip-cart.vue:137 gates the whole block with
+   * `v-if="!isTripCancelled && !isPreTripApproval && !isTripLocked"`, so a locked trip gets no
+   * element at all rather than a hidden one - absence, not hidden-ness, is what has to be asserted.
+   *
+   * The locked banner is awaited FIRST. A count-of-zero on a cart that has not finished rendering
+   * is satisfied instantly, so without that anchor this assertion would green-light a trip whose
+   * carousel is in fact present. The banner is the right anchor because it is the positive render
+   * signal for the very state under test - it and the carousel are gated on the same isTripLocked
+   * flag - so it proves BOTH that the cart rendered AND that the app resolved this trip as locked.
+   *
+   * @param {import('playwright').Page} page
+   * @returns {Promise<{carouselCount: number}>}
+   */
+  async verifyAddProductCarouselNotVisible(page) {
+    if (!page) {
+      throw new Error('[Cart.verifyAddProductCarouselNotVisible] "page" is required.');
+    }
+
+    logger.debug('[Cart.verifyAddProductCarouselNotVisible] Asserting the add-product carousel is absent on a locked trip');
+    const cartPage = getPageObject(page, CartPage);
+
+    await cartPage.waitForTripLockedMessage();
+    const carouselCount = await cartPage.getAddProductCarousel().count();
+
+    // Thrown rather than asserted through expect(): this repo's Playwright discards expect's custom
+    // message, and a bare "Expected: 0 Received: 1" diff would not say WHICH guard failed.
+    if (carouselCount !== 0) {
+      throw new Error(
+        `[Cart.verifyAddProductCarouselNotVisible] The trip cart renders ${carouselCount} ` +
+        `add-product carousel(s) on a trip that is supposed to be locked - expected none. ` +
+        `trip-cart.vue:137 renders the "Add more services" block only when ` +
+        `!isTripCancelled && !isPreTripApproval && !isTripLocked, so a rendered carousel means the ` +
+        `app does not consider this trip locked.`
+      );
+    }
+
+    logger.info('[Cart.verifyAddProductCarouselNotVisible] No add-product carousel in the cart - adding products is blocked');
+    return { carouselCount };
+  },
+
+  /**
+   * Asserts the trip cart's locked-trip banner reads exactly the expected message.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} expectedMessage - Full banner copy, e.g. "Adding new products or making changes
+   *   is no longer possible for completed trips. To add products, please Start a New Trip"
+   * @returns {Promise<{message: string}>}
+   */
+  async verifyTripLockedMessage(page, expectedMessage) {
+    if (!page) {
+      throw new Error('[Cart.verifyTripLockedMessage] "page" is required.');
+    }
+    if (!expectedMessage || typeof expectedMessage !== 'string') {
+      throw new Error(
+        `[Cart.verifyTripLockedMessage] "expectedMessage" must be a non-empty string, got: ${typeof expectedMessage} (${JSON.stringify(expectedMessage)})`,
+      );
+    }
+
+    logger.debug('[Cart.verifyTripLockedMessage] Reading the locked-trip banner', { expectedMessage });
+    const cartPage = getPageObject(page, CartPage);
+
+    // normalizeText on BOTH sides is mandatory, not cosmetic: the banner is two DOM nodes - the
+    // `{{ $t('trip.addingProductsLocked') }}` interpolation plus a sibling
+    // `<span>{{ $t('btn.startANewTrip') }}</span>` on its own template line (trip-cart.vue:25-26) -
+    // so the rendered text carries a newline and indentation between "please" and "Start a New
+    // Trip". Comparing raw text would always fail.
+    const actual = normalizeText(await cartPage.getTripLockedMessageText());
+    const expected = normalizeText(expectedMessage);
+
+    // Exact equality rather than contains(): the original test compared the whole banner, and a
+    // substring check would still pass if the app dropped the "Start a New Trip" call to action.
+    if (actual !== expected) {
+      throw new Error(
+        `[Cart.verifyTripLockedMessage] The trip cart's locked-trip banner does not read as expected.\n` +
+        `  expected: "${expected}"\n` +
+        `  actual:   "${actual}"\n` +
+        `(both whitespace-normalized). Either the trip is locked for a different reason than the ` +
+        `test assumes, or the banner copy (trip.addingProductsLocked + btn.startANewTrip) changed.`
+      );
+    }
+
+    logger.info('[Cart.verifyTripLockedMessage] Locked-trip banner matches the expected message', { message: actual });
+    return { message: actual };
+  },
+
 };
 
 

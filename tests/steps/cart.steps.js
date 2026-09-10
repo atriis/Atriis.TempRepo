@@ -2432,6 +2432,20 @@ When("I navigate to trip {int}", async function (tripId) {
 });
 
 // ========================================
+// LOCKED TRIP (test 55667)
+// ========================================
+
+Then("the add product carousel should not be displayed in the trip cart", async function () {
+  logger.info("Verifying the add-product carousel is not rendered on a locked trip");
+  await Cart.verifyAddProductCarouselNotVisible(this.page);
+});
+
+Then("the locked trip message {string} should be displayed in the trip cart", async function (message) {
+  logger.info("Verifying the trip cart message", { message });
+  await Cart.verifyTripLockedMessage(this.page, message);
+});
+
+// ========================================
 // EXPIRED QUOTE â€” CHECK AVAILABILITY
 // ========================================
 

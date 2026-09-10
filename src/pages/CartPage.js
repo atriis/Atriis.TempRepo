@@ -1005,6 +1005,29 @@ const SELECTORS = {
   TRIP_CANCELLATION_QUOTE_NAME: '.cancel-trip-modal .quote-details-container .quote-details h2.bold-text',
 
 
+  // The whole "Add more services" product carousel in the trip cart, as a CONTAINER rather than one
+  // of the product buttons below. trip-cart.vue:137 wraps the entire block in
+  // `v-if="!isTripCancelled && !isPreTripApproval && !isTripLocked"`, so on a locked trip the
+  // element is absent from the DOM rather than hidden - a visibility check would be asserting on
+  // nothing. Scoped to `.trip-cart-container` (trip-cart.vue:20) because the `add-product-list`
+  // class is also used on home-page.vue:30,36. No data-testid exists on this component.
+  ADD_PRODUCT_CAROUSEL: '.trip-cart-container .product-carousel.add-product-list',
+
+  // The locked-trip banner in the trip cart. trip-cart.vue:23 renders
+  // `<app-msg v-if="isTripLocked" iconName="lock" isBold customClass="info-theme">` through
+  // app-msg.vue:3-8's text-slot branch:
+  //   <div class="app-msg app-msg-text ... info-theme">
+  //     <span class="material-symbols-outlined">lock</span>
+  //     <p class="app-msg-text pt-1 is-bold">...</p>
+  //   </div>
+  // The OUTER div carries the SAME `app-msg-text` class as the paragraph, so the `p.` prefix is
+  // what disambiguates them; and the icon span's ligature text is the literal word "lock", which
+  // would pollute any text read off the container. The `:has(... :text-is("lock"))` filter pins the
+  // banner to the lock-icon app-msg, so a quote card rendering its own info-theme app-msg inside
+  // `.trip-cart-container` cannot be matched instead.
+  TRIP_LOCKED_MESSAGE:
+    '.trip-cart-container .app-msg.info-theme:has(span.material-symbols-outlined:text-is("lock")) p.app-msg-text',
+
   // Add product from cart product carousel
   ADD_HOTEL_CAROUSEL_BUTTON: '.product-carousel button.product-btn:has-text("Hotel")',
   ADD_FLIGHT_CAROUSEL_BUTTON: '.product-carousel button.product-btn:has-text("Flight")',
@@ -14445,6 +14468,57 @@ class CartPage {
         + `block. Original: ${error.message}`,
       );
     }
+  }
+
+  /**
+   * The "Add more services" product carousel in the trip cart.
+   *
+   * Returned as a locator rather than a wait or an assertion so callers can assert its ABSENCE:
+   * trip-cart.vue:137 renders the block only for a trip that is not cancelled, not pending
+   * pre-trip approval and not locked, so on a locked trip there is no element to be visible or
+   * hidden. Mirrors SearchPage.getSearchControlSearchButton.
+   *
+   * @returns {import('@playwright/test').Locator}
+   */
+  getAddProductCarousel() {
+    return this.page.locator(SELECTORS.ADD_PRODUCT_CAROUSEL);
+  }
+
+  /**
+   * Waits for the locked-trip banner ("Adding new products or making changes is no longer
+   * possible...") to render in the trip cart.
+   *
+   * @param {{timeout?: number}} [options]
+   */
+  async waitForTripLockedMessage({ timeout = 30000 } = {}) {
+    try {
+      await this.page
+        .locator(SELECTORS.TRIP_LOCKED_MESSAGE)
+        .first()
+        .waitFor({ state: "visible", timeout });
+    } catch (error) {
+      throw new Error(
+        "[CartPage.waitForTripLockedMessage] The locked-trip banner "
+        + `(${SELECTORS.TRIP_LOCKED_MESSAGE}) did not render within ${timeout}ms. The trip cart may `
+        + "still be loading, or the app does not consider this trip locked - trip-cart.vue gates the "
+        + `banner on isTripLocked. Original: ${error.message}`,
+      );
+    }
+  }
+
+  /**
+   * Reads the locked-trip banner text.
+   *
+   * Returned UNTRIMMED and un-normalized on purpose: the banner is built from two DOM nodes on
+   * separate template lines, so the raw text carries a newline plus indentation in the middle.
+   * Collapsing that is the DSL's job - the page layer only reports what the DOM says.
+   *
+   * @param {{timeout?: number}} [options]
+   * @returns {Promise<string>}
+   */
+  async getTripLockedMessageText({ timeout = 30000 } = {}) {
+    await this.waitForTripLockedMessage({ timeout });
+    return await this.page.locator(SELECTORS.TRIP_LOCKED_MESSAGE).first().innerText();
   }
 
 }
