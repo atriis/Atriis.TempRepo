@@ -2144,14 +2144,29 @@ const PayloadValidation = {
         const key = `${carrier.toUpperCase()}|${code.toUpperCase()}`;
         const existing = seen.get(key);
 
-        // The same family repeats across a multi-sid search. Keep the first entry, but let a
-        // described copy fill in for one that arrived bare, so a later bare copy cannot mask it.
+        // The same family repeats across a multi-sid search, and the occurrences need not agree.
+        // Count described and bare occurrences separately instead of merging them: a family that
+        // is described in one reply and bare in another cannot be judged from a card label, since
+        // the label carries nothing that says which occurrence it came from. Merging (letting a
+        // described copy fill in for a bare one) would call the code a defect when showing it is
+        // the correct AC3/R2 fallback for the bare occurrence.
         if (existing) {
-          if (!existing.description && description) existing.description = description;
+          if (description) {
+            existing.describedCount += 1;
+            if (!existing.description) existing.description = description;
+          } else {
+            existing.bareCount += 1;
+          }
           continue;
         }
 
-        const family = { carrier: carrier || null, code, description: description || null };
+        const family = {
+          carrier: carrier || null,
+          code,
+          description: description || null,
+          describedCount: description ? 1 : 0,
+          bareCount: description ? 0 : 1,
+        };
         seen.set(key, family);
         families.push(family);
       }

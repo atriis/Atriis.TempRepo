@@ -16,10 +16,17 @@
 # Reproduced 4 of 4 runs on 2026-09-09/10, ATL-JFK, carrier Delta, nff.edifactonly@amadeus.ams:
 # EVERY brand card shows the filed code, none shows a description -
 #   names=["Mainbasic","Mainbasic","Mainclasc","Mainclasc","Mainextra","Mainclasc","Mainextra","Mainclasc"]
-# while the same trip's Fare_MasterPricerTravelBoardSearch9 reply described 6 families, including
-# DL|MAINBASIC -> "DELTA MAIN BASIC" and DL|MAINCLASC -> "DELTA MAIN CLASSIC". "Mainextra" is NOT
-# flagged: no description is filed for it, so its Title-Cased code is the correct AC3/R2 fallback -
-# which is what shows the assertion is discriminating, not blanket-rejecting codes.
+#
+# The description IS available, checked per occurrence and not per merged family. Auditing every
+# familyInformation node of trip 3850285 (7 MasterPricer replies, 11 nodes) gave zero nodes without
+# a description: DL|MAINBASIC described twice as "DELTA MAIN BASIC", DL|MAINCLASC three times as
+# "DELTA MAIN CLASSIC", AA|MAIN three times, UA|ECONOMY three times. So no card can be showing the
+# code as the AC3/R2 fallback - the fallback case does not arise on this trip.
+#
+# "Mainextra" is NOT flagged, and for a third reason worth keeping straight: MAINEXTRA does not
+# appear ANYWHERE in the reply, so it is not judgeable at all - which is different from a family
+# that is present but filed without a description. Either way the code is not a defect, and the
+# test not flagging it is what shows it discriminates rather than blanket-rejecting codes.
 #
 # The contrast isolates it to the search mode: the SAME account and carrier in complete trip shows
 # "Delta Main Basic" / "Delta Main Classic" correctly (see the complete-trip file in this folder).

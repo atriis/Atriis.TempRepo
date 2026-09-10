@@ -3913,12 +3913,19 @@ async verifyFareComponentTextColorInPricingOptions(page, expectedColor, index = 
     // then both AA's filed code and JetBlue's correct name. Cards are read as bare strings with no
     // carrier attached, so those cases cannot be judged and must be skipped - flagging them failed
     // a screen showing nothing but correct descriptions.
+    // Skipped too: a family the reply describes in one occurrence and leaves bare in another. A
+    // card label says nothing about which occurrence produced it, so showing the code could be the
+    // correct AC3/R2 fallback for the bare one.
     const ambiguous = [];
     const forbidden = new Map();
     for (const family of described) {
       const code = titleCaseBrandName(family.code);
       if (legitimateLabels.has(code)) {
-        ambiguous.push(`${family.carrier || '?'}|${family.code}`);
+        ambiguous.push(`${family.carrier || '?'}|${family.code} (code doubles as another description)`);
+        continue;
+      }
+      if (family.bareCount > 0) {
+        ambiguous.push(`${family.carrier || '?'}|${family.code} (${family.describedCount} described, ${family.bareCount} bare)`);
         continue;
       }
       forbidden.set(code, family);
