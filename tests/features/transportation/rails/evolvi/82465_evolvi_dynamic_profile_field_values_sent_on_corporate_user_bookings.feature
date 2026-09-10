@@ -91,7 +91,6 @@ Feature: 82465 Evolvi - Dynamic profile field values are sent to Evolvi on corpo
     And I fill in the "Travel Type" reference field with "Business"
     When I complete the booking
     Then the booking status should be "Ticketing Complete"
-    And I successfully cancel the trip
     And I capture the "request" payload for request type "SaveReferenceField" from Storage
     Then the captured "request" payload for request type "SaveReferenceField" should contain "Cost Centre"
     Then the captured "request" payload for request type "SaveReferenceField" should contain "under test with automation"

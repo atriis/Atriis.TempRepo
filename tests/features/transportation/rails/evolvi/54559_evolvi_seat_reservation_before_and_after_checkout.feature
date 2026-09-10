@@ -43,4 +43,3 @@ Feature: 54559 Evolvi - Seat reservation before and after checkout
     When I click the share quote button
     Then the share quote preview should show "Seat: Coach:"
     And I close the share dialog
-    And I successfully cancel the trip

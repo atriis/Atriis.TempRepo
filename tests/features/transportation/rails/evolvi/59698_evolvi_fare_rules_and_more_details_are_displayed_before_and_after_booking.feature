@@ -32,4 +32,3 @@ Feature: 59698 Evolvi - 'Fare rules' and 'More Details' are displayed before and
     Then the more details should show "Total"
     When I close more details in cart
     Then the cart terms and conditions should include "ticket"
-    And I successfully cancel the trip

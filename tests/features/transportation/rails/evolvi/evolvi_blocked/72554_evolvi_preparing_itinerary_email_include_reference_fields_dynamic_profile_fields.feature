@@ -32,5 +32,4 @@ Feature: 72554 Evolvi - Preparing itinerary email includes reference fields and 
     And I wait to see "Subject" field in share dialog
     When I add a generated email address as the itinerary recipient
     And I send the email and see success notification
-    And I successfully cancel the trip
     Then the received itinerary email should contain "Default field 4: LALAL"

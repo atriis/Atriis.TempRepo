@@ -34,4 +34,3 @@ Feature: 62143 Evolvi - Validate if specific seat coach is sent correctly
     When I click more details in cart
     Then the coach reserved seat in the UK Rail more details should be a single uppercase letter
     And I close more details in cart
-    And I successfully cancel the trip

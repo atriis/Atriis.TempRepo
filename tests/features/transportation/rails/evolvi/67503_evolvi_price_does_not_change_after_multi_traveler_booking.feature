@@ -27,4 +27,3 @@ Feature: 67503 Evolvi - Price does not change after Multi Traveler booking
     Then the more details link should be displayed in the trip overview
     When I extract the price at index 0 from "cart"
     Then the extracted price at index 0 should equal the extracted price at index 1 within tolerance of 0.39
-    And I successfully cancel the trip

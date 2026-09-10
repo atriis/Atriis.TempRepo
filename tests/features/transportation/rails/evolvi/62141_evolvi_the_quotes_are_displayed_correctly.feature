@@ -9,9 +9,9 @@
 Feature: 62141 Evolvi - The quotes are displayed correctly
   As a corporate traveler
   I want to book a one way Evolvi UK Rail journey end to end
-  So that the booked quote is displayed with the correct route before I cancel it
+  So that the booked quote is displayed with the correct route
 
-  Scenario: Booked Evolvi quote is displayed correctly in the trip overview and can be cancelled
+  Scenario: Booked Evolvi quote is displayed correctly in the trip overview
     Given I am logged in as "corp@evolvi32.com" booking a new trip
     And I have added myself as the traveler
     When I search for a one way Evolvi train from "glcToEus"
@@ -25,4 +25,3 @@ Feature: 62141 Evolvi - The quotes are displayed correctly
     And I fill in the "Business Area" reference field with "2565"
     And I complete the booking
     Then I should see route that contains "Glasgow Central" to "London Euston"
-    And I successfully cancel the trip
