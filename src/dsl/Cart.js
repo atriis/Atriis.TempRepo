@@ -5658,14 +5658,15 @@ const Cart = {
    * Assumes the special request panel is already open with text filled in.
    *
    * @param {import('playwright').Page} page
-   * @param {number} maxLength - Expected maximum number of characters
+   * @param {number} maxLength - Exact number of characters the field should hold after truncation
    */
   async verifySpecialRequestTruncatedTo(page, maxLength) {
     if (!page) throw new Error('page is required');
     if (typeof maxLength !== 'number' || maxLength < 1) throw new Error('maxLength must be a positive number, got: ' + maxLength);
     const cartPage = getPageObject(page, CartPage);
     const value = await cartPage.getSpecialRequestValue();
-    expect(value.length, `Expected special request to be truncated to ${maxLength} characters, but got ${value.length}`).toBeLessThanOrEqual(maxLength);
+    // Exact, not <=: the caller types over the limit, so a cap that is too low must fail too.
+    expect(value.length, `Expected special request to be truncated to ${maxLength} characters, but got ${value.length}`).toBe(maxLength);
   },
 
   /**
