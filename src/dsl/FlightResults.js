@@ -3900,10 +3900,33 @@ async verifyFareComponentTextColorInPricingOptions(page, expectedColor, index = 
         && titleCaseBrandName(family.description) !== titleCaseBrandName(family.code),
     );
 
+    // Every label a correctly-behaving screen may show: the description of a described family, or
+    // the code of one filed without a description (the AC3/R2 fallback).
+    const legitimateLabels = new Set(world.capturedFareFamilies.map(
+      (family) => titleCaseBrandName(family.description || family.code),
+    ));
+
     // A code whose family HAS a description must never reach the screen - that is 84218 exactly.
-    const forbidden = new Map(
-      described.map((family) => [titleCaseBrandName(family.code), family]),
-    );
+    //
+    // Except when that code doubles as another family's legitimate description. A reply can carry
+    // AA|MAIN described as "MAIN CABIN" alongside B6|AN described as "MAIN": the label "Main" is
+    // then both AA's filed code and JetBlue's correct name. Cards are read as bare strings with no
+    // carrier attached, so those cases cannot be judged and must be skipped - flagging them failed
+    // a screen showing nothing but correct descriptions.
+    const ambiguous = [];
+    const forbidden = new Map();
+    for (const family of described) {
+      const code = titleCaseBrandName(family.code);
+      if (legitimateLabels.has(code)) {
+        ambiguous.push(`${family.carrier || '?'}|${family.code}`);
+        continue;
+      }
+      forbidden.set(code, family);
+    }
+
+    if (ambiguous.length > 0) {
+      logger.warn('[FareFamilyName] Codes not judged - each doubles as another family\'s description', { ambiguous });
+    }
 
     logger.info('[FareFamilyName] Comparing labels against the search reply', {
       flow,

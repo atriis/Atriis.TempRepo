@@ -38,8 +38,13 @@ Feature: 84218 Amadeus EDIFACT - By schedule, New Flight Flow fare family names 
   # BOTH segments must be selected before any fare screen exists. A by-schedule search is always a
   # round trip (searchFlightBySchedule hardcodes tripType roundTrip), and the flow is: results list
   # for leg 1 -> select flight -> the list RE-RENDERS for leg 2 -> select flight -> only now the
-  # fare screen appears. "I select flight segments by schedule" is the composite that does exactly
-  # that, waiting for the Change flight button between the two clicks.
+  # fare screen appears.
+  #
+  # The carrier is filtered TWICE on purpose, once per leg. The composite
+  # "I select flight segments by schedule" would do both clicks in one step, but the re-render for
+  # leg 2 drops the filter: a run that filtered Delta only once came back showing JetBlue cards
+  # (B6|DN "MAIN BASE", B6|AN "MAIN"). Filtering again between the selections keeps both legs Delta,
+  # so the fare families read are the ones this test is about.
   #
   # An earlier version of this test selected ONE segment and then asserted the brand cards. It timed
   # out because at that point the page is still a results list with no .flight-brand-leg node at
@@ -59,6 +64,10 @@ Feature: 84218 Amadeus EDIFACT - By schedule, New Flight Flow fare family names 
     And I filter results by carrier "Delta"
     Then flight results should be available
     When I capture the fare families described in "Amadeus4.Fare_MasterPricerTravelBoardSearch9" from Storage
-    And I select flight segments by schedule
+    And I select one flight segment by schedule
+    And I wait for the change flight button to be visible
+    And I filter results by carrier "Delta"
+    Then flight results should be available
+    And I select one flight segment by schedule
     Then the outbound leg brand cards are displayed
     And every brand card name on the "outbound" leg should match its fare family description
