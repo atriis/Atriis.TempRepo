@@ -4460,3 +4460,60 @@ When("I add a generated email address as the itinerary recipient", async functio
   this.itineraryShareSentAfter = new Date();
   logger.info("Added a generated email address as the itinerary recipient", recipient);
 });
+
+// ===== CAR FLIGHT NUMBER EXTRAS (car-flight-number.vue) — ADO #78273 =====
+
+Then("the flight number field should be displayed as optional", async function () {
+  logger.info("Verifying the car flight number field is displayed as optional");
+  await Cart.expectFlightNumberFieldDisplayed(this.page, { mandatory: false });
+});
+
+Then("the flight number field should be displayed as mandatory", async function () {
+  logger.info("Verifying the car flight number field is displayed as mandatory");
+  await Cart.expectFlightNumberFieldDisplayed(this.page, { mandatory: true });
+});
+
+Then("the flight number disclaimer should read {string}", async function (expectedText) {
+  logger.info("Verifying the car flight number disclaimer text", { expectedText });
+  await Cart.expectFlightNumberDisclaimer(this.page, expectedText);
+});
+
+Then("the flight number field should not be displayed", async function () {
+  logger.info("Verifying the car flight number field is not displayed");
+  await Cart.expectFlightNumberFieldNotDisplayed(this.page);
+});
+
+Then("the flight number field should be auto-populated with the matching flight number", async function () {
+  logger.info("Verifying the car flight number field is auto-populated with the matching flight number");
+  await Cart.expectFlightNumberAutoPopulated(this.page);
+});
+
+When("I edit the flight number to {string}", async function (flightNumber) {
+  logger.info("Editing the car flight number", { flightNumber });
+  await Cart.enterFlightNumberInExtra(this.page, flightNumber);
+});
+
+Then("the flight number field should still show {string}", async function (expectedValue) {
+  logger.info("Verifying the car flight number field still shows the manually edited value", { expectedValue });
+  await Cart.expectFlightNumberValue(this.page, expectedValue);
+});
+
+Then("the flight number field should be empty and optional", async function () {
+  logger.info("Verifying the car flight number field is empty and optional");
+  await Cart.expectFlightNumberFieldEmpty(this.page);
+});
+
+When("I enter flight number {string}", async function (flightNumber) {
+  logger.info("Entering car flight number", { flightNumber });
+  await Cart.enterFlightNumberInExtra(this.page, flightNumber);
+});
+
+Then("the flight number validation error should read {string}", async function (expectedText) {
+  logger.info("Verifying the car flight number validation error text", { expectedText });
+  await Cart.expectFlightNumberValidationError(this.page, expectedText);
+});
+
+Then("the booking should be blocked", async function () {
+  logger.info("Verifying the booking is still blocked");
+  await Cart.expectBookingBlocked(this.page);
+});

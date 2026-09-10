@@ -1326,6 +1326,34 @@ const SELECTORS = {
   // selector inside the card would read the custom amount instead of the billing number.
   CAR_BILLBACK_BILLING_NUMBER_INPUT: '.car-billback .extras-card .columns .field:first-child input.el-input__inner',
 
+  // Car flight number extras (car-flight-number.vue → <section class="car-flight-number">) — ADO
+  // #78273: universal, all-distributor replacement for the old SunnyCars-only flight number extra.
+  // Same extras-layout wrapper as billback/add-location, so it opens the same way: one click on the
+  // Add/View/Edit `.is-clickable` span.
+  CAR_FLIGHT_NUMBER_EXPAND: '.car-flight-number .extra__btns .is-clickable',
+  // The collapsed row's OWN title span carries the mandatory asterisk (car-flight-number.vue's
+  // `#extra-title` slot: `<span v-if="isMandatory">*</span>{{ groundTransport.flightNumber }}`) —
+  // read BEFORE opening the panel, because once open that slot is torn down in favor of the
+  // open-state's own (asterisk-less) card-title. This is the only reliable mandatory/optional signal.
+  CAR_FLIGHT_NUMBER_TITLE_ASTERISK: '.car-flight-number .card-title .has-text-danger',
+  // Presence check for "the field does not display at all" (non-airport, no flight segment) — the
+  // whole `.car-flight-number` section is absent, not just collapsed.
+  CAR_FLIGHT_NUMBER_SECTION: '.car-flight-number',
+  // Every selector below is scoped through `.extras-card`, which exists only while the panel is
+  // expanded — the collapsed summary row reuses `.card-title` and would otherwise match too.
+  // Disclaimer paragraph: Avis-mandatory text (car.flightNumberRequiredByVendor) or the standard
+  // text (car.flightNumberShared) depending on `isMandatory` — same ternary the component renders,
+  // so reading this text is also how expectFlightNumberFieldDisplayed tells mandatory from optional.
+  CAR_FLIGHT_NUMBER_DISCLAIMER: '.car-flight-number .extras-card .disclaimer',
+  // el-input's inner input — `.inputs` wraps the `.field`/`.control` pair (matches
+  // CAR_DRIVER_LOYALTY_INPUT's shape one section up).
+  CAR_FLIGHT_NUMBER_INPUT: '.car-flight-number .extras-card .inputs input.el-input__inner',
+  // The component renders exactly one `.help.is-danger` paragraph at a time (required vs format is
+  // `v-if`/`v-else-if`, never both), so this single selector covers either validation message.
+  CAR_FLIGHT_NUMBER_VALIDATION_ERROR: '.car-flight-number .extras-card p.help.is-danger',
+  CAR_FLIGHT_NUMBER_SAVE_BUTTON: '.car-flight-number .extras-card .btns .no-border',
+  CAR_FLIGHT_NUMBER_CANCEL_BUTTON: '.car-flight-number .extras-card .prevent-read-only',
+
   // "Payment method is optional you can proceed without it." alert on the car quote card
   // (car-quote-card.vue → `<div class="optional-fop-message">`, gated by the showOptionalFopMessage
   // computed: pending quote + optional FOP + not pre-paid). The same markup is emitted three times —
@@ -10579,6 +10607,192 @@ class CartPage {
    */
   async getAllInclusiveRateLinkCount() {
     return this.page.locator(SELECTORS.ALL_INCLUSIVE_RATE_LINK).count();
+  }
+
+  // ===== CAR FLIGHT NUMBER EXTRAS (car-flight-number.vue) =====
+
+  /**
+   * Reads whether the car flight number field is server-flagged mandatory. MUST be called BEFORE
+   * `openFlightNumberExtra()` — the asterisk lives on the collapsed row's own title slot
+   * (`#extra-title`), which extras-layout.vue tears down once the panel opens in favor of the
+   * open-state's own (asterisk-less) `.extras-card` title. Returns a boolean; never throws, so a
+   * scenario can assert either mandatory or optional from the same call.
+   * @param {number} [timeout=15000]
+   * @returns {Promise<boolean>}
+   */
+  async isFlightNumberMandatory(timeout = 15000) {
+    const section = this.page.locator(SELECTORS.CAR_FLIGHT_NUMBER_SECTION).first();
+    try {
+      await section.waitFor({ state: 'visible', timeout });
+    } catch (err) {
+      throw new Error(
+        `[CartPage.isFlightNumberMandatory] The car flight number section never rendered within ` +
+        `${timeout}ms (selector: ${SELECTORS.CAR_FLIGHT_NUMBER_SECTION}). Likely causes: the trip ` +
+        `has no car quote, or this rental station/trip combination does not offer the flight number ` +
+        `extra at all — check with isFlightNumberExtraPresent() first. Original: ${err.message}`
+      );
+    }
+    return (await this.page.locator(SELECTORS.CAR_FLIGHT_NUMBER_TITLE_ASTERISK).count()) > 0;
+  }
+
+  /**
+   * Reports whether the car flight number extra is offered at all for this quote. Some rental
+   * stations/trips show neither the collapsed row nor its title (car-flight-number.vue's own
+   * server-driven validation returns nothing to render), so this must not throw on absence — the
+   * negative scenario asserts exactly that.
+   *
+   * The section's appearance is gated behind the same async server-side validation call
+   * isFlightNumberMandatory() waits on, so an instant `count()` taken right after "add the first
+   * car to cart" can false-negative on a section that would render moments later. This settles for
+   * up to `settleTimeout` (swallowing the expected timeout when the extra genuinely never appears)
+   * before counting, so a real absence and a "not rendered yet" race are no longer indistinguishable.
+   * @param {number} [settleTimeout=5000]
+   * @returns {Promise<boolean>}
+   */
+  async isFlightNumberExtraPresent(settleTimeout = 5000) {
+    await this.page
+      .locator(SELECTORS.CAR_FLIGHT_NUMBER_SECTION)
+      .first()
+      .waitFor({ state: 'visible', timeout: settleTimeout })
+      .catch(() => {});
+    return (await this.page.locator(SELECTORS.CAR_FLIGHT_NUMBER_SECTION).count()) > 0;
+  }
+
+  /**
+   * Expands the car flight number extras section, idempotently. extras-layout.vue renders the
+   * opener span only while collapsed, so a second call (panel already open from a previous step)
+   * finds no opener — that failure is swallowed here exactly like Evolvi's Railcard Assignment
+   * opener, and the input wait right after is what actually reports a genuine failure to open.
+   * @param {number} [timeout=15000]
+   */
+  async openFlightNumberExtra(timeout = 15000) {
+    const opener = this.page.locator(SELECTORS.CAR_FLIGHT_NUMBER_EXPAND).first();
+    try {
+      await opener.waitFor({ state: 'visible', timeout });
+      await opener.click();
+    } catch {
+      // Either already open (no opener left) or genuinely never appeared - the input wait below
+      // fails loudly in the latter case instead of this swallowing it.
+    }
+    const input = this.page.locator(SELECTORS.CAR_FLIGHT_NUMBER_INPUT).first();
+    try {
+      await input.waitFor({ state: 'visible', timeout });
+    } catch (err) {
+      throw new Error(
+        `[CartPage.openFlightNumberExtra] Could not expand the car flight number extras (opener: ` +
+        `${SELECTORS.CAR_FLIGHT_NUMBER_EXPAND}, input: ${SELECTORS.CAR_FLIGHT_NUMBER_INPUT}). Likely ` +
+        `causes: the trip has no car quote, the extra is not offered for this station/trip, or the ` +
+        `panel's data load (carService.getFlightNumber) left the skeleton in place beyond ${timeout}ms. ` +
+        `Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Fills the flight number input in the car flight number panel. Does not save.
+   * @param {string} flightNumber - Flight number to type (e.g. "AB6548")
+   * @param {number} [timeout=10000]
+   */
+  async fillFlightNumberInput(flightNumber, timeout = 10000) {
+    if (!flightNumber || typeof flightNumber !== 'string') {
+      throw new Error(
+        `[CartPage.fillFlightNumberInput] "flightNumber" must be a non-empty string, got: ` +
+        `${typeof flightNumber} (${JSON.stringify(flightNumber)})`
+      );
+    }
+    const input = this.page.locator(SELECTORS.CAR_FLIGHT_NUMBER_INPUT).first();
+    try {
+      await input.waitFor({ state: 'visible', timeout });
+      await input.fill(flightNumber);
+    } catch (err) {
+      throw new Error(
+        `[CartPage.fillFlightNumberInput] Could not fill the car flight number input with ` +
+        `"${flightNumber}" (selector: ${SELECTORS.CAR_FLIGHT_NUMBER_INPUT}). Likely causes: the ` +
+        `panel is not expanded - call openFlightNumberExtra() first. Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Reads the current value of the flight number input.
+   * @param {number} [timeout=10000]
+   * @returns {Promise<string>}
+   */
+  async getFlightNumberInputValue(timeout = 10000) {
+    const input = this.page.locator(SELECTORS.CAR_FLIGHT_NUMBER_INPUT).first();
+    try {
+      await input.waitFor({ state: 'visible', timeout });
+      return await input.inputValue();
+    } catch (err) {
+      throw new Error(
+        `[CartPage.getFlightNumberInputValue] Could not read the car flight number input value ` +
+        `(selector: ${SELECTORS.CAR_FLIGHT_NUMBER_INPUT}). Likely causes: the panel is not expanded ` +
+        `- call openFlightNumberExtra() first. Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Clicks Save in the car flight number panel. Does not assert the outcome - saveFlight() keeps
+   * the panel open with a validation message on an invalid value (required/format), and only
+   * closes it on a genuinely successful save; callers decide which they expect.
+   * @param {number} [timeout=10000]
+   */
+  async clickFlightNumberSave(timeout = 10000) {
+    const button = this.page.locator(SELECTORS.CAR_FLIGHT_NUMBER_SAVE_BUTTON).first();
+    try {
+      await button.waitFor({ state: 'visible', timeout });
+      await button.click();
+    } catch (err) {
+      throw new Error(
+        `[CartPage.clickFlightNumberSave] Could not click Save in the car flight number panel ` +
+        `(selector: ${SELECTORS.CAR_FLIGHT_NUMBER_SAVE_BUTTON}). Likely causes: the panel is not ` +
+        `expanded, or it already closed from a previous successful save. Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Reads the disclaimer paragraph text in the car flight number panel - the Avis-mandatory text
+   * or the standard shared-with-vendor text, depending on `isMandatory` (same ternary the
+   * component renders), so this doubles as the mandatory/optional signal once the panel is open.
+   * @param {number} [timeout=10000]
+   * @returns {Promise<string>}
+   */
+  async getFlightNumberDisclaimerText(timeout = 10000) {
+    const disclaimer = this.page.locator(SELECTORS.CAR_FLIGHT_NUMBER_DISCLAIMER).first();
+    try {
+      await disclaimer.waitFor({ state: 'visible', timeout });
+      return (await disclaimer.textContent()).trim();
+    } catch (err) {
+      throw new Error(
+        `[CartPage.getFlightNumberDisclaimerText] Could not read the disclaimer text in the car ` +
+        `flight number panel (selector: ${SELECTORS.CAR_FLIGHT_NUMBER_DISCLAIMER}). Likely causes: ` +
+        `the panel is not expanded - call openFlightNumberExtra() first. Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Reads the validation error message in the car flight number panel (required or format - the
+   * component renders exactly one `.help.is-danger` paragraph at a time, never both). Only present
+   * after an invalid Save attempt has set `markFields = true`.
+   * @param {number} [timeout=10000]
+   * @returns {Promise<string>}
+   */
+  async getFlightNumberValidationErrorText(timeout = 10000) {
+    const error = this.page.locator(SELECTORS.CAR_FLIGHT_NUMBER_VALIDATION_ERROR).first();
+    try {
+      await error.waitFor({ state: 'visible', timeout });
+      return (await error.textContent()).trim();
+    } catch (err) {
+      throw new Error(
+        `[CartPage.getFlightNumberValidationErrorText] No validation error rendered in the car ` +
+        `flight number panel within ${timeout}ms (selector: ${SELECTORS.CAR_FLIGHT_NUMBER_VALIDATION_ERROR}). ` +
+        `Likely causes: Save was not clicked with an invalid value first, or the value was actually ` +
+        `valid. Original: ${err.message}`
+      );
+    }
   }
 
   // ===== SUNNYCARS ADD LOCATION EXTRAS (car-sunnycars-add-location.vue) =====

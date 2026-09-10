@@ -14412,17 +14412,249 @@ const Cart = {
     return { paneName, content };
   },
 
-  async addSunnyFlightNumber(page, flightNumber = 'BA123') {
-    if (!page) throw new Error('page is required');
+  // ===== CAR FLIGHT NUMBER EXTRAS (car-flight-number.vue) — ADO #78273 =====
+  // Universal, all-distributor replacement for the old SunnyCars-only addSunnyFlightNumber
+  // (dead code: called 3 CartPage methods that no longer exist, and was never called itself).
+
+  /**
+   * Enters a flight number in the car flight number extra and saves it. Opens the panel first if
+   * it is not already open. Does not assert the save succeeded — a caller expecting an invalid
+   * value to be rejected should follow with expectFlightNumberValidationError() instead.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} flightNumber - Flight number to enter (e.g. "AB6548")
+   */
+  async enterFlightNumberInExtra(page, flightNumber) {
+    if (!page) throw new Error('[Cart.enterFlightNumberInExtra] "page" is required.');
     if (!flightNumber || typeof flightNumber !== 'string') {
-      throw new Error('flightNumber must be a non-empty string');
+      throw new Error(
+        `[Cart.enterFlightNumberInExtra] "flightNumber" must be a non-empty string, got: ` +
+        `${typeof flightNumber} (${JSON.stringify(flightNumber)})`
+      );
     }
 
     const cartPage = getPageObject(page, CartPage);
-    logger.info('Adding Sunny Cars flight number in cart', { flightNumber });
-    await cartPage.openSunnyFlightNumberExtras();
-    await cartPage.fillSunnyFlightNumber(flightNumber);
-    await cartPage.saveSunnyFlightNumber();
+    logger.info('Entering flight number in car flight number extra', { flightNumber });
+    await cartPage.openFlightNumberExtra();
+    await cartPage.fillFlightNumberInput(flightNumber);
+    await cartPage.clickFlightNumberSave();
+  },
+
+  /**
+   * Asserts the car flight number field is displayed, either as mandatory or optional per the
+   * server-driven `TripValidationsNames.CarFlightNumber` validation. Checks mandatory BEFORE
+   * opening the panel — CartPage.isFlightNumberMandatory() reads the collapsed row's own title
+   * asterisk, which extras-layout.vue tears down once the panel opens.
+   *
+   * @param {import('playwright').Page} page
+   * @param {object} [options]
+   * @param {boolean} [options.mandatory=false] - Whether the field is expected to be mandatory
+   */
+  async expectFlightNumberFieldDisplayed(page, { mandatory = false } = {}) {
+    if (!page) throw new Error('[Cart.expectFlightNumberFieldDisplayed] "page" is required.');
+
+    const cartPage = getPageObject(page, CartPage);
+    // isFlightNumberMandatory() waits (up to 15s) for the section to render before reading its
+    // title asterisk - a plain count()-based presence check here raced that async render (the
+    // section can still be loading when this step runs right after "add the first car to cart"),
+    // so this is the only presence check: its own error already names the section as never having
+    // rendered when the field genuinely is not offered.
+    const isMandatory = await cartPage.isFlightNumberMandatory();
+    if (isMandatory !== mandatory) {
+      throw new Error(
+        `[Cart.expectFlightNumberFieldDisplayed] Expected the car flight number field to be ` +
+        `${mandatory ? 'mandatory' : 'optional'}, but it was ${isMandatory ? 'mandatory' : 'optional'} ` +
+        `(title asterisk present: ${isMandatory}). Likely cause: the rental station's server-side ` +
+        `TripValidationsNames.CarFlightNumber validation did not return the expected errMsg.`
+      );
+    }
+
+    logger.info(`✓ Car flight number field displayed as ${mandatory ? 'mandatory' : 'optional'}`);
+  },
+
+  /**
+   * Asserts the car flight number extra is not displayed at all (no airport pickup and no flight
+   * segment on the trip, per US-001).
+   *
+   * @param {import('playwright').Page} page
+   */
+  async expectFlightNumberFieldNotDisplayed(page) {
+    if (!page) throw new Error('[Cart.expectFlightNumberFieldNotDisplayed] "page" is required.');
+
+    const cartPage = getPageObject(page, CartPage);
+    const present = await cartPage.isFlightNumberExtraPresent();
+    if (present) {
+      throw new Error(
+        `[Cart.expectFlightNumberFieldNotDisplayed] Expected the car flight number field to not ` +
+        `be displayed, but the extra section is present (selector: ${CART_SELECTORS.CAR_FLIGHT_NUMBER_SECTION}). ` +
+        `Likely cause: this rental station is an airport pickup, or the trip carries a flight segment.`
+      );
+    }
+
+    logger.info('✓ Car flight number field not displayed');
+  },
+
+  /**
+   * Asserts the car flight number field auto-populated with a matching flight number (the trip
+   * carries a flight segment that car-flight-number.vue's carService.getFlightNumber() matched
+   * against). Opens the panel first if it is not already open. Only checks non-empty - the exact
+   * matched value is the flight-matching logic's own concern (US-002, ADO #78274), not this US-001
+   * collection feature's.
+   *
+   * @param {import('playwright').Page} page
+   */
+  async expectFlightNumberAutoPopulated(page) {
+    if (!page) throw new Error('[Cart.expectFlightNumberAutoPopulated] "page" is required.');
+
+    const cartPage = getPageObject(page, CartPage);
+    await cartPage.openFlightNumberExtra();
+    const actualValue = await cartPage.getFlightNumberInputValue();
+    if (!actualValue) {
+      throw new Error(
+        `[Cart.expectFlightNumberAutoPopulated] Expected the car flight number field to be ` +
+        `auto-populated with a matching flight number, but it was empty. Likely cause: the trip's ` +
+        `flight segment did not match any airline/flight-number pair the flight-matching logic recognizes.`
+      );
+    }
+
+    logger.info('✓ Car flight number field auto-populated', { actualValue });
+  },
+
+  /**
+   * Asserts the car flight number panel's disclaimer paragraph reads the expected text (Avis-
+   * mandatory wording or the standard shared-with-vendor wording, depending on the station).
+   * Opens the panel first if it is not already open.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} expectedText - Exact expected disclaimer text
+   */
+  async expectFlightNumberDisclaimer(page, expectedText) {
+    if (!page) throw new Error('[Cart.expectFlightNumberDisclaimer] "page" is required.');
+    if (!expectedText || typeof expectedText !== 'string') {
+      throw new Error(
+        `[Cart.expectFlightNumberDisclaimer] "expectedText" must be a non-empty string, got: ` +
+        `${typeof expectedText} (${JSON.stringify(expectedText)})`
+      );
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+    await cartPage.openFlightNumberExtra();
+    const actualText = await cartPage.getFlightNumberDisclaimerText();
+    if (actualText !== expectedText) {
+      throw new Error(
+        `[Cart.expectFlightNumberDisclaimer] Expected disclaimer text "${expectedText}", got: ` +
+        `"${actualText}". Likely cause: the isMandatory ternary resolved to the other branch than ` +
+        `expected for this rental station.`
+      );
+    }
+
+    logger.info('✓ Car flight number disclaimer text matches', { expectedText });
+  },
+
+  /**
+   * Asserts the car flight number input holds the expected value. Opens the panel first if it is
+   * not already open.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} expectedValue - Exact expected input value
+   */
+  async expectFlightNumberValue(page, expectedValue) {
+    if (!page) throw new Error('[Cart.expectFlightNumberValue] "page" is required.');
+    if (typeof expectedValue !== 'string') {
+      throw new Error(
+        `[Cart.expectFlightNumberValue] "expectedValue" must be a string, got: ${typeof expectedValue}`
+      );
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+    await cartPage.openFlightNumberExtra();
+    const actualValue = await cartPage.getFlightNumberInputValue();
+    if (actualValue !== expectedValue) {
+      throw new Error(
+        `[Cart.expectFlightNumberValue] Expected the car flight number input to hold ` +
+        `"${expectedValue}", got: "${actualValue}". Likely cause: loadData() re-fetched and ` +
+        `overwrote a manual edit, or the value was never saved.`
+      );
+    }
+
+    logger.info('✓ Car flight number input value matches', { expectedValue });
+  },
+
+  /**
+   * Asserts the car flight number input is empty (no matching flight segment and no prior save),
+   * and that the field is optional per expectFlightNumberFieldDisplayed's asterisk check. Opens
+   * the panel first if it is not already open.
+   *
+   * @param {import('playwright').Page} page
+   */
+  async expectFlightNumberFieldEmpty(page) {
+    if (!page) throw new Error('[Cart.expectFlightNumberFieldEmpty] "page" is required.');
+
+    const cartPage = getPageObject(page, CartPage);
+    const isMandatory = await cartPage.isFlightNumberMandatory();
+    if (isMandatory) {
+      throw new Error(
+        `[Cart.expectFlightNumberFieldEmpty] Expected the car flight number field to be optional, ` +
+        `but the title asterisk marked it mandatory.`
+      );
+    }
+
+    await cartPage.openFlightNumberExtra();
+    const actualValue = await cartPage.getFlightNumberInputValue();
+    if (actualValue !== '') {
+      throw new Error(
+        `[Cart.expectFlightNumberFieldEmpty] Expected the car flight number input to be empty, ` +
+        `got: "${actualValue}". Likely cause: carService.getFlightNumber() returned a value from a ` +
+        `previous save, or the trip does carry a matching flight segment after all.`
+      );
+    }
+
+    logger.info('✓ Car flight number field empty and optional');
+  },
+
+  /**
+   * Asserts the car flight number panel's validation error message reads the expected text.
+   * Assumes an invalid value has already been entered and Save clicked (e.g. via
+   * enterFlightNumberInExtra) — the message only renders after saveFlight() sets `markFields = true`.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} expectedText - Exact expected validation error text
+   */
+  async expectFlightNumberValidationError(page, expectedText) {
+    if (!page) throw new Error('[Cart.expectFlightNumberValidationError] "page" is required.');
+    if (!expectedText || typeof expectedText !== 'string') {
+      throw new Error(
+        `[Cart.expectFlightNumberValidationError] "expectedText" must be a non-empty string, got: ` +
+        `${typeof expectedText} (${JSON.stringify(expectedText)})`
+      );
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+    const actualText = await cartPage.getFlightNumberValidationErrorText();
+    if (actualText !== expectedText) {
+      throw new Error(
+        `[Cart.expectFlightNumberValidationError] Expected validation error text "${expectedText}", ` +
+        `got: "${actualText}". Likely cause: the required-field message rendered instead of the ` +
+        `format message, or vice versa - the component shows exactly one at a time.`
+      );
+    }
+
+    logger.info('✓ Car flight number validation error matches', { expectedText });
+  },
+
+  /**
+   * Asserts the booking is still blocked after an invalid flight number save attempt. saveFlight()
+   * returns early on an invalid value without calling carService.saveFlightNumber or closing the
+   * panel, so the trip can never progress past "Pending booking" - this reuses
+   * expectBookingStatusToBe rather than re-implementing a status check.
+   *
+   * @param {import('playwright').Page} page
+   */
+  async expectBookingBlocked(page) {
+    if (!page) throw new Error('[Cart.expectBookingBlocked] "page" is required.');
+
+    await this.expectBookingStatusToBe('Pending booking', { page });
+    logger.info('✓ Booking still blocked after invalid car flight number save attempt');
   },
 
   // ===== QUOTE EXTRAS - ATTACH FILES =====
