@@ -469,6 +469,12 @@ The last two exclusions are not hypothetical. One reply described `AA|MAIN` as "
 
 Casing mirrors the front end exactly — `value.toLowerCase().replace(/\b(\w)/g, c => c.toUpperCase())` (`_flight-brand-builder.logic.ts`). Copy it; `split(' ')` diverges on hyphens.
 
+**Why a flights-named method sits in a generic module.** It is the only one here, so it is worth stating. What it does is read a stored payload, and the three things that make that correct are private to `PayloadValidation.js`: `fetchAllRequestsForTrip()` (its truncation guard is what stops a partial read from silently passing), `extractXmlBlocksByTag()` (namespace-agnostic, and the reason a stray `<description>` elsewhere in the reply is not read as a fare family's name) and `collectParameterValues()`. Only the DSL object is exported and no domain DSL imports this module, so moving the method would mean exporting internals, duplicating the fetch, or opening the first cross-DSL dependency on payload reads — each costing more than the name saves.
+
+The split is already along the right seam: this method reports what the supplier sent and judges nothing. The flights half — which label a card must show, and the AC3/R2 rule — is in `FlightResults.verifyBrandNamesMatchFareFamilyDescriptions`.
+
+**Revisit when a second caller appears.** The mechanism is generic — rail fares, hotel rate plans and car rate codes are the same repeated-block shape — so a second use is the signal to take the block tag and field names from Gherkin, the way every other step in this module does. Generalising for one caller would be an abstraction guessed rather than observed.
+
 Canonical example: `tests/features/flights/flights_amadeus/flights_amadeus_non_booking/84698_amadeus_edifact_fare_family_display_name_from_description.feature`
 
 ---

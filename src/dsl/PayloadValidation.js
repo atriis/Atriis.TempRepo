@@ -2111,6 +2111,12 @@ const PayloadValidation = {
    * Which of the two must appear on screen depends on whether the description is there at all, so
    * the expectation cannot be hard-coded in Gherkin - it is derived here, per fare family.
    *
+   * The one domain-named method in this generic module, deliberately: the three helpers that make
+   * the read correct are private to this file, and it judges nothing - the flights half lives in
+   * FlightResults.verifyBrandNamesMatchFareFamilyDescriptions. Rename it to take the block tag and
+   * field names from Gherkin as soon as a second caller appears. Full reasoning in
+   * docs/PayloadValidation.md section 2.10.9.
+   *
    * @param {object} world
    * @param {string} requestType - e.g. "Amadeus4.Fare_MasterPricerTravelBoardSearch9"
    * @returns {Promise<{families: Array<{code: string, description: string|null}>}>}

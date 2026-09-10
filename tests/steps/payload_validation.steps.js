@@ -594,6 +594,11 @@ Then("the captured {string} types do not contain request type {string}", async f
   });
 });
 
+// Lives here, not in a flights step file, even though "fare families" is a flights term: the work
+// it does is reading a stored payload, which is this file's whole subject. The flights-specific
+// half - what the labels must equal, and the AC3/R2 rule - is in FlightResults, so the split is
+// already along the right seam. See the DSL method for why moving it would cost more than the
+// domain-flavoured name saves.
 When("I capture the fare families described in {string} from Storage", async function (requestType) {
   await runPayloadValidationStep(this, "captureFareFamilyDescriptions", { requestType }, async () => {
     logger.info("Capturing the fare families the search reply describes", {
@@ -604,6 +609,7 @@ When("I capture the fare families described in {string} from Storage", async fun
     logger.info("Fare families captured", { count: result.families.length });
   });
 });
+
 When("I capture the number of {string} requests sent for the trip", async function (requestType) {
   await runPayloadValidationStep(this, "captureRequestCount", { requestType }, async () => {
     logger.info("Capturing baseline request count", { requestType, ...getScenarioIdentifiers(this) });
