@@ -13,22 +13,18 @@
 # deduplicates worst-outcome-wins, so one failure would stamp itself onto the other three test
 # points. Four test points need four published Test Case ids; renumber all four before merging.
 
-# NOT CI-READY - @to_adjust keeps it out of the nightly (the orchestration selects
-# "not @blocked and not @to_adjust"). The scenario itself is correct and has passed, but the
-# by-schedule search on ATL-MSP intermittently returns no results: over 5 runs on 2026-09-09, only 2
-# reached the assertion (1 passed, 1 failed), and 3 stopped at "flight results should be available"
-# with a real no-results verdict. Remove @to_adjust once a by-schedule route with dependable Delta
-# inventory is found, or once the emptiness is understood.
+# Route note: ATL-JFK, not the ATL-MSP the complete-trip twin uses. By schedule, ATL-MSP returned
+# no results in 3 of 5 runs on 2026-09-09; ATL-JFK passed 3 of 3 with identical fare families each
+# time. Both are Delta hubs - the difference is by-schedule inventory, so keep this route unless it
+# too starts coming back empty.
 #
-# Worth investigating, NOT a confirmed defect: in the one run that reached the assertion and failed,
-# the drawer showed "Mainbasic" and "Mainclasc" while the reply carried DELTA MAIN BASIC and DELTA
-# MAIN CLASSIC for those exact carrier+code pairs - the 84218 shape. A re-run showed the correct
-# names instead, so it is one observation, not a reproduction. It matches the bug's own note that
-# the label reverted "on every option a pricing reply produced", and by-schedule prices per
-# direction, which would explain a data-dependent occurrence.
+# Worth investigating, NOT a confirmed defect: one ATL-MSP run reached the assertion and failed with
+# the drawer showing "Mainbasic" and "Mainclasc" while the reply carried DELTA MAIN BASIC and DELTA
+# MAIN CLASSIC for those exact carrier+code pairs - the 84218 shape. It has not recurred on ATL-JFK.
+# One observation, not a reproduction; recorded because it matches the bug's own note that the label
+# reverted "on every option a pricing reply produced", and by-schedule prices per direction.
 
 @ado:84218
-@to_adjust
 @regression @flights @amadeus @edifact @branded-fares @pricing-options @by-schedule
 Feature: 84218 Amadeus EDIFACT - By schedule, legacy flow fare family names are the airline's
   As a corporate traveler on a legacy-flow account searching by schedule
@@ -46,7 +42,7 @@ Feature: 84218 Amadeus EDIFACT - By schedule, legacy flow fare family names are 
   Scenario: By schedule - every fare in pricing options is named from the search reply's description
     Given I am logged in as "oldf.edifactonly@amadeus.ams" booking a new trip
     And I have added myself as the traveler
-    When I search for a flight by schedule from "ATL" to "MSP"
+    When I search for a flight by schedule from "ATL" to "JFK"
     Then flight results should be available
     And I filter results by carrier "Delta"
     Then flight results should be available
