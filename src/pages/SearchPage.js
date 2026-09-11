@@ -643,11 +643,20 @@ class SearchPage {
 
   /**
    * Checks if the star icon is visible (indicates traveler selection).
+   *
+   * Same 40s budget as waitForTravelerNamesDisplayed, and for the same reason: on slower
+   * corporations the freshly added traveller's tag sits in its loading state (`--` initials plus a
+   * spinner img, no `.star-icon` in the DOM at all) well past 15s, so a 15s wait reported "not
+   * primary" for a guest that was added fine and did render the star moments later.
+   *
+   * No caller asserts the star is ABSENT through this method, so the longer budget only slows a
+   * genuine failure down -- it cannot turn a true negative into a false pass.
+   *
    * @param {object} options - Configuration options
-   * @param {number} options.timeout - Maximum wait time (default: 15000ms)
+   * @param {number} options.timeout - Maximum wait time (default: 40000ms)
    * @returns {Promise<boolean>} True if star icon is visible
    */
-  async isStarIconVisible({ timeout = 15000 } = {}) {
+  async isStarIconVisible({ timeout = 40000 } = {}) {
     const starIcon = this.page.locator(SELECTORS.STAR_ICON);
     try {
       await starIcon.waitFor({ state: 'visible', timeout });
