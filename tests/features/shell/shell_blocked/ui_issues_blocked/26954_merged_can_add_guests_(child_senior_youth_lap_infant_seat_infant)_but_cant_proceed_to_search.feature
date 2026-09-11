@@ -9,6 +9,7 @@
 @regression @shell @guest @adding_passengers @multi_ptc
 Feature: 26954 Shell - Can add non-adult guests but cannot proceed to search
 
+#Blocked by bug 84749
   As a travel arranger
   I want to add guest travelers of different passenger types (child, senior, youth, lap infant, seat infant)
   So that I can verify the guest is tagged by type but cannot proceed to an online search for non-adult passengers
