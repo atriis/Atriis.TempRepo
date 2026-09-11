@@ -18,11 +18,10 @@ Feature: 25507 - Edit all reference fields from the trip overview
     And I have added myself as the traveler
     When I search for a round trip flight from "LIS" to "FRA"
     And I click proceed button if visible
-    And I filter results by carrier "Lufthansa"
+    And I filter results by carrier "TAP"
     And I add the first flight to cart
     Then the booking status should be "Pending booking"
     And I fill in the OOP justification text "abc"
-    And I add a credit card as payment method
     And I proceed to checkout
     And I send booking for approval
     Then the booking status should be "On hold"
