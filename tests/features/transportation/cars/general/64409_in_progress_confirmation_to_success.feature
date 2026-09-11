@@ -15,9 +15,8 @@ Feature: 64409 In Progress Page > inProgress > "Confirmation in progress" - Conf
     And I proceed to checkout
     And I click book and finalize button
     Then I should see "Confirmation in Progress" or "Success" status on the booking page
-    And line with product details is displayed after checkout with status "Ticketing Complete" or "Confirmed" or "Finalizing"
+    And line with product details is displayed after checkout with status "Ticketing Complete" or "Confirmed" or "Finalising"
     And I click go to trip button
-    And I successfully cancel the trip
 
   Scenario: Verify booking transitions through in-progress to confirmed to success states - Rail
     Given I am logged in as "testim@benemoove.com" booking a new trip

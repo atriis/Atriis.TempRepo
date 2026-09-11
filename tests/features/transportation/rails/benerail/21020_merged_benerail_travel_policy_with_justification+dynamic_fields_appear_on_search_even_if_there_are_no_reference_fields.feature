@@ -21,9 +21,12 @@ Feature: 21020 Benerail - Travel policy with OOP justification and dynamic field
       | Type of Traveller | Select |
       | Location Travel Policy | Hardship post |
       | Personnel Number |  |
+    # Only Personnel Number is configured editableOn=NoWhere and so stays locked here. AB#83166
+    # (Atriis.App 25c45352 + 96857090, 2026-08-19/20) replaced the blanket "corporate primary user
+    # cannot edit at Search stage" rule with `(question.editable && editableOn !== NoWhere) ||
+    # editableOn === Both`, which deliberately made Type of Traveller and Location Travel Policy
+    # editable at this stage. Asserting them as locked tested the old blanket rule, not any config.
     And the following reference fields should not be editable:
-      | Type of Traveller      |
-      | Location Travel Policy |
       | Personnel Number       |
     And I click proceed button if visible
     When I add a Benerail round trip to the trip

@@ -817,16 +817,27 @@ const BenerailResults = {
     const totalText = await benerailResultsPage.getPriceBreakdownTotalText();
     const total = toNumber(totalText, "price breakdown total");
 
-    const expectedTotal = rows.reduce((sum, row) => sum + row.count * row.pricePerTicket, 0);
-    if (Math.abs(expectedTotal - total) > 0.01) {
+    const actualTravelerCount = rows.reduce((sum, row) => sum + row.count, 0);
+
+    // Compare in whole cents: the tooltip's own figures are 2dp, and comparing them as floats made
+    // this assertion fail on an exact one-cent gap (|64.28 - 64.29| evaluates to 0.010000000000005).
+    //
+    // eu-rail-price-breakdown.vue renders the total from the unrounded fare but rounds each row's
+    // price-per-ticket to 2dp for display, so multiplying that displayed figure back out drifts by
+    // up to half a cent per traveler (2 x £32.145 shows as 2 x £32.14 = £64.28 against a £64.29
+    // total). Allow one cent per traveler for that display rounding and no more — a total priced
+    // for the wrong number of travelers is still off by a whole ticket, not by pennies.
+    const toCents = (amount) => Math.round(amount * 100);
+    const expectedCents = rows.reduce((sum, row) => sum + row.count * toCents(row.pricePerTicket), 0);
+    const toleranceCents = Math.max(1, actualTravelerCount);
+    if (Math.abs(expectedCents - toCents(total)) > toleranceCents) {
       throw new Error(
         `[BenerailResults.verifyTotalPriceReflectsAllTravelers] Expected the price breakdown total ` +
         `(${total.toFixed(2)}) to equal price-per-ticket x traveler count summed across all rows ` +
-        `(${expectedTotal.toFixed(2)}), rows: ${JSON.stringify(rows)}`
+        `(${(expectedCents / 100).toFixed(2)}), rows: ${JSON.stringify(rows)}`
       );
     }
 
-    const actualTravelerCount = rows.reduce((sum, row) => sum + row.count, 0);
     if (Number.isInteger(expectedTravelerCount) && actualTravelerCount !== expectedTravelerCount) {
       throw new Error(
         `[BenerailResults.verifyTotalPriceReflectsAllTravelers] Expected the price breakdown to cover ` +
