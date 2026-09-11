@@ -16,7 +16,7 @@ Feature: 35703 - Per-Diem days off (new method) quote after booking
     Given I am logged in as "per@limor.off" booking a new trip
     And I have added myself as the traveler
     When I search for a round trip flight from "lon" to "mad"
-    And I filter results by carrier "BA"
+    And I filter results by carrier "Air Europa"
     And I add the first flight to cart
     When I proceed to checkout
     And I wait for booking details in checkout
