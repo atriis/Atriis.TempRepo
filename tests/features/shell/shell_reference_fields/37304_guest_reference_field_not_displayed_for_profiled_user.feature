@@ -16,14 +16,15 @@ Feature: 37304 - Guest reference field is not displayed for a profiled user
   Scenario: Guest reference field is not displayed at new-trip and checkout for a profiled traveller
     Given I am logged in as "tree@tree.com" booking a new trip
     And I have added myself as the traveler
-    When I search for a one way flight from "LIS" to "NYC"
+    When I search for a one way flight from "LIS" to "MIA"
     Then the following checkout reference fields should not be visible:
     | *Only For Guest |
     And I select the trip purpose as "BILLABLE" and proceed
     When I add the first flight to cart
     And the booking status should be "Pending booking"
-    When I click add payment method button
-    And I select card 1 and save
+    And I add a credit card as payment method
+    #When I click add payment method button
+    #And I select card 1 and save
     And I fill in the OOP justification text "abc"
     When I proceed to checkout
     And I wait for booking details in checkout
