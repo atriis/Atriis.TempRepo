@@ -3575,6 +3575,41 @@ When("I cancel the first item from the item actions menu", async function () {
   await Cart.clickCancelItemFromActionsMenu(this.page, 0);
 });
 
+// Split open/verify/confirm variant of the step above - use when something in the dialog (e.g.
+// the Evolvi cancellation disclaimer) must be asserted before confirming.
+When("I open the cancel item dialog for the item at index {int}", async function (itemIndex) {
+  logger.info("Opening the Cancel Item dialog", { itemIndex });
+  const result = await Cart.openCancelItemDialog(this.page, itemIndex);
+  this.cancelItemPromptType = result.promptType;
+});
+
+Then("the Evolvi cancellation disclaimer should be displayed", async function () {
+  logger.info("Verifying the Evolvi cancellation disclaimer is displayed");
+  await Cart.verifyEvolviCancellationDisclaimerDisplayed(this.page);
+});
+
+When("I confirm the open cancel item dialog", async function () {
+  logger.info("Confirming the open Cancel Item dialog", { promptType: this.cancelItemPromptType });
+  const result = await Cart.confirmOpenCancelItemDialog(this.page, this.cancelItemPromptType);
+  this.cancelItemOutcome = result.outcome;
+  this.cancelItemErrorMessage = result.errorMessage;
+});
+
+Then("I cancel the trip successfully", async function () {
+  logger.info("Verifying the Cancel Item attempt succeeded");
+  await Cart.verifyCancelItemOutcome(this.page, this.cancelItemOutcome, "success");
+});
+
+Then("the cancel item attempt should fail", async function () {
+  logger.info("Verifying the Cancel Item attempt failed", { errorMessage: this.cancelItemErrorMessage });
+  await Cart.verifyCancelItemOutcome(this.page, this.cancelItemOutcome, "error");
+});
+
+Then("the cancel item error message should read {string}", async function (expectedErrorMessage) {
+  logger.info("Verifying the Cancel Item error message", { expectedErrorMessage });
+  await Cart.verifyCancelItemErrorMessage(this.page, this.cancelItemErrorMessage, expectedErrorMessage);
+});
+
 When("I cancel the second item from the item actions menu", async function () {
   logger.info("Canceling the second item from its actions menu");
   await Cart.clickCancelItemFromActionsMenu(this.page, 1);
