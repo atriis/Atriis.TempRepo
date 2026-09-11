@@ -469,6 +469,74 @@ const CarResults = {
   },
 
   /**
+   * Scans every rendered car result card in order and adds to cart the first one whose
+   * availability label matches expectedLabel (e.g. "On request" or "Instant confirmation").
+   *
+   * Exists because results can mix both availability types in unpredictable order (see
+   * SunnyCars ADO #78659 payload test) — picking index 0 blind is a coin flip. Scrolls each
+   * card into view as it checks it, then adds the first match. Fails loudly (not silently) if
+   * every rendered card is scanned with no match, per "no on request fare found" requirement.
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @param {string} expectedLabel - Availability label to match (e.g. "On request")
+   * @throws {Error} If page/expectedLabel are invalid, results never render, or no card matches
+   * @returns {Promise<{added: boolean, matchedIndex: number, cardsScanned: number}>}
+   */
+  async addFirstCarByAvailabilityLabel(page, expectedLabel) {
+    if (!page) {
+      throw new Error('[CarResults.addFirstCarByAvailabilityLabel] "page" is required.');
+    }
+    if (!expectedLabel || typeof expectedLabel !== 'string') {
+      throw new Error(
+        `[CarResults.addFirstCarByAvailabilityLabel] "expectedLabel" must be a non-empty string, got: ${typeof expectedLabel}`
+      );
+    }
+
+    const carResultsPage = getPageObject(page, CarResultsPage);
+    const cards = carResultsPage.getCarResultCards();
+
+    let cardCount;
+    try {
+      await cards.first().waitFor({ state: 'visible', timeout: 30000 });
+      cardCount = await cards.count();
+    } catch (error) {
+      throw new Error(
+        `[CarResults.addFirstCarByAvailabilityLabel] No car result cards appeared within 30000ms. ` +
+        `The search likely returned no results. Original: ${error.message}`
+      );
+    }
+
+    const normalizedExpected = expectedLabel.trim().toLowerCase();
+
+    for (let index = 0; index < cardCount; index++) {
+      const label = carResultsPage.getCarAvailabilityLabelAtIndex(index);
+      await label.scrollIntoViewIfNeeded();
+      const actualText = ((await label.textContent()) || '').trim().toLowerCase();
+
+      if (actualText === normalizedExpected) {
+        await carResultsPage.waitForAddToTripButtonInCard(index);
+        const button = carResultsPage.getAddToTripButtonInCard(index);
+        await button.scrollIntoViewIfNeeded();
+        await button.click();
+
+        await Results.clickProceedConflictQuoteModal(page);
+
+        logger.info(
+          `[CarResults.addFirstCarByAvailabilityLabel] Added car at index ${index} matching "${expectedLabel}"`,
+          { matchedIndex: index, cardsScanned: index + 1 }
+        );
+
+        return { added: true, matchedIndex: index, cardsScanned: index + 1 };
+      }
+    }
+
+    throw new Error(
+      `[CarResults.addFirstCarByAvailabilityLabel] Scanned all ${cardCount} car result card(s) but none had ` +
+      `availability label "${expectedLabel}". This is a data/availability issue, not a test bug.`
+    );
+  },
+
+  /**
    * Gets the current visible FOP (payment type) from car results.
    * @param {import('playwright').Page} page
    * @returns {Promise<string>}

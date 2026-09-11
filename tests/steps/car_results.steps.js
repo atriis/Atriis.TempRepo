@@ -20,6 +20,14 @@ When("I add the first car to cart", async function () {
   await CarResults.addCarAirportFromResultsPageToCart(this.page);
 });
 
+// Scans every rendered result card and adds the first one matching the given availability
+// label (e.g. "On request" / "Instant confirmation") - use when a specific availability type
+// must be selected deterministically, since results can mix both in unpredictable order.
+When("I add the first {string} car to cart", async function (expectedLabel) {
+  logger.info("Adding first car matching availability label", { expectedLabel });
+  await CarResults.addFirstCarByAvailabilityLabel(this.page, expectedLabel);
+});
+
 Then("the first car result shows \"{int} days total\" and a daily rate", async function (expectedDays) {
   logger.info("Verifying days total and daily rate on the first car result", { expectedDays });
   const result = await CarResults.expectDaysTotalAndDailyRateDisplayed(this.page, expectedDays);

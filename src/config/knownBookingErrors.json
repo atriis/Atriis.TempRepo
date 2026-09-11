@@ -4,7 +4,8 @@
       "knownErrors": [
         "HERTZ", "Error: Reservation with the given data already exists.",
         "The selected rate changed from", "SYSTEM IS UNAVAILABLE CURRENTLY",
-        "PLEASE TRY AGAIN LATER"
+        "PLEASE TRY AGAIN LATER",
+        "Reservation with the given data already exists."
       ],
       "skipOnError": true,
       "description": "Known supplier booking issues that should not cause test failure"
