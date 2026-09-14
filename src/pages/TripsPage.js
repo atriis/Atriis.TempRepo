@@ -61,9 +61,9 @@ const SELECTORS = {
 
   // A quick-view button in the filter rail and its label span
   // (trip-monitor-filter.vue -> .quick-views > button.quick-view). The rail replaced
-  // the page's old el-tabs, so TRIPS_TAB below no longer reaches these. Each entry
-  // selects a SOURCE ("To do", "Upcoming trips", "In travel trips", "Past trips"),
-  // not just a filter, so picking one re-queries the trip list.
+  // the page's old el-tabs. Each entry selects a SOURCE ("To do", "Upcoming trips",
+  // "In travel trips", "Past trips"), not just a filter, so picking one re-queries
+  // the trip list.
   QUICK_VIEW:
     '.trip-monitor-filter .quick-view:visible',
   QUICK_VIEW_LABEL:
@@ -72,10 +72,15 @@ const SELECTORS = {
   QUICK_VIEW_ACTIVE:
     '.trip-monitor-filter .quick-view.is-active:visible',
 
-  // The trip id shown on a trip card anywhere in the trip list
-  // (trip-preview.vue -> span.trip-id). Distinct from RESULT_TRIP_ID below, which
-  // is scoped to the search-results pane and therefore never matches a card in a
-  // quick view. :visible keeps a hidden responsive duplicate out.
+  // The trip id shown on a trip card (trip-preview.vue -> span.trip-id).
+  // :visible keeps a hidden responsive duplicate out.
+  //
+  // RESULT_TRIP_ID below is the same element reached through .trip-list-container.
+  // The two were genuinely different while the page had tab panes — one matched any
+  // pane, the other only the search-results pane. Since the rebuild there is a
+  // single list, so RESULT_TRIP_ID is just the container-scoped spelling; kept
+  // separate only because getResultTripId and getTripCardId are called from
+  // different assertions. Collapse them if a third caller ever needs one.
   TRIP_CARD_TRIP_ID:
     '.trip-preview .trip-id:visible',
 
@@ -104,28 +109,43 @@ const SELECTORS = {
   OVERVIEW_TAB:
     '#tab-overview',
 
-  // Free-text search input in the trip-monitor filter panel
-  // (trip-monitor-filter.vue → el-dropdown.search-dropdown > el-input,
-  //  placeholder "Location, trip or travellers").
+  // Free-text search input on the trips page (my-trips.vue -> .trips-search >
+  // el-input.trips-search__input, placeholder "Search by Trip Id, Origin, ...").
+  //
+  // AB#82671 rebuilt this screen: the input moved OUT of the filter rail into the
+  // main column, and the el-dropdown that wrapped it — with its suggestions popper
+  // and "expand your search" row — was dropped entirely. The old
+  // '.trip-monitor-filter .search-dropdown' scope therefore matches nothing;
+  // '.search-dropdown' survives only as a dead rule in trip-monitor-filter.scss.
+  //
+  // Matched by class, NOT by data-testid: my-trips.vue does carry
+  // data-testid="trip.list.search-input", but vite.config.ts strips every
+  // data-testid from non-dev builds (ADR-002) — see MY_TRIPS_ONLY_SWITCH above.
+  // el-input renders the real <input> as .el-input__inner, so the class pair
+  // reaches it without depending on the type attribute.
   SEARCH_INPUT:
-    '.trip-monitor-filter .search-dropdown input[type="text"]',
+    '.trips-search input.el-input__inner',
 
-  // The "Click here to expand your search" option inside the search suggestions
-  // popper (search-dropdown-popper). The popper has two el-dropdown-menu__item
-  // rows: the first is disabled (the "we filtered N relevant trips" hint), the
-  // second — the expand action — is the only enabled one.
-  SEARCH_EXPAND_ITEM:
-    '.search-dropdown-popper .el-dropdown-menu__item:not(.is-disabled)',
+  // The Search button beside the input (my-trips.vue -> app-btn.trips-search__btn).
+  // Submitting is what re-asks the SERVER for matching trips — typing alone only
+  // narrows the trips already loaded into the active quick view.
+  //
+  // Deliberately scoped to .trips-search: app-no-results-filter.vue renders a
+  // second "Search" CTA inside an empty trip list, which an unscoped match would
+  // sometimes hit instead.
+  SEARCH_SUBMIT_BTN:
+    '.trips-search .trips-search__btn',
 
-  // "Found N trip(s)" header line inside the search-results pane. Scoped to the
-  // visible node so a hidden responsive duplicate is never matched first.
+  // The list header's "Showing N trips" count (trip-list-panel.vue ->
+  // .panel-head__count). Replaced the old "Found N trip(s)" line, which lived in
+  // the search-results pane the rebuild removed.
   SEARCH_RESULTS_HEADER:
-    '#pane-search-results .is-flex-gap-1:visible',
+    '.panel-head__count',
 
-  // No-results block (app-no-results-filter.vue → <h3>) inside the search-results
-  // pane, shown when no trip matches the active status filter.
+  // No-results block (app-no-results-filter.vue -> <h3>), shown when the active
+  // view plus the applied search/filters match no trip.
   SEARCH_NO_RESULTS:
-    '#pane-search-results .app-no-results h3',
+    '.trip-list-container .app-no-results h3',
 
   // Clear-all control of the status (Trip Status) checkbox group in the filter
   // panel (app-checkbox-group.vue → .clear-all-btn). Scoped to .filter-options so
@@ -153,41 +173,27 @@ const SELECTORS = {
   STATUS_FILTER_CHECKBOX_BOX:
     '.el-checkbox__inner',
 
-  // A search-results trip's status label and id (trip-preview.vue). Scoped to the
-  // search-results pane and to visible nodes so hidden responsive dupes and cards
-  // in other (inactive) tab panes are never matched.
+  // A result trip's status label and id (trip-preview.vue), scoped to the one trip
+  // list the page now has. The rebuild removed the el-tabs and their panes, so
+  // '#pane-search-results' matches nothing — .trip-list-container is the single
+  // mounted list, holding whichever quick view plus search is active.
+  // :visible keeps hidden responsive duplicates out.
   RESULT_STATUS_LABEL:
-    '#pane-search-results .trip-preview .app-label:visible',
+    '.trip-list-container .trip-preview .app-label:visible',
   RESULT_TRIP_ID:
-    '#pane-search-results .trip-preview .trip-id:visible',
+    '.trip-list-container .trip-preview .trip-id:visible',
 
-  // Trips-page tab headers (my-trips.vue -> el-tabs). Element Plus renders each
-  // el-tab-pane header as an .el-tabs__item and the visible label sits in a nested
-  // <div class="tab"><p>. Matching the LABEL rather than the #tab-<name> id keeps
-  // the assertion on the text the scenario names ("Upcoming" / "Search results").
-  TRIPS_TAB:
-    '.my-trips .el-tabs__header .el-tabs__item',
-  TRIPS_TAB_LABEL:
-    '.tab p',
-
-  // Root of the search suggestions popper (trip-monitor-filter.vue -> el-dropdown
-  // popper-class="search-dropdown-popper"). Element Plus teleports the popper to
-  // <body>, so it is NOT a descendant of .trip-monitor-filter.
-  SEARCH_SUGGESTIONS_POPPER:
-    '.search-dropdown-popper',
-
-  // The trip list and its trip cards inside the search-results pane. my-trips.vue
-  // keeps every el-tab-pane mounted, so both are pane-scoped and the cards are
-  // :visible-scoped so a card in an inactive pane is never matched.
+  // The trip list and its cards. trip-list-panel.vue renders the list element even
+  // when it holds no cards, so the list's presence alone never proves a search
+  // returned anything — callers assert on the cards too.
   SEARCH_RESULTS_TRIP_LIST:
-    '#pane-search-results .trip-list',
+    '.trip-list-container .trip-list',
   SEARCH_RESULTS_TRIP_CARD:
-    '#pane-search-results .trip-preview:visible',
+    '.trip-list-container .trip-preview:visible',
 
-  // Comma-joined traveller names on a search-results trip card
-  // (trip-preview.vue -> .passenger-names).
+  // Comma-joined traveller names on a trip card (trip-preview.vue -> .passenger-names).
   RESULT_PASSENGER_NAMES:
-    '#pane-search-results .trip-preview .passenger-names:visible',
+    '.trip-list-container .trip-preview .passenger-names:visible',
 };
 
 class TripsPage {
@@ -382,13 +388,7 @@ class TripsPage {
    * @param {string} label - visible quick-view label, e.g. "Past trips"
    */
   async selectQuickView(label) {
-    if (typeof label !== 'string' || label.length === 0) {
-      throw new Error('[TripsPage.selectQuickView] "label" must be a non-empty string, got: ' + typeof label);
-    }
-    const view = this.page
-      .locator(SELECTORS.QUICK_VIEW)
-      .filter({ has: this.page.locator(SELECTORS.QUICK_VIEW_LABEL, { hasText: exactText(label) }) })
-      .first();
+    const view = await this.getQuickViewByLabel(label, { timeout: 30000 });
     try {
       await view.click({ timeout: 30000 });
       // trip-monitor-filter.vue marks the selected view with "is-active"; waiting on
@@ -473,16 +473,25 @@ class TripsPage {
   }
 
   /**
-   * Types a term into the trip-monitor free-text search input.
+   * Returns the free-text search input locator, WITHOUT waiting — a caller
+   * asserting the field is EMPTY needs the bare locator.
+   */
+  getSearchInput() {
+    return this.page.locator(SELECTORS.SEARCH_INPUT).first();
+  }
+
+  /**
+   * Types a term into the trips free-text search input.
    *
-   * Typing (not a raw value set) is required so the el-input @input handler fires
-   * and opens the suggestions dropdown. The input is cleared first so the method
-   * is safe to call more than once in a scenario.
+   * Typing (not a raw value set) is required so my-trips.vue's @input handler
+   * fires: it narrows the trips already loaded into the active quick view, which
+   * is the state a scenario sees before it submits. The input is cleared first so
+   * the method is safe to call more than once in a scenario.
    *
    * @param {string} term
    */
   async fillTripsSearch(term) {
-    const input = this.page.locator(SELECTORS.SEARCH_INPUT).first();
+    const input = this.getSearchInput();
     try {
       await input.waitFor({ state: 'visible', timeout: 15000 });
       await input.click({ timeout: 10000 });
@@ -490,82 +499,64 @@ class TripsPage {
       await input.pressSequentially(term, { delay: 20, timeout: 15000 });
     } catch (err) {
       throw new Error(
-        `[TripsPage.fillTripsSearch] Could not type "${term}" into the trips search input (${SELECTORS.SEARCH_INPUT}). The filter panel may not be rendered. Original: ${err.message}`
+        `[TripsPage.fillTripsSearch] Could not type "${term}" into the trips search input (${SELECTORS.SEARCH_INPUT}). The trips page may not have finished loading — my-trips.vue renders the search row only once isLoading is false. Original: ${err.message}`
       );
     }
   }
 
   /**
-   * Submits the trips search by pressing Enter on the free-text search input.
+   * Submits the trips search by clicking the Search button.
    *
-   * trip-monitor-filter.vue binds @keydown.enter="searchTrips" on the el-input, so
-   * Enter is what runs the search from the input itself — the alternative entry
-   * point is the "expand your search" suggestion (see clickSearchExpandItem).
+   * The button is what a user presses, and it is the control that carries the
+   * in-flight state (app-btn :isLoading="isTripsLoading"). Enter on the input runs
+   * the same my-trips.vue searchTrips() handler, but clicking also proves the
+   * control is enabled and hittable.
+   *
+   * Submitting re-queries the SERVER, so the list this leaves behind is NOT yet
+   * settled — callers wait for it (see Trips.submitTripsSearch).
    */
   async submitTripsSearch() {
-    const input = this.page.locator(SELECTORS.SEARCH_INPUT).first();
+    const button = this.page.locator(SELECTORS.SEARCH_SUBMIT_BTN).first();
     try {
-      await input.waitFor({ state: 'visible', timeout: 15000 });
-      await input.press('Enter', { timeout: 10000 });
+      await button.waitFor({ state: 'visible', timeout: 15000 });
+      await button.click({ timeout: 10000 });
     } catch (err) {
       throw new Error(
-        `[TripsPage.submitTripsSearch] Could not submit the trips search by pressing Enter on the search input (${SELECTORS.SEARCH_INPUT}). The filter panel may not be rendered or no term was typed. Original: ${err.message}`
+        `[TripsPage.submitTripsSearch] Could not click the trips Search button (${SELECTORS.SEARCH_SUBMIT_BTN}). The trips page may not have finished loading, or a previous search was still in flight and left the button in its loading state. Original: ${err.message}`
       );
     }
   }
 
   /**
-   * Returns the search suggestions popper once it is visible.
+   * Returns the quick-view button carrying the given visible label, once visible.
    *
-   * @param {object} options
-   * @param {number} options.timeout - Maximum time to wait (default: 15000ms)
-   */
-  async getSearchSuggestionsPopper({ timeout = 15000 } = {}) {
-    const popper = this.page.locator(SELECTORS.SEARCH_SUGGESTIONS_POPPER).first();
-    try {
-      await popper.waitFor({ state: 'visible', timeout });
-      return popper;
-    } catch (err) {
-      throw new Error(
-        `[TripsPage.getSearchSuggestionsPopper] The trips search suggestions dropdown (${SELECTORS.SEARCH_SUGGESTIONS_POPPER}) was not visible within ${timeout}ms. The dropdown only opens while the search input holds a term — ensure the term was typed. Original: ${err.message}`
-      );
-    }
-  }
-
-  /**
-   * Returns the "expand your search" suggestion once it is visible.
+   * Separate from selectQuickView: a scenario that only checks the rail OFFERS a
+   * view must not select it, which would re-query the trip list.
    *
+   * @param {string} label - visible quick-view label, e.g. "Past trips"
    * @param {object} options
-   * @param {number} options.timeout - Maximum time to wait (default: 15000ms)
+   * @param {number} options.timeout - Maximum time to wait (default: 30000ms)
    */
-  async getSearchExpandItem({ timeout = 15000 } = {}) {
-    const item = this.page.locator(SELECTORS.SEARCH_EXPAND_ITEM).first();
+  async getQuickViewByLabel(label, { timeout = 30000 } = {}) {
+    if (typeof label !== 'string' || label.length === 0) {
+      throw new Error('[TripsPage.getQuickViewByLabel] "label" must be a non-empty string, got: ' + typeof label);
+    }
+    const view = this.page
+      .locator(SELECTORS.QUICK_VIEW)
+      .filter({ has: this.page.locator(SELECTORS.QUICK_VIEW_LABEL, { hasText: exactText(label) }) })
+      .first();
     try {
-      await item.waitFor({ state: 'visible', timeout });
-      return item;
+      await view.waitFor({ state: 'visible', timeout });
+      return view;
     } catch (err) {
       throw new Error(
-        `[TripsPage.getSearchExpandItem] The "expand your search" option (${SELECTORS.SEARCH_EXPAND_ITEM}) was not visible within ${timeout}ms. The suggestions dropdown may not have opened — ensure the search term was typed. Original: ${err.message}`
+        `[TripsPage.getQuickViewByLabel] The "${label}" quick view (${SELECTORS.QUICK_VIEW}) was not visible within ${timeout}ms. The filter rail may not be rendered or the label differs from the value passed. Original: ${err.message}`
       );
     }
   }
 
   /**
-   * Clicks the "expand your search" suggestion to run the full search.
-   */
-  async clickSearchExpandItem() {
-    const item = await this.getSearchExpandItem({ timeout: 15000 });
-    try {
-      await item.click({ timeout: 10000 });
-    } catch (err) {
-      throw new Error(
-        `[TripsPage.clickSearchExpandItem] Could not click the "expand your search" option (${SELECTORS.SEARCH_EXPAND_ITEM}). Original: ${err.message}`
-      );
-    }
-  }
-
-  /**
-   * Returns the search-results "Found N trip(s)" header once it is visible.
+   * Returns the list header's "Showing N trips" count once it is visible.
    *
    * @param {object} options
    * @param {number} options.timeout - Maximum time to wait (default: 30000ms)
@@ -577,13 +568,13 @@ class TripsPage {
       return header;
     } catch (err) {
       throw new Error(
-        `[TripsPage.getSearchResultsHeader] The search-results header (${SELECTORS.SEARCH_RESULTS_HEADER}) was not visible within ${timeout}ms. The search may not have produced a results tab. Original: ${err.message}`
+        `[TripsPage.getSearchResultsHeader] The trip list header (${SELECTORS.SEARCH_RESULTS_HEADER}) was not visible within ${timeout}ms. The trips page may not have finished loading. Original: ${err.message}`
       );
     }
   }
 
   /**
-   * Returns the search-results no-results heading once it is visible.
+   * Returns the trip list's no-results heading once it is visible.
    *
    * @param {object} options
    * @param {number} options.timeout - Maximum time to wait (default: 30000ms)
@@ -733,65 +724,7 @@ class TripsPage {
   }
 
   /**
-   * Returns the trips-page tab header locator for the given visible label,
-   * WITHOUT waiting.
-   *
-   * A caller asserting a tab is ABSENT needs the bare locator — a waiting variant
-   * would throw before the assertion could run.
-   *
-   * @param {string} label - visible tab label, e.g. "Upcoming" / "Search results"
-   */
-  getTripsTabLocator(label) {
-    if (typeof label !== 'string' || label.length === 0) {
-      throw new Error('[TripsPage.getTripsTabLocator] "label" must be a non-empty string, got: ' + typeof label);
-    }
-    return this.page
-      .locator(SELECTORS.TRIPS_TAB)
-      .filter({ has: this.page.locator(SELECTORS.TRIPS_TAB_LABEL, { hasText: exactText(label) }) });
-  }
-
-  /**
-   * Waits until the trips tab strip has rendered at least one tab.
-   *
-   * A caller asserting a tab is ABSENT must first know the strip is up: straight
-   * after a page reload no tab exists yet, so the absence check would pass against
-   * a still-loading page rather than against a page that dropped the tab.
-   *
-   * @param {object} options
-   * @param {number} options.timeout - Maximum time to wait (default: 30000ms)
-   */
-  async waitForTripsTabStrip({ timeout = 30000 } = {}) {
-    const anyTab = this.page.locator(SELECTORS.TRIPS_TAB).first();
-    try {
-      await anyTab.waitFor({ state: 'visible', timeout });
-    } catch (err) {
-      throw new Error(
-        `[TripsPage.waitForTripsTabStrip] The trips tab strip (${SELECTORS.TRIPS_TAB}) had not rendered a single tab within ${timeout}ms. The trips page may still be loading. Original: ${err.message}`
-      );
-    }
-  }
-
-  /**
-   * Returns the trips-page tab header for the given label once it is visible.
-   *
-   * @param {string} label - visible tab label, e.g. "Upcoming"
-   * @param {object} options
-   * @param {number} options.timeout - Maximum time to wait (default: 30000ms)
-   */
-  async getTripsTab(label, { timeout = 30000 } = {}) {
-    const tab = this.getTripsTabLocator(label).first();
-    try {
-      await tab.waitFor({ state: 'visible', timeout });
-      return tab;
-    } catch (err) {
-      throw new Error(
-        `[TripsPage.getTripsTab] The "${label}" trips tab (${SELECTORS.TRIPS_TAB}) was not visible within ${timeout}ms. The trips page may not have loaded or the tab label differs from the value passed. Original: ${err.message}`
-      );
-    }
-  }
-
-  /**
-   * Returns the trip list inside the search-results pane once it is visible.
+   * Returns the page's trip list once it is visible.
    *
    * @param {object} options
    * @param {number} options.timeout - Maximum time to wait (default: 30000ms)
@@ -803,23 +736,23 @@ class TripsPage {
       return list;
     } catch (err) {
       throw new Error(
-        `[TripsPage.getSearchResultsTripList] The search-results trip list (${SELECTORS.SEARCH_RESULTS_TRIP_LIST}) was not visible within ${timeout}ms. The search may not have produced a results tab. Original: ${err.message}`
+        `[TripsPage.getSearchResultsTripList] The trip list (${SELECTORS.SEARCH_RESULTS_TRIP_LIST}) was not visible within ${timeout}ms. trip-list-panel.vue renders it only once the active view returned at least one trip, so a search that matched nothing shows the no-results block instead. Original: ${err.message}`
       );
     }
   }
 
   /**
-   * Returns the search-results trip-card locator, WITHOUT waiting, so a caller can
-   * assert on how many cards rendered. An empty .trip-list still renders, so the
-   * card count is what separates "results" from "an empty results pane".
+   * Returns the trip-card locator, WITHOUT waiting, so a caller can assert on how
+   * many cards rendered. The card count is what separates "results" from "a list
+   * that rendered without them".
    */
   getSearchResultsTripCardsLocator() {
     return this.page.locator(SELECTORS.SEARCH_RESULTS_TRIP_CARD);
   }
 
   /**
-   * Returns the traveller-names locator for every search-results trip card that
-   * lists the given traveller, WITHOUT waiting.
+   * Returns the traveller-names locator for every trip card that lists the given
+   * traveller, WITHOUT waiting.
    *
    * A caller asserting a traveller is ABSENT from the results needs the bare
    * locator — a waiting variant would throw before the assertion could run.
@@ -834,8 +767,8 @@ class TripsPage {
   }
 
   /**
-   * Returns the traveller-names node of a search-results trip card listing the
-   * given traveller, once visible.
+   * Returns the traveller-names node of a trip card listing the given traveller,
+   * once visible.
    *
    * Substring match on purpose: .passenger-names holds every traveller on the trip
    * as one comma-joined string, so an exact-text match would only ever hit
@@ -852,7 +785,7 @@ class TripsPage {
       return names;
     } catch (err) {
       throw new Error(
-        `[TripsPage.getResultTripForTraveller] No search-results trip listed the traveller "${traveller}" within ${timeout}ms. The search may have returned other travellers' trips only. Original: ${err.message}`
+        `[TripsPage.getResultTripForTraveller] No trip in the list named the traveller "${traveller}" within ${timeout}ms. The search may have returned other travellers' trips only. Original: ${err.message}`
       );
     }
   }

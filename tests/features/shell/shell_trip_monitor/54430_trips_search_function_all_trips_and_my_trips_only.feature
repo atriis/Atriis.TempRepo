@@ -6,6 +6,15 @@
 # Created: 2024-11-20T05:34:01Z
 # Updated: 2025-07-22T07:01:59Z
 
+# Rewritten for the trips page rebuilt under AB#82671: the search suggestions and
+# the Upcoming/Active/Past/Search-results tabs this test was written against no
+# longer exist, so the search is now type-then-submit and the tabs are the filter
+# rail's quick views. The ADO test case still describes the old screen.
+#
+# The closing block has no counterpart in the original, which ended by checking
+# that a search FOR "Nicole Carolina" returned no "Ibire Cvvsky" — true whether or
+# not the filter works. That assertion is kept for fidelity; this one can fail.
+
 @regression @shell @trips
 Feature: 54430 - Trips search function all trips and my trips only
   As a corporate travel manager
@@ -16,20 +25,20 @@ Feature: 54430 - Trips search function all trips and my trips only
     Given I am logged in as "nicolecarolina@fusion.com"
     When I navigate to the trips page
     And I search the trips page for "Ibire Cvvsky"
-    Then the trips search suggestions dropdown should be displayed
-    And the trips search should offer to expand the search
-    When I submit the trips search
-    Then a search results tab should be displayed
-    And the search results should display a trip list
+    And I submit the trips search
+    Then the search results should display a trip list
     And the search results should show a trip for traveller "Ibire Cvvsky"
     When I refresh the page
-    Then the search results tab should no longer be displayed
-    And the "Upcoming" trips tab should be displayed
-    And the "Active" trips tab should be displayed
-    And the "Past" trips tab should be displayed
-    When I check the "My trips only" filter on the trips page
+    Then the trips search input should be empty
+    And the "To do" quick view should be displayed on the trips page
+    And the "Upcoming trips" quick view should be displayed on the trips page
+    And the "In travel trips" quick view should be displayed on the trips page
+    And the "Past trips" quick view should be displayed on the trips page
+    When I turn the "My trips only" filter switch on
     And I search the trips page for "Nicole Carolina"
     And I submit the trips search
-    Then a search results tab should be displayed
-    And the search results should show a trip for traveller "Nicole Carolina"
+    Then the search results should show a trip for traveller "Nicole Carolina"
     And the search results should not show a trip for traveller "Ibire Cvvsky"
+    When I search the trips page for "Ibire Cvvsky"
+    And I submit the trips search
+    Then the trips search should display no results

@@ -6,11 +6,6 @@ const logger = require("@utils/logger").child("Trips");
 
 setDefaultTimeout(120000);
 
-// Visible label of the tab my-trips.vue renders for a submitted search. The two
-// steps below name it in their phrase instead of taking it as a parameter, so it
-// is declared once here rather than repeated at each call site.
-const SEARCH_RESULTS_TAB = "Search results";
-
 // ===== WHEN STEPS =====
 
 When("I navigate to the trips page", async function () {
@@ -92,8 +87,14 @@ Then("the trip should open in the same tab showing the trip overview page", asyn
   await Trips.verifyTripOpensInSameTab(this.page);
 });
 
-// ===== TODO STEPS (testim conversion: 54430 / 61638 / 69752) =====
+// ===== TODO STEPS (testim conversion: 61638 / 69752) =====
 // Bodies are unimplemented placeholders — @todo-pipeline implements the DSL/Page layers.
+//
+// 54430 is off this list: it has been rewritten against the trips page AB#82671
+// rebuilt, and its steps are implemented above. 61638 and 69752 still describe the
+// pre-rebuild screen (search suggestions, "expand your search", tab panes) and need
+// the same treatment — the Trips DSL now fails those calls with an explicit
+// "removed from the product" error rather than timing out on a dead selector.
 
 When("I search the trips page for {string}", async function (term) {
   logger.info("Searching the trips page", { term });
@@ -125,9 +126,11 @@ When("I uncheck the {string} filter on the trips page", async function (filterLa
   throw new Error(`TODO: implement 'I uncheck the {string} filter on the trips page' — untick the "${filterLabel}" filter checkbox`);
 });
 
+// The trips page has no tabs since AB#82671 — a scenario that wants another source
+// selects a quick view instead ("I select the {string} quick view on the trips page").
 When("I click the {string} trips tab", async function (tabName) {
   logger.info("Clicking trips tab", { tabName });
-  throw new Error(`TODO: implement 'I click the {string} trips tab' — click the "${tabName}" trips tab`);
+  throw new Error(`The trips page has no "${tabName}" tab: AB#82671 replaced the el-tabs with the filter rail's quick views. Use 'I select the {string} quick view on the trips page' with one of "To do", "Upcoming trips", "In travel trips" or "Past trips".`);
 });
 
 When("I clear all trips filters", async function () {
@@ -155,14 +158,14 @@ Then("the trips search should offer to expand the search", async function () {
   await Trips.verifyTripsSearchOffersExpand(this.page);
 });
 
-Then("a search results tab should be displayed", async function () {
-  logger.info("Verifying a search results tab is displayed");
-  await Trips.verifyTripsTabDisplayed(this.page, SEARCH_RESULTS_TAB);
+Then("the trips search input should be empty", async function () {
+  logger.info("Verifying the trips search input is empty");
+  await Trips.verifyTripsSearchInputEmpty(this.page);
 });
 
-Then("the search results tab should no longer be displayed", async function () {
-  logger.info("Verifying the search results tab is no longer displayed");
-  await Trips.verifyTripsTabNotDisplayed(this.page, SEARCH_RESULTS_TAB);
+Then("the {string} quick view should be displayed on the trips page", async function (label) {
+  logger.info("Verifying trips quick view is displayed", { label });
+  await Trips.verifyQuickViewDisplayed(this.page, label);
 });
 
 Then("the search results should display a trip list", async function () {
@@ -178,11 +181,6 @@ Then("the search results should show a trip for traveller {string}", async funct
 Then("the search results should not show a trip for traveller {string}", async function (traveller) {
   logger.info("Verifying search results do not show a trip for traveller", { traveller });
   await Trips.verifySearchResultsDoNotShowTraveller(this.page, traveller);
-});
-
-Then("the {string} trips tab should be displayed", async function (tabName) {
-  logger.info("Verifying trips tab is displayed", { tabName });
-  await Trips.verifyTripsTabDisplayed(this.page, tabName);
 });
 
 Then("the trips results count should be {string}", async function (expectedCount) {
