@@ -433,6 +433,34 @@ Distributor logs are published asynchronously, so a single read can land mid-bur
 - **Usage:** Step: `Then every "{requestType}" request should reference a different "{attributeName}"`
 - **When to run it:** after every request of that type has been sent, since it inspects the whole trip.
 
+### 2.10.9 `collectParameterOccurrencesPerCall()` — generic per-call parameter counting
+
+Generic plumbing: counts occurrences of a named parameter (e.g. `rateCategory`) in each request of a type logged for the trip. Waits for the request type and lets the count settle first, because the distributor log publishes asynchronously — reading immediately can land between the chunks of a split batch and undercount it. Attaches **no product meaning** to the count — that belongs in the DSL calling it.
+
+- **Signature:** `(world, requestType, parameterName)` → `{ perCall: [{ entries, values }], entriesTotal }`
+- **Product usage — Amadeus fare family description batching (ADO 83106):** `FlightResults.expectFareFamilyDescriptionsBatched()` / `FlightResults.expectMoreFareFamiliesDescribedThan()` in `src/dsl/FlightResults.js` call this with `parameterName = "rateCategory"` to assert the Amadeus pricing options screen batches `Fare_GetFareFamilyDescription` calls instead of sending one per fare family (chunked at the supplier cap of 6). Steps: `Then the fare family descriptions should be batched in "{requestType}" requests of at most {int} per call`, `Then more than {int} fare families should have been described in "{requestType}" requests`, both in `tests/steps/flight_nff.steps.js`, the step file for the new-flight-flow brand cards those scenarios drive.
+  - **EDIFACT only.** An NDC offer is priced through a different message and never sends this request, so an NDC account makes the assertion unprovable rather than false. Use an EDIFACT-only account.
+  - **What it deliberately does not assert:** an exact call count. How many calls a trip makes depends on the ladder width and the cap, not on the number of screens visited, so an exact count would be pinned to one route's live availability. The reply routing, the chunking above the cap and the partial-failure behaviour are covered deterministically by `AmadeusFlightEngineFareFamilyBatchTests` in the product repo.
+  - **Measured on staging (2026-09-09).** One way LON-MAD: 1 call, 3 families `[3]`. Round trip LON-MAD: 1 call, 3 families `[3]` — one batch covered the trip even after visiting both the outbound and the inbound brand cards, so a second leg does not imply a second call. Multi city LON-MAD-CDG: 1 call, 4 families `[4]`. JFK-LAX on AA: 2 calls, 10 families `[4, 6]` — the only measured route that reaches the cap and exercises chunking.
+  - **`more than {int} fare families …` is a coverage guard, not a product assertion.** The chunking branch only runs when the ladder is wider than the cap, and a route's ladder follows live availability — JFK-MIA on AA was measured at 8, then 6, then 1 family. Without the guard the scenario would keep passing while no longer exercising chunking.
+  - Request type: pass `"*Fare_GetFareFamilyDescription*"`. The bare name never matches — it is logged as `Amadeus4.Fare_GetFareFamilyDescription`.
+- **When to run it:** after the screen that sends the requests under test has rendered.
+
+### 2.10.10 `waitForRequestType()` — anchoring an absence assertion
+
+- **Signature:** `(world, requestType)` — returns the count once the type appears, throws after 60s if it never does.
+- **Why it exists:** the distributor log publishes asynchronously. Asserting a request type is *absent* right after the screen renders passes because nothing has been written yet, not because the request was never made — a silent false pass. Waiting for a request type the flow definitely does make proves the log is live for this trip, and only then is an absence meaningful.
+- **Usage:** Step: `When I wait until "{requestType}" requests have been sent for the trip`, then assert the absence.
+- **Do not use `exactly 0 "{requestType}" requests should have been sent` for an absence.** The storage client throws when a lookup matches nothing rather than returning zero, so the step dies on a 20s `"lookup retry delay"` timeout instead of asserting. Pair the anchor with the type inventory instead:
+
+```gherkin
+When I wait until "*AMA_TravelOfferPriceRQ*" requests have been sent for the trip
+And I capture all the "request" types from Storage
+Then the captured "request" types do not contain request type "*Fare_GetFareFamilyDescription*"
+```
+
+Canonical example: `tests/features/flights/flights_amadeus/flights_amadeus_non_booking/84378_amadeus_ndc_offer_sends_no_fare_family_description.feature` — proves the ADO 83106 EDIFACT batching never reaches an NDC offer (TR1), whose brand info comes from `Amadeus4.NDC.AMA_TravelOfferPriceRQ (Flight Price (Brand Info))`.
+
 #### Gotchas
 
 - **Capture step is mandatory** — the assertion throws if no baseline exists for that request type.
@@ -496,6 +524,9 @@ All step definitions are in `tests/steps/payload_validation.steps.js`. Here is t
 | `Then every "{requestType}" request should have "{parameterName}" containing "{expectedValue}"` | `expectEveryRequestParameterContains()` | Assert the parameter value on every request of that type (§2.10.7) |
 | `Then every "{requestType}" request should have "{parameterName}" within "{blockTag}" containing "{expectedValue}"` | `expectEveryRequestParameterContains()` | Same, but only inside the named XML block — tells round-trip legs apart (§2.10.7) |
 | `Then every "{requestType}" request should reference a different "{attributeName}"` | `expectRequestAttributeValuesAreUnique()` | Assert no two requests share the same attribute value (§2.10.8) |
+| `When I wait until "{requestType}" requests have been sent for the trip` | `waitForRequestType()` | Anchor an absence assertion: prove the log is publishing for this trip before claiming a request type is missing (§2.10.10) |
+
+> Fare family description batching steps (`Then the fare family descriptions should be batched in ...`, `Then more than {int} fare families should have been described in ...`) are defined in `tests/steps/flight_nff.steps.js` and call `FlightResults.expectFareFamilyDescriptionsBatched()` / `FlightResults.expectMoreFareFamiliesDescribedThan()`, which use `collectParameterOccurrencesPerCall()` from this DSL (§2.10.9) — they're product-specific, not generic payload validation.
 
 ---
 

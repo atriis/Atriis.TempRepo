@@ -594,6 +594,23 @@ Then("the captured {string} types do not contain request type {string}", async f
   });
 });
 
+// Fare family batching steps live in flight_nff.steps.js / FlightResults DSL: the counting is
+// product-specific (branded fares), this file stays generic payload plumbing.
+
+// Anchor for an absence assertion: the distributor log publishes asynchronously, so "0 of X were
+// sent" read too early means "not published yet", not "never sent". Waiting for a request the flow
+// definitely makes proves the log is live for this trip before anything is claimed absent.
+When("I wait until {string} requests have been sent for the trip", async function (requestType) {
+  await runPayloadValidationStep(this, "waitForRequestType", { requestType }, async () => {
+    logger.info("Waiting for the request type to appear in the trip log", {
+      requestType,
+      ...getScenarioIdentifiers(this),
+    });
+    const count = await PayloadValidation.waitForRequestType(this, requestType);
+    logger.info("Request type present in the trip log", { requestType, count });
+  });
+});
+
 When("I capture the number of {string} requests sent for the trip", async function (requestType) {
   await runPayloadValidationStep(this, "captureRequestCount", { requestType }, async () => {
     logger.info("Capturing baseline request count", { requestType, ...getScenarioIdentifiers(this) });

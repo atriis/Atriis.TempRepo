@@ -2100,6 +2100,52 @@ const PayloadValidation = {
   },
 
   /**
+   * Counts occurrences of a named parameter in each request of a type logged for the trip - e.g.
+   * how many `<rateCategory>` entries each `Fare_GetFareFamilyDescription` call carries. Generic
+   * plumbing only: no product meaning is attached to the count here, that belongs in the product
+   * DSL calling this (see FlightResults.expectFareFamilyDescriptionsBatched for the fare-family
+   * use of this).
+   *
+   * The wait and settle are not decoration: the distributor log publishes asynchronously, so an
+   * immediate read can land between the chunks of a split batch and undercount it.
+   *
+   * @param {object} world
+   * @param {string} requestType - e.g. "*Fare_GetFareFamilyDescription*"
+   * @param {string} parameterName - e.g. "rateCategory"
+   * @returns {Promise<{perCall: Array<{entries: number, values: string[]}>, entriesTotal: number}>}
+   */
+  async collectParameterOccurrencesPerCall(world, requestType, parameterName) {
+    assertWorld(world);
+    const normalizedRequestType = normalizeRequestType(requestType);
+
+    await this.waitForRequestType(world, normalizedRequestType);
+    await settleRequestCount(() => this.getRequestCount(world, normalizedRequestType), {
+      requestType: normalizedRequestType,
+    });
+
+    const batched = await fetchAllRequestsForTrip(
+      world,
+      normalizedRequestType,
+      `collect "${parameterName}" occurrences per call`
+    );
+    const perCall = batched.matches.map((match) => {
+      const values = collectParameterValues(match.payload, parameterName).map((o) => o.value);
+      return { entries: values.length, values };
+    });
+    const entriesTotal = perCall.reduce((sum, call) => sum + call.entries, 0);
+
+    logger.info("Collected parameter occurrences per call", {
+      requestType: normalizedRequestType,
+      parameterName,
+      calls: perCall.length,
+      entriesTotal,
+      entriesPerCall: perCall.map((call) => call.entries),
+    });
+
+    return { perCall, entriesTotal };
+  },
+
+  /**
    * Asserts that no two requests of the given type carry the same value for a named parameter.
    *
    * For OfferPrice the parameter is OfferID: each request should price a different offer, so the

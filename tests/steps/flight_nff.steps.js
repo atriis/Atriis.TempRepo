@@ -2,6 +2,7 @@ require("module-alias/register");
 const { When, Then, setDefaultTimeout } = require("@cucumber/cucumber");
 const { expect } = require("@playwright/test");
 const { FlightResults } = require("../../src/dsl");
+const config = require("@config/config");
 const logger = require("@utils/logger").child("FlightNFF");
 
 setDefaultTimeout(120000);
@@ -86,6 +87,49 @@ Then("the pricing options leg should offer more than one fare", async function (
   const result = await FlightResults.verifyPricingOptionsLegOffersMultipleFares(this.page);
   logger.info("[PricingOptions] Multiple fares verified on the current leg", result);
 });
+
+// Payload assertions, not UI ones: they read the trip's request log and take `world`, not
+// `page`. They sit here because the scenarios using them drive the brand cards below, so the
+// whole flow stays in one step file. See docs/PayloadValidation.md section 2.10.9.
+Then(
+  "the fare family descriptions should be batched in {string} requests of at most {int} per call",
+  async function (requestType, maxPerCall) {
+    if (!config.payloadValidation.enabled) {
+      logger.warn("PAYLOAD_VALIDATION_ENABLED=false", {
+        step: "expectFareFamilyDescriptionsBatched",
+        requestType,
+        maxPerCall,
+      });
+      return;
+    }
+    logger.info("Validating fare family descriptions were batched", {
+      requestType,
+      maxPerCall,
+      tripId: this.tripId || this.currentTripId || this.createdTripId || null,
+    });
+    await FlightResults.expectFareFamilyDescriptionsBatched(this, requestType, maxPerCall);
+  }
+);
+
+Then(
+  "more than {int} fare families should have been described in {string} requests",
+  async function (atLeast, requestType) {
+    if (!config.payloadValidation.enabled) {
+      logger.warn("PAYLOAD_VALIDATION_ENABLED=false", {
+        step: "expectMoreFareFamiliesDescribedThan",
+        requestType,
+        atLeast,
+      });
+      return;
+    }
+    logger.info("Validating the itinerary offered a fare family ladder wider than the cap", {
+      requestType,
+      atLeast,
+      tripId: this.tripId || this.currentTripId || this.createdTripId || null,
+    });
+    await FlightResults.expectMoreFareFamiliesDescribedThan(this, requestType, atLeast);
+  }
+);
 
 Then("the outbound leg brand cards are displayed", async function () {
   logger.info("[NewFlightFlow] Verifying outbound leg brand cards are visible");

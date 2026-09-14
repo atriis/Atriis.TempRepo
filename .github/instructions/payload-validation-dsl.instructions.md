@@ -1,6 +1,6 @@
 ---
 description: 'PayloadValidation DSL reference for capturing and asserting API payloads in Cucumber scenarios'
-applyTo: '**/*.feature, **/payload_validation.steps.js, **/PayloadValidation.js'
+applyTo: '**/*.feature, **/payload_validation.steps.js, **/PayloadValidation.js, **/flight_nff.steps.js, **/FlightResults.js'
 ---
 
 # PayloadValidation DSL — Agent Reference
@@ -19,6 +19,7 @@ applyTo: '**/*.feature, **/payload_validation.steps.js, **/PayloadValidation.js'
 - ✅ XML and JSON validation with loose structure matching
 - ✅ Request counting — prove a supplier call was **not** re-sent
 - ✅ Request-type inventory — prove a supplier call was **never sent at all**
+- ✅ Per-request entry counting — prove a supplier call was **batched**, not sent once per item
 
 ## Supported Step Definitions
 
@@ -201,6 +202,9 @@ need **no** capture-payload step.
 # Drive the flow past the point where the request would have been sent
 And flight results should be available
 
+# Optional but stronger: anchor on a request the stage under test really sends
+When I wait until "*AMA_TravelOfferPriceRQ*" requests have been sent for the trip
+
 When I capture all the "request" types from Storage
 Then the captured "request" types do not contain request type "Sabre NDC Flight Search*"
 ```
@@ -208,8 +212,13 @@ Then the captured "request" types do not contain request type "Sabre NDC Flight 
 - **Prefer this over `exactly 0 "..." requests should have been sent`.** §6's caveat is fatal for a pure absence
   test: `exactly 0` maps "not found" to zero, so it passes identically whether the request was never sent or the
   logs simply had not published yet. The capture step here reads the **whole** inventory and **fails** when it comes
-  back empty ("the trip never reached a supplier"), which is the proof-of-contact §6 tells you to pair with — and
-  there is no standalone anchor step to pair with instead.
+  back empty ("the trip never reached a supplier"), which is the proof-of-contact §6 tells you to pair with.
+- **Anchor on the stage under test when the inventory alone is too weak.** A non-empty inventory only proves *some*
+  request published — usually earlier search traffic — not that the stage where the forbidden call would appear has
+  finished publishing. `When I wait until "{requestType}" requests have been sent for the trip` waits (up to 60s) for
+  a request that stage really does send, and only then is the absence meaningful. Unlike the count steps in §5, it
+  tolerates the type being missing at first: `captureRequestCount` throws on the very first read if the type is not
+  yet logged, whereas this one retries until the deadline.
 - **Wildcards are usually mandatory, not optional.** Several suppliers suffix the logged type with the corporate
   account code that produced the call — a real NDC-enabled trip logs `Sabre NDC Flight Search FROCDE` and
   `Sabre NDC Flight Search aaaaaa`, and **never** the bare name. An exact-match assertion on `"Sabre NDC Flight
@@ -222,7 +231,45 @@ Then the captured "request" types do not contain request type "Sabre NDC Flight 
 - **`source` must be `request` or `response`** — `block` is a fragment of an already-captured payload and is
   rejected.
 
-Canonical example: `tests/features/flights/flights_sabre/flights_sabre_non_booking/79477_sabre_ndc_no_active_airlines_no_ndc_search_request.feature`
+Canonical examples:
+`tests/features/flights/flights_sabre/flights_sabre_non_booking/79477_sabre_ndc_no_active_airlines_no_ndc_search_request.feature`
+and, with the stage anchor,
+`tests/features/flights/flights_amadeus/flights_amadeus_non_booking/84378_amadeus_ndc_offer_sends_no_fare_family_description.feature`
+
+### 8. Batching — Prove Many Items Travelled in Few Calls
+
+Use when the requirement is *"collect these and send them together"* rather than one call per item — e.g. ADO
+83106, where the Amadeus pricing options screen used to fetch one `Fare_GetFareFamilyDescription` per fare family
+and now chunks them at the supplier cap of 6. Like §5–§7 these steps read the trip's request log directly, via
+`PayloadValidation.collectParameterOccurrencesPerCall(world, requestType, parameterName)` — generic per-call
+counting, no product meaning attached. The fare family batching steps below and their assertions are defined in
+`tests/steps/flight_nff.steps.js` / `src/dsl/FlightResults.js`, not in this file: the counting plumbing is
+generic payload validation, but *what a batch of `rateCategory` entries means* is a flights/fares concept, so it
+lives on the flight side.
+
+```gherkin
+# Once the screen that sends those requests has rendered
+Then the outbound leg brand cards are displayed
+
+# Coverage guard first: fail loudly if the itinerary is too narrow to exercise chunking
+And more than 6 fare families should have been described in "*Fare_GetFareFamilyDescription*" requests
+And the fare family descriptions should be batched in "*Fare_GetFareFamilyDescription*" requests of at most 6 per call
+```
+
+- **The assertion is `calls < items`, not an exact call count.** How many calls a trip makes follows the ladder
+  width against the cap, not the number of screens visited — a LON-MAD round trip was measured at *one* call
+  covering both legs. An exact count would be pinned to live availability.
+- **It refuses to pass over an empty set.** Nothing described means nothing to judge, so the step fails rather
+  than clearing a trip whose content never offered branded fares at all.
+- **EDIFACT only.** An NDC offer is priced through a different message and never sends this request, so an NDC
+  account makes the assertion unprovable rather than false (that is what §7 and 84378 cover instead).
+- **Pair it with the coverage guard whenever the scenario exists to exercise chunking.** A route's ladder follows
+  live availability — JFK-MIA on AA was measured at 8, then 6, then 1 family. Without
+  `more than {int} fare families …` the scenario keeps passing green while no longer covering the chunking branch.
+- **Wildcards matter here too.** The type is logged as `Amadeus4.Fare_GetFareFamilyDescription`; the bare name
+  never matches.
+
+Canonical example: `tests/features/flights/flights_amadeus/flights_amadeus_non_booking/84298_amadeus_fare_family_descriptions_chunked_beyond_cap.feature`
 
 ## Scenario Identifiers (world context)
 
@@ -310,6 +357,8 @@ Error: Expected content not found in any of the 3 captured request payload(s) fo
 - ✅ Use multi-line JSON for full structure validation
 - ✅ Use the request-count steps for "must not be re-sent" requirements, always with an anchor
 - ✅ Use the request-type inventory steps for "never sent at all" requirements, with a `*` suffix on the type
+- ✅ Anchor an absence test on the stage under test with `I wait until "..." requests have been sent for the trip`
+- ✅ Use the batching steps for "sent together, not one per item" requirements, with the coverage guard alongside
 
 ### DON'T
 - ❌ Skip the capture step before assertions (content **and** request count)

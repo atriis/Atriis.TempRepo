@@ -1,5 +1,6 @@
 const { expect } = require("@playwright/test");
 const FlightResultsPage = require("@pages/FlightResultsPage");
+const PayloadValidation = require("./PayloadValidation");
 const logger = require("@utils/logger").child("FlightResults-DSL");
 const { CartPage } = require("@pages/CartPage");
 const { ResultsPage } = require("@pages/ResultsPage");
@@ -3820,6 +3821,101 @@ async verifyFareComponentTextColorInPricingOptions(page, expectedColor, index = 
     const flightResultsPage = getPageObject(page, FlightResultsPage);
     await flightResultsPage.waitForNewFlightFlowBrandCards(1);
     return { inboundBrandCardsVisible: true };
+  },
+
+  // These two assert on the trip's payload and never touch the page - they take `world`, not
+  // `page`. They live in this module because the scenarios that use them drive the new-flight-flow
+  // brand cards, which is this trio's screen; the generic mechanism is
+  // PayloadValidation.collectParameterOccurrencesPerCall.
+  /**
+   * Asserts the Amadeus fare family descriptions were batched rather than fetched one per supplier
+   * call. Guards ADO 83106, whose engine chunks them at MaxFareFamilyDescriptionsPerCall = 6.
+   *
+   * An exact call count is deliberately not asserted - see docs/PayloadValidation.md section 2.10.9
+   * for why, and for what the product repo covers deterministically instead.
+   *
+   * @param {object} world
+   * @param {string} requestType - e.g. "*Fare_GetFareFamilyDescription*"
+   * @param {number} maxPerCall - the supplier cap on entries per call
+   */
+  async expectFareFamilyDescriptionsBatched(world, requestType, maxPerCall) {
+    if (!Number.isInteger(maxPerCall) || maxPerCall < 1) {
+      throw new Error(`maxPerCall must be a positive integer, got: ${maxPerCall}`);
+    }
+
+    const { perCall, entriesTotal } = await PayloadValidation.collectParameterOccurrencesPerCall(
+      world,
+      requestType,
+      "rateCategory"
+    );
+    const oversized = perCall.filter((call) => call.entries > maxPerCall);
+
+    logger.info("Checked fare family description batching", {
+      requestType,
+      calls: perCall.length,
+      entriesTotal,
+      entriesPerCall: perCall.map((call) => call.entries),
+      families: perCall.map((call) => call.values),
+    });
+
+    // Nothing described means nothing to judge, and the assertions below would hold over an empty
+    // set - the vacuous pass this check exists to prevent.
+    expect(
+      entriesTotal,
+      `No fare family was described for this trip, so batching cannot be checked. Confirm the ` +
+      `itinerary really offers branded fares and that the content is EDIFACT - an NDC offer is ` +
+      `priced through a different message and never sends "${requestType}".`
+    ).toBeGreaterThan(0);
+
+    expect(
+      oversized.length,
+      `No "${requestType}" call may carry more than ${maxPerCall} fare families, but ` +
+      `${oversized.length} of ${perCall.length} call(s) did (${oversized.map((c) => c.entries).join(", ")} ` +
+      `entries). That cap is the supplier's documented limit for standaloneDescriptionRequest.`
+    ).toBe(0);
+
+    // The regression this guards: one call per fare family. Batching means fewer calls than
+    // families, whatever the render count - which an exact call count could never survive.
+    if (entriesTotal > 1) {
+      expect(
+        perCall.length,
+        `${entriesTotal} fare families were described across ${perCall.length} ` +
+        `"${requestType}" call(s) - one call each, so they were not batched. The families ` +
+        `shown on one render are meant to travel together in as few calls as the cap of ` +
+        `${maxPerCall} allows.`
+      ).toBeLessThan(entriesTotal);
+    }
+
+    return { calls: perCall.length, entriesTotal, entriesPerCall: perCall.map((c) => c.entries) };
+  },
+
+  /**
+   * Asserts the itinerary described more fare families than the given number, so a scenario written
+   * to exercise chunking says so when its route's ladder narrows instead of passing over nothing.
+   *
+   * @param {object} world
+   * @param {string} requestType
+   * @param {number} atLeast
+   */
+  async expectMoreFareFamiliesDescribedThan(world, requestType, atLeast) {
+    if (!Number.isInteger(atLeast) || atLeast < 0) {
+      throw new Error(`atLeast must be a non-negative integer, got: ${atLeast}`);
+    }
+
+    const { entriesTotal } = await PayloadValidation.collectParameterOccurrencesPerCall(
+      world,
+      requestType,
+      "rateCategory"
+    );
+
+    logger.info("Counted fare families described", { requestType, entriesTotal, atLeast });
+
+    expect(
+      entriesTotal,
+      `This scenario exists to exercise batching beyond ${atLeast} fare families per call, but the ` +
+      `itinerary only offered ${entriesTotal}. The route's fare family ladder has narrowed - pick ` +
+      `one that still offers more than ${atLeast}, or the chunking path stops being covered.`
+    ).toBeGreaterThan(atLeast);
   },
 
   /**
