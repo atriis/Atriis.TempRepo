@@ -16,5 +16,5 @@ Feature: 45663 - Trip monitor user group is displayed on the trip monitor
     Given I am logged in as "ruimariano@amadeus.com"
     Then the welcome heading should contain "Welcome"
     When I navigate to the trips page
-    And I click active trips tab
+    And I select the "In travel trips" quick view on the trips page
     Then the user group label should be visible on the first trip
