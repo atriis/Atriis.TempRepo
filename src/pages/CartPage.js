@@ -14,6 +14,11 @@ const { SELECTORS: SEARCH_SELECTORS } = require("@pages/SearchPage");
 // Canonical, correctly-spelled cancellation-confirmed message. Single source of truth shared by the
 // visibility checks and the spelling assertion so the literal is never re-typed (and can't drift).
 const CANCELLATION_CONFIRMED_TEXT = "Cancellation confirmed!";
+// Evolvi-specific cancellation disclaimer copy (cancel-quote-modal.vue `trip.cancelItemEvolviDisclaimer`,
+// ADO #82572). Kept byte-identical to the source i18n string and to GTP's own copy per the AC.
+const EVOLVI_CANCELLATION_DISCLAIMER_TEXT =
+  "Only e-ticket cancellations are supported through this system, and the refund itself is not automated. " +
+  "Please contact your consultant or support to confirm your cancellation and refund status.";
 
 // How long a mandatory UK Rail (Evolvi) extras row may take to persist — see
 // fillAllMandatoryEvolviExtras. Sized for the slowest row, the seat reservation.
@@ -283,6 +288,10 @@ const SELECTORS = {
   CANCELLED_QUOTES_TITLE: '.cancelled-quotes-title',
   CANCELLED_QUOTE_CHECK_PRICE_BUTTON: '.cancelled-quotes-container .check-price-btn',
   ACTIVE_QUOTE_ACTIONS_DROPDOWN_ICON: '.quote-payment-card .base-quote-header .expand-icon.is-clickable',
+  // Same base-quote-header.vue kebab icon as above, but unscoped - the Trip Overview page (post-
+  // booking) renders it without the .quote-payment-card wrapper the Cart page uses, so this is
+  // the version that also matches there. See hoverBookedItemActionsIconByIndex.
+  QUOTE_HEADER_ACTIONS_ICON: '.base-quote-header .expand-icon.is-clickable',
   ACTIVE_QUOTE_CANCEL_OPTION: '.el-dropdown-menu__item',
   // Hotel quote "Change Dates" modification (no data-testid on this flow).
   // 3-dots (more_vert) kebab in the hotel quote's shared header; hover opens the menu.
@@ -305,6 +314,19 @@ const SELECTORS = {
   DETAILED_CANCEL_QUOTE_MODAL: '.cancel-quote-modal',
   DETAILED_CANCEL_QUOTE_CONFIRM_BUTTON: '.cancel-quote-modal .app-footer .btn--primary',
   DETAILED_CANCEL_QUOTE_CLOSE_BUTTON: '.cancel-quote-modal .close-btn',
+  // Disclaimer paragraphs in the detailed Cancel Item modal (cancel-quote-modal.vue). The standard
+  // cancellation disclaimer (always shown) and the Evolvi-specific one (`showEvolviDisclaimer`,
+  // ADO #82572) share the exact same `.bold-text` class with no distinguishing attribute - the
+  // Evolvi paragraph is always rendered SECOND (after the standard one) when present, so `.last()`
+  // targets it reliably. Same disambiguation convention as BASIC_CANCEL_QUOTE_CONFIRM_BUTTON above.
+  CANCEL_QUOTE_DISCLAIMER_TEXT: '.cancel-quote-modal .bold-text',
+  // Result branch of the detailed Cancel Item modal, shown after confirming (cancel-quote-modal.vue
+  // `showResults` template). Success renders `.check-icon` + "Cancelled successfully"; failure
+  // renders `.error-icon` + "Something went wrong", plus a separate `.error-msg p` box reading
+  // "Failed to cancel the item". ADO #82572: non-eTicket Evolvi cancellations are expected to fail.
+  CANCEL_QUOTE_SUCCESS_ICON: '.cancel-quote-modal .check-icon',
+  CANCEL_QUOTE_ERROR_ICON: '.cancel-quote-modal .error-icon',
+  CANCEL_QUOTE_ERROR_MESSAGE: '.cancel-quote-modal .error-msg p',
 
   // Product details selectors
   FLIGHT_DETAILS_BUTTON: ".more-details-btn",
@@ -3664,6 +3686,67 @@ class CartPage {
     }
 
     throw new Error(`Unsupported quote cancellation prompt type: ${promptType}`);
+  }
+
+  /**
+   * Confirms cancellation in the open DETAILED prompt and reads which result branch rendered
+   * (success or error), WITHOUT closing the modal - unlike {@link confirmQuoteCancellation},
+   * which always closes immediately and so never lets a caller observe the outcome. Needed for
+   * ADO #82572: cancelling a non-eTicket Evolvi booking is expected to submit but fail.
+   *
+   * @returns {Promise<'success'|'error'>}
+   */
+  async confirmDetailedCancelQuoteAndReadOutcome() {
+    const confirmButton = this.page.locator(SELECTORS.DETAILED_CANCEL_QUOTE_CONFIRM_BUTTON).first();
+    await confirmButton.waitFor({ state: 'visible', timeout: 15000 });
+    await confirmButton.click();
+
+    const successIcon = this.page.locator(SELECTORS.CANCEL_QUOTE_SUCCESS_ICON).first();
+    const errorIcon = this.page.locator(SELECTORS.CANCEL_QUOTE_ERROR_ICON).first();
+
+    return Promise.any([
+      successIcon.waitFor({ state: 'visible', timeout: 60000 }).then(() => 'success'),
+      errorIcon.waitFor({ state: 'visible', timeout: 60000 }).then(() => 'error'),
+    ]);
+  }
+
+  /**
+   * Reads the error message text shown in the detailed Cancel Item modal's error result branch.
+   * Only meaningful after {@link confirmDetailedCancelQuoteAndReadOutcome} resolved to 'error'.
+   * @returns {Promise<string>}
+   */
+  async getCancelQuoteErrorMessageText() {
+    return (await this.page.locator(SELECTORS.CANCEL_QUOTE_ERROR_MESSAGE).first().textContent()).trim();
+  }
+
+  /**
+   * Closes the detailed Cancel Item modal's result screen (success or error) and waits for it
+   * to disappear. Counterpart close step for {@link confirmDetailedCancelQuoteAndReadOutcome}.
+   */
+  async closeDetailedCancelQuoteResult() {
+    const closeButton = this.page.locator(SELECTORS.DETAILED_CANCEL_QUOTE_CLOSE_BUTTON).first();
+    await closeButton.waitFor({ state: 'visible', timeout: 15000 });
+    await closeButton.click();
+    await this.page.locator(SELECTORS.DETAILED_CANCEL_QUOTE_MODAL).first().waitFor({ state: 'hidden', timeout: 30000 });
+  }
+
+  /**
+   * Waits for the Evolvi-specific cancellation disclaimer paragraph to be visible in the open
+   * detailed Cancel Item modal.
+   * @param {number} [timeout=15000]
+   * @returns {Promise<void>}
+   */
+  async waitForEvolviCancellationDisclaimerVisible(timeout = 15000) {
+    await this.page.locator(SELECTORS.CANCEL_QUOTE_DISCLAIMER_TEXT).last().waitFor({ state: 'visible', timeout });
+  }
+
+  /**
+   * Reads the text of the Evolvi-specific cancellation disclaimer paragraph in the open detailed
+   * Cancel Item modal.
+   * @returns {Promise<string>}
+   */
+  async getEvolviCancellationDisclaimerText() {
+    return (await this.page.locator(SELECTORS.CANCEL_QUOTE_DISCLAIMER_TEXT).last().textContent()).trim();
   }
 
   /**
@@ -14096,6 +14179,39 @@ class CartPage {
   }
 
   /**
+   * Hovers the actions ("more_vert" kebab) icon of the BOOKED item card at the given 0-based index
+   * on the Trip Overview page (post-booking), as opposed to {@link hoverItemActionsDropdownByIndex}
+   * which targets the pre-booking Cart page's `.quote-payment-card` wrapper only.
+   *
+   * base-quote-header.vue (the shared kebab icon markup) renders identically on both pages, but
+   * only the Cart page wraps it in `.quote-payment-card` - on Trip Overview that wrapper is absent,
+   * so ACTIVE_QUOTE_ACTIONS_DROPDOWN_ICON matches zero elements there (ADO #82572 investigation).
+   * QUOTE_HEADER_ACTIONS_ICON is unscoped, matching the same icon in either context.
+   *
+   * Returns false (without throwing) if the index is out of range.
+   * @param {number} itemIndex
+   * @returns {Promise<boolean>} true if hovered, false if index is out of range
+   */
+  async hoverBookedItemActionsIconByIndex(itemIndex) {
+    if (typeof itemIndex !== 'number' || !Number.isInteger(itemIndex) || itemIndex < 0) {
+      throw new Error(
+        `[CartPage.hoverBookedItemActionsIconByIndex] "itemIndex" must be a non-negative integer, got: ${typeof itemIndex} (${JSON.stringify(itemIndex)})`
+      );
+    }
+    const icons = this.page.locator(SELECTORS.QUOTE_HEADER_ACTIONS_ICON);
+    const count = await icons.count();
+    if (itemIndex >= count) {
+      return false;
+    }
+    const icon = icons.nth(itemIndex);
+    await icon.waitFor({ state: 'visible', timeout: 15000 });
+    await icon.scrollIntoViewIfNeeded().catch(() => {});
+    await icon.hover();
+    await this.page.waitForTimeout(1000); // El-dropdown animation delay — menu items are not yet interactive immediately after hover
+    return true;
+  }
+
+  /**
    * Clicks the "Cancel item" option in the currently open item-actions dropdown.
    * Targets the inner span (not the li) so the click is allowed even when the
    * parent li has aria-disabled="true" (In Progress quote). This matches the
@@ -14637,5 +14753,6 @@ module.exports = {
   CartPage,
   SELECTORS,
   CANCELLATION_CONFIRMED_TEXT,
+  EVOLVI_CANCELLATION_DISCLAIMER_TEXT,
   SEAT_CATEGORY_COLORS,
 };

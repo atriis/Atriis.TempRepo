@@ -1,7 +1,7 @@
 const fs = require("fs");
 const { expect } = require("@playwright/test");
 const { getPageObject } = require("@utils/pageObjectCache");
-const { CartPage, SELECTORS: CART_SELECTORS, CANCELLATION_CONFIRMED_TEXT, SEAT_CATEGORY_COLORS } = require("@pages/CartPage");
+const { CartPage, SELECTORS: CART_SELECTORS, CANCELLATION_CONFIRMED_TEXT, EVOLVI_CANCELLATION_DISCLAIMER_TEXT, SEAT_CATEGORY_COLORS } = require("@pages/CartPage");
 const { CheckoutPage, SELECTORS: CheckoutSelectors } = require("@pages/CheckoutPage");
 const { CommonPage, SELECTORS: COMMON_SELECTORS } = require("@pages/CommonPage");
 const { ResultsPage } = require("@pages/ResultsPage");
@@ -15471,6 +15471,176 @@ const Cart = {
         `[Cart.clickCancelItemFromActionsMenu] Failed to cancel item at index ${itemIndex}. Original: ${err.message}`
       );
     }
+  },
+
+  /**
+   * Opens the Cancel Item dialog for the quote at itemIndex and leaves it OPEN, without confirming.
+   *
+   * Split counterpart of {@link clickCancelItemFromActionsMenu} (which opens AND confirms in one
+   * call, leaving no point to assert what the dialog shows while open) - mirrors the existing
+   * openTripCancellationDialog/verifyTripCancellationDialogDisplayed split for the trip-level
+   * dialog. Needed for ADO #82572: the Evolvi cancellation disclaimer must be asserted before
+   * confirming.
+   *
+   * @param {import('playwright').Page} page
+   * @param {number} itemIndex - 0-based index of the quote card to cancel
+   * @throws {Error} If page/itemIndex are invalid, or no cancellation prompt opens
+   * @returns {Promise<{opened: boolean, promptType: 'basic'|'detailed'}>}
+   */
+  async openCancelItemDialog(page, itemIndex) {
+    if (!page) throw new Error('[Cart.openCancelItemDialog] "page" is required.');
+    if (typeof itemIndex !== 'number' || !Number.isInteger(itemIndex) || itemIndex < 0) {
+      throw new Error(
+        `[Cart.openCancelItemDialog] "itemIndex" must be a non-negative integer, got: ${typeof itemIndex} (${JSON.stringify(itemIndex)})`
+      );
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+    logger.debug('[Cart.openCancelItemDialog] Opening Cancel Item dialog', { itemIndex });
+
+    // Trip Overview (post-booking) context - see hoverBookedItemActionsIconByIndex for why this
+    // differs from hoverItemActionsDropdownByIndex (used by the pre-booking Cart page flow).
+    const hovered = await cartPage.hoverBookedItemActionsIconByIndex(itemIndex);
+    if (!hovered) {
+      throw new Error(
+        `[Cart.openCancelItemDialog] No quote card found at index ${itemIndex} to open the item actions menu on.`
+      );
+    }
+    await cartPage.clickVisibleCancelItemOption();
+
+    let promptType;
+    try {
+      promptType = await cartPage.waitForQuoteCancellationPrompt();
+    } catch (err) {
+      throw new Error(
+        `[Cart.openCancelItemDialog] No cancellation prompt opened for the quote at index ${itemIndex}. ` +
+        `The "Cancel item" option may be disabled (quote still In Progress). Original: ${err.message}`
+      );
+    }
+
+    return { opened: true, promptType };
+  },
+
+  /**
+   * Verifies the Evolvi-specific cancellation disclaimer is displayed, verbatim, in the currently
+   * open detailed Cancel Item dialog (see {@link openCancelItemDialog}).
+   *
+   * @param {import('playwright').Page} page
+   * @throws {Error} If page is invalid, or the disclaimer text does not match exactly
+   * @returns {Promise<{displayed: true, text: string}>}
+   */
+  async verifyEvolviCancellationDisclaimerDisplayed(page) {
+    if (!page) throw new Error('[Cart.verifyEvolviCancellationDisclaimerDisplayed] "page" is required.');
+
+    const cartPage = getPageObject(page, CartPage);
+    await cartPage.waitForEvolviCancellationDisclaimerVisible();
+    const actualText = await cartPage.getEvolviCancellationDisclaimerText();
+
+    expect(
+      actualText,
+      `[Cart.verifyEvolviCancellationDisclaimerDisplayed] Expected the Evolvi cancellation disclaimer to read ` +
+      `"${EVOLVI_CANCELLATION_DISCLAIMER_TEXT}", but got "${actualText}".`
+    ).toBe(EVOLVI_CANCELLATION_DISCLAIMER_TEXT);
+
+    return { displayed: true, text: actualText };
+  },
+
+  /**
+   * Confirms an already-open Cancel Item dialog (opened via {@link openCancelItemDialog}).
+   *
+   * @param {import('playwright').Page} page
+   * @param {'basic'|'detailed'} promptType - Returned by openCancelItemDialog
+   * @throws {Error} If page/promptType are invalid
+   * @returns {Promise<{confirmed: true}>}
+   */
+  async confirmOpenCancelItemDialog(page, promptType) {
+    if (!page) throw new Error('[Cart.confirmOpenCancelItemDialog] "page" is required.');
+    if (!['basic', 'detailed'].includes(promptType)) {
+      throw new Error(
+        `[Cart.confirmOpenCancelItemDialog] "promptType" must be "basic" or "detailed", got: ${JSON.stringify(promptType)}`
+      );
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+
+    // "basic" prompts (app-confirm.dialog-no-header) are a separate, simpler component with no
+    // success/error result branch to read - only the detailed Cancel Item modal (cancel-quote-modal.vue)
+    // has one (ADO #82572: non-eTicket Evolvi cancellations are expected to submit but fail).
+    if (promptType === 'basic') {
+      await cartPage.confirmQuoteCancellation(promptType);
+      return { confirmed: true, outcome: null, errorMessage: null };
+    }
+
+    const outcome = await cartPage.confirmDetailedCancelQuoteAndReadOutcome();
+    const errorMessage = outcome === 'error' ? await cartPage.getCancelQuoteErrorMessageText() : null;
+    await cartPage.closeDetailedCancelQuoteResult();
+
+    return { confirmed: true, outcome, errorMessage };
+  },
+
+  /**
+   * Verifies the outcome recorded by {@link confirmOpenCancelItemDialog} (or throws if that step
+   * never ran / used a "basic" prompt, which has no outcome to check).
+   *
+   * @param {import('playwright').Page} page
+   * @param {'success'|'error'|null} actualOutcome
+   * @param {'success'|'error'} expectedOutcome
+   * @throws {Error} If page/expectedOutcome are invalid, no outcome was recorded, or it doesn't match
+   * @returns {Promise<{verified: true, outcome: string}>}
+   */
+  async verifyCancelItemOutcome(page, actualOutcome, expectedOutcome) {
+    if (!page) throw new Error('[Cart.verifyCancelItemOutcome] "page" is required.');
+    if (!['success', 'error'].includes(expectedOutcome)) {
+      throw new Error(
+        `[Cart.verifyCancelItemOutcome] "expectedOutcome" must be "success" or "error", got: ${JSON.stringify(expectedOutcome)}`
+      );
+    }
+    if (actualOutcome === null || actualOutcome === undefined) {
+      throw new Error(
+        '[Cart.verifyCancelItemOutcome] No cancellation outcome was recorded - run "I confirm the open cancel item ' +
+        'dialog" (on a "detailed" prompt) first.'
+      );
+    }
+
+    expect(
+      actualOutcome,
+      `[Cart.verifyCancelItemOutcome] Expected the Cancel Item attempt to result in "${expectedOutcome}", but got "${actualOutcome}".`
+    ).toBe(expectedOutcome);
+
+    return { verified: true, outcome: actualOutcome };
+  },
+
+  /**
+   * Verifies the exact error message text recorded by {@link confirmOpenCancelItemDialog} when
+   * its outcome was "error".
+   *
+   * @param {import('playwright').Page} page
+   * @param {string|null} actualErrorMessage
+   * @param {string} expectedErrorMessage
+   * @throws {Error} If page/expectedErrorMessage are invalid, or no error message was recorded, or it doesn't match
+   * @returns {Promise<{verified: true, errorMessage: string}>}
+   */
+  async verifyCancelItemErrorMessage(page, actualErrorMessage, expectedErrorMessage) {
+    if (!page) throw new Error('[Cart.verifyCancelItemErrorMessage] "page" is required.');
+    if (!expectedErrorMessage || typeof expectedErrorMessage !== 'string') {
+      throw new Error(
+        `[Cart.verifyCancelItemErrorMessage] "expectedErrorMessage" must be a non-empty string, got: ${typeof expectedErrorMessage}`
+      );
+    }
+    if (!actualErrorMessage) {
+      throw new Error(
+        '[Cart.verifyCancelItemErrorMessage] No cancellation error message was recorded - the Cancel Item attempt ' +
+        'did not result in "error", or "I confirm the open cancel item dialog" never ran.'
+      );
+    }
+
+    expect(
+      actualErrorMessage,
+      `[Cart.verifyCancelItemErrorMessage] Expected the Cancel Item error message to read "${expectedErrorMessage}", ` +
+      `but got "${actualErrorMessage}".`
+    ).toBe(expectedErrorMessage);
+
+    return { verified: true, errorMessage: actualErrorMessage };
   },
 
   /**
