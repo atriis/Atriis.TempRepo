@@ -12,8 +12,9 @@ Feature: 66530 - Trip opens in the same tab when user has 'Traveler' privileges
   I want opening one of my trips to load it in the current browser tab
   So that I stay within the application instead of a new tab being spawned
 
-  Scenario: A Traveler-privileged user opens a cancelled trip and it renders in the same tab
+  Scenario: A Traveler-privileged user opens an upcoming trip and it renders in the same tab
     Given I am logged in as "lurdesmacedo@traveler.com"
     When I navigate to the trips page
+    And I select the "Upcoming trips" quick view on the trips page
     And I click the first trip from the trip list
     Then the trip should open in the same tab showing the trip overview page
