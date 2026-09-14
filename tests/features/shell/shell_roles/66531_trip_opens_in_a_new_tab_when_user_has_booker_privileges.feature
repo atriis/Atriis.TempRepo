@@ -12,9 +12,9 @@ Feature: 66531 - Trip opens in a new tab when user has 'Booker' privileges
   I want opening a trip from my trip list to take me to the trip overview
   So that I can review a booked trip's details even though I only manage bookings for others
 
-  Scenario: Booker user opens an in-travel trip and sees the trip overview
+  Scenario: Booker user opens an upcoming trip and sees the trip overview
     Given I am logged in as "ruimariano@amadeus.com"
     When I navigate to the trips page
-    And I click active trips tab
+    And I select the "Upcoming trips" quick view on the trips page
     And I click the first trip from the trip list
     Then the trip overview tab should be displayed
