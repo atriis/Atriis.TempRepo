@@ -2,7 +2,7 @@
 # ADO Test Case: #84168
 # Related: US-002 flight-matching logic (#78274)
 @transportation @cars @regression @ado:78273
-Feature: Universal Flight Number Collection (All Distributors)
+Feature: 84168 Universal Flight Number Collection (All Distributors)
   As a car rental supplier
   I want to receive the traveler's flight number regardless of which distributor books the car
   So that vehicles are ready when travelers arrive
