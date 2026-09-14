@@ -375,8 +375,11 @@ function collectParameterValues(payload, parameterName) {
  * breaks the rule could be the one that was dropped, so a partial read would silently pass.
  *
  * @param {string} purpose Completes the sentence "Cannot <purpose>: ..." in the truncation error.
+ * @param {"request"|"response"} [source] Which side to download. Defaults to "request": the
+ *        count and uniqueness assertions inspect what was SENT. Pass "response" when the value
+ *        under test is only in the reply.
  */
-async function fetchAllRequestsForTrip(world, requestType, purpose) {
+async function fetchAllRequestsForTrip(world, requestType, purpose, source = "request") {
   const identifiers = getScenarioIdentifiers(world);
   if (!identifiers.tripId) {
     throw new Error(
@@ -385,7 +388,7 @@ async function fetchAllRequestsForTrip(world, requestType, purpose) {
   }
 
   const result = await fetchPayloadFromStorage({
-    source: "request",
+    source,
     requestType,
     tripId: identifiers.tripId,
     transactionId: identifiers.transactionId,
@@ -2097,6 +2100,67 @@ const PayloadValidation = {
       `${currentCount - baselineRecord.count} extra request(s) were sent - the previously retrieved pricing ` +
       `data was not reused.`
     ).toBe(baselineRecord.count);
+  },
+
+  /**
+   * Reads the named fields out of every occurrence of an XML block in the trip's logged calls of a
+   * type. Generic plumbing only: no meaning is attached to the fields, that belongs in the product
+   * DSL calling this (see FlightResults.captureFareFamilyDescriptions for the fare-family use).
+   *
+   * Scoped to the block on purpose. A reply carries several unrelated `description` or `name` nodes,
+   * so reading the fields off the whole payload would mix records that have nothing to do with each
+   * other; extracting the block first keeps each field set with the record it came from.
+   *
+   * @param {object} world
+   * @param {string} requestType - e.g. "Amadeus4.Fare_MasterPricerTravelBoardSearch9"
+   * @param {string} blockTag - e.g. "familyInformation"
+   * @param {string[]} fieldNames - e.g. ["fareFamilyname", "description", "carrier"]
+   * @param {{source?: string, purpose?: string}} [options] - source defaults to "request"
+   * @returns {Promise<{blocks: Array<Object<string, string|null>>}>}
+   */
+  async collectXmlBlockFieldsForTrip(world, requestType, blockTag, fieldNames, options = {}) {
+    assertWorld(world);
+    if (typeof blockTag !== "string" || !blockTag.trim()) {
+      throw new Error(
+        `[PayloadValidation.collectXmlBlockFieldsForTrip] "blockTag" must be a non-empty string, got: ${blockTag}`
+      );
+    }
+    if (!Array.isArray(fieldNames) || fieldNames.length === 0) {
+      throw new Error(
+        `[PayloadValidation.collectXmlBlockFieldsForTrip] "fieldNames" must be a non-empty array, got: ${fieldNames}`
+      );
+    }
+
+    const { source = "request", purpose } = options;
+    const normalizedRequestType = normalizeRequestType(requestType);
+
+    const result = await fetchAllRequestsForTrip(
+      world,
+      normalizedRequestType,
+      purpose || `collect "${blockTag}" fields`,
+      source
+    );
+
+    const blocks = [];
+    for (const match of result.matches) {
+      for (const block of extractXmlBlocksByTag(match.payload, blockTag)) {
+        const fields = {};
+        for (const fieldName of fieldNames) {
+          fields[fieldName] = (collectParameterValues(block, fieldName)[0]?.value || "").trim() || null;
+        }
+        blocks.push(fields);
+      }
+    }
+
+    logger.info("Collected XML block fields for the trip", {
+      requestType: normalizedRequestType,
+      source,
+      blockTag,
+      fieldNames,
+      blocks: blocks.length,
+    });
+
+    return { blocks };
   },
 
   /**

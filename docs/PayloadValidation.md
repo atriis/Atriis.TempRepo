@@ -470,6 +470,37 @@ Canonical example: `tests/features/flights/flights_amadeus/flights_amadeus_non_b
 - **Settling never fails on timeout** — it warns and uses the last read, so an unusually slow log publication could in theory yield a stale count. Check the warning in the logs when a request-count test behaves oddly.
 - **Disabled by the global switch** — with `PAYLOAD_VALIDATION_ENABLED=false` both steps silently no-op, like all other payload steps.
 
+### 2.10.11 `collectXmlBlockFieldsForTrip()` — read a repeated block's fields
+
+Returns the named fields of every occurrence of an XML block, across the trip's logged calls of a type. Generic plumbing: it attaches no meaning to what it reads. The product DSL that calls it decides what the values mean — see `FlightResults.captureFareFamilyDescriptions()`, which uses it to guard **ADO 82771 / 84218**.
+
+- **Signature:** `(world, requestType, blockTag, fieldNames, options)` — `options.source` defaults to `"request"`, `options.purpose` labels the fetch in the logs.
+- **Returns** `{ blocks }`: one plain object per block occurrence, keyed by the requested field names, each value trimmed or `null`.
+- **No step of its own.** It is called from a product DSL, never from Gherkin, because the field names only mean something in a product's terms.
+- **Scoped to the block, not the payload.** A reply carries several unrelated `description` elements, so reading the fields off the whole payload would mix records; extracting the block first keeps each field set with the record it came from, and stays namespace-agnostic.
+- **`source: "response"` is often what you want.** A supplier *request* usually carries the criteria the OBT asked for, not what the supplier answered. This is why `fetchAllRequestsForTrip()` takes a `source` argument (§3); it defaults to `"request"` so the count and uniqueness assertions are unchanged.
+
+**The fare-family use of it** — `FlightResults.captureFareFamilyDescriptions()` calls it with `blockTag: "familyInformation"`, `fieldNames: ["fareFamilyname", "description", "carrier"]` and `source: "response"`, then stores `world.capturedFareFamilies`: one entry per `carrier|fareFamilyname`, each with `description` (or `null`), plus `describedCount` and `bareCount`. It counts occurrences and never merges them — the same `carrier|code` recurs across a multi-sid search and the copies need not agree, so letting a described copy fill in for a bare one would call a code a defect when showing it is the correct fallback. It fails when no node is found, rather than passing over an empty set.
+
+**How the consumer judges it** (`FlightResults.verifyBrandNamesMatchFareFamilyDescriptions`), per family, never in bulk:
+
+| Family in the reply | Correct UI label | Assertion |
+|---|---|---|
+| has a `description` | the description, Title-Cased | flags the code if it appears |
+| has no `description` | the `fareFamilyname`, Title-Cased | not flagged |
+| absent from the reply | not judgeable | logged only |
+| `description` equals its own code | either | excluded, they are the same string |
+| its code equals **another** family's description | not judgeable | excluded as ambiguous |
+| described in one occurrence, bare in another | not judgeable | excluded as ambiguous |
+
+The last two exclusions are not hypothetical. One reply described `AA|MAIN` as "MAIN CABIN" beside `B6|AN` as "MAIN": the label `Main` is then American's filed code and JetBlue's correct name at once, and because cards are read as bare strings with no carrier attached, flagging it failed a screen showing nothing but correct descriptions.
+
+Casing mirrors the front end exactly — `value.toLowerCase().replace(/\b(\w)/g, c => c.toUpperCase())` (`_flight-brand-builder.logic.ts`). Copy it; `split(' ')` diverges on hyphens.
+
+The same repeated-block shape covers rail fares, hotel rate plans and car rate codes, so a second product can reuse this by passing its own block tag and field names.
+
+Canonical example: `tests/features/flights/flights_amadeus/flights_amadeus_non_booking/84698_amadeus_edifact_fare_family_display_name_from_description.feature`
+
 ---
 
 ## 3. Helper Functions (Internal)
@@ -526,7 +557,7 @@ All step definitions are in `tests/steps/payload_validation.steps.js`. Here is t
 | `Then every "{requestType}" request should reference a different "{attributeName}"` | `expectRequestAttributeValuesAreUnique()` | Assert no two requests share the same attribute value (§2.10.8) |
 | `When I wait until "{requestType}" requests have been sent for the trip` | `waitForRequestType()` | Anchor an absence assertion: prove the log is publishing for this trip before claiming a request type is missing (§2.10.10) |
 
-> Fare family description batching steps (`Then the fare family descriptions should be batched in ...`, `Then more than {int} fare families should have been described in ...`) are defined in `tests/steps/flight_nff.steps.js` and call `FlightResults.expectFareFamilyDescriptionsBatched()` / `FlightResults.expectMoreFareFamiliesDescribedThan()`, which use `collectParameterOccurrencesPerCall()` from this DSL (§2.10.9) — they're product-specific, not generic payload validation.
+> Fare family steps are all defined in `tests/steps/flight_nff.steps.js`, not here — they carry product meaning, which this DSL does not. The batching ones (`Then the fare family descriptions should be batched in ...`, `Then more than {int} fare families should have been described in ...`) call `FlightResults.expectFareFamilyDescriptionsBatched()` / `FlightResults.expectMoreFareFamiliesDescribedThan()` on top of `collectParameterOccurrencesPerCall()` (§2.10.9); the display-name one (`When I capture the fare families described in "..." from Storage`) calls `FlightResults.captureFareFamilyDescriptions()` on top of `collectXmlBlockFieldsForTrip()` (§2.10.11).
 
 ---
 

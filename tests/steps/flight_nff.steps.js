@@ -88,9 +88,33 @@ Then("the pricing options leg should offer more than one fare", async function (
   logger.info("[PricingOptions] Multiple fares verified on the current leg", result);
 });
 
-// Payload assertions, not UI ones: they read the trip's request log and take `world`, not
+Then("every fare name in pricing options should match its fare family description", async function () {
+  logger.info("[PricingOptions] Comparing fare names with the captured fare families");
+  const result = await FlightResults.verifyBrandNamesMatchFareFamilyDescriptions(this.page, this, {
+    flow: "pricingOptions",
+  });
+  logger.info("[PricingOptions] Fare names match the search reply", result);
+});
+
+// Payload steps, not UI ones: they read the trip's request log and take `world`, not
 // `page`. They sit here because the scenarios using them drive the brand cards below, so the
 // whole flow stays in one step file. See docs/PayloadValidation.md section 2.10.9.
+When("I capture the fare families described in {string} from Storage", async function (requestType) {
+  if (!config.payloadValidation.enabled) {
+    logger.warn("PAYLOAD_VALIDATION_ENABLED=false", {
+      step: "captureFareFamilyDescriptions",
+      requestType,
+    });
+    return;
+  }
+  logger.info("Capturing the fare families the search reply describes", {
+    requestType,
+    tripId: this.tripId || this.currentTripId || this.createdTripId || null,
+  });
+  const result = await FlightResults.captureFareFamilyDescriptions(this, requestType);
+  logger.info("Fare families captured", { count: result.families.length });
+});
+
 Then(
   "the fare family descriptions should be batched in {string} requests of at most {int} per call",
   async function (requestType, maxPerCall) {
@@ -166,6 +190,19 @@ Then("every outbound leg brand card name should contain {string}", async functio
   const result = await FlightResults.verifyOutboundBrandCardNamesContain(this.page, expectedText);
   logger.info("[NewFlightFlow] Outbound brand card names verified", result);
 });
+
+Then(
+  "every brand card name on the {string} leg should match its fare family description",
+  async function (legName) {
+    const legIndex = legName.toLowerCase() === "inbound" ? 1 : 0;
+    logger.info("[NewFlightFlow] Comparing brand card names with the captured fare families", { legName });
+    const result = await FlightResults.verifyBrandNamesMatchFareFamilyDescriptions(this.page, this, {
+      flow: "newFlightFlow",
+      legIndex,
+    });
+    logger.info("[NewFlightFlow] Brand card names match the search reply", result);
+  }
+);
 
 Then("the inbound leg brand cards should be visible", async function () {
   logger.info("[NewFlightFlow] Verifying inbound leg brand cards are visible");
