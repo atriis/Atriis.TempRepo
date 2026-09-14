@@ -226,37 +226,173 @@ const Trips = {
     }
   },
 
-  async verifyMyTripsOnlyCheckboxVisible(page) {
-    if (!page) throw new Error('[Trips.verifyMyTripsOnlyCheckboxVisible] page is required');
+  async verifyMyTripsOnlySwitchVisible(page) {
+    if (!page) throw new Error('[Trips.verifyMyTripsOnlySwitchVisible] page is required');
     const tripsPage = getPageObject(page, TripsPage);
     try {
-      logger.debug('Verifying "My trips only" filter checkbox is visible');
-      const locator = await tripsPage.getMyTripsOnlyCheckbox({ timeout: 30000 });
-      await expect(locator, '[Trips.verifyMyTripsOnlyCheckboxVisible] "My trips only" filter checkbox was not visible in the trips filter panel')
+      logger.debug('Verifying "my trips only" filter switch is visible');
+      const locator = await tripsPage.getMyTripsOnlySwitch({ timeout: 30000 });
+      await expect(locator, '[Trips.verifyMyTripsOnlySwitchVisible] "my trips only" filter switch was not visible in the trips filter panel')
         .toBeVisible({ timeout: 10000 });
     } catch (err) {
       if (err.matcherResult !== undefined) throw err;
       throw new Error(
-        '[Trips.verifyMyTripsOnlyCheckboxVisible] Failed to verify "My trips only" checkbox visibility. Original: ' + err.message
+        '[Trips.verifyMyTripsOnlySwitchVisible] Failed to verify "my trips only" switch visibility. Original: ' + err.message
       );
     }
   },
 
-  async verifyMyTripsOnlyCheckboxChecked(page) {
-    if (!page) throw new Error('[Trips.verifyMyTripsOnlyCheckboxChecked] page is required');
+  async verifyMyTripsOnlySwitchOff(page) {
+    if (!page) throw new Error('[Trips.verifyMyTripsOnlySwitchOff] page is required');
     const tripsPage = getPageObject(page, TripsPage);
     try {
-      logger.debug('Verifying "My trips only" filter checkbox is checked');
-      const locator = await tripsPage.getMyTripsOnlyCheckbox({ timeout: 30000 });
-      // Element Plus marks a checked el-checkbox by adding the "is-checked" class
-      // to the root <label class="el-checkbox">; it renders no aria-checked, so
-      // the class is the authoritative checked-state marker.
-      await expect(locator, '[Trips.verifyMyTripsOnlyCheckboxChecked] "My trips only" filter was expected to be checked by default, but the el-checkbox is missing the "is-checked" class')
+      logger.debug('Verifying "my trips only" filter switch is off');
+      const locator = await tripsPage.getMyTripsOnlySwitch({ timeout: 30000 });
+      // my-trips.ts turns this filter OFF as the page settles, even when the URL
+      // asked for it (see loadData) — the Home page's "All trips" link does exactly
+      // that. Off is therefore the documented default, not an accident.
+      await expect(locator, '[Trips.verifyMyTripsOnlySwitchOff] "my trips only" filter was expected to be OFF by default, but the el-switch carries the "is-checked" class')
+        .not.toHaveClass(/is-checked/, { timeout: 10000 });
+    } catch (err) {
+      if (err.matcherResult !== undefined) throw err;
+      throw new Error(
+        '[Trips.verifyMyTripsOnlySwitchOff] Failed to verify the "my trips only" switch state. Original: ' + err.message
+      );
+    }
+  },
+
+  /**
+   * Turns the "my trips only" switch on or off.
+   *
+   * @param {import('@playwright/test').Page} page
+   * @param {boolean} on - desired state
+   * @returns {Promise<{ on: boolean, alreadyInState: boolean }>} the requested state
+   *   and whether the switch was already in it (i.e. this call changed nothing).
+   */
+  async setMyTripsOnlyFilter(page, on) {
+    if (!page) throw new Error('[Trips.setMyTripsOnlyFilter] page is required');
+    const tripsPage = getPageObject(page, TripsPage);
+    try {
+      logger.debug('Setting the "my trips only" filter', { on });
+      const { alreadyInState } = await tripsPage.setMyTripsOnlySwitch(on);
+      if (alreadyInState) {
+        // Surfaced rather than swallowed: this step changed nothing, so an assertion
+        // that depends on the filter flipping here would pass for the wrong reason.
+        logger.warn(
+          `[Trips.setMyTripsOnlyFilter] The "my trips only" filter was ALREADY ${on ? 'on' : 'off'} — this step changed nothing. Any assertion that depends on it flipping here may pass for the wrong reason.`
+        );
+      }
+      // Returned, not just logged: a caller that needs the toggle to have actually
+      // flipped can only check that if the no-op case reaches it.
+      return { on, alreadyInState };
+    } catch (err) {
+      throw new Error(
+        `[Trips.setMyTripsOnlyFilter] Failed to turn the "my trips only" filter ${on ? 'on' : 'off'}. Original: ${err.message}`
+      );
+    }
+  },
+
+  /**
+   * Selects a quick view in the trips filter rail.
+   *
+   * @param {import('@playwright/test').Page} page
+   * @param {string} label - visible quick-view label, e.g. "Past trips"
+   */
+  async selectQuickView(page, label) {
+    if (!page) throw new Error('[Trips.selectQuickView] page is required');
+    if (typeof label !== 'string' || label.length === 0) {
+      throw new Error('[Trips.selectQuickView] "label" must be a non-empty string, got: ' + typeof label);
+    }
+    const tripsPage = getPageObject(page, TripsPage);
+    try {
+      logger.debug('Selecting trips quick view', { label });
+      await tripsPage.selectQuickView(label);
+    } catch (err) {
+      throw new Error(
+        `[Trips.selectQuickView] Failed to select the "${label}" quick view on the trips page. Original: ${err.message}`
+      );
+    }
+  },
+
+  /**
+   * Verifies a trip with the given id IS listed on the trips page.
+   *
+   * @param {import('@playwright/test').Page} page
+   * @param {string} tripId
+   */
+  async verifyTripListed(page, tripId) {
+    if (!page) throw new Error('[Trips.verifyTripListed] page is required');
+    if (typeof tripId !== 'string' || tripId.length === 0) {
+      throw new Error('[Trips.verifyTripListed] "tripId" must be a non-empty string, got: ' + typeof tripId);
+    }
+    const tripsPage = getPageObject(page, TripsPage);
+    try {
+      logger.debug('Verifying trip is listed on the trips page', { tripId });
+      await tripsPage.waitForTripListSettled({ timeout: 30000 });
+      await expect(tripsPage.getTripCardId(tripId), `[Trips.verifyTripListed] Expected trip "${tripId}" to be listed on the trips page, but no card showed that id.`)
+        .toHaveCount(1, { timeout: 30000 });
+    } catch (err) {
+      if (err.matcherResult !== undefined) throw err;
+      throw new Error(
+        `[Trips.verifyTripListed] Failed to verify trip "${tripId}" is listed. Original: ${err.message}`
+      );
+    }
+  },
+
+  /**
+   * Verifies a trip with the given id is NOT listed on the trips page.
+   *
+   * @param {import('@playwright/test').Page} page
+   * @param {string} tripId
+   */
+  async verifyTripNotListed(page, tripId) {
+    if (!page) throw new Error('[Trips.verifyTripNotListed] page is required');
+    if (typeof tripId !== 'string' || tripId.length === 0) {
+      throw new Error('[Trips.verifyTripNotListed] "tripId" must be a non-empty string, got: ' + typeof tripId);
+    }
+    const tripsPage = getPageObject(page, TripsPage);
+    try {
+      logger.debug('Verifying trip is not listed on the trips page', { tripId });
+      // An empty list is the expected end state here, and it is also what the list
+      // looks like MID-refresh — so the count is only trustworthy when read from a
+      // SETTLED list. Settling is re-checked on every poll rather than once up front:
+      // the list starts re-querying only after the filter flips, so a gate placed
+      // before the assertion passes on the stale list and the assertion then reads
+      // the empty mid-refresh one, which is true of every trip id and proves nothing.
+      // The inner timeout is short so the poll takes several samples instead of one.
+      await expect(async () => {
+        await tripsPage.waitForTripListSettled({ timeout: 5000 });
+        expect(
+          await tripsPage.getTripCardId(tripId).count(),
+          `[Trips.verifyTripNotListed] Expected trip "${tripId}" to be filtered out of the trips page, but a card still showed that id.`
+        ).toBe(0);
+      }).toPass({ timeout: 30000 });
+    } catch (err) {
+      if (err.matcherResult !== undefined) throw err;
+      throw new Error(
+        `[Trips.verifyTripNotListed] Failed to verify trip "${tripId}" is not listed. Original: ${err.message}`
+      );
+    }
+  },
+
+  async verifyMyTripsOnlySwitchOn(page) {
+    if (!page) throw new Error('[Trips.verifyMyTripsOnlySwitchOn] page is required');
+    const tripsPage = getPageObject(page, TripsPage);
+    try {
+      logger.debug('Verifying "my trips only" filter switch is on');
+      const locator = await tripsPage.getMyTripsOnlySwitch({ timeout: 30000 });
+      // Element Plus marks an el-switch that is on by adding "is-checked" to the
+      // root <div class="el-switch">. The nested input[role=switch] also carries
+      // aria-checked, but its DOM .checked property is only synced on mount — so
+      // neither toBeChecked() nor the input is reliable after a programmatic
+      // change (the homepage lands here with myTripsOnly=true in the URL). The
+      // root class is bound to the reactive state and is the authoritative marker.
+      await expect(locator, '[Trips.verifyMyTripsOnlySwitchOn] "my trips only" filter was expected to be ON by default, but the el-switch is missing the "is-checked" class')
         .toHaveClass(/is-checked/, { timeout: 10000 });
     } catch (err) {
       if (err.matcherResult !== undefined) throw err;
       throw new Error(
-        '[Trips.verifyMyTripsOnlyCheckboxChecked] Failed to verify the "My trips only" checkbox checked state. Original: ' + err.message
+        '[Trips.verifyMyTripsOnlySwitchOn] Failed to verify the "my trips only" switch state. Original: ' + err.message
       );
     }
   },
@@ -682,6 +818,8 @@ const Trips = {
    *
    * @param {import('@playwright/test').Page} page
    * @param {string} filterLabel - visible filter label, e.g. "My trips only"
+   * @returns {Promise<{ filterLabel: string, alreadyChecked: boolean }>} the filter
+   *   acted on and whether it was already ticked (i.e. this call changed nothing).
    */
   async checkTripsFilter(page, filterLabel) {
     if (!page) throw new Error('[Trips.checkTripsFilter] page is required');
@@ -692,14 +830,16 @@ const Trips = {
     try {
       logger.debug('Checking trips filter', { filterLabel });
       const { alreadyChecked } = await tripsPage.checkFilterCheckbox(filterLabel);
+      const result = { filterLabel, alreadyChecked };
       if (alreadyChecked) {
-        // Surfaced rather than swallowed: "My trips only" is ticked by default for
-        // some accounts (see verifyMyTripsOnlyCheckboxChecked), so this step can be
+        // Surfaced rather than swallowed: "My trips only" is on by default for
+        // some accounts (see verifyMyTripsOnlySwitchOn), so this step can be
         // a no-op and any assertion that follows would pass for the wrong reason.
         logger.warn(
           `[Trips.checkTripsFilter] The "${filterLabel}" filter was ALREADY checked — this step changed nothing. Any assertion that depends on the filter turning on here may pass for the wrong reason.`
         );
       }
+      return result;
     } catch (err) {
       throw new Error(
         `[Trips.checkTripsFilter] Failed to check the "${filterLabel}" filter on the trips page. Original: ${err.message}`

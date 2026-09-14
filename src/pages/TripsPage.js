@@ -38,6 +38,58 @@ const SELECTORS = {
   FILTER_CHECKBOX_CHECKED:
     '.trip-monitor-filter .el-checkbox.is-checked:visible',
 
+  // The "my trips only" toggle in the trip-monitor filter panel
+  // (trip-monitor-filter.vue -> el-switch.my-trips-toggle). It replaced the former
+  // el-checkbox, so none of the FILTER_CHECKBOX selectors above match it.
+  //
+  // Matched by the app's own .my-trips-toggle class, NOT by label text and NOT by
+  // data-testid:
+  //   - the label is the switch's active-text and is translated per locale
+  //     ("Show my trips only" in en/en-US, "Nur meine Reisen" in de);
+  //   - trip-monitor-filter.vue does carry data-testid="trip.monitor-filter.my-trips-only",
+  //     but vite.config.ts strips every data-testid from non-dev builds (ADR-002),
+  //     so no testid exists on stg/prod — verified: the trips page serves zero.
+  // :visible mirrors the selectors above — it keeps .first() off a hidden
+  // mobile-drawer duplicate.
+  MY_TRIPS_ONLY_SWITCH:
+    '.trip-monitor-filter .el-switch.my-trips-toggle:visible',
+  // On/off variants — Element Plus adds "is-checked" to the el-switch root when on.
+  MY_TRIPS_ONLY_SWITCH_ON:
+    '.trip-monitor-filter .el-switch.my-trips-toggle.is-checked:visible',
+  MY_TRIPS_ONLY_SWITCH_OFF:
+    '.trip-monitor-filter .el-switch.my-trips-toggle:not(.is-checked):visible',
+
+  // A quick-view button in the filter rail and its label span
+  // (trip-monitor-filter.vue -> .quick-views > button.quick-view). The rail replaced
+  // the page's old el-tabs, so TRIPS_TAB below no longer reaches these. Each entry
+  // selects a SOURCE ("To do", "Upcoming trips", "In travel trips", "Past trips"),
+  // not just a filter, so picking one re-queries the trip list.
+  QUICK_VIEW:
+    '.trip-monitor-filter .quick-view:visible',
+  QUICK_VIEW_LABEL:
+    '.quick-view__label',
+  // The selected variant of QUICK_VIEW — trip-monitor-filter.vue adds "is-active".
+  QUICK_VIEW_ACTIVE:
+    '.trip-monitor-filter .quick-view.is-active:visible',
+
+  // The trip id shown on a trip card anywhere in the trip list
+  // (trip-preview.vue -> span.trip-id). Distinct from RESULT_TRIP_ID below, which
+  // is scoped to the search-results pane and therefore never matches a card in a
+  // quick view. :visible keeps a hidden responsive duplicate out.
+  TRIP_CARD_TRIP_ID:
+    '.trip-preview .trip-id:visible',
+
+  // What the trip list shows while it re-queries (trip-list-panel.vue renders
+  // filter-skeleton.vue instead of the cards whenever isTripsLoading is true) and
+  // the two states it can settle into: at least one card, or the empty block
+  // (app-no-results-filter.vue). Needed because a filter change empties the list
+  // BEFORE the new results arrive, so "trip X is absent" read mid-refresh is true
+  // of every trip and proves nothing.
+  TRIP_LIST_SKELETON:
+    '.trip-list-container .filters-skeleton',
+  TRIP_LIST_SETTLED:
+    '.trip-list-container .trip-preview, .trip-list-container .app-no-results',
+
   // Clickable link on a trip card (trip-preview.vue → router-link.more-details-link)
   // that opens the trip. Its target is "_blank" for bookers/no-corp users and
   // "_self" for travelers, so opening a trip may spawn a new browser tab.
@@ -266,23 +318,126 @@ class TripsPage {
   }
 
   /**
-   * Returns the "My trips only" filter checkbox once it is visible.
+   * Returns the "my trips only" filter switch once it is visible.
    *
-   * Thin wrapper over getFilterCheckboxByLabel — kept because the reason THIS
-   * control can be missing is specific to it (the account lacks the permission
-   * that renders it), and that hint would be misleading on a status checkbox.
+   * Deliberately NOT routed through getFilterCheckboxByLabel: this control is an
+   * el-switch, not an el-checkbox, and it is found by testid rather than by label.
+   * Its own method also keeps the "missing" hint specific to it — trip-monitor-filter.vue
+   * renders the switch only when isOnlyMyTripsFilterEnable is true, so an account
+   * without the permission simply has no such control.
+   *
+   * @param {object} options
+   * @param {number} options.timeout - Maximum time to wait (default: 30000ms)
+   * @returns {import('@playwright/test').Locator} the el-switch root — Element Plus
+   *   puts the on/off state on it as the "is-checked" class.
+   */
+  async getMyTripsOnlySwitch({ timeout = 30000 } = {}) {
+    const toggle = this.page.locator(SELECTORS.MY_TRIPS_ONLY_SWITCH).first();
+    try {
+      await toggle.waitFor({ state: 'visible', timeout });
+      return toggle;
+    } catch (err) {
+      throw new Error(
+        `[TripsPage.getMyTripsOnlySwitch] The "my trips only" filter switch (${SELECTORS.MY_TRIPS_ONLY_SWITCH}) was not visible within ${timeout}ms. The trips filter panel may not be rendered or the account lacks CanViewAllCorporateTrips permission. Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Turns the "my trips only" switch on or off, and waits for the new state to
+   * register before returning.
+   *
+   * @param {boolean} on - desired state
+   * @returns {Promise<{ alreadyInState: boolean }>} whether the switch was already
+   *   in the requested state, so the caller can report a step that changed nothing.
+   */
+  async setMyTripsOnlySwitch(on) {
+    if (typeof on !== 'boolean') {
+      throw new Error('[TripsPage.setMyTripsOnlySwitch] "on" must be a boolean, got: ' + typeof on);
+    }
+    const toggle = await this.getMyTripsOnlySwitch();
+    try {
+      const isOn = ((await toggle.getAttribute('class')) || '').includes('is-checked');
+      if (isOn === on) return { alreadyInState: true };
+      // el-switch binds its click handler to the root <div>, so clicking the root
+      // toggles it — no need to aim at the __core pill.
+      await toggle.click({ timeout: 10000 });
+      // Confirm the new state registered before the caller waits on a refreshed list.
+      await this.page
+        .locator(on ? SELECTORS.MY_TRIPS_ONLY_SWITCH_ON : SELECTORS.MY_TRIPS_ONLY_SWITCH_OFF)
+        .first()
+        .waitFor({ state: 'visible', timeout: 10000 });
+      return { alreadyInState: false };
+    } catch (err) {
+      throw new Error(
+        `[TripsPage.setMyTripsOnlySwitch] Could not turn the "my trips only" switch ${on ? 'on' : 'off'}. Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Selects a quick view in the filter rail by its visible label and waits for it
+   * to become the active view.
+   *
+   * @param {string} label - visible quick-view label, e.g. "Past trips"
+   */
+  async selectQuickView(label) {
+    if (typeof label !== 'string' || label.length === 0) {
+      throw new Error('[TripsPage.selectQuickView] "label" must be a non-empty string, got: ' + typeof label);
+    }
+    const view = this.page
+      .locator(SELECTORS.QUICK_VIEW)
+      .filter({ has: this.page.locator(SELECTORS.QUICK_VIEW_LABEL, { hasText: exactText(label) }) })
+      .first();
+    try {
+      await view.click({ timeout: 30000 });
+      // trip-monitor-filter.vue marks the selected view with "is-active"; waiting on
+      // it proves the click landed on the rail rather than on a still-rendering card.
+      await this.page
+        .locator(SELECTORS.QUICK_VIEW_ACTIVE)
+        .filter({ has: this.page.locator(SELECTORS.QUICK_VIEW_LABEL, { hasText: exactText(label) }) })
+        .first()
+        .waitFor({ state: 'visible', timeout: 10000 });
+      return view;
+    } catch (err) {
+      throw new Error(
+        `[TripsPage.selectQuickView] Could not select the "${label}" quick view (${SELECTORS.QUICK_VIEW}). Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Waits for the trip list to finish re-querying: the loading skeleton gone and
+   * the list settled into either cards or the empty block.
+   *
+   * Every presence/absence assertion on the list goes through this — an absence
+   * checked while the skeleton is up would pass for any trip id at all.
    *
    * @param {object} options
    * @param {number} options.timeout - Maximum time to wait (default: 30000ms)
    */
-  async getMyTripsOnlyCheckbox({ timeout = 30000 } = {}) {
+  async waitForTripListSettled({ timeout = 30000 } = {}) {
     try {
-      return await this.getFilterCheckboxByLabel('My trips only', { timeout });
+      await this.page.locator(SELECTORS.TRIP_LIST_SKELETON).first().waitFor({ state: 'hidden', timeout });
+      await this.page.locator(SELECTORS.TRIP_LIST_SETTLED).first().waitFor({ state: 'visible', timeout });
     } catch (err) {
       throw new Error(
-        `[TripsPage.getMyTripsOnlyCheckbox] "My trips only" checkbox not found within ${timeout}ms. The trips filter panel may not be rendered or the account lacks CanViewAllCorporateTrips permission. Original: ${err.message}`
+        `[TripsPage.waitForTripListSettled] The trip list did not settle within ${timeout}ms — it showed neither a trip card nor the empty-results block. Original: ${err.message}`
       );
     }
+  }
+
+  /**
+   * Returns the trip-card id element for the given trip, WITHOUT waiting — the
+   * caller asserts on presence or absence, so waiting here would defeat one of them.
+   *
+   * @param {string} tripId
+   */
+  getTripCardId(tripId) {
+    if (typeof tripId !== 'string' || tripId.length === 0) {
+      throw new Error('[TripsPage.getTripCardId] "tripId" must be a non-empty string, got: ' + typeof tripId);
+    }
+    return this.page.locator(SELECTORS.TRIP_CARD_TRIP_ID, { hasText: exactText(tripId) });
   }
 
   /**

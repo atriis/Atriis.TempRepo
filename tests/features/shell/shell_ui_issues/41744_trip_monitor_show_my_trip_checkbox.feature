@@ -15,4 +15,4 @@ Feature: 41744 - Trip monitor show "my trip" checkbox
   Scenario: My trips only checkbox is visible on the trips monitor page
     Given I am logged in as "approval@flow.com"
     When I navigate to the trips page
-    Then the "My trips only" filter checkbox should be visible on the trips page
+    Then the "My trips only" filter switch should be visible on the trips page

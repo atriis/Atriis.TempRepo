@@ -47,14 +47,39 @@ Then("the user group label should be visible on the first trip", async function 
   await Trips.verifyUserGroupLabelVisibleOnFirstTrip(this.page);
 });
 
-Then('the {string} filter checkbox should be visible on the trips page', async function (checkboxLabel) {
-  logger.debug(`Verifying filter checkbox "${checkboxLabel}" is visible on the trips page`);
-  await Trips.verifyMyTripsOnlyCheckboxVisible(this.page);
+Then("the {string} filter switch should be visible on the trips page", async function (switchLabel) {
+  logger.debug(`Verifying filter switch "${switchLabel}" is visible on the trips page`);
+  await Trips.verifyMyTripsOnlySwitchVisible(this.page);
 });
 
-Then('the {string} filter should be checked on the trips page', async function (checkboxLabel) {
-  logger.debug(`Verifying filter checkbox "${checkboxLabel}" is checked on the trips page`);
-  await Trips.verifyMyTripsOnlyCheckboxChecked(this.page);
+Then("the {string} filter switch should be toggled on", async function (switchLabel) {
+  logger.debug(`Verifying filter switch "${switchLabel}" is toggled on`);
+  await Trips.verifyMyTripsOnlySwitchOn(this.page);
+});
+
+Then("the {string} filter switch should be toggled off", async function (switchLabel) {
+  logger.debug(`Verifying filter switch "${switchLabel}" is toggled off`);
+  await Trips.verifyMyTripsOnlySwitchOff(this.page);
+});
+
+When("I turn the {string} filter switch on", async function (switchLabel) {
+  logger.info(`Turning the "${switchLabel}" filter switch on`);
+  await Trips.setMyTripsOnlyFilter(this.page, true);
+});
+
+When("I select the {string} quick view on the trips page", async function (label) {
+  logger.info("Selecting trips quick view", { label });
+  await Trips.selectQuickView(this.page, label);
+});
+
+Then("the trip with id {string} should be listed on the trips page", async function (tripId) {
+  logger.info("Verifying trip is listed on the trips page", { tripId });
+  await Trips.verifyTripListed(this.page, tripId);
+});
+
+Then("the trip with id {string} should not be listed on the trips page", async function (tripId) {
+  logger.info("Verifying trip is not listed on the trips page", { tripId });
+  await Trips.verifyTripNotListed(this.page, tripId);
 });
 
 Then("the trip overview tab should be displayed", async function () {
