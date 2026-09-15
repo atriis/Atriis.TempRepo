@@ -23,6 +23,7 @@ Feature: 77984 SunnyCars - Cars - City Centre Exact Location
     Then the car location label at index 0 should contain "<expectedLabelOnCart>" on cart
     And the car city center address at index 0 should contain "<expectedAddressOnCart>" on cart
     And the booking status should be "Pending booking"
+    And I fill in the OOP justification text "abc"
     When I proceed to checkout
     And I complete the booking
     Then the car location label at index 0 should contain "<expectedLabelOnCart>" on cart
