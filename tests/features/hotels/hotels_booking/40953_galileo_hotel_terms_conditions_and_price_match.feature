@@ -18,7 +18,6 @@ Feature: 40953 Galileo - Book hotel with terms and conditions and price verifica
     And I have added a random guest traveler
     When I search for a hotel in "London, UK" for 1 night
     And I wait to see view rates text in results page
-    When I sort hotel results by "Price"
     And I select the first hotel result
     When I check terms and conditions in room level
     Then terms and conditions are displayed
