@@ -235,6 +235,14 @@ When("I search for a random round trip flight in {string}", async function (regi
   await FlightSearch.searchRoundTripRandomFlight(this.page, region);
 });
 
+// Three-leg complete trip: today + 30/40/50 days, one leg every ~10 days. The default
+// nth-available-day strategy clicks the calendar's next-month arrow once per leg without
+// rewinding, so leg 3 lands three months past leg 1 — on the 14 Sep nightly these searches
+// spanned "05 Dec - 11 Jun" and the GDS returned nothing at all. Same reason the two-leg
+// by-schedule variant below pins its dates; keep the gaps here wide enough to be a plausible
+// itinerary and near enough that suppliers still have content.
+const MULTI_CITY_THREE_LEG_DAY_OFFSETS = [30, 40, 50];
+
 When("I search for a multi-city flight with legs {string} and {string} and {string}", async function (leg1, leg2, leg3) {
   const parseLeg = (leg) => {
     const parts = leg.toUpperCase().split('-');
@@ -242,8 +250,10 @@ When("I search for a multi-city flight with legs {string} and {string} and {stri
     return { from: parts[0], to: parts[1] };
   };
   const legs = [leg1, leg2, leg3].map(parseLeg);
-  logger.info('Searching for multi-city flight', { legs });
-  await FlightSearch.searchFlightMultiCity(this.page, legs);
+  logger.info('Searching for multi-city flight', { legs, dayOffsets: MULTI_CITY_THREE_LEG_DAY_OFFSETS });
+  await FlightSearch.searchFlightMultiCity(this.page, legs, {
+    dayOffsets: MULTI_CITY_THREE_LEG_DAY_OFFSETS,
+  });
 });
 
 When("I search for a multi-city flight with legs {string} and {string} and {string} with a longer stay after the first leg", async function (leg1, leg2, leg3) {
