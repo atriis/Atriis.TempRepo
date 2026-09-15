@@ -1,0 +1,84 @@
+name: Suite - Pre-Prod
+
+# Manual-only release gate: a hand-picked subset of tests across every domain,
+# run against the SAME environment as the nightly suites (the ENV secret), on
+# demand before a deployment.
+#
+# Deliberately NOT part of the nightly Flights -> Hotels -> Shell ->
+# Transportation chain: there is no `chain-next` job here, and nothing
+# dispatches this workflow. Start it from the Actions tab.
+#
+# ---------------------------------------------------------------------------
+# HOW TO CHANGE THE PRE-PROD SET
+# ---------------------------------------------------------------------------
+# Each matrix leg's `test_path` is a SPACE-SEPARATED list of individual
+# .feature files (suite-runner.yml interpolates it unquoted into the
+# `npx cucumber-js <test_path>` command, so a list works exactly like a
+# directory does). Add or remove files there - one leg per domain so the four
+# legs run in parallel and each gets its own artifacts and report section.
+#
+# Two rules:
+#   * NEVER leave a `test_path` empty. cucumber-js with no path falls back to
+#     its default glob and would run the ENTIRE repo in that leg.
+#   * To drop a whole domain from the gate, delete its leg AND its suite_id
+#     from `expected-suites` below, or the reconciliation step reports it as a
+#     missing suite.
+#
+# The current set is the 38-test pre-prod selection: 12 flights, 8 hotels,
+# 6 shell, 12 transportation. Almost all of them are full-purchase booking
+# tests, so every leg runs at `parallel: 1` like the nightly *-booking legs -
+# two bookings at once collide on shared supplier and account state. The
+# 200/190 minute timeouts match those booking legs (25 files at parallel 1 fit
+# inside 200 minutes there, so 12 here has ample headroom); a leg that times
+# out uploads NO results at all, so do not trim them when adding tests.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+  checks: write
+
+concurrency:
+  group: suite-preprod
+  cancel-in-progress: false
+
+jobs:
+  suite:
+    uses: ./.github/workflows/suite-runner.yml
+    secrets: inherit
+    with:
+      domain: Pre-Prod
+      history-workflow: suite-preprod.yml
+      expected-suites: >-
+        preprod-flights preprod-hotels preprod-shell preprod-transportation
+      matrix: |
+        {
+          "include": [
+            {
+              "suite_id": "preprod-flights",
+              "suite_name": "Pre-Prod Flights",
+              "test_path": "tests/features/flights/flights_travelfusion/flights_travelfusion_booking/26800_fusion_booking_2_adults_fop_airplus_fare_rules.feature tests/features/flights/flights_sabre/flights_sabre_booking/29426_sabre_flight_booking_fare_rules_contact_info.feature tests/features/flights/flights_lh_ndc/flights_lh_ndc_booking/29439_lufthansa_ndc_after_booking_extras_are_displayed_and_quote_is_not_duplicated.feature tests/features/flights/flights_amadeus/flights_amadeus_non_booking/46716_amadeus_split_rules_by_schedule.feature tests/features/flights/flights_ypsilon/flights_ypsilon_booking/57930_ypsilon_booking_with_virtual_card_vcc.feature tests/features/flights/flights_sabre/flights_sabre_booking/flights_sabre_ndc/60570_sabre_ndc_flights_lonsyd_filter_issue.feature tests/features/flights/flights_aa_ndc/flights_aa_ndc_non_booking/66005_aa_ndc_complete_trip_new_booking_flow.feature tests/features/flights/flights_ua_ndc/flights_ua_ndc_booking/66125_united_ndc_complete_trip_booking_verifying_fare_rules.feature tests/features/flights/flights_ib_ndc/flights_ib_ndc_booking/66133_iberia_ndc_complete_trip_booking_verifying_fare_rules.feature tests/features/flights/flights_afkl_ndc/flights_afkl_ndc_booking/66140_afkl_ndc_flight_complete_trip_booking_and_verifying_branded_fares.feature tests/features/flights/flights_ba_ndc/flights_ba_ndc_booking/66141_ba_ndc_flight_complete_trip_booking_and_verifying_fare_rules.feature tests/features/flights/flights_galileo/flights_galileo_booking/69184_galileo_complete_trip_verifying_fare_rules.feature",
+              "parallel": 2, "retry": 1, "job_timeout_minutes": 200, "step_timeout_minutes": 190
+            },
+            {
+              "suite_id": "preprod-hotels",
+              "suite_name": "Pre-Prod Hotels",
+              "test_path": "tests/features/hotels/hotels_booking/19201_sabre_share_hotel_price_offer_and_delete_quote.feature tests/features/hotels/hotels_booking/23109_ehotel_book_hotel_verify_provider_label.feature tests/features/hotels/hotels_booking/37135_premierinn_book_hotel_cvv_and_extras.feature tests/features/hotels/hotels_booking/37302_ratehawk_refundable_hotel_price_verification.feature tests/features/hotels/hotels_booking/40953_galileo_hotel_terms_conditions_and_price_match.feature tests/features/hotels/hotels_booking/61574_expedia_book_for_2_travelers_and_2_nights.feature tests/features/hotels/hotels_booking/61575_amadeus_gds_book_for_2_travelers_and_2_nights.feature tests/features/hotels/hotels_booking/62150_bookingcom_book_for_2_travelers_and_2_nights.feature",
+              "parallel": 2, "retry": 1, "job_timeout_minutes": 200, "step_timeout_minutes": 190
+            },
+            {
+              "suite_id": "preprod-shell",
+              "suite_name": "Pre-Prod Shell",
+              "test_path": "tests/features/shell/shell_travel_policy/22084_merged_reference_dynamic_fields_travel_policy.feature tests/features/shell/shell_push_notifications/29774_mandatory_optional_notifications_flight_and_financial_reference_from_primary.feature tests/features/shell/shell_manual_quote/33007_manual_quotes_perdiem_with_upload_file_to_quote.feature tests/features/shell/shell_manual_quote/41113_manual_quote_flight_hotel_car.feature tests/features/shell/shell_ui_issues/41744_trip_monitor_show_my_trip_checkbox.feature tests/features/shell/shell_reference_fields/46730_dynamic_fields_on_checkout_for_2_corporate_users.feature",
+              "parallel": 2, "retry": 1, "job_timeout_minutes": 200, "step_timeout_minutes": 190
+            },
+            {
+              "suite_id": "preprod-transportation",
+              "suite_name": "Pre-Prod Transportation",
+              "test_path": "tests/features/transportation/parking/19197_uk_parking_extras_and_pnr_in_cart.feature tests/features/transportation/rails/benerail/22999_merged_benerail_booking+approval_flow_for_benerail_cost_cabin_class_destination_policy_and_policy_rule.feature tests/features/transportation/cars/sunny_cars/23110_sunny_verify_terms_conditions_and_invoice_payment.feature tests/features/transportation/ground_transport/groundscope/29416_groundscope_price_pickup_time_and_terms.feature tests/features/transportation/cars/amadeus/30463_amadeus_agreement_text_and_terms.feature tests/features/transportation/rails/evolvi/30624_hybrid_merge_evolvi_booking_copy_trip_disabled_cancellation_and_icon_highlight.feature tests/features/transportation/rails/benerail/34821_benerail_moove_price_for_multiple_travelers_displayed_correctly.feature tests/features/transportation/ground_transport/transferz/38312_transferz_booking_filters_and_addons.feature tests/features/transportation/cars/galileo/40952_galileo_car_booking_travel_policy_and_eco_options.feature tests/features/transportation/cars/sabre/40954_sabre_car_booking.feature tests/features/transportation/cars/sabre/57199_sabre_remove_direct_bill_to_pay_by_credit_card.feature tests/features/transportation/rails/evolvi/59698_evolvi_fare_rules_and_more_details_are_displayed_before_and_after_booking.feature",
+              "parallel": 2, "retry": 1, "job_timeout_minutes": 200, "step_timeout_minutes": 190
+            }
+          ]
+        }
