@@ -156,6 +156,13 @@ class MenuPage {
    * Selects a language from the hover tooltip by its visible name (e.g. "Italian", "English").
    * Matches the ".language-item" row by text rather than position, since the list of
    * enabled languages varies per corporation.
+   *
+   * Waits out the reload the selection triggers. app-header.vue's changeDisplayLang ends in
+   * `this.$router.go(0)`, but only AFTER awaiting the setSystemLanguage dispatch — so the reload
+   * lands a beat after the click returns, and whatever the next step does in between is torn down
+   * with the old document ("element was detached from the DOM", or a widget that silently never
+   * opens). The load listener is armed before the click so a fast reload cannot be missed.
+   *
    * @param {string} languageName - The language name as shown in the list
    */
   async clickLanguageOption(languageName) {
@@ -164,12 +171,19 @@ class MenuPage {
     }
 
     const option = this.page.locator(SELECTORS.LANGUAGE_ITEM, { hasText: languageName }).first();
+    const reloaded = this.page.waitForEvent("load", { timeout: 60000 }).catch(() => null);
     try {
       await option.waitFor({ state: "visible", timeout: 10000 });
       await option.click({ timeout: 10000 });
     } catch (err) {
       throw new Error(`[MenuPage.clickLanguageOption] Could not select language "${languageName}" from the language list (${SELECTORS.LANGUAGE_ITEM}). The language may not be enabled for this corporation or the tooltip closed before clicking. Original: ${err.message}`);
     }
+
+    // Swallowed on purpose: a run that never sees the reload is left to fail on the assertion that
+    // actually cares about the new language, with its own message, rather than here.
+    await reloaded;
+    await this.page.waitForLoadState("domcontentloaded").catch(() => {});
+    await this.page.waitForLoadState("networkidle", { timeout: 30000 }).catch(() => {});
   }
 
   /**

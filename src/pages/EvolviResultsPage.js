@@ -14,12 +14,19 @@ const SELECTORS = {
   // uk-rail-results.vue's results header holds one .data-section per direction — outbound at
   // index 0, inbound at index 1 (the inbound one is v-show'n, so it only renders on screen for a
   // round trip). The leading .suggested-container is a sibling, not a .data-section, so these
-  // indexes stay stable.
+  // indexes stay stable. This section carries a direction's date/route title and its Earlier/Later
+  // buttons only — the journey columns live under JOURNEY_DATA_SECTION below.
   RESULTS_DATA_SECTION: ".results-header .data-section",
-  // Inside a direction's .data-section, `.stations-container` holds that direction's heading —
-  // <h3>{{ $t('ukRail.outbound') }}</h3>. Scoped to .stations-container because the journey columns
-  // in the same section also render h3s (JOURNEY_TIME below), so a bare "h3" would match a
-  // departure time instead.
+  // AB#83228 pinned the journey columns into their own sticky .services-row, a SIBLING of
+  // .results-header, so they can no longer be reached from RESULTS_DATA_SECTION. That row repeats
+  // the same one-.data-section-per-direction shape — outbound 0, inbound 1 (v-show'n for a round
+  // trip) — so the direction indexes carry over unchanged. Keyed on the class, not on the row's
+  // data-testid: OBT's vite build strips every data-testid outside dev mode, so the attribute the
+  // source shows is not in the DOM the tests drive.
+  JOURNEY_DATA_SECTION: ".services-row .data-section",
+  // Inside a direction's header .data-section, `.stations-container` holds that direction's
+  // heading — <h3>{{ $t('ukRail.outbound') }}</h3>. Scoped to .stations-container because the
+  // date-container above it also prints text, so a bare "h3" is not specific enough.
   RESULTS_SECTION_HEADING: ".stations-container h3",
   // Inside a direction's .data-section, the .btn-container above the journey columns holds exactly
   // two .change-time-btn buttons — "Earlier" (uk-rail-results.ts's earlierSearch) then "Later"
@@ -459,7 +466,7 @@ class EvolviResultsPage {
   async waitForFirstJourneyColumn(directionIndex, timeout = 60000) {
     assertIndex("waitForFirstJourneyColumn", "directionIndex", directionIndex);
     const firstColumn = this.page
-      .locator(SELECTORS.RESULTS_DATA_SECTION)
+      .locator(SELECTORS.JOURNEY_DATA_SECTION)
       .nth(directionIndex)
       .locator(SELECTORS.JOURNEY_COLUMN)
       .first();
@@ -485,7 +492,7 @@ class EvolviResultsPage {
   async getJourneyColumnCount(directionIndex) {
     assertIndex("getJourneyColumnCount", "directionIndex", directionIndex);
     return this.page
-      .locator(SELECTORS.RESULTS_DATA_SECTION)
+      .locator(SELECTORS.JOURNEY_DATA_SECTION)
       .nth(directionIndex)
       .locator(SELECTORS.JOURNEY_COLUMN)
       .count();
@@ -502,7 +509,7 @@ class EvolviResultsPage {
     assertIndex("getJourneyDepartureTimeText", "directionIndex", directionIndex);
     assertIndex("getJourneyDepartureTimeText", "columnIndex", columnIndex);
     const departureTime = this.page
-      .locator(SELECTORS.RESULTS_DATA_SECTION)
+      .locator(SELECTORS.JOURNEY_DATA_SECTION)
       .nth(directionIndex)
       .locator(SELECTORS.JOURNEY_COLUMN)
       .nth(columnIndex)
@@ -523,7 +530,7 @@ class EvolviResultsPage {
     assertIndex("getJourneyStopsLabel", "directionIndex", directionIndex);
     assertIndex("getJourneyStopsLabel", "columnIndex", columnIndex);
     const label = this.page
-      .locator(SELECTORS.RESULTS_DATA_SECTION)
+      .locator(SELECTORS.JOURNEY_DATA_SECTION)
       .nth(directionIndex)
       .locator(SELECTORS.JOURNEY_COLUMN)
       .nth(columnIndex)
@@ -555,7 +562,7 @@ class EvolviResultsPage {
     assertIndex("openJourneyDetailsForJourney", "directionIndex", directionIndex);
     assertIndex("openJourneyDetailsForJourney", "columnIndex", columnIndex);
     const routeDescription = this.page
-      .locator(SELECTORS.RESULTS_DATA_SECTION)
+      .locator(SELECTORS.JOURNEY_DATA_SECTION)
       .nth(directionIndex)
       .locator(SELECTORS.JOURNEY_COLUMN)
       .nth(columnIndex)
