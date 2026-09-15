@@ -600,7 +600,21 @@ jobs:
               'flights-lh-ndc-booking','flights-ua-ndc-booking','hotels-booking'
             ];
 
+            // A suite uploads its JUnit XML and its Cucumber report as two separate
+            // artifacts, and GitHub's FinalizeArtifact call 403s intermittently, so the
+            // report can go missing for a suite that ran perfectly well. Fall back to the
+            // JUnit artifact before declaring that a suite produced no results at all.
+            const junitCounts = (suiteId) => {
+              const junitPath = path.join('all-results', suiteId + '-results', 'cucumber-junit.xml');
+              if (!fs.existsSync(junitPath)) return null;
+              const xml = fs.readFileSync(junitPath, 'utf8');
+              const total = xml.split('<testcase').length - 1;
+              if (total === 0) return null;
+              return { total: total, failed: xml.split('<failure').length - 1, skipped: xml.split('<skipped').length - 1 };
+            };
+
             const missing = [];
+            const recovered = [];
             for (const suiteId of expectedSuites) {
               const reportPath = path.join('all-results', suiteId + '-report', 'cucumber-report.json');
               let reason = null;
@@ -621,21 +635,37 @@ jobs:
                   }
                 }
               }
-              if (reason) missing.push({ suiteId, reason });
+              if (!reason) continue;
+              const junit = junitCounts(suiteId);
+              if (junit) recovered.push({ suiteId: suiteId, reason: reason, junit: junit });
+              else missing.push({ suiteId: suiteId, reason: reason });
             }
 
-            const lines = ['', '###  Suite Reconciliation', ''];
-            if (missing.length === 0) {
-              lines.push(' All ' + expectedSuites.length + ' expected suites produced results.');
-            } else {
-              lines.push(' ' + missing.length + ' of ' + expectedSuites.length + ' expected suites produced NO results  the scenario totals above are UNDERCOUNTED:');
+            const lines = ['', '### Suite Reconciliation', ''];
+            if (missing.length === 0 && recovered.length === 0) {
+              lines.push('All ' + expectedSuites.length + ' expected suites produced results.');
+            }
+            if (missing.length > 0) {
+              lines.push(missing.length + ' of ' + expectedSuites.length + ' expected suites produced NO results - the scenario totals above are UNDERCOUNTED:');
               lines.push('');
               lines.push('| Suite | Reason |');
               lines.push('|-------|--------|');
               for (const m of missing) lines.push('| ' + m.suiteId + ' | ' + m.reason + ' |');
+              lines.push('');
+            }
+            if (recovered.length > 0) {
+              const recoveredScenarios = recovered.reduce((sum, r) => sum + r.junit.total, 0);
+              lines.push(recovered.length + ' suite(s) ran but lost their Cucumber report artifact - the scenario totals above are missing these ' + recoveredScenarios + ' scenarios, recovered here from JUnit:');
+              lines.push('');
+              lines.push('| Suite | Report problem | Scenarios | Failed | Skipped |');
+              lines.push('|-------|----------------|-----------|--------|---------|');
+              for (const r of recovered) lines.push('| ' + r.suiteId + ' | ' + r.reason + ' | ' + r.junit.total + ' | ' + r.junit.failed + ' | ' + r.junit.skipped + ' |');
             }
             fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, lines.join('\n') + '\n');
 
+            if (recovered.length > 0) {
+              console.log('::warning::' + recovered.length + ' suite(s) ran but their Cucumber report artifact is missing or unusable; counts recovered from JUnit: ' + recovered.map(r => r.suiteId).join(', '));
+            }
             if (missing.length > 0) {
               console.log('::error::' + missing.length + ' suite(s) produced no results: ' + missing.map(m => m.suiteId).join(', '));
               process.exit(1);
