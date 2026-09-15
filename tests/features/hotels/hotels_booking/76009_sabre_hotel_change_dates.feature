@@ -8,10 +8,9 @@ Feature: 76009 Sabre - Hotel change dates modification
 
   @priority:critical
   Scenario: Change the dates of a booked Sabre hotel quote and re-book at the new price
-    Given I am logged in as "tree@tree.com" booking a new trip
+    Given I am logged in as "sabrin@orly.com" booking a new trip
     And I have added myself as the traveler
-    When I initiate a hotel search in "Vienna Austria" for 1 night
-    And I select the trip purpose as "BILLABLE" and proceed
+    When I initiate a hotel search in "Washington" for 1 night
     And I wait to see view rates text in results page
     And I select the first hotel result
     And I add a refundable room to my cart
