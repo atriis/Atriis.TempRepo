@@ -14,14 +14,30 @@ name: Suite - Flights
 #   - --retry 3 (one more attempt than before); flakes are absorbed in-run, so
 #     there is no separate cross-job rerun
 #
-# flights_general_non_booking is sharded across two legs (`"shard": "i/2"`).
-# At 75 pickles it is by far the biggest non-booking directory — more than twice
-# the next one — and at parallel 2 it was landing on 78-96 min against a 95 min
-# step cap, so it lost its whole report to a timeout in 3 of the 8 runs before
-# 2026-08-28 (run 33125855057 uploaded a 0-byte cucumber-junit.xml and all of its
-# scenarios vanished from the domain totals). Sharding halves the wall clock
-# without raising parallel, which is the lever that causes contention flakes.
-# Add more shards, don't raise parallel, if a leg creeps back toward the cap.
+# Two directories are sharded across legs (`"shard": "i/n"`), both for the same
+# reason: cucumber writes its json/junit formatters only at the very end, so a
+# step-timeout kill uploads an empty report and every scenario in that leg
+# silently vanishes from the domain totals.
+#
+#   flights_general_non_booking (2 legs) — at 75 pickles it is by far the biggest
+#   non-booking directory, more than twice the next one, and at parallel 2 it was
+#   landing on 78-96 min against a 95 min step cap. It lost its whole report to a
+#   timeout in 3 of the 8 runs before 2026-08-28 (run 33125855057 uploaded a
+#   0-byte cucumber-junit.xml). Split: ~48 min per leg.
+#
+#   flights_sabre_booking (2 legs) — only 25 pickles, but 22 of them currently
+#   fail, and a failing scenario burns all 4 attempts (--retry 3). That retry
+#   amplification, not volume, is what puts it over the cap: run 34892432967
+#   (2026-09-14) spent 189.7 attempt-minutes against the 190 min cap and was
+#   killed with its last scenario still retrying, losing the whole report.
+#   Measured per-scenario times put the worst of two round-robin shards at
+#   ~110 min, ~58% of the cap. Re-check the split if those tests get fixed
+#   (they will get much faster) or if more are added.
+#
+# Sharding cuts the wall clock without raising parallel, which is the lever that
+# causes contention flakes. Add more shards, don't raise parallel, if a leg
+# creeps back toward the cap — and remember to add the new suite_ids to
+# expected-suites, or the reconciliation step fails the report job.
 
 on:
   workflow_dispatch:
@@ -49,7 +65,7 @@ jobs:
         flights-aa-ndc-non-booking flights-afkl-ndc-non-booking flights-ba-ndc-non-booking
         flights-ib-ndc-non-booking flights-lh-ndc-non-booking flights-ua-ndc-non-booking
         flights-amadeus-booking flights-general-booking flights-galileo-booking
-        flights-sabre-booking flights-ypsilon-booking flights-travelfusion-booking
+        flights-sabre-booking-1 flights-sabre-booking-2 flights-ypsilon-booking flights-travelfusion-booking
         flights-afkl-ndc-booking flights-ba-ndc-booking flights-ib-ndc-booking
         flights-lh-ndc-booking flights-ua-ndc-booking
       matrix: |
@@ -71,7 +87,8 @@ jobs:
             { "suite_id": "flights-amadeus-booking",         "suite_name": "Flights Amadeus Booking",         "test_path": "tests/features/flights/flights_amadeus/flights_amadeus_booking/",             "parallel": 1, "retry": 3, "job_timeout_minutes": 200, "step_timeout_minutes": 190 },
             { "suite_id": "flights-general-booking",         "suite_name": "Flights General Booking",         "test_path": "tests/features/flights/flights_general/flights_general_booking/",             "parallel": 1, "retry": 3, "job_timeout_minutes": 200, "step_timeout_minutes": 190 },
             { "suite_id": "flights-galileo-booking",         "suite_name": "Flights Galileo Booking",         "test_path": "tests/features/flights/flights_galileo/flights_galileo_booking/",             "parallel": 1, "retry": 3, "job_timeout_minutes": 200, "step_timeout_minutes": 190 },
-            { "suite_id": "flights-sabre-booking",           "suite_name": "Flights Sabre Booking",           "test_path": "tests/features/flights/flights_sabre/flights_sabre_booking/",                 "parallel": 1, "retry": 3, "job_timeout_minutes": 200, "step_timeout_minutes": 190 },
+            { "suite_id": "flights-sabre-booking-1",         "suite_name": "Flights Sabre Booking 1of2",      "test_path": "tests/features/flights/flights_sabre/flights_sabre_booking/",                 "shard": "1/2", "parallel": 1, "retry": 3, "job_timeout_minutes": 200, "step_timeout_minutes": 190 },
+            { "suite_id": "flights-sabre-booking-2",         "suite_name": "Flights Sabre Booking 2of2",      "test_path": "tests/features/flights/flights_sabre/flights_sabre_booking/",                 "shard": "2/2", "parallel": 1, "retry": 3, "job_timeout_minutes": 200, "step_timeout_minutes": 190 },
             { "suite_id": "flights-ypsilon-booking",         "suite_name": "Flights Ypsilon Booking",         "test_path": "tests/features/flights/flights_ypsilon/flights_ypsilon_booking/",             "parallel": 1, "retry": 3, "job_timeout_minutes": 200, "step_timeout_minutes": 190 },
             { "suite_id": "flights-travelfusion-booking",    "suite_name": "Flights Travelfusion Booking",    "test_path": "tests/features/flights/flights_travelfusion/flights_travelfusion_booking/",   "parallel": 1, "retry": 3, "job_timeout_minutes": 200, "step_timeout_minutes": 190 },
             { "suite_id": "flights-afkl-ndc-booking",        "suite_name": "Flights AFKL NDC Booking",        "test_path": "tests/features/flights/flights_afkl_ndc/flights_afkl_ndc_booking/",           "parallel": 1, "retry": 3, "job_timeout_minutes": 200, "step_timeout_minutes": 190 },
