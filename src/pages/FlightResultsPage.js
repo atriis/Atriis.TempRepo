@@ -3290,22 +3290,52 @@ async clickSelectForFareWithBaggagePricingOptions(baggageText) {
   }
 
   /**
-   * Gets the label text from a flight result's info top bar (e.g. "NDC direct rate").
+   * Gets every label in a flight result's info top bar (e.g. "NDC direct rate", "-74% Emissions").
+   * The bar holds one chip per attribute and their order is not fixed, so this returns all of them:
+   * reading only the first made "NDC direct rate" assertions fail against "-74% Emissions info"
+   * whenever the emissions chip happened to render ahead of the rate label.
    * @param {number} flightIndex - 1-based index of the flight result
    * @param {number} timeout - Max wait time in ms (default: 15000)
-   * @returns {Promise<string|null>} The label text or null if not found
+   * @returns {Promise<string[]>} Trimmed label texts, empty when the result has none
    */
-  async getFlightResultInfoLabel(flightIndex = 1, timeout = 15000) {
+  async getFlightResultInfoLabels(flightIndex = 1, timeout = 15000) {
     if (typeof flightIndex !== 'number' || flightIndex < 1) {
       throw new Error(`flightIndex must be a positive number, got: ${flightIndex}`);
     }
     try {
       const selector = `.flight-list > :nth-child(${flightIndex}) ${SELECTORS.FLIGHT_INFO_TOP_BAR_LABEL}`;
-      const locator = this.page.locator(selector).first();
-      await locator.waitFor({ state: 'visible', timeout });
-      return (await locator.textContent()).trim();
+      const locator = this.page.locator(selector);
+      await locator.first().waitFor({ state: 'visible', timeout });
+      const texts = await locator.allTextContents();
+      return texts.map((text) => (text || '').replace(/\s+/g, ' ').trim()).filter(Boolean);
     } catch {
-      return null;
+      return [];
+    }
+  }
+
+  /**
+   * Waits for a flight result's info top bar to carry a label matching `labelText`, whichever
+   * position it renders in. Chips arrive as the result hydrates, so this waits on the matching
+   * chip rather than reading the bar once.
+   * @param {string} labelText - Label text to match (substring, e.g. "NDC direct rate")
+   * @param {number} flightIndex - 1-based index of the flight result
+   * @param {number} timeout - Max wait time in ms (default: 15000)
+   * @returns {Promise<boolean>} True when a matching label becomes visible
+   */
+  async waitForFlightResultInfoLabel(labelText, flightIndex = 1, timeout = 15000) {
+    if (!labelText || typeof labelText !== 'string') {
+      throw new Error('labelText must be a non-empty string');
+    }
+    if (typeof flightIndex !== 'number' || flightIndex < 1) {
+      throw new Error(`flightIndex must be a positive number, got: ${flightIndex}`);
+    }
+    try {
+      const selector = `.flight-list > :nth-child(${flightIndex}) ${SELECTORS.FLIGHT_INFO_TOP_BAR_LABEL}`;
+      await this.page.locator(selector).filter({ hasText: labelText }).first()
+        .waitFor({ state: 'visible', timeout });
+      return true;
+    } catch {
+      return false;
     }
   }
 

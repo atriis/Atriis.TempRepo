@@ -2819,8 +2819,16 @@ async verifyFareComponentTextColorInPricingOptions(page, expectedColor, index = 
       throw new Error(`expectedText must be a non-empty string, got: ${typeof expectedText}`);
     }
     const flightResultsPage = getPageObject(page, FlightResultsPage);
-    const labelText = await flightResultsPage.getFlightResultInfoLabel(flightIndex);
-    expect(labelText, `Flight result ${flightIndex} should display "${expectedText}" label`).toBe(expectedText);
+    const found = await flightResultsPage.waitForFlightResultInfoLabel(expectedText, flightIndex);
+    if (found) return;
+
+    // The top bar carries a chip per attribute in no fixed order, so name the ones that are there
+    // rather than leaving a bare diff against whichever chip came first.
+    const labels = await flightResultsPage.getFlightResultInfoLabels(flightIndex);
+    throw new Error(
+      `[FlightResults.verifyFlightResultInfoLabel] Flight result ${flightIndex} does not display the "${expectedText}" label. ` +
+        `Labels in its info top bar: ${labels.length ? labels.map((label) => `"${label}"`).join(', ') : '(none)'}`,
+    );
   },
 
   /**
