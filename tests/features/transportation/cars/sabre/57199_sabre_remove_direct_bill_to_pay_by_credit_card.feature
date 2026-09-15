@@ -19,7 +19,7 @@ Feature: 57199 Sabre billback removal and credit card payment
     # traveller name chip instead.
     And I add a traveler by name "Pedro Carneiro" from the search autocomplete
     And the traveler name "Pedro Carneiro" is added successfully
-    When I initiate a car search at "LHR"
+    When I initiate a car search at "LHR" with rental agency "National"
     And I select the trip purpose as "BILLABLE" and proceed
     Then handshake badge should be visible in car results
     When I add the first car to cart
