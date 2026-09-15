@@ -13,7 +13,7 @@ Feature: 66658 Shell - Suggested car search form is displayed after a flight is 
   So that I can add ground transport for the same destination in one flow
 
   Scenario: Adding a flight surfaces a pre-filled car search suggestion for the destination
-    Given I am logged in as "pini@gov.nl" booking a new trip
+    Given I am logged in as "new@guy33.com" booking a new trip
     And I have added myself as the traveler
     When I search for a one way flight from "LON" to "MAN"
     And I click proceed button if visible
