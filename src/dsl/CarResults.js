@@ -1615,31 +1615,40 @@ const CarResults = {
     expect(isVisible, `Filter "${filterTitle}" should be visible on car results page`).toBe(true);
   },
 
-  async verifyAgreementTextDisplayedInCarResultsTooltip(page) {
+  /**
+   * Hovers the handshake agreement icon on the first car result and asserts the tooltip it opens
+   * displays the expected agreement name.
+   *
+   * No fallback on purpose: the agreement tooltip IS the subject of this assertion, so a missing
+   * handshake icon is a failure to report, not a condition to route around.
+   *
+   * Matches on `contains` rather than equality because getAgreementTooltipText() joins every
+   * rendered description with " | " when a card carries more than one agreement.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} expectedText - Agreement name expected in the tooltip (e.g. "Automation - ET - isPrePaid ON")
+   */
+  async verifyAgreementTextDisplayedInCarResultsTooltip(page, expectedText) {
     if (!page) throw new Error('page is required');
-
-    const carResultsPage = getPageObject(page, CarResultsPage);
-    const hasAgreementTrigger = await carResultsPage.hasVisibleAgreementTrigger();
-
-    if (hasAgreementTrigger) {
-      await carResultsPage.hoverAgreementIconInFirstCarResult();
-      const tooltipText = await carResultsPage.getAgreementTooltipText();
-
-      expect(
-        tooltipText.length > 0,
-        'Expected agreement tooltip to contain text in car results when agreement icon is visible.',
-      ).toBe(true);
-
-      return { tooltipText, source: 'agreement-tooltip' };
+    if (typeof expectedText !== 'string' || expectedText.trim().length === 0) {
+      throw new Error(
+        `[CarResults.verifyAgreementTextDisplayedInCarResultsTooltip] "expectedText" must be a non-empty string, got: ${typeof expectedText}`,
+      );
     }
 
-    const termsText = await carResultsPage.getTermsAndConditionsTextInFirstCarResult();
+    const carResultsPage = getPageObject(page, CarResultsPage);
+
+    // Cards keep rendering for a few seconds after the pickup-location selection, so allow the same
+    // 30000 budget as hoverAgreementInFirstCarResult rather than a short probe.
+    await carResultsPage.hoverAgreementIconInFirstCarResult({ timeout: 30000 });
+    const tooltipText = await carResultsPage.getAgreementTooltipText();
+
     expect(
-      /terms\s*&?\s*conditions/i.test(termsText),
-      `Expected terms and conditions text to be visible in car results when agreement tooltip is not rendered, got: "${termsText}"`,
+      tooltipText.includes(expectedText),
+      `Expected the agreement tooltip on the first car result to display "${expectedText}", but it read: "${tooltipText}"`,
     ).toBe(true);
 
-    return { tooltipText: termsText, source: 'terms-link-fallback' };
+    return { tooltipText, source: 'agreement-tooltip' };
   },
 
   /**

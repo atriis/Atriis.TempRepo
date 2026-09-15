@@ -15,15 +15,18 @@ Feature: 30463 - Amadeus Car - Agreement Text and Terms Conditions Displayed
     And I have added myself as the traveler
     When I search for a car at "LON" with rental agency "Enterprise" and 1 months ahead
     And I select the first city center pickup location
-    Then the agreement text should be displayed in the car results tooltip
+    Then the agreement text "Automation - ET - isPrePaid ON" should be displayed in the car results tooltip
     When I click on the terms and conditions link in the car results tooltip
-    Then I close the terms and conditions modal
+    Then the terms and conditions modal should display the text "Remarks"
+    And I close the terms and conditions modal
     When I add a car from city center results to cart
-    When I click on the terms and conditions link in the cart
+    And I click on the terms and conditions link in the cart
+    Then the terms and conditions modal should display the text "Remarks"
     When I close the terms and conditions modal
     When I proceed to checkout
     And I complete the booking
     And the booking status should be "Confirmed"
     When I click on the terms and conditions link in the cart
+    Then the terms and conditions modal should display the text "Remarks"
     Then I close the terms and conditions modal
     Then I successfully cancel the trip

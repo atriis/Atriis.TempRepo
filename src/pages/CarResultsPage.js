@@ -159,7 +159,6 @@ const SELECTORS = {
   // say "placeholder rendered, not a logo" rather than reporting a bare missing-element timeout.
   AGREEMENT_TOOLTIP_LOGO_PLACEHOLDER: '.agreement-tooltip-list .agreement-tooltip__icon--palceholder',
   TERMS_BUTTON_IN_CARD: '.more-details-btn',
-  TERMS_BUTTON_TEXT_IN_CARD: '.more-details-btn p',
   // Car model subtitle — visible only for SunnyCars supplier when makeModel is populated
   CAR_MODEL_SUBTITLE: '.car-model-subtitle',
   LOCATION_CITY_CENTER: '.has-text-weight-bold.is-size-7',
@@ -973,23 +972,6 @@ class CarResultsPage {
       } catch {
         return false;
       }
-    }
-  }
-
-  async getTermsAndConditionsTextInFirstCarResult({ timeout = 15000 } = {}) {
-    const card = this.getFirstCarPreview();
-    await card.waitFor({ state: 'visible', timeout });
-
-    const termsTextElement = card.locator(SELECTORS.TERMS_BUTTON_TEXT_IN_CARD).filter({ hasText: /terms/i }).first();
-
-    try {
-      await termsTextElement.waitFor({ state: 'visible', timeout });
-      return ((await termsTextElement.textContent()) || '').replace(/\s+/g, ' ').trim();
-    } catch (err) {
-      throw new Error(
-        `[CarResultsPage.getTermsAndConditionsTextInFirstCarResult] Could not find visible terms and conditions text in the first car result within ${timeout}ms. ` +
-        `Original: ${err.message}`,
-      );
     }
   }
 

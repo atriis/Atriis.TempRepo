@@ -196,9 +196,9 @@ Then("the {string} filter should be visible in car results", async function (fil
   await CarResults.verifyFilterVisibleOnResults(this.page, filterTitle);
 });
 
-Then("the agreement text should be displayed in the car results tooltip", async function () {
-  logger.info("Verifying agreement text is displayed in the car results tooltip");
-  const result = await CarResults.verifyAgreementTextDisplayedInCarResultsTooltip(this.page);
+Then("the agreement text {string} should be displayed in the car results tooltip", async function (expectedText) {
+  logger.info("Verifying agreement text is displayed in the car results tooltip", { expectedText });
+  const result = await CarResults.verifyAgreementTextDisplayedInCarResultsTooltip(this.page, expectedText);
   logger.info("Agreement text tooltip validated", { tooltipText: result.tooltipText });
 });
 
