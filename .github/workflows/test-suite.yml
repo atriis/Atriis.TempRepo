@@ -1,7 +1,7 @@
 name: Test Suite
 
-# LEGACY SUITE DISABLED 2026-07-16 while validating the new per-domain suite
-# chain (Suite - Flights → Hotels → Shell → Transportation). The old ~200-scenario
+# LEGACY SUITE DISABLED 2026-07-16 while validating the new per-domain suites
+# (Suite - Flights, Hotels, Shell, Transportation). The old ~200-scenario
 # booking suite must not run automatically and compete with the new runs for test
 # accounts / real bookings. The file is intentionally left in place.
 #

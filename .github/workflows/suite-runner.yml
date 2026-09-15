@@ -62,7 +62,7 @@ jobs:
       - name: Run ${{ matrix.suite_name }} Tests
         timeout-minutes: ${{ matrix.step_timeout_minutes }}
         # Lower parallelism than the legacy Test Suite (contention is a top flake
-        # source) and --retry 3 (one more attempt than before) for stability.
+        # source) and --retry 1 (the run plus one rerun) for stability.
         #
         # Optional `shard: "<i>/<n>"` splits one test_path across n matrix legs
         # (cucumber keeps pickle i, i+n, i+2n… of the path's full pickle list, so
@@ -123,7 +123,7 @@ jobs:
     timeout-minutes: 15
     needs: test
     # Report whenever the matrix actually ran (pass or fail). Skip only if the
-    # matrix itself was skipped/cancelled (e.g. the chain was cancelled upstream).
+    # matrix itself was skipped/cancelled (e.g. the run was cancelled).
     if: ${{ always() && (needs.test.result == 'success' || needs.test.result == 'failure') }}
     permissions:
       contents: read

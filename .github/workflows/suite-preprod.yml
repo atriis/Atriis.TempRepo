@@ -4,9 +4,9 @@ name: Suite - Pre-Prod
 # run against the SAME environment as the nightly suites (the ENV secret), on
 # demand before a deployment.
 #
-# Deliberately NOT part of the nightly Flights -> Hotels -> Shell ->
-# Transportation chain: there is no `chain-next` job here, and nothing
-# dispatches this workflow. Start it from the Actions tab.
+# Deliberately NOT one of the nightly domain suites (Flights, Hotels, Shell,
+# Transportation): suite-scheduler.yml does not dispatch this workflow, and
+# nothing else does either. Start it from the Actions tab.
 #
 # ---------------------------------------------------------------------------
 # HOW TO CHANGE THE PRE-PROD SET

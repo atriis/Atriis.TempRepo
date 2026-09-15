@@ -1,10 +1,8 @@
 name: Suite - Hotels
 
-# 2nd in the chain. Started by the previous domain's `chain-next` job (Flights
-# dispatches this ~2 min after it finishes), and also manually dispatchable on
-# its own. When this run finishes, its own `chain-next` job waits 2 min and
-# dispatches "Suite - Shell". The chain self-dispatches instead of using the
-# workflow_run event — see suite-scheduler.yml header for why.
+# One of the four nightly domain suites, dispatched in parallel with the others
+# by suite-scheduler.yml at 21:10 Portugal time, and manually dispatchable on its
+# own. It starts and finishes independently — no domain waits on another.
 
 on:
   workflow_dispatch:
@@ -30,37 +28,7 @@ jobs:
       matrix: |
         {
           "include": [
-            { "suite_id": "hotels-non-booking", "suite_name": "Hotels Non Booking", "test_path": "tests/features/hotels/hotels_non_booking/", "parallel": 2, "retry": 3, "job_timeout_minutes": 100, "step_timeout_minutes": 95 },
-            { "suite_id": "hotels-booking",     "suite_name": "Hotels Booking",     "test_path": "tests/features/hotels/hotels_booking/",     "parallel": 1, "retry": 3, "job_timeout_minutes": 240, "step_timeout_minutes": 230 }
+            { "suite_id": "hotels-non-booking", "suite_name": "Hotels Non Booking", "test_path": "tests/features/hotels/hotels_non_booking/", "parallel": 2, "retry": 1, "job_timeout_minutes": 100, "step_timeout_minutes": 95 },
+            { "suite_id": "hotels-booking",     "suite_name": "Hotels Booking",     "test_path": "tests/features/hotels/hotels_booking/",     "parallel": 1, "retry": 1, "job_timeout_minutes": 240, "step_timeout_minutes": 230 }
           ]
         }
-
-  # Advance the chain: 2 min after this domain finishes, dispatch Shell. Runs on
-  # success OR failure; skipped only if cancelled. See suite-flights.yml for the
-  # rationale (workflow_dispatch is allowed for github.token; workflow_run isn't).
-  chain-next:
-    name: Start next domain (Shell)
-    needs: suite
-    if: ${{ !cancelled() }}
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    permissions:
-      actions: write
-    steps:
-      - name: Wait 2 min, then dispatch Suite - Shell
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          echo "Cooldown 2 min before starting the next domain (Shell)…"
-          sleep 120
-          # Retry: transient GitHub API 5xx must not break the chain (run #29709388523 died on a one-off HTTP 503).
-          for attempt in 1 2 3 4 5; do
-            if gh workflow run suite-shell.yml --ref main --repo "$GITHUB_REPOSITORY"; then
-              echo "Dispatched Suite - Shell (attempt $attempt)."
-              exit 0
-            fi
-            echo "Dispatch attempt $attempt failed; retrying in 30s…"
-            sleep 30
-          done
-          echo "::error::Failed to dispatch Suite - Shell after 5 attempts."
-          exit 1

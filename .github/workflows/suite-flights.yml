@@ -1,18 +1,16 @@
 name: Suite - Flights
 
-# HEAD of the stable domain chain: Flights → Hotels → Shell → Transportation.
-# Dispatched daily at 21:10 Portugal time by suite-scheduler.yml (the schedule
-# lives there so decoy DST cron slots can't start the downstream chain), and
-# manually dispatchable here. When this run finishes, the `chain-next` job waits
-# 2 min and dispatches "Suite - Hotels" (which does the same for Shell, and so
-# on). The chain advances by self-dispatch, NOT the workflow_run event, because
-# the built-in GITHUB_TOKEN can't trigger workflow_run cascades — see
-# suite-scheduler.yml header for the full rationale.
+# One of the four nightly domain suites. suite-scheduler.yml dispatches all four
+# (Flights, Hotels, Shell, Transportation) in parallel at 21:10 Portugal time;
+# this one is also manually dispatchable on its own. It starts and finishes
+# independently — no domain waits on another any more, and nothing downstream
+# depends on this run. See suite-scheduler.yml for why the schedule lives there
+# and why dispatch uses workflow_dispatch rather than the workflow_run event.
 #
 # Stability levers vs. the legacy Test Suite:
 #   - lower parallelism (non-booking 4→2, booking 2→1) to cut contention flakes
-#   - --retry 3 (one more attempt than before); flakes are absorbed in-run, so
-#     there is no separate cross-job rerun
+#   - --retry 1 (the run plus one rerun of a failing scenario); flakes are
+#     absorbed in-run, so there is no separate cross-job rerun
 #
 # Two directories are sharded across legs (`"shard": "i/n"`), both for the same
 # reason: cucumber writes its json/junit formatters only at the very end, so a
@@ -26,8 +24,9 @@ name: Suite - Flights
 #   0-byte cucumber-junit.xml). Split: ~48 min per leg.
 #
 #   flights_sabre_booking (2 legs) — only 25 pickles, but 22 of them currently
-#   fail, and a failing scenario burns all 4 attempts (--retry 3). That retry
-#   amplification, not volume, is what puts it over the cap: run 34892432967
+#   fail, and every failing scenario burns its full retry budget. Under the old
+#   --retry 3 (4 attempts) that amplification, not volume, is what put it over
+#   the cap: run 34892432967
 #   (2026-09-14) spent 189.7 attempt-minutes against the 190 min cap and was
 #   killed with its last scenario still retrying, losing the whole report.
 #   Measured per-scenario times put the worst of two round-robin shards at
@@ -71,61 +70,30 @@ jobs:
       matrix: |
         {
           "include": [
-            { "suite_id": "flights-amadeus-non-booking",     "suite_name": "Flights Amadeus Non Booking",     "test_path": "tests/features/flights/flights_amadeus/flights_amadeus_non_booking/",         "parallel": 2, "retry": 3, "job_timeout_minutes": 100, "step_timeout_minutes": 95 },
-            { "suite_id": "flights-general-non-booking-1",   "suite_name": "Flights General Non Booking 1of2", "test_path": "tests/features/flights/flights_general/flights_general_non_booking/",         "shard": "1/2", "parallel": 2, "retry": 3, "job_timeout_minutes": 100, "step_timeout_minutes": 95 },
-            { "suite_id": "flights-general-non-booking-2",   "suite_name": "Flights General Non Booking 2of2", "test_path": "tests/features/flights/flights_general/flights_general_non_booking/",         "shard": "2/2", "parallel": 2, "retry": 3, "job_timeout_minutes": 100, "step_timeout_minutes": 95 },
-            { "suite_id": "flights-galileo-non-booking",     "suite_name": "Flights Galileo Non Booking",     "test_path": "tests/features/flights/flights_galileo/flights_galileo_non_booking/",         "parallel": 2, "retry": 3, "job_timeout_minutes": 100, "step_timeout_minutes": 95 },
-            { "suite_id": "flights-sabre-non-booking",       "suite_name": "Flights Sabre Non Booking",       "test_path": "tests/features/flights/flights_sabre/flights_sabre_non_booking/",             "parallel": 2, "retry": 3, "job_timeout_minutes": 100, "step_timeout_minutes": 95 },
-            { "suite_id": "flights-ypsilon-non-booking",     "suite_name": "Flights Ypsilon Non Booking",     "test_path": "tests/features/flights/flights_ypsilon/flights_ypsilon_non_booking/",         "parallel": 2, "retry": 3, "job_timeout_minutes": 100, "step_timeout_minutes": 95 },
-            { "suite_id": "flights-travelfusion-non-booking","suite_name": "Flights Travelfusion Non Booking","test_path": "tests/features/flights/flights_travelfusion/flights_travelfusion_non_booking/","parallel": 2, "retry": 3, "job_timeout_minutes": 100, "step_timeout_minutes": 95 },
-            { "suite_id": "flights-aa-ndc-non-booking",      "suite_name": "Flights AA NDC Non Booking",      "test_path": "tests/features/flights/flights_aa_ndc/flights_aa_ndc_non_booking/",           "parallel": 2, "retry": 3, "job_timeout_minutes": 100, "step_timeout_minutes": 95 },
-            { "suite_id": "flights-afkl-ndc-non-booking",    "suite_name": "Flights AFKL NDC Non Booking",    "test_path": "tests/features/flights/flights_afkl_ndc/flights_afkl_ndc_non_booking/",       "parallel": 2, "retry": 3, "job_timeout_minutes": 100, "step_timeout_minutes": 95 },
-            { "suite_id": "flights-ba-ndc-non-booking",      "suite_name": "Flights BA NDC Non Booking",      "test_path": "tests/features/flights/flights_ba_ndc/flights_ba_ndc_non_booking/",           "parallel": 2, "retry": 3, "job_timeout_minutes": 100, "step_timeout_minutes": 95 },
-            { "suite_id": "flights-ib-ndc-non-booking",      "suite_name": "Flights IB NDC Non Booking",      "test_path": "tests/features/flights/flights_ib_ndc/flights_ib_ndc_non_booking/",           "parallel": 2, "retry": 3, "job_timeout_minutes": 100, "step_timeout_minutes": 95 },
-            { "suite_id": "flights-lh-ndc-non-booking",      "suite_name": "Flights LH NDC Non Booking",      "test_path": "tests/features/flights/flights_lh_ndc/flights_lh_ndc_non_booking/",           "parallel": 2, "retry": 3, "job_timeout_minutes": 100, "step_timeout_minutes": 95 },
-            { "suite_id": "flights-ua-ndc-non-booking",      "suite_name": "Flights UA NDC Non Booking",      "test_path": "tests/features/flights/flights_ua_ndc/flights_ua_ndc_non_booking/",           "parallel": 2, "retry": 3, "job_timeout_minutes": 100, "step_timeout_minutes": 95 },
-            { "suite_id": "flights-amadeus-booking",         "suite_name": "Flights Amadeus Booking",         "test_path": "tests/features/flights/flights_amadeus/flights_amadeus_booking/",             "parallel": 1, "retry": 3, "job_timeout_minutes": 200, "step_timeout_minutes": 190 },
-            { "suite_id": "flights-general-booking",         "suite_name": "Flights General Booking",         "test_path": "tests/features/flights/flights_general/flights_general_booking/",             "parallel": 1, "retry": 3, "job_timeout_minutes": 200, "step_timeout_minutes": 190 },
-            { "suite_id": "flights-galileo-booking",         "suite_name": "Flights Galileo Booking",         "test_path": "tests/features/flights/flights_galileo/flights_galileo_booking/",             "parallel": 1, "retry": 3, "job_timeout_minutes": 200, "step_timeout_minutes": 190 },
-            { "suite_id": "flights-sabre-booking-1",         "suite_name": "Flights Sabre Booking 1of2",      "test_path": "tests/features/flights/flights_sabre/flights_sabre_booking/",                 "shard": "1/2", "parallel": 1, "retry": 3, "job_timeout_minutes": 200, "step_timeout_minutes": 190 },
-            { "suite_id": "flights-sabre-booking-2",         "suite_name": "Flights Sabre Booking 2of2",      "test_path": "tests/features/flights/flights_sabre/flights_sabre_booking/",                 "shard": "2/2", "parallel": 1, "retry": 3, "job_timeout_minutes": 200, "step_timeout_minutes": 190 },
-            { "suite_id": "flights-ypsilon-booking",         "suite_name": "Flights Ypsilon Booking",         "test_path": "tests/features/flights/flights_ypsilon/flights_ypsilon_booking/",             "parallel": 1, "retry": 3, "job_timeout_minutes": 200, "step_timeout_minutes": 190 },
-            { "suite_id": "flights-travelfusion-booking",    "suite_name": "Flights Travelfusion Booking",    "test_path": "tests/features/flights/flights_travelfusion/flights_travelfusion_booking/",   "parallel": 1, "retry": 3, "job_timeout_minutes": 200, "step_timeout_minutes": 190 },
-            { "suite_id": "flights-afkl-ndc-booking",        "suite_name": "Flights AFKL NDC Booking",        "test_path": "tests/features/flights/flights_afkl_ndc/flights_afkl_ndc_booking/",           "parallel": 1, "retry": 3, "job_timeout_minutes": 200, "step_timeout_minutes": 190 },
-            { "suite_id": "flights-ba-ndc-booking",          "suite_name": "Flights BA NDC Booking",          "test_path": "tests/features/flights/flights_ba_ndc/flights_ba_ndc_booking/",               "parallel": 1, "retry": 3, "job_timeout_minutes": 200, "step_timeout_minutes": 190 },
-            { "suite_id": "flights-ib-ndc-booking",          "suite_name": "Flights IB NDC Booking",          "test_path": "tests/features/flights/flights_ib_ndc/flights_ib_ndc_booking/",               "parallel": 1, "retry": 3, "job_timeout_minutes": 200, "step_timeout_minutes": 190 },
-            { "suite_id": "flights-lh-ndc-booking",          "suite_name": "Flights LH NDC Booking",          "test_path": "tests/features/flights/flights_lh_ndc/flights_lh_ndc_booking/",               "parallel": 1, "retry": 3, "job_timeout_minutes": 200, "step_timeout_minutes": 190 },
-            { "suite_id": "flights-ua-ndc-booking",          "suite_name": "Flights UA NDC Booking",          "test_path": "tests/features/flights/flights_ua_ndc/flights_ua_ndc_booking/",               "parallel": 1, "retry": 3, "job_timeout_minutes": 200, "step_timeout_minutes": 190 }
+            { "suite_id": "flights-amadeus-non-booking",     "suite_name": "Flights Amadeus Non Booking",     "test_path": "tests/features/flights/flights_amadeus/flights_amadeus_non_booking/",         "parallel": 2, "retry": 1, "job_timeout_minutes": 100, "step_timeout_minutes": 95 },
+            { "suite_id": "flights-general-non-booking-1",   "suite_name": "Flights General Non Booking 1of2", "test_path": "tests/features/flights/flights_general/flights_general_non_booking/",         "shard": "1/2", "parallel": 2, "retry": 1, "job_timeout_minutes": 100, "step_timeout_minutes": 95 },
+            { "suite_id": "flights-general-non-booking-2",   "suite_name": "Flights General Non Booking 2of2", "test_path": "tests/features/flights/flights_general/flights_general_non_booking/",         "shard": "2/2", "parallel": 2, "retry": 1, "job_timeout_minutes": 100, "step_timeout_minutes": 95 },
+            { "suite_id": "flights-galileo-non-booking",     "suite_name": "Flights Galileo Non Booking",     "test_path": "tests/features/flights/flights_galileo/flights_galileo_non_booking/",         "parallel": 2, "retry": 1, "job_timeout_minutes": 100, "step_timeout_minutes": 95 },
+            { "suite_id": "flights-sabre-non-booking",       "suite_name": "Flights Sabre Non Booking",       "test_path": "tests/features/flights/flights_sabre/flights_sabre_non_booking/",             "parallel": 2, "retry": 1, "job_timeout_minutes": 100, "step_timeout_minutes": 95 },
+            { "suite_id": "flights-ypsilon-non-booking",     "suite_name": "Flights Ypsilon Non Booking",     "test_path": "tests/features/flights/flights_ypsilon/flights_ypsilon_non_booking/",         "parallel": 2, "retry": 1, "job_timeout_minutes": 100, "step_timeout_minutes": 95 },
+            { "suite_id": "flights-travelfusion-non-booking","suite_name": "Flights Travelfusion Non Booking","test_path": "tests/features/flights/flights_travelfusion/flights_travelfusion_non_booking/","parallel": 2, "retry": 1, "job_timeout_minutes": 100, "step_timeout_minutes": 95 },
+            { "suite_id": "flights-aa-ndc-non-booking",      "suite_name": "Flights AA NDC Non Booking",      "test_path": "tests/features/flights/flights_aa_ndc/flights_aa_ndc_non_booking/",           "parallel": 2, "retry": 1, "job_timeout_minutes": 100, "step_timeout_minutes": 95 },
+            { "suite_id": "flights-afkl-ndc-non-booking",    "suite_name": "Flights AFKL NDC Non Booking",    "test_path": "tests/features/flights/flights_afkl_ndc/flights_afkl_ndc_non_booking/",       "parallel": 2, "retry": 1, "job_timeout_minutes": 100, "step_timeout_minutes": 95 },
+            { "suite_id": "flights-ba-ndc-non-booking",      "suite_name": "Flights BA NDC Non Booking",      "test_path": "tests/features/flights/flights_ba_ndc/flights_ba_ndc_non_booking/",           "parallel": 2, "retry": 1, "job_timeout_minutes": 100, "step_timeout_minutes": 95 },
+            { "suite_id": "flights-ib-ndc-non-booking",      "suite_name": "Flights IB NDC Non Booking",      "test_path": "tests/features/flights/flights_ib_ndc/flights_ib_ndc_non_booking/",           "parallel": 2, "retry": 1, "job_timeout_minutes": 100, "step_timeout_minutes": 95 },
+            { "suite_id": "flights-lh-ndc-non-booking",      "suite_name": "Flights LH NDC Non Booking",      "test_path": "tests/features/flights/flights_lh_ndc/flights_lh_ndc_non_booking/",           "parallel": 2, "retry": 1, "job_timeout_minutes": 100, "step_timeout_minutes": 95 },
+            { "suite_id": "flights-ua-ndc-non-booking",      "suite_name": "Flights UA NDC Non Booking",      "test_path": "tests/features/flights/flights_ua_ndc/flights_ua_ndc_non_booking/",           "parallel": 2, "retry": 1, "job_timeout_minutes": 100, "step_timeout_minutes": 95 },
+            { "suite_id": "flights-amadeus-booking",         "suite_name": "Flights Amadeus Booking",         "test_path": "tests/features/flights/flights_amadeus/flights_amadeus_booking/",             "parallel": 1, "retry": 1, "job_timeout_minutes": 200, "step_timeout_minutes": 190 },
+            { "suite_id": "flights-general-booking",         "suite_name": "Flights General Booking",         "test_path": "tests/features/flights/flights_general/flights_general_booking/",             "parallel": 1, "retry": 1, "job_timeout_minutes": 200, "step_timeout_minutes": 190 },
+            { "suite_id": "flights-galileo-booking",         "suite_name": "Flights Galileo Booking",         "test_path": "tests/features/flights/flights_galileo/flights_galileo_booking/",             "parallel": 1, "retry": 1, "job_timeout_minutes": 200, "step_timeout_minutes": 190 },
+            { "suite_id": "flights-sabre-booking-1",         "suite_name": "Flights Sabre Booking 1of2",      "test_path": "tests/features/flights/flights_sabre/flights_sabre_booking/",                 "shard": "1/2", "parallel": 1, "retry": 1, "job_timeout_minutes": 200, "step_timeout_minutes": 190 },
+            { "suite_id": "flights-sabre-booking-2",         "suite_name": "Flights Sabre Booking 2of2",      "test_path": "tests/features/flights/flights_sabre/flights_sabre_booking/",                 "shard": "2/2", "parallel": 1, "retry": 1, "job_timeout_minutes": 200, "step_timeout_minutes": 190 },
+            { "suite_id": "flights-ypsilon-booking",         "suite_name": "Flights Ypsilon Booking",         "test_path": "tests/features/flights/flights_ypsilon/flights_ypsilon_booking/",             "parallel": 1, "retry": 1, "job_timeout_minutes": 200, "step_timeout_minutes": 190 },
+            { "suite_id": "flights-travelfusion-booking",    "suite_name": "Flights Travelfusion Booking",    "test_path": "tests/features/flights/flights_travelfusion/flights_travelfusion_booking/",   "parallel": 1, "retry": 1, "job_timeout_minutes": 200, "step_timeout_minutes": 190 },
+            { "suite_id": "flights-afkl-ndc-booking",        "suite_name": "Flights AFKL NDC Booking",        "test_path": "tests/features/flights/flights_afkl_ndc/flights_afkl_ndc_booking/",           "parallel": 1, "retry": 1, "job_timeout_minutes": 200, "step_timeout_minutes": 190 },
+            { "suite_id": "flights-ba-ndc-booking",          "suite_name": "Flights BA NDC Booking",          "test_path": "tests/features/flights/flights_ba_ndc/flights_ba_ndc_booking/",               "parallel": 1, "retry": 1, "job_timeout_minutes": 200, "step_timeout_minutes": 190 },
+            { "suite_id": "flights-ib-ndc-booking",          "suite_name": "Flights IB NDC Booking",          "test_path": "tests/features/flights/flights_ib_ndc/flights_ib_ndc_booking/",               "parallel": 1, "retry": 1, "job_timeout_minutes": 200, "step_timeout_minutes": 190 },
+            { "suite_id": "flights-lh-ndc-booking",          "suite_name": "Flights LH NDC Booking",          "test_path": "tests/features/flights/flights_lh_ndc/flights_lh_ndc_booking/",               "parallel": 1, "retry": 1, "job_timeout_minutes": 200, "step_timeout_minutes": 190 },
+            { "suite_id": "flights-ua-ndc-booking",          "suite_name": "Flights UA NDC Booking",          "test_path": "tests/features/flights/flights_ua_ndc/flights_ua_ndc_booking/",               "parallel": 1, "retry": 1, "job_timeout_minutes": 200, "step_timeout_minutes": 190 }
           ]
         }
-
-  # Advance the chain: after this whole domain run (test + report) finishes,
-  # wait 2 min and dispatch the next domain. Runs on success OR failure (domains
-  # are independent); skipped only if this run was cancelled. `gh workflow run`
-  # is a workflow_dispatch, which github.token is allowed to trigger.
-  chain-next:
-    name: Start next domain (Hotels)
-    needs: suite
-    if: ${{ !cancelled() }}
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    permissions:
-      actions: write
-    steps:
-      - name: Wait 2 min, then dispatch Suite - Hotels
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          echo "Cooldown 2 min before starting the next domain (Hotels)…"
-          sleep 120
-          # Retry: transient GitHub API 5xx must not break the chain (run #29709388523 died on a one-off HTTP 503).
-          for attempt in 1 2 3 4 5; do
-            if gh workflow run suite-hotels.yml --ref main --repo "$GITHUB_REPOSITORY"; then
-              echo "Dispatched Suite - Hotels (attempt $attempt)."
-              exit 0
-            fi
-            echo "Dispatch attempt $attempt failed; retrying in 30s…"
-            sleep 30
-          done
-          echo "::error::Failed to dispatch Suite - Hotels after 5 attempts."
-          exit 1
