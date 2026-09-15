@@ -15,9 +15,15 @@ Feature: 67281 DB - Continue from overview and validate not completed order erro
   Scenario: DB continue flow shows not completed order error message
     Given I am logged in as "pmac@corp.club"
     When I navigate to the trips page
+    # AB#82671 rebuilt the filter rail: the tabs became quick views and the page now opens on
+    # "To do", which holds none of this user's trips. The upcoming view is where the open trip
+    # that still accepts a new DB item lives.
+    And I select the "Upcoming trips" quick view on the trips page
     # The DB continue action is only enabled for adult travellers; scoping the list to the
     # logged-in user's own trips keeps the first trip an adult one regardless of list re-ordering.
-    And I check the "My trips only" filter on the trips page
+    # Turned on AFTER the quick view: selecting a view resets the rail to an unfiltered state
+    # (trip-monitor-filter.ts selectQuickView), which would drop the filter again.
+    And I turn the "My trips only" filter switch on
     And I click the first trip from the trip list
     When I open the Deutsche Bahn continue action from trip overview
     Then I should see the DB continue booking information message
