@@ -15,7 +15,7 @@ Feature: 23004 Benerail - Approval flow for duration and origin with linked refe
     Given I am logged in as "shani@testimcorpnl.com" booking a new trip
     And I have added traveler by name "bina"
     When I search for a round trip Benerail train from "nlbanToAmsterdamCe"
-    Then the number of reference and dynamic fields in the travel request popup should be 4
+    Then the number of reference and dynamic fields in the travel request popup should be 5
     When I type "Posting" in reference field "Soort Reis/Type Of Trip" to select the first dropdown option
     Then the reference fields should have the following values:
     | field                                              | value  |
@@ -23,15 +23,15 @@ Feature: 23004 Benerail - Approval flow for duration and origin with linked refe
     | Odd Sized Baggage?                                 | Select |
     | Do You Need A Seat For An Infant?                  | Select |
     | Do You Need Us To Arrange Transportation Of A Pet? | Select |
-    And the number of reference and dynamic fields in the travel request popup should be 8
+    And the number of reference and dynamic fields in the travel request popup should be 9
     When I type "No" in reference field "Checked Baggage?" to select the first dropdown option
-    Then the number of reference and dynamic fields in the travel request popup should be 8
+    Then the number of reference and dynamic fields in the travel request popup should be 9
     When I type "Yes" in reference field "Odd Sized Baggage?" to select the first dropdown option
     And I fill "Odd Sized Baggage Details" reference field pop up with "2"
-    Then the number of reference and dynamic fields in the travel request popup should be 9
+    Then the number of reference and dynamic fields in the travel request popup should be 10
     When I type "No" in reference field "Do You Need A Seat For An Infant?" to select the first dropdown option
     And I type "No" in reference field "Do You Need Us To Arrange Transportation Of A Pet?" to select the first dropdown option
-    Then the number of reference and dynamic fields in the travel request popup should be 9
+    Then the number of reference and dynamic fields in the travel request popup should be 10
     And I click proceed button if visible
     When I add a Benerail round trip to the trip
     Then the traveler "Bina Cohen" is available in cart page
