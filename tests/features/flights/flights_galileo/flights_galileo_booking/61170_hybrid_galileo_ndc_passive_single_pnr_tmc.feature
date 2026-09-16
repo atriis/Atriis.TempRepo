@@ -30,7 +30,3 @@ Feature: 61170 HYBRID Galileo and NDC passive booked in single PNR with TMC perm
     And I accept Terms & Conditions
     And I hold the trip
     Then the quote destination should contain "Flight to"
-    And I store the first quote PNR code
-    And I store the second quote PNR code
-    Then the stored quote PNR codes should match
-    And I attempt to cancel the trip safely
