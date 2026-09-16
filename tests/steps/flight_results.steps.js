@@ -95,6 +95,12 @@ When("I store the first flight result details for later comparison", async funct
   logger.info("Stored first flight result details", { segments: this.storedFlightSegmentDetails });
 });
 
+When("I store the first flight result legs for later comparison", async function () {
+  logger.info("Storing the first flight result leg times and dates for later comparison");
+  this.storedFlightResultLegs = await FlightResults.extractFirstResultLegTimeDates(this.page);
+  logger.info("Stored first flight result legs", { legs: this.storedFlightResultLegs });
+});
+
 When('I hide the comparison table in flight results', async function () {
   logger.info('Hiding comparison table in flight results');
   await FlightResults.hideComparisonTable(this.page);
@@ -654,6 +660,50 @@ When("I click to open fare rules", async function () {
 When("I click to open flight details", async function () {
   logger.info("Clicking to open flight details");
   await FlightResults.clickToOpenFlightDetails(this.page);
+});
+
+Then("the flight details dates should match the results dates", async function () {
+  if (!Array.isArray(this.storedFlightResultLegs) || this.storedFlightResultLegs.length === 0) {
+    throw new Error(
+      "No stored flight result legs found. Run 'I store the first flight result legs for later " +
+      "comparison' on the results page, before opening the flight details drawer."
+    );
+  }
+
+  logger.info("Verifying the flight details dates match the results card dates", {
+    resultsLegs: this.storedFlightResultLegs.length,
+    timezoneId: this.timezoneId || "(runner default)",
+  });
+
+  const result = await FlightResults.verifyFlightDetailsDatesMatchResultsDates(
+    this.page,
+    this.storedFlightResultLegs
+  );
+
+  logger.info("Flight details dates match the results card dates", result);
+});
+
+Then("the flight details departure and arrival times should match the results times", async function () {
+  // Either capture step will do: the leg shape is a superset of the segment shape for the two
+  // fields this compares, so a scenario is free to store whichever it also needs elsewhere.
+  const storedLegs = this.storedFlightResultLegs || this.storedFlightSegmentDetails;
+
+  if (!Array.isArray(storedLegs) || storedLegs.length === 0) {
+    throw new Error(
+      "No stored flight result times found. Run 'I store the first flight result legs for later " +
+      "comparison' (or the segment-details equivalent) on the results page, before opening the " +
+      "flight details drawer."
+    );
+  }
+
+  logger.info("Verifying the flight details times match the results card times", {
+    resultsLegs: storedLegs.length,
+    timezoneId: this.timezoneId || "(runner default)",
+  });
+
+  const result = await FlightResults.verifyFlightDetailsTimesMatchResultsTimes(this.page, storedLegs);
+
+  logger.info("Flight details times match the results card times", result);
 });
 
 When("I open seat map from results and verify it loads", async function () {

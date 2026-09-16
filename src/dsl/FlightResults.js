@@ -8,6 +8,7 @@ const Results = require("./Results");
 const { CommonPage } = require("@src/pages/CommonPage");
 const { getPageObject } = require("@utils/pageObjectCache");
 const { readJson } = require("@utils/networkInterceptor");
+const { parseTimeToMinutes } = require("@utils/calendar.helper");
 const { expectNumbersToBeEqualWithTolerance } = require("../assertions/numberAssertions");
 const {
   extractCurrencySymbol,
@@ -17,6 +18,151 @@ const {
   getExchangeRate,
   normalizeCurrencyCode,
 } = require("../utils/currencyConversion");
+
+const MONTH_NAMES = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December',
+];
+
+// The leading time of a "20:05 · Fri, 16 Oct 26" line. Only the time is matched here; the
+// separator and date are taken from the remainder, because a single regex spanning both lets the
+// trailing group swallow the separator glyph.
+const DRAWER_LEADING_TIME = /^\s*(\d{1,2}:\d{2}(?:\s*[AaPp]\.?[Mm]\.?)?)/;
+// Anything non-alphanumeric between the time and the date is separator — a middot on staging,
+// but treating any such run the same means a locale that swaps the glyph cannot break parsing.
+const DRAWER_SEPARATOR = /^[^A-Za-z0-9]+/;
+// "Fri, 16 Oct 26" / "Friday, 16 October 2026" / "16 Oct" — weekday and year both optional, month
+// either abbreviated or full, year either 2- or 4-digit.
+const DRAWER_DATE = /^(?:([A-Za-z]{3,9})\.?,?\s*)?(\d{1,2})\s+([A-Za-z]{3,9})\.?,?\s*(\d{2,4})?$/;
+
+/**
+ * Parses a rendered date — "Fri, 16 Oct 26", "Friday, 16 October 2026", "16 Oct" — into its parts.
+ *
+ * Shared by the drawer and the results card so both surfaces are read by the same code: a date
+ * comparison between them can then only fail on a real difference, never on two parsers
+ * disagreeing.
+ *
+ * Returns null rather than throwing so the caller can report WHICH leg failed and what the raw
+ * text was — a bare parse error here would lose that context.
+ *
+ * @param {string} text
+ * @returns {{dateText: string, day: number, month: number, year: number|null,
+ *            weekday: string|null}|null}
+ */
+function parseFlightDate(text) {
+  if (!text || typeof text !== 'string') {
+    return null;
+  }
+
+  const dateMatch = text.trim().match(DRAWER_DATE);
+  if (!dateMatch) {
+    return null;
+  }
+
+  const [, weekday, day, monthToken, year] = dateMatch;
+  const month = MONTH_NAMES.findIndex(
+    (name) => name.toLowerCase() === monthToken.toLowerCase()
+      || name.slice(0, 3).toLowerCase() === monthToken.toLowerCase()
+  );
+
+  if (month < 0) {
+    return null;
+  }
+
+  // A 2-digit year is this century: the drawer renders "26" for 2026, and no bookable itinerary
+  // is a hundred years out, so there is no ambiguity to resolve.
+  let resolvedYear = null;
+  if (year) {
+    resolvedYear = year.length === 2 ? 2000 + Number(year) : Number(year);
+  }
+
+  return {
+    dateText: text.trim(),
+    day: Number(day),
+    month,
+    year: resolvedYear,
+    weekday: weekday ?? null,
+  };
+}
+
+/**
+ * Parses one "HH:mm · EEE, dd MMM yy" line from the flight details drawer into its time and its
+ * date. The date half is delegated to parseFlightDate, so the drawer and the results card — which
+ * renders a bare date with no time prefix — can never disagree about how a date is read.
+ *
+ * Returns null rather than throwing so the caller can report WHICH leg failed to parse and what
+ * the raw text was.
+ *
+ * @param {string} text
+ * @returns {{time: string, dateText: string, day: number, month: number, year: number|null,
+ *            weekday: string|null}|null}
+ */
+function parseDrawerTimeDate(text) {
+  if (!text || typeof text !== 'string') {
+    return null;
+  }
+
+  const timeMatch = text.match(DRAWER_LEADING_TIME);
+  if (!timeMatch) {
+    return null;
+  }
+
+  const datePart = text.slice(timeMatch[0].length).replace(DRAWER_SEPARATOR, '').trim();
+  const parsedDate = parseFlightDate(datePart);
+  if (!parsedDate) {
+    return null;
+  }
+
+  return { time: timeMatch[1].replace(/\s+/g, ' ').trim(), ...parsedDate };
+}
+
+// A results-card time carries a next-day marker when that end of the leg falls on a later date
+// than the leg's departure: "06:20 +1". The drawer never uses a marker — it renders the arrival's
+// own date instead — so the two surfaces state the same fact in two different shapes.
+const RESULTS_DAY_OFFSET = /\s*\+\s*(\d+)\s*$/;
+
+/**
+ * Splits a results-card time into the clock time and its day offset: "06:20 +1" -> 06:20, +1 day.
+ *
+ * The offset is separated rather than discarded because it is the results card's ONLY statement
+ * about which date an arrival lands on, and this test exists to catch a leg being rendered a day
+ * away from where it belongs. Dropping it would leave an overnight leg's date unasserted on the
+ * one surface where the defect shows.
+ *
+ * @param {string} text
+ * @returns {{time: string, dayOffset: number}}
+ */
+function splitResultsDayOffset(text) {
+  const raw = String(text ?? '').trim();
+  const match = raw.match(RESULTS_DAY_OFFSET);
+
+  return {
+    time: match ? raw.slice(0, match.index).trim() : raw,
+    dayOffset: match ? Number(match[1]) : 0,
+  };
+}
+
+/**
+ * Whole days from one parsed drawer date to another, or null when either side lacks a year.
+ *
+ * Built as UTC midnights so the subtraction is unaffected by the browser timezone the scenario
+ * runs under — the test asserts the app's rendering, and must not itself do date arithmetic that
+ * the very timezone under test could shift.
+ *
+ * @param {{day: number, month: number, year: number|null}} from
+ * @param {{day: number, month: number, year: number|null}} to
+ * @returns {number|null}
+ */
+function daysBetweenParsedDates(from, to) {
+  if (!from || !to || from.year === null || to.year === null) {
+    return null;
+  }
+
+  const fromUtc = Date.UTC(from.year, from.month, from.day);
+  const toUtc = Date.UTC(to.year, to.month, to.day);
+
+  return Math.round((toUtc - fromUtc) / 86400000);
+}
 
 // The render wait deliberately runs past the caller's budget so a breach can report the real
 // duration instead of an opaque timeout. It is capped because the wait must still finish inside
@@ -5199,6 +5345,281 @@ async verifyFareComponentTextColorInPricingOptions(page, expectedColor, index = 
     ).toEqual([]);
 
     return { checked: departures.length, departures };
+  },
+
+  /**
+   * Captures the first result card's per-leg departure time, departure date and arrival time, so a
+   * later step can hold the flight details drawer to what the results promised.
+   *
+   * Distinct from extractFirstFlightResultSegmentDetails, which feeds a strict deep-equality check
+   * against the cart (test 42070) and therefore cannot grow a field.
+   *
+   * @param {import('playwright').Page} page
+   * @returns {Promise<Array<{departureTime: string, departureDate: string, arrivalTime: string}>>}
+   */
+  async extractFirstResultLegTimeDates(page) {
+    if (!page) {
+      throw new Error('[FlightResults.extractFirstResultLegTimeDates] "page" is required.');
+    }
+
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    const legs = await flightResultsPage.getFirstResultLegTimeDates();
+
+    logger.info('Captured the first result card leg times and dates', { legs });
+
+    return legs;
+  },
+
+  /**
+   * Verifies that the dates in the flight details drawer are the dates the results card showed
+   * for the same itinerary.
+   *
+   * This is the drawer-vs-results comparison ADO 28992 asks for: the dates the results card showed
+   * are what the traveler picked from, so the drawer must render the same ones. It does not compare
+   * against the search input, so a timezone bug that shifted BOTH surfaces by the same day would
+   * pass here — the manual test only asks that the two surfaces agree.
+   *
+   * Compares the leg DEPARTURE date only: an overnight leg legitimately arrives on another date.
+   * Both sides are read by parseFlightDate, so a difference in rendered FORMAT cannot fail this.
+   *
+   * @param {import('playwright').Page} page
+   * @param {Array<{departureDate: string}>} expectedLegs - Per-leg results-card dates, outbound first.
+   * @returns {Promise<{compared: number, legs: Array<{results: string, details: string}>}>}
+   */
+  async verifyFlightDetailsDatesMatchResultsDates(page, expectedLegs) {
+    if (!page) {
+      throw new Error('[FlightResults.verifyFlightDetailsDatesMatchResultsDates] "page" is required.');
+    }
+
+    if (!Array.isArray(expectedLegs) || expectedLegs.length === 0) {
+      throw new Error(
+        '[FlightResults.verifyFlightDetailsDatesMatchResultsDates] "expectedLegs" must be a non-empty ' +
+        `array of per-leg results-card dates, got: ${typeof expectedLegs} (${JSON.stringify(expectedLegs)}).`
+      );
+    }
+
+    expectedLegs.forEach((leg, index) => {
+      if (!leg || !leg.departureDate) {
+        throw new Error(
+          `[FlightResults.verifyFlightDetailsDatesMatchResultsDates] "expectedLegs[${index}]" must carry ` +
+          `a departureDate, got: ${JSON.stringify(leg)}.`
+        );
+      }
+    });
+
+    logger.debug('Reading the flight details drawer leg dates', { expectedLegCount: expectedLegs.length });
+
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    const renderedLegs = await flightResultsPage.getFlightDetailsLegTimeDates();
+
+    logger.info('Comparing flight details dates against the results card dates', {
+      resultsDates: expectedLegs.map((leg) => leg.departureDate),
+      detailsDepartures: renderedLegs.map((leg) => leg.departure),
+    });
+
+    expect(
+      renderedLegs.length,
+      `The flight details drawer rendered ${renderedLegs.length} leg(s) but the results card showed ` +
+      `${expectedLegs.length}. ` +
+      `Results dates: ${expectedLegs.map((leg) => leg.departureDate).join(' | ')}. ` +
+      `Drawer departures: ${renderedLegs.map((leg) => leg.departure).join(' | ')}.`
+    ).toBe(expectedLegs.length);
+
+    const mismatches = [];
+    const legs = [];
+
+    expectedLegs.forEach((expected, index) => {
+      const rendered = renderedLegs[index].departure;
+      const legLabel = index === 0 ? 'outbound' : index === 1 ? 'inbound' : `leg ${index + 1}`;
+
+      legs.push({ results: expected.departureDate, details: rendered });
+
+      const expectedDate = parseFlightDate(expected.departureDate);
+      const actualDate = parseDrawerTimeDate(rendered);
+
+      if (!expectedDate) {
+        mismatches.push(
+          `${legLabel}: could not parse the results card date "${expected.departureDate}"`
+        );
+        return;
+      }
+
+      if (!actualDate) {
+        mismatches.push(
+          `${legLabel}: could not parse the drawer's departure line "${rendered}" — expected the ` +
+          'form "20:05 · Fri, 16 Oct 26"'
+        );
+        return;
+      }
+
+      // Year only when both sides render one — the drawer and the results card are free to differ
+      // in whether they show it, and that is not what this asserts.
+      const yearsComparable = expectedDate.year !== null && actualDate.year !== null;
+      const sameDate = expectedDate.day === actualDate.day
+        && expectedDate.month === actualDate.month
+        && (!yearsComparable || expectedDate.year === actualDate.year);
+
+      if (!sameDate) {
+        mismatches.push(
+          `${legLabel}: results show "${expected.departureDate}" but flight details show ` +
+          `"${actualDate.dateText}"`
+        );
+      }
+    });
+
+    expect(
+      mismatches,
+      `Flight details dates do not match the results card dates. ${mismatches.join('; ')}.`
+    ).toEqual([]);
+
+    return { compared: expectedLegs.length, legs };
+  },
+
+  /**
+   * Verifies that the departure and arrival times in the flight details drawer are the times the
+   * results card showed for the same itinerary (ADO 28992).
+   *
+   * WHY THIS CAN DRIFT: both surfaces render the same instant client-side, but through different
+   * code — the results card and the drawer each resolve the user's time pattern separately. A
+   * change that makes one of them parse a full local-time string while the other does not shows
+   * up here as a two-surface disagreement, which under an @timezone tag is what a timezone
+   * regression looks like.
+   *
+   * COMPARED AT MINUTE GRANULARITY via parseTimeToMinutes, so "09:15" and "9:15 AM" are equal.
+   * The two surfaces are free to differ in FORMAT — that is not what this asserts — and only a
+   * difference in the actual time fails.
+   *
+   * @param {import('playwright').Page} page
+   * @param {Array<{departureTime: string, arrivalTime: string}>} expectedLegs - Per-leg times as
+   *   captured from the results card by extractFirstFlightResultSegmentDetails, outbound first.
+   * @returns {Promise<{compared: number, legs: Array<object>}>}
+   */
+  async verifyFlightDetailsTimesMatchResultsTimes(page, expectedLegs) {
+    if (!page) {
+      throw new Error('[FlightResults.verifyFlightDetailsTimesMatchResultsTimes] "page" is required.');
+    }
+
+    if (!Array.isArray(expectedLegs) || expectedLegs.length === 0) {
+      throw new Error(
+        '[FlightResults.verifyFlightDetailsTimesMatchResultsTimes] "expectedLegs" must be a non-empty ' +
+        `array of per-leg times captured from the results card, got: ${typeof expectedLegs} ` +
+        `(${JSON.stringify(expectedLegs)}).`
+      );
+    }
+
+    expectedLegs.forEach((leg, index) => {
+      if (!leg || !leg.departureTime || !leg.arrivalTime) {
+        throw new Error(
+          `[FlightResults.verifyFlightDetailsTimesMatchResultsTimes] "expectedLegs[${index}]" must carry ` +
+          `both departureTime and arrivalTime, got: ${JSON.stringify(leg)}.`
+        );
+      }
+    });
+
+    logger.debug('Reading the flight details drawer leg times', { expectedLegCount: expectedLegs.length });
+
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    const renderedLegs = await flightResultsPage.getFlightDetailsLegTimeDates();
+
+    logger.info('Comparing flight details times against the results card times', {
+      resultsLegs: expectedLegs.map((leg) => `${leg.departureTime} - ${leg.arrivalTime}`),
+      detailsLegs: renderedLegs.map((leg) => `${leg.departure} - ${leg.arrival}`),
+    });
+
+    expect(
+      renderedLegs.length,
+      `The flight details drawer rendered ${renderedLegs.length} leg(s) but the results card showed ` +
+      `${expectedLegs.length}. A round trip must render both legs in the drawer. ` +
+      `Results: ${expectedLegs.map((leg) => `${leg.departureTime}-${leg.arrivalTime}`).join(' | ')}. ` +
+      `Drawer: ${renderedLegs.map((leg) => `${leg.departure} / ${leg.arrival}`).join(' | ')}.`
+    ).toBe(expectedLegs.length);
+
+    // Minute-of-day on both sides, so a format difference between the two surfaces cannot fail the
+    // test while a real one-hour or one-day shift still does.
+    const toMinutes = (value, legIndex, which) => {
+      try {
+        return parseTimeToMinutes(value);
+      } catch (error) {
+        throw new Error(
+          `[FlightResults.verifyFlightDetailsTimesMatchResultsTimes] Could not parse the ${which} time ` +
+          `"${value}" on leg ${legIndex + 1}. The app renders times as HH:mm or h:mm AM/PM; anything ` +
+          `else means the time element now holds different text. Original: ${error.message}`
+        );
+      }
+    };
+
+    const mismatches = [];
+    const legs = [];
+
+    expectedLegs.forEach((expected, index) => {
+      const rendered = renderedLegs[index];
+      const legLabel = index === 0 ? 'outbound' : index === 1 ? 'inbound' : `leg ${index + 1}`;
+
+      const departure = parseDrawerTimeDate(rendered.departure);
+      const arrival = parseDrawerTimeDate(rendered.arrival);
+
+      // Recorded before the parse guard returns, so the caller's diagnostics list every leg that
+      // was looked at — including one whose text could not be parsed.
+      legs.push({
+        leg: index + 1,
+        results: expected,
+        details: departure && arrival
+          ? { departureTime: departure.time, arrivalTime: arrival.time }
+          : { raw: { departure: rendered.departure, arrival: rendered.arrival } },
+      });
+
+      if (!departure || !arrival) {
+        mismatches.push(
+          `${legLabel}: could not parse the drawer's time lines ` +
+          `("${rendered.departure}" / "${rendered.arrival}") — expected the form "20:05 · Fri, 16 Oct 26"`
+        );
+        return;
+      }
+
+      // "06:20 +1" on the card and "06:20 · Sat, 24 Oct 26" in the drawer are the same arrival
+      // stated two ways. The clock times are compared directly; the "+1" becomes the number of
+      // days the drawer's arrival date must sit past its departure date, checked below.
+      const expectedDeparture = splitResultsDayOffset(expected.departureTime);
+      const expectedArrival = splitResultsDayOffset(expected.arrivalTime);
+
+      if (toMinutes(expectedDeparture.time, index, 'results departure')
+        !== toMinutes(departure.time, index, 'drawer departure')) {
+        mismatches.push(
+          `${legLabel} departure: results show "${expected.departureTime}" but flight details show ` +
+          `"${departure.time}"`
+        );
+      }
+
+      if (toMinutes(expectedArrival.time, index, 'results arrival')
+        !== toMinutes(arrival.time, index, 'drawer arrival')) {
+        mismatches.push(
+          `${legLabel} arrival: results show "${expected.arrivalTime}" but flight details show ` +
+          `"${arrival.time}"`
+        );
+      }
+
+      // Skipped, not failed, when the drawer omits a year on either line: the offset cannot be
+      // computed without one, and a rendering that shows no year is a formatting choice, not the
+      // date defect this is looking for.
+      const renderedOffset = daysBetweenParsedDates(departure, arrival);
+      const expectedOffset = expectedArrival.dayOffset - expectedDeparture.dayOffset;
+
+      if (renderedOffset !== null && renderedOffset !== expectedOffset) {
+        mismatches.push(
+          `${legLabel} arrival date: results show "${expected.arrivalTime}" — ` +
+          `${expectedOffset === 0 ? 'the same day as departure' : `${expectedOffset} day(s) after departure`} — ` +
+          `but flight details depart "${departure.dateText}" and arrive "${arrival.dateText}", ` +
+          `${renderedOffset} day(s) apart`
+        );
+      }
+    });
+
+    expect(
+      mismatches,
+      `Flight details times do not match the results card times. ${mismatches.join('; ')}.`
+    ).toEqual([]);
+
+    return { compared: expectedLegs.length, legs };
   },
 }
 

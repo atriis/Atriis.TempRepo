@@ -330,6 +330,18 @@ const SELECTORS = {
   FLIGHT_DETAILS_MATERIAL_ICON: '.material-symbols-outlined',
   // Flight details drawer — visible drawer container (results or cart)
   FLIGHT_DETAILS_VISIBLE_DRAWER: ".app-drawer.flight-details-drawer, [aria-label='More details']",
+  // Flight details drawer — one wrapper per LEG. Verified against staging v2.15 by probing the
+  // live drawer: a LON->JFK round trip renders exactly two .segment-details-wrapper elements,
+  // outbound first.
+  //
+  // NOT keyed on the .fd-leg / .fd-card structure in the Atriis.App working copy: that refactor
+  // is not deployed, and selectors written from unreleased source match nothing on staging.
+  FLIGHT_DETAILS_LEG_WRAPPER: '.segment-details-wrapper',
+  // Within a leg wrapper: the combined time-and-date line, rendered as "20:05 · Fri, 16 Oct 26".
+  // Two per leg in DOM order — departure first, arrival last — and BOTH the date and the time
+  // assertions read this one element, so there is a single source of truth for what the drawer
+  // claims about a leg.
+  FLIGHT_DETAILS_LEG_TIME_DATE: '.flight-time-date',
   // Flight details — segment top bar with carrier and equipment info
   FLIGHT_DETAILS_TOP_BAR: '.flight-details-top-bar',
   FLIGHT_DETAILS_AIRCRAFT_NAME: '.aircraft-name',
@@ -412,6 +424,69 @@ class FlightResultsPage {
    */
   getSeatsButton() {
     return this.page.getByRole('button', { name: SELECTORS.SEATS_BUTTON_NAME });
+  }
+
+  /**
+   * Reads what the flight details drawer says about each LEG: the departure and arrival time,
+   * and the date each of those falls on.
+   *
+   * One method rather than separate date and time readers because staging renders both in a
+   * single element ("20:05 · Fri, 16 Oct 26"), so splitting them would mean locating and parsing
+   * the same text twice and risk the two assertions disagreeing about what they read.
+   *
+   * Leg-scoped: each .segment-details-wrapper is one leg, and within it the first time-date line
+   * is the departure and the last is the arrival. That holds for a connecting leg too, where the
+   * intermediate stops add lines in between.
+   *
+   * @param {number} timeout - Max wait for the first leg wrapper to become visible
+   * @returns {Promise<Array<{departure: string, arrival: string}>>} Raw "HH:mm · EEE, dd MMM yy"
+   *   strings per leg, outbound first — parsing is the DSL's job.
+   */
+  async getFlightDetailsLegTimeDates(timeout = 30000) {
+    const legs = this.page
+      .locator(SELECTORS.FLIGHT_DETAILS_VISIBLE_DRAWER)
+      .locator(SELECTORS.FLIGHT_DETAILS_LEG_WRAPPER);
+
+    try {
+      await legs.first().waitFor({ state: 'visible', timeout });
+    } catch (error) {
+      throw new Error(
+        '[FlightResultsPage.getFlightDetailsLegTimeDates] No leg wrapper ' +
+        `(${SELECTORS.FLIGHT_DETAILS_LEG_WRAPPER}) appeared in the flight details drawer within ` +
+        `${timeout}ms. The drawer likely never opened, or it is still showing its loading ` +
+        `skeleton. Original: ${error.message}`
+      );
+    }
+
+    const legCount = await legs.count();
+    const summaries = [];
+
+    for (let index = 0; index < legCount; index += 1) {
+      const timeDates = legs.nth(index).locator(SELECTORS.FLIGHT_DETAILS_LEG_TIME_DATE);
+      const lineCount = await timeDates.count();
+
+      if (lineCount < 2) {
+        throw new Error(
+          `[FlightResultsPage.getFlightDetailsLegTimeDates] Leg ${index + 1} of ${legCount} rendered ` +
+          `${lineCount} time-and-date line(s); a leg must have at least a departure and an arrival. ` +
+          `The drawer markup has likely changed (${SELECTORS.FLIGHT_DETAILS_LEG_TIME_DATE}).`
+        );
+      }
+
+      summaries.push({
+        departure: ((await timeDates.first().innerText()) ?? '').replace(/\s+/g, ' ').trim(),
+        arrival: ((await timeDates.last().innerText()) ?? '').replace(/\s+/g, ' ').trim(),
+      });
+    }
+
+    if (!summaries.length) {
+      throw new Error(
+        '[FlightResultsPage.getFlightDetailsLegTimeDates] The flight details drawer is open but ' +
+        'contains no leg wrappers, so no times or dates could be read.'
+      );
+    }
+
+    return summaries;
   }
 
   /**
@@ -2808,6 +2883,73 @@ async clickSelectForFareWithBaggagePricingOptions(baggageText) {
     }
 
     return departures;
+  }
+
+  /**
+   * Reads the departure time, departure date and arrival time of every LEG on the first result
+   * card, in DOM order (outbound first).
+   *
+   * SEPARATE from getFirstResultFlightSegmentSummaries on purpose, NOT an extension of it: that
+   * method's result is fed to a strict expect(...).toEqual(...) against the cart
+   * (Cart.verifyFlightSegmentDetails), so adding a field to it would fail test 42070 — a Galileo
+   * BOOKING test — on a shape mismatch. A second reader is the cheaper trade.
+   *
+   * Only the DEPARTURE date is returned. That is the date a search fixes, and the only one the
+   * drawer can be held to: an overnight or date-line-crossing leg legitimately arrives on a
+   * different date than it departs.
+   *
+   * @param {number} timeout - Max wait for the first result card
+   * @returns {Promise<Array<{departureTime: string, departureDate: string, arrivalTime: string}>>}
+   */
+  async getFirstResultLegTimeDates({ timeout = 60000 } = {}) {
+    const card = this.page.locator(SELECTORS.FLIGHT_PREVIEW).first();
+
+    try {
+      await card.waitFor({ state: 'visible', timeout });
+    } catch (error) {
+      throw new Error(
+        `[FlightResultsPage.getFirstResultLegTimeDates] No result card (${SELECTORS.FLIGHT_PREVIEW}) ` +
+        `became visible within ${timeout}ms. The search likely returned no results, or the results ` +
+        `list is still loading. Original: ${error.message}`
+      );
+    }
+
+    const legs = card.locator(SELECTORS.FLIGHT_PREVIEW_SEGMENT);
+    const legCount = await legs.count();
+    const summaries = [];
+
+    for (let index = 0; index < legCount; index += 1) {
+      const leg = legs.nth(index);
+      const times = leg.locator(SELECTORS.FLIGHT_TIME);
+      const dates = leg.locator(SELECTORS.FLIGHT_DATE);
+
+      const timeCount = await times.count();
+      const dateCount = await dates.count();
+
+      if (timeCount < 2 || dateCount < 1) {
+        throw new Error(
+          `[FlightResultsPage.getFirstResultLegTimeDates] Leg ${index + 1} of ${legCount} on the ` +
+          `results card rendered ${timeCount} time(s) and ${dateCount} date(s); a leg must show a ` +
+          `departure time, an arrival time and at least a departure date. The results card markup ` +
+          `has likely changed (${SELECTORS.FLIGHT_TIME} / ${SELECTORS.FLIGHT_DATE}).`
+        );
+      }
+
+      summaries.push({
+        departureTime: ((await times.nth(0).innerText()) ?? '').replace(/\s+/g, ' ').trim(),
+        departureDate: ((await dates.nth(0).innerText()) ?? '').replace(/\s+/g, ' ').trim(),
+        arrivalTime: ((await times.nth(1).innerText()) ?? '').replace(/\s+/g, ' ').trim(),
+      });
+    }
+
+    if (!summaries.length) {
+      throw new Error(
+        '[FlightResultsPage.getFirstResultLegTimeDates] The first result card contains no leg ' +
+        `containers (${SELECTORS.FLIGHT_PREVIEW_SEGMENT}), so no times or dates could be read.`
+      );
+    }
+
+    return summaries;
   }
 
   async getFirstResultFlightSegmentSummaries({ timeout = 60000 } = {}) {
