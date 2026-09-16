@@ -20,6 +20,91 @@ const { generateRandomFlightRoute } = require("@utils/data/generateRandomFlightR
 const { getPageObject } = require("@utils/pageObjectCache");
 const logger = require("@utils/logger").child("FlightSearch-DSL");
 
+/**
+ * Resolves a search date as a whole number of days from today, normalised to local midnight
+ * so the offset never drifts across a DST boundary or a late-evening run.
+ *
+ * @param {number} daysFromNow
+ * @param {string} label - parameter name, used in the validation error
+ * @returns {Date}
+ */
+function dateFromDaysFromNow(daysFromNow, label) {
+  if (!Number.isInteger(daysFromNow) || daysFromNow < 0) {
+    throw new Error(`${label} must be a non-negative integer, got: ${daysFromNow}`);
+  }
+
+  const today = new Date();
+  return new Date(today.getFullYear(), today.getMonth(), today.getDate() + daysFromNow);
+}
+
+function toIsoDateValue(date) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+}
+
+/**
+ * Picks one date, N days from today, in the SINGLE-month picker that a one-way search and the
+ * per-leg advanced round-trip fields render. That picker's header splits year and month into
+ * two labels, so the range-calendar helpers cannot read it — hence the single-picker variant.
+ * The helper advances the calendar itself; the caller must not click the next-month arrow first.
+ *
+ * @param {import('playwright').Page} page
+ * @param {number} daysFromNow
+ * @param {string} [label='departureDaysFromNow']
+ * @returns {Promise<Date>} the date that was clicked
+ */
+async function selectSinglePickerDate(page, daysFromNow, label = "departureDaysFromNow") {
+  const targetDate = dateFromDaysFromNow(daysFromNow, label);
+  const monthTableIndex = await advanceSinglePickerCalendarUntilMonthVisible(page, targetDate);
+  await clickDayInVisibleMonth(page, targetDate, monthTableIndex);
+  return targetDate;
+}
+
+/**
+ * Picks the outbound and inbound dates, N and M days from today, in the dual-month RANGE picker
+ * that a basic round-trip search renders. Advances the calendar itself, so the caller must not
+ * click the next-month arrow first.
+ *
+ * @param {import('playwright').Page} page
+ * @param {number} departureDaysFromNow
+ * @param {number} returnDaysFromNow - must be greater than departureDaysFromNow
+ * @returns {Promise<{departureDate: Date, returnDate: Date}>}
+ */
+async function selectRangePickerDates(page, departureDaysFromNow, returnDaysFromNow) {
+  const departureDate = dateFromDaysFromNow(departureDaysFromNow, "departureDaysFromNow");
+  const returnDate = dateFromDaysFromNow(returnDaysFromNow, "returnDaysFromNow");
+
+  if (returnDaysFromNow <= departureDaysFromNow) {
+    throw new Error(
+      `returnDaysFromNow must be greater than departureDaysFromNow, got: ${returnDaysFromNow} and ${departureDaysFromNow}`,
+    );
+  }
+
+  await selectDatesByInputValues(page, {
+    startDateValue: toIsoDateValue(departureDate),
+    endDateValue: toIsoDateValue(returnDate),
+  });
+
+  return { departureDate, returnDate };
+}
+
+/**
+ * Picks the outbound offset for a search that serves both trip types: one-way departures sit
+ * further out than a round-trip outbound, so the default depends on the trip type.
+ *
+ * @param {string} tripType - 'oneWay' or 'roundTrip'
+ * @param {number|undefined} departureDaysFromNow - explicit override, when the caller passed one
+ * @returns {number}
+ */
+function resolveOutboundDaysFromNow(tripType, departureDaysFromNow) {
+  if (departureDaysFromNow !== undefined) {
+    return departureDaysFromNow;
+  }
+
+  return tripType === "oneWay"
+    ? SEARCH_DEFAULTS.FLIGHT.ONE_WAY_DEPARTURE_DAYS_FROM_NOW
+    : SEARCH_DEFAULTS.FLIGHT.DEPARTURE_DAYS_FROM_NOW;
+}
+
 const FlightSearch = {
   /**
    * General flight search with configurable parameters
@@ -29,8 +114,10 @@ const FlightSearch = {
    * @param {Object} options - Search configuration (required)
    * @param {string} options.searchType - 'completeTrip' or 'bySchedule' (required)
    * @param {string} options.tripType - 'roundTrip' or 'oneWay' (required)
-   * @param {number} options.departureIndex - Departure date index (default: from SEARCH_DEFAULTS)
-   * @param {number} options.returnIndex - Return date index (default: from SEARCH_DEFAULTS)
+   * @param {number} [options.departureDaysFromNow] - Days from today for the departure date
+   *   (default: from SEARCH_DEFAULTS, and trip-type dependent)
+   * @param {number} [options.returnDaysFromNow] - Days from today for the return date
+   *   (default: from SEARCH_DEFAULTS; ignored for a one-way search)
    */
   async searchFlight(
     page,
@@ -38,12 +125,18 @@ const FlightSearch = {
     {
       searchType,
       tripType,
-      departureIndex = SEARCH_DEFAULTS.FLIGHT.DEPARTURE_INDEX,
-      returnIndex = SEARCH_DEFAULTS.FLIGHT.RETURN_INDEX,
+      departureDaysFromNow,
+      returnDaysFromNow = SEARCH_DEFAULTS.FLIGHT.RETURN_DAYS_FROM_NOW,
     },
   ) {
     const { from, to } = resolveRoute(routeInput, flightRoutes.routes, "flight");
-    logger.info(`Starting ${tripType} flight search (${searchType})`, { from, to });
+    const outboundDaysFromNow = resolveOutboundDaysFromNow(tripType, departureDaysFromNow);
+    logger.info(`Starting ${tripType} flight search (${searchType})`, {
+      from,
+      to,
+      outboundDaysFromNow,
+      returnDaysFromNow,
+    });
 
     const flightSearchPage = getPageObject(page, FlightSearchPage);
     const searchPage = getPageObject(page, SearchPage);
@@ -64,30 +157,22 @@ const FlightSearch = {
     if (tripType === "oneWay") {
       // One-way: user opens the calendar by clicking the departure date field
       await searchPage.clickDepartureDateField();
-      await searchPage.clickCalendarNextArrow();
 
       // Select only the departure date
-      await selectDatesByNthAvailable(page, {
-        startIndex: departureIndex,
-        endIndex: null,
-      });
+      await selectSinglePickerDate(page, outboundDaysFromNow);
     } else if (await flightSearchPage.isAdvancedSearchExpanded()) {
       // Advanced layout (e.g. users restricted from the Anytime frame have advanced search
       // force-enabled): dates are split into separate outbound/return fields, so the basic
       // single range-calendar path leaves the outbound date empty. Fill each leg on its own.
-      await this._selectAdvancedRoundTripDates(page, departureIndex, returnIndex);
+      await this._selectAdvancedRoundTripDates(page, outboundDaysFromNow, returnDaysFromNow);
     } else {
       // Basic layout: round-trip uses a single range calendar. Must be opened explicitly —
       // it does not open on its own, and previously opened only as a side effect of Tab
       // shifting focus onto the departure field after committing the To field.
       await searchPage.clickDepartureDateField();
-      await searchPage.clickCalendarNextArrow();
 
       // Select departure + return in one call
-      await selectDatesByNthAvailable(page, {
-        startIndex: departureIndex,
-        endIndex: returnIndex,
-      });
+      await selectRangePickerDates(page, outboundDaysFromNow, returnDaysFromNow);
     }
 
     // Select search type (completeTrip or bySchedule) - last action before search
@@ -109,24 +194,23 @@ const FlightSearch = {
    * page objects' built-in panel-visible/hidden waits rather than fixed delays.
    *
    * @param {import('playwright').Page} page
-   * @param {number} departureIndex - Nth available day to pick for the outbound leg
-   * @param {number} returnIndex - Nth available day to pick for the return leg
+   * @param {number} departureDaysFromNow - Days from today for the outbound leg
+   * @param {number} returnDaysFromNow - Days from today for the return leg
    */
-  async _selectAdvancedRoundTripDates(page, departureIndex, returnIndex) {
+  async _selectAdvancedRoundTripDates(page, departureDaysFromNow, returnDaysFromNow) {
     const flightSearchPage = getPageObject(page, FlightSearchPage);
     const searchPage = getPageObject(page, SearchPage);
 
     // Outbound leg — clickDepartureDateField waits for its calendar panel to open.
     await searchPage.clickDepartureDateField();
-    await searchPage.clickCalendarNextArrow();
-    await selectDatesByNthAvailable(page, { startIndex: departureIndex, endIndex: null });
+    await selectSinglePickerDate(page, departureDaysFromNow, "departureDaysFromNow");
 
     // The single-date picker closes on selection; ensure it is gone before opening the return one.
     await searchPage.waitForDatePickerToClose();
 
     // Return leg — clickAdvancedReturnDateField waits for its calendar panel to open.
     await flightSearchPage.clickAdvancedReturnDateField();
-    await selectDatesByNthAvailable(page, { startIndex: returnIndex, endIndex: null });
+    await selectSinglePickerDate(page, returnDaysFromNow, "returnDaysFromNow");
   },
 
   /**
@@ -269,7 +353,7 @@ const FlightSearch = {
   /**
    * Search a random flight (one-way or round-trip) by region
    * @param {Object} page - Playwright page object
-   * @param {Object} options - { region, tripType, searchType, departureIndex, returnIndex }
+   * @param {Object} options - { region, tripType, searchType, departureDaysFromNow, returnDaysFromNow }
    * @returns {Promise}
    */
   async searchRandomFlight(
@@ -278,8 +362,8 @@ const FlightSearch = {
       region = "",
       tripType = "roundTrip",
       searchType = "completeTrip",
-      departureIndex = SEARCH_DEFAULTS.FLIGHT.DEPARTURE_INDEX,
-      returnIndex = SEARCH_DEFAULTS.FLIGHT.RETURN_INDEX,
+      departureDaysFromNow,
+      returnDaysFromNow,
     } = {},
   ) {
     // Map 'transcontinental' to 'intercontinental' for user convenience
@@ -288,8 +372,8 @@ const FlightSearch = {
     return await this.searchFlight(page, routeKey, {
       searchType,
       tripType,
-      departureIndex,
-      returnIndex,
+      departureDaysFromNow,
+      returnDaysFromNow,
     });
   },
 
@@ -297,18 +381,18 @@ const FlightSearch = {
    * Search a random one-way flight by region
    * @param {Object} page - Playwright page object
    * @param {string} region - 'us', 'europe', 'transcontinental' (optional)
-   * @param {Object} options - { departureIndex }
+   * @param {Object} options - { departureDaysFromNow }
    */
   async searchOneWayRandomFlight(
     page,
     region = "",
-    { departureIndex = SEARCH_DEFAULTS.FLIGHT.DEPARTURE_INDEX } = {},
+    { departureDaysFromNow } = {},
   ) {
     return await this.searchRandomFlight(page, {
       region,
       tripType: "oneWay",
       searchType: "completeTrip",
-      departureIndex,
+      departureDaysFromNow,
     });
   },
 
@@ -316,22 +400,22 @@ const FlightSearch = {
    * Search a random round-trip flight by region
    * @param {Object} page - Playwright page object
    * @param {string} region - 'us', 'europe', 'transcontinental' (optional)
-   * @param {Object} options - { departureIndex, returnIndex }
+   * @param {Object} options - { departureDaysFromNow, returnDaysFromNow }
    */
   async searchRoundTripRandomFlight(
     page,
     region = "europe",
     {
-      departureIndex = SEARCH_DEFAULTS.FLIGHT.DEPARTURE_INDEX,
-      returnIndex = SEARCH_DEFAULTS.FLIGHT.RETURN_INDEX,
+      departureDaysFromNow,
+      returnDaysFromNow,
     } = {},
   ) {
     return await this.searchRandomFlight(page, {
       region,
       tripType: "roundTrip",
       searchType: "completeTrip",
-      departureIndex,
-      returnIndex,
+      departureDaysFromNow,
+      returnDaysFromNow,
     });
   },
 
@@ -341,12 +425,12 @@ const FlightSearch = {
   async searchFlightOneWay(
     page,
     routeInput = flightRoutes.defaultRoute,
-    { departureIndex = SEARCH_DEFAULTS.FLIGHT.DEPARTURE_INDEX } = {},
+    { departureDaysFromNow } = {},
   ) {
     return await this.searchFlight(page, routeInput, {
       searchType: "completeTrip",
       tripType: "oneWay",
-      departureIndex,
+      departureDaysFromNow,
     });
   },
 
@@ -407,14 +491,7 @@ const FlightSearch = {
     if (!routeInput) {
       throw new Error('[FlightSearch.searchFlightOneWayWithDaysFromNow] "routeInput" is required.');
     }
-    if (!Number.isInteger(departureDaysFromNow) || departureDaysFromNow < 0) {
-      throw new Error('departureDaysFromNow must be a non-negative integer, got: ' + departureDaysFromNow);
-    }
-
     const { from, to } = resolveRoute(routeInput, flightRoutes.routes, 'flight');
-
-    const today = new Date();
-    const departureDate = new Date(today.getFullYear(), today.getMonth(), today.getDate() + departureDaysFromNow);
 
     logger.info('Starting oneWay flight search with explicit days-from-now date', { from, to, departureDaysFromNow });
 
@@ -429,8 +506,7 @@ const FlightSearch = {
     // One-way renders the SINGLE-month picker, whose header splits year and month into two
     // labels — the range-calendar helpers cannot parse it ("Unsupported month header label").
     await searchPage.clickDepartureDateField();
-    const monthTableIndex = await advanceSinglePickerCalendarUntilMonthVisible(page, departureDate);
-    await clickDayInVisibleMonth(page, departureDate, monthTableIndex);
+    const departureDate = await selectSinglePickerDate(page, departureDaysFromNow);
 
     await flightSearchPage.selectCompleteTrip();
     await searchPage.waitAndClickSearchButton();
@@ -482,15 +558,15 @@ const FlightSearch = {
     page,
     routeInput = flightRoutes.defaultRoute,
     {
-      departureIndex = SEARCH_DEFAULTS.FLIGHT.DEPARTURE_INDEX,
-      returnIndex = SEARCH_DEFAULTS.FLIGHT.RETURN_INDEX,
+      departureDaysFromNow,
+      returnDaysFromNow,
     } = {},
   ) {
     return await this.searchFlight(page, routeInput, {
       searchType: "completeTrip",
       tripType: "roundTrip",
-      departureIndex,
-      returnIndex,
+      departureDaysFromNow,
+      returnDaysFromNow,
     });
   },
 
@@ -542,24 +618,9 @@ const FlightSearch = {
     if (!page) {
       throw new Error('[FlightSearch.searchFlightRoundTripWithDaysFromNow] "page" is required.');
     }
-    if (!Number.isInteger(departureDaysFromNow) || departureDaysFromNow < 0) {
-      throw new Error('departureDaysFromNow must be a non-negative integer, got: ' + departureDaysFromNow);
-    }
-    if (!Number.isInteger(returnDaysFromNow) || returnDaysFromNow <= departureDaysFromNow) {
-      throw new Error('returnDaysFromNow must be an integer greater than departureDaysFromNow, got: ' + returnDaysFromNow);
-    }
-
     const { from, to } = resolveRoute(routeInput, flightRoutes.routes, 'flight');
 
-    const toDateInputValue = (daysFromNow) => {
-      const date = new Date();
-      date.setDate(date.getDate() + daysFromNow);
-      return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-    };
-    const departureDate = toDateInputValue(departureDaysFromNow);
-    const returnDate = toDateInputValue(returnDaysFromNow);
-
-    logger.info('Starting roundTrip flight search with explicit days-from-now dates', { from, to, departureDate, returnDate });
+    logger.info('Starting roundTrip flight search with explicit days-from-now dates', { from, to, departureDaysFromNow, returnDaysFromNow });
 
     const flightSearchPage = getPageObject(page, FlightSearchPage);
     const searchPage = getPageObject(page, SearchPage);
@@ -570,15 +631,20 @@ const FlightSearch = {
     await searchPage.fillInToField(to);
 
     await searchPage.clickDepartureDateField();
-    await selectDatesByInputValues(page, {
-      startDateValue: departureDate,
-      endDateValue: returnDate,
-    });
+    const { departureDate, returnDate } = await selectRangePickerDates(page, departureDaysFromNow, returnDaysFromNow);
 
     await flightSearchPage.selectCompleteTrip();
     await searchPage.waitAndClickSearchButton();
 
-    return { searched: true, from, to, tripType: 'roundTrip', searchType: 'completeTrip', departureDate, returnDate };
+    return {
+      searched: true,
+      from,
+      to,
+      tripType: 'roundTrip',
+      searchType: 'completeTrip',
+      departureDate: toIsoDateValue(departureDate),
+      returnDate: toIsoDateValue(returnDate),
+    };
   },
 
   /**
@@ -589,16 +655,16 @@ const FlightSearch = {
    * @param {Object} page - Playwright page object
    * @param {string|Object} routeInput - Route key or {from, to} object
    * @param {Object} [options]
-   * @param {number} [options.departureIndex] - Departure date index (default: from SEARCH_DEFAULTS)
-   * @param {number} [options.returnIndex] - Return date index (default: from SEARCH_DEFAULTS)
+   * @param {number} [options.departureDaysFromNow] - Days from today for the outbound leg (default: from SEARCH_DEFAULTS)
+   * @param {number} [options.returnDaysFromNow] - Days from today for the return leg (default: from SEARCH_DEFAULTS)
    * @returns {Promise<{from: string, to: string, tripType: string, searchType: string, submitted: boolean}>}
    */
   async searchFlightRoundTripWithoutSearch(
     page,
     routeInput = flightRoutes.defaultRoute,
     {
-      departureIndex = SEARCH_DEFAULTS.FLIGHT.DEPARTURE_INDEX,
-      returnIndex = SEARCH_DEFAULTS.FLIGHT.RETURN_INDEX,
+      departureDaysFromNow = SEARCH_DEFAULTS.FLIGHT.DEPARTURE_DAYS_FROM_NOW,
+      returnDaysFromNow = SEARCH_DEFAULTS.FLIGHT.RETURN_DAYS_FROM_NOW,
       cabinClass = null,
     } = {},
   ) {
@@ -621,14 +687,10 @@ const FlightSearch = {
       // Advanced layout (e.g. time-frame-restricted users have advanced search force-enabled):
       // dates are split into per-leg fields, so the single range calendar would leave the
       // outbound date empty. Same branch as searchFlight.
-      await this._selectAdvancedRoundTripDates(page, departureIndex, returnIndex);
+      await this._selectAdvancedRoundTripDates(page, departureDaysFromNow, returnDaysFromNow);
     } else {
       await searchPage.clickDepartureDateField();
-      await searchPage.clickCalendarNextArrow();
-      await selectDatesByNthAvailable(page, {
-        startIndex: departureIndex,
-        endIndex: returnIndex,
-      });
+      await selectRangePickerDates(page, departureDaysFromNow, returnDaysFromNow);
     }
 
     // Optional cabin-class selection (e.g. "Premium Economy") before completing the trip setup.
@@ -651,8 +713,8 @@ const FlightSearch = {
    * @param {string|Object} routeInput - Route key or {from, to} object
    * @param {string} cabinClass - Cabin class to select in the search form (e.g. "Premium Economy")
    * @param {Object} [options]
-   * @param {number} [options.departureIndex] - Departure date index (default: from SEARCH_DEFAULTS)
-   * @param {number} [options.returnIndex] - Return date index (default: from SEARCH_DEFAULTS)
+   * @param {number} [options.departureDaysFromNow] - Days from today for the outbound leg (default: from SEARCH_DEFAULTS)
+   * @param {number} [options.returnDaysFromNow] - Days from today for the return leg (default: from SEARCH_DEFAULTS)
    * @returns {Promise<{from: string, to: string, tripType: string, searchType: string, cabinClass: string, submitted: boolean}>}
    */
   async searchFlightRoundTripWithCabinClassWithoutSearch(page, routeInput = flightRoutes.defaultRoute, cabinClass, options = {}) {
@@ -678,8 +740,8 @@ const FlightSearch = {
     routeInput,
     carrier,
     {
-      departureIndex = SEARCH_DEFAULTS.FLIGHT.DEPARTURE_INDEX,
-      returnIndex = SEARCH_DEFAULTS.FLIGHT.RETURN_INDEX,
+      departureDaysFromNow = SEARCH_DEFAULTS.FLIGHT.DEPARTURE_DAYS_FROM_NOW,
+      returnDaysFromNow = SEARCH_DEFAULTS.FLIGHT.RETURN_DAYS_FROM_NOW,
     } = {},
   ) {
     if (!page) throw new Error('page is required');
@@ -699,11 +761,7 @@ const FlightSearch = {
     await searchPage.fillInFromField(from);
     await searchPage.fillInToField(to);
     await searchPage.clickDepartureDateField();
-    await searchPage.clickCalendarNextArrow();
-    await selectDatesByNthAvailable(page, {
-      startIndex: departureIndex,
-      endIndex: returnIndex,
-    });
+    await selectRangePickerDates(page, departureDaysFromNow, returnDaysFromNow);
 
     await this.openAdvancedSearch(page);
     await flightSearchPage.clearPreferredCarriers();
@@ -727,7 +785,7 @@ const FlightSearch = {
     routeInput,
     carrier,
     {
-      departureIndex = SEARCH_DEFAULTS.FLIGHT.DEPARTURE_INDEX,
+      departureDaysFromNow = SEARCH_DEFAULTS.FLIGHT.ONE_WAY_DEPARTURE_DAYS_FROM_NOW,
     } = {},
   ) {
     if (!page) throw new Error('page is required');
@@ -747,11 +805,7 @@ const FlightSearch = {
     await searchPage.fillInFromField(from);
     await searchPage.fillInToField(to);
     await searchPage.clickDepartureDateField();
-    await searchPage.clickCalendarNextArrow();
-    await selectDatesByNthAvailable(page, {
-      startIndex: departureIndex,
-      endIndex: null,
-    });
+    await selectSinglePickerDate(page, departureDaysFromNow);
 
     await this.openAdvancedSearch(page);
     await flightSearchPage.clearPreferredCarriers();
@@ -775,7 +829,7 @@ const FlightSearch = {
     routeInput,
     timePreference,
     {
-      departureIndex = SEARCH_DEFAULTS.FLIGHT.DEPARTURE_INDEX,
+      departureDaysFromNow = SEARCH_DEFAULTS.FLIGHT.ONE_WAY_DEPARTURE_DAYS_FROM_NOW,
     } = {},
   ) {
     if (!page) throw new Error('[FlightSearch.searchFlightOneWayWithDepartureTime] "page" is required.');
@@ -795,11 +849,7 @@ const FlightSearch = {
     await searchPage.fillInFromField(from);
     await searchPage.fillInToField(to);
     await searchPage.clickDepartureDateField();
-    await searchPage.clickCalendarNextArrow();
-    await selectDatesByNthAvailable(page, {
-      startIndex: departureIndex,
-      endIndex: null,
-    });
+    await selectSinglePickerDate(page, departureDaysFromNow);
 
     await this.openAdvancedSearch(page);
     await flightSearchPage.selectDepartureFlightTime(timePreference);
@@ -822,8 +872,8 @@ const FlightSearch = {
     routeInput,
     cabinClass,
     {
-      departureIndex = SEARCH_DEFAULTS.FLIGHT.DEPARTURE_INDEX,
-      returnIndex = SEARCH_DEFAULTS.FLIGHT.RETURN_INDEX,
+      departureDaysFromNow = SEARCH_DEFAULTS.FLIGHT.DEPARTURE_DAYS_FROM_NOW,
+      returnDaysFromNow = SEARCH_DEFAULTS.FLIGHT.RETURN_DAYS_FROM_NOW,
       searchType = 'completeTrip',
     } = {},
   ) {
@@ -844,11 +894,7 @@ const FlightSearch = {
     await searchPage.fillInFromField(from);
     await searchPage.fillInToField(to);
     await searchPage.clickDepartureDateField();
-    await searchPage.clickCalendarNextArrow();
-    await selectDatesByNthAvailable(page, {
-      startIndex: departureIndex,
-      endIndex: returnIndex,
-    });
+    await selectRangePickerDates(page, departureDaysFromNow, returnDaysFromNow);
     await flightSearchPage.selectFlightClass(cabinClass);
 
     if (searchType === 'bySchedule') {
@@ -879,8 +925,8 @@ const FlightSearch = {
     outboundCabin,
     returnCabin,
     {
-      departureIndex = SEARCH_DEFAULTS.FLIGHT.DEPARTURE_INDEX,
-      returnIndex = SEARCH_DEFAULTS.FLIGHT.RETURN_INDEX,
+      departureDaysFromNow = SEARCH_DEFAULTS.FLIGHT.DEPARTURE_DAYS_FROM_NOW,
+      returnDaysFromNow = SEARCH_DEFAULTS.FLIGHT.RETURN_DAYS_FROM_NOW,
     } = {},
   ) {
     if (!page) throw new Error('page is required');
@@ -899,11 +945,7 @@ const FlightSearch = {
     await searchPage.fillInFromField(from);
     await searchPage.fillInToField(to);
     await searchPage.clickDepartureDateField();
-    await searchPage.clickCalendarNextArrow();
-    await selectDatesByNthAvailable(page, {
-      startIndex: departureIndex,
-      endIndex: returnIndex,
-    });
+    await selectRangePickerDates(page, departureDaysFromNow, returnDaysFromNow);
     // Advanced search (in by-schedule) exposes a cabin field per leg: index 0 = outbound, 1 = return.
     await flightSearchPage.selectBySchedule();
     await this.openAdvancedSearch(page);
@@ -1201,15 +1243,15 @@ const FlightSearch = {
     page,
     routeInput = flightRoutes.defaultRoute,
     {
-      departureIndex = SEARCH_DEFAULTS.FLIGHT.DEPARTURE_INDEX,
-      returnIndex = SEARCH_DEFAULTS.FLIGHT.RETURN_INDEX,
+      departureDaysFromNow,
+      returnDaysFromNow,
     } = {},
   ) {
     return await this.searchFlight(page, routeInput, {
       searchType: "bySchedule",
       tripType: "roundTrip",
-      departureIndex,
-      returnIndex,
+      departureDaysFromNow,
+      returnDaysFromNow,
     });
   },
 
@@ -1243,8 +1285,8 @@ const FlightSearch = {
       returnDateType = null,
       returnFlightTime = null,
       parallelHotel = false,
-      departureIndex = SEARCH_DEFAULTS.FLIGHT.DEPARTURE_INDEX,
-      returnIndex = SEARCH_DEFAULTS.FLIGHT.RETURN_INDEX,
+      departureDaysFromNow = SEARCH_DEFAULTS.FLIGHT.DEPARTURE_DAYS_FROM_NOW,
+      returnDaysFromNow = SEARCH_DEFAULTS.FLIGHT.RETURN_DAYS_FROM_NOW,
     } = {},
   ) {
     if (!page) throw new Error('page is required');
@@ -1272,7 +1314,7 @@ const FlightSearch = {
     await page.waitForTimeout(1000);
 
     // Select outbound + return dates (per-leg advanced calendar).
-    await this._selectAdvancedRoundTripDates(page, departureIndex, returnIndex);
+    await this._selectAdvancedRoundTripDates(page, departureDaysFromNow, returnDaysFromNow);
 
     // Change departure date type if specified
     if (departureDateType) {
@@ -1728,8 +1770,8 @@ const FlightSearch = {
       throw new Error('options must be a plain object when provided, got: ' + (options === null ? 'null' : typeof options));
     }
     const {
-      departureIndex = SEARCH_DEFAULTS.FLIGHT.DEPARTURE_INDEX,
-      returnIndex = SEARCH_DEFAULTS.FLIGHT.RETURN_INDEX,
+      departureDaysFromNow = SEARCH_DEFAULTS.FLIGHT.DEPARTURE_DAYS_FROM_NOW,
+      returnDaysFromNow = SEARCH_DEFAULTS.FLIGHT.RETURN_DAYS_FROM_NOW,
     } = options ?? {};
 
     const logMessage = stopsOption
@@ -1750,11 +1792,7 @@ const FlightSearch = {
     await searchPage.fillInFromField(from);
     await searchPage.fillInToField(to);
     await searchPage.clickDepartureDateField();
-    await searchPage.clickCalendarNextArrow();
-    await selectDatesByNthAvailable(page, {
-      startIndex: departureIndex,
-      endIndex: returnIndex,
-    });
+    await selectRangePickerDates(page, departureDaysFromNow, returnDaysFromNow);
 
     await flightSearchPage.selectBySchedule();
     await this.openAdvancedSearch(page);
@@ -1918,11 +1956,11 @@ const FlightSearch = {
     await searchPage.fillInToField(to);
 
     await searchPage.clickDepartureDateField();
-    await searchPage.clickCalendarNextArrow();
-    await selectDatesByNthAvailable(page, {
-      startIndex: SEARCH_DEFAULTS.FLIGHT.DEPARTURE_INDEX,
-      endIndex: SEARCH_DEFAULTS.FLIGHT.RETURN_INDEX,
-    });
+    await selectRangePickerDates(
+      page,
+      SEARCH_DEFAULTS.FLIGHT.DEPARTURE_DAYS_FROM_NOW,
+      SEARCH_DEFAULTS.FLIGHT.RETURN_DAYS_FROM_NOW,
+    );
 
     // Enable parallel car search and ensure only car is parallel-searched:
     // the hotel checkbox may be checked by default, so explicitly uncheck it.

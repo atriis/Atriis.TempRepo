@@ -41,8 +41,18 @@ const SEARCH_DEFAULTS = {
    * Flight search defaults
    *
    * Designed to avoid very near dates, which are often unavailable.
+   *
+   * One-way and round-trip searches pick their dates as an explicit number of days from
+   * today, so every run books the same distance out regardless of where today sits in the
+   * month. The older "nth available day in the visible month" indices below are kept for the
+   * flows that still navigate the calendar by month (multi-city legs, the edit-search date
+   * refresh, travel requests and manual quotes).
    */
   FLIGHT: {
+    DEPARTURE_DAYS_FROM_NOW: 45,          // Round-trip outbound: today + 45 days
+    RETURN_DAYS_FROM_NOW: 50,             // Round-trip inbound: today + 50 days
+    ONE_WAY_DEPARTURE_DAYS_FROM_NOW: 50,  // One-way departure: today + 50 days
+
     DEPARTURE_INDEX: 4,  // Selects the 5th available date
     RETURN_INDEX: 11,    // Selects the 12th available date
   },
