@@ -3505,6 +3505,49 @@ async verifyFareComponentTextColorInPricingOptions(page, expectedColor, index = 
   },
 
   /**
+   * Selects the outbound brand card whose brand name matches, in the new flight flow.
+   *
+   * Brand-specific pricing bugs hide behind an index-based pick, so an unmatched name
+   * throws instead of falling back to the first card.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} brandName - Brand name as rendered on the card, e.g. "Economy Flex"
+   */
+  async selectOutboundBrandCardByNameNewFlightFlow(page, brandName) {
+    if (!page) {
+      throw new Error('[FlightResults.selectOutboundBrandCardByNameNewFlightFlow] "page" is required.');
+    }
+    if (!brandName || typeof brandName !== 'string') {
+      throw new Error(
+        `[FlightResults.selectOutboundBrandCardByNameNewFlightFlow] "brandName" must be a non-empty string, got: ${typeof brandName}`
+      );
+    }
+
+    logger.info('[NewFlightFlow] Selecting outbound brand card by name', { brandName });
+
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    await flightResultsPage.waitForNewFlightFlowBrandCards(0);
+    const names = await flightResultsPage.getOutboundBrandCardNames();
+
+    const wanted = brandName.trim();
+    let index = names.findIndex((n) => typeof n === 'string' && n.trim() === wanted);
+    if (index === -1) {
+      index = names.findIndex((n) => typeof n === 'string' && n.trim().toLowerCase() === wanted.toLowerCase());
+    }
+
+    if (index === -1) {
+      throw new Error(
+        `[FlightResults.selectOutboundBrandCardByNameNewFlightFlow] Outbound brand card "${brandName}" not found. ` +
+        `Available: [${names.map((n) => `"${n}"`).join(', ')}]`
+      );
+    }
+
+    await flightResultsPage.clickNewFlightFlowBrandCard(0, index);
+
+    return { selected: true, leg: 'outbound', brandName, index };
+  },
+
+  /**
    * Selects the first pricing option (brand card) for the inbound leg in the new flight flow.
    */
   async selectInboundFirstBrandCardNewFlightFlow(page) {
@@ -4327,6 +4370,29 @@ async verifyFareComponentTextColorInPricingOptions(page, expectedColor, index = 
     const flightResultsPage = getPageObject(page, FlightResultsPage);
     await flightResultsPage.verifyFlightSelectionFooterTotalPerTraveller();
     return { footerTotalPerTraveller: true };
+  },
+
+  /**
+   * Extracts the flight-selection footer's per-traveller total as a number.
+   *
+   * @param {import('playwright').Page} page
+   * @returns {Promise<number>} The per-traveller total shown in the footer
+   */
+  async extractFlightSelectionFooterTotalPerTraveller(page) {
+    if (!page) {
+      throw new Error('[FlightResults.extractFlightSelectionFooterTotalPerTraveller] "page" is required.');
+    }
+
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    const price = await flightResultsPage.getFlightSelectionFooterTotalPerTravellerValue();
+
+    if (typeof price !== 'number' || Number.isNaN(price)) {
+      throw new Error(
+        `[FlightResults.extractFlightSelectionFooterTotalPerTraveller] Could not parse a numeric price from the flight selection footer, got: ${price}`
+      );
+    }
+
+    return price;
   },
 
   async selectOutboundFirstNonAgreementBrandCard(page) {

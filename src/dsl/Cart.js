@@ -1,7 +1,7 @@
 const fs = require("fs");
 const { expect } = require("@playwright/test");
 const { getPageObject } = require("@utils/pageObjectCache");
-const { CartPage, SELECTORS: CART_SELECTORS, CANCELLATION_CONFIRMED_TEXT, EVOLVI_CANCELLATION_DISCLAIMER_TEXT, SEAT_CATEGORY_COLORS } = require("@pages/CartPage");
+const { CartPage, SELECTORS: CART_SELECTORS, CANCELLATION_CONFIRMED_TEXT, CANCELLATION_CONFIRMED_PATTERN, EVOLVI_CANCELLATION_DISCLAIMER_TEXT, SEAT_CATEGORY_COLORS } = require("@pages/CartPage");
 const { CheckoutPage, SELECTORS: CheckoutSelectors } = require("@pages/CheckoutPage");
 const { CommonPage, SELECTORS: COMMON_SELECTORS } = require("@pages/CommonPage");
 const { ResultsPage } = require("@pages/ResultsPage");
@@ -442,7 +442,7 @@ const Cart = {
 
     // Check if cancellation was successful
     await cartPage.waitForTripCancelledMessage();
-    const messageVisible = await page.getByText(CANCELLATION_CONFIRMED_TEXT, { exact: true }).isVisible();
+    const messageVisible = await page.getByText(CANCELLATION_CONFIRMED_PATTERN).isVisible();
 
     // Allow backend and UI to settle
     await page.waitForLoadState("networkidle");
@@ -16365,9 +16365,7 @@ const Cart = {
       );
     }
 
-    const messageVisible = await page
-      .getByText(CANCELLATION_CONFIRMED_TEXT, { exact: true })
-      .isVisible();
+    const messageVisible = await page.getByText(CANCELLATION_CONFIRMED_PATTERN).isVisible();
 
     await page.waitForLoadState('networkidle').catch(() => {});
 

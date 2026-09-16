@@ -14,6 +14,9 @@ const { SELECTORS: SEARCH_SELECTORS } = require("@pages/SearchPage");
 // Canonical, correctly-spelled cancellation-confirmed message. Single source of truth shared by the
 // visibility checks and the spelling assertion so the literal is never re-typed (and can't drift).
 const CANCELLATION_CONFIRMED_TEXT = "Cancellation confirmed!";
+// Same message as rendered, either spelling. US-locale accounts show "Cancelation confirmed!"
+// (one l), so waits must accept both -- only the spelling assertion may use the exact literal above.
+const CANCELLATION_CONFIRMED_PATTERN = /^Cancell?ation confirmed!$/;
 // Evolvi-specific cancellation disclaimer copy (cancel-quote-modal.vue `trip.cancelItemEvolviDisclaimer`,
 // ADO #82572). Kept byte-identical to the source i18n string and to GTP's own copy per the AC.
 const EVOLVI_CANCELLATION_DISCLAIMER_TEXT =
@@ -271,7 +274,9 @@ const SELECTORS = {
   COPY_TRIP_DIALOG_QUOTE_NAME: 'h2.bold-text',
   TICKET_DETAILS_SECTION: ".ticket-details",
   SHOW_CANCELLED_ITEMS_OPTION: '.el-dropdown-menu__item',
-  TRIP_CANCELLATION_DIALOG_TITLE: "[aria-label='Trip cancellation'] .el-dialog__title",
+  // Prefix-matched: US-locale accounts label this dialog "Trip cancelation" (one l), so an exact
+  // aria-label would miss the dialog even though it opened.
+  TRIP_CANCELLATION_DIALOG_TITLE: "[aria-label^='Trip cancel'] .el-dialog__title",
   // Terminal failure state of the cancellation dialog (cancel-trip-modal.vue renders
   // <p class="bold-text cancel-trip-error"> with trip.cancelTripError when a supplier refuses to
   // cancel one or more items). Matched structurally so the wording can change without breaking.
@@ -3764,12 +3769,14 @@ class CartPage {
   /**
    * Waits for the cancellation confirmation dialog title.
    */
-  async waitForTripCancellationDialogTitle() {
-    await waitForText(
-      this.page,
-      SELECTORS.TRIP_CANCELLATION_DIALOG_TITLE,
-      "Trip cancellation",
-    );
+  async waitForTripCancellationDialogTitle({ timeout = 30000 } = {}) {
+    // Regex rather than an exact compare: US-locale accounts title this dialog "Trip cancelation"
+    // (one l), which an exact match misses even though the dialog is on screen.
+    await this.page
+      .locator(SELECTORS.TRIP_CANCELLATION_DIALOG_TITLE)
+      .filter({ hasText: /^Trip cancell?ation$/i })
+      .first()
+      .waitFor({ state: "visible", timeout });
   }
 
   /**
@@ -3789,10 +3796,7 @@ class CartPage {
     // Text-based polling: works whether navigation already happened (fast backend)
     // or is still in-progress (slow GDS backends like Sabre/Amadeus).
     // 120s covers slow backend cancellation processing times.
-    const successMessage = this.page.getByText(
-      CANCELLATION_CONFIRMED_TEXT,
-      { exact: true },
-    );
+    const successMessage = this.page.getByText(CANCELLATION_CONFIRMED_PATTERN);
     await successMessage.waitFor({ state: "visible", timeout });
     // This method only waits, does not return value
   }
@@ -3825,7 +3829,7 @@ class CartPage {
       );
 
     const outcome = await Promise.race([
-      settleAs(this.page.getByText(CANCELLATION_CONFIRMED_TEXT, { exact: true }).first(), 'cancelled'),
+      settleAs(this.page.getByText(CANCELLATION_CONFIRMED_PATTERN).first(), 'cancelled'),
       settleAs(this.page.locator(SELECTORS.TRIP_CANCELLATION_ERROR).first(), 'failed'),
     ]);
 
@@ -14753,6 +14757,7 @@ module.exports = {
   CartPage,
   SELECTORS,
   CANCELLATION_CONFIRMED_TEXT,
+  CANCELLATION_CONFIRMED_PATTERN,
   EVOLVI_CANCELLATION_DISCLAIMER_TEXT,
   SEAT_CATEGORY_COLORS,
 };

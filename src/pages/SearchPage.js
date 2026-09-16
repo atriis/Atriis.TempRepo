@@ -83,7 +83,9 @@ const SELECTORS = {
   // text content IS just the placeholder.
   GUEST_GENDER_SELECT_WRAPPER: ".el-select__wrapper",
   GENDER_OPTION_MALE: "role=option[name='Male']",
-  DATE_OF_BIRTH_INPUT: "[placeholder='DD/MM/YYYY']",
+  // US-locale accounts (e.g. nffSothwest@tlg.corp) render the same guest DOB field as MM/DD/YYYY,
+  // so match either placeholder; fillInRandomDateOfBirth reorders the value to whichever is live.
+  DATE_OF_BIRTH_INPUT: "[placeholder='DD/MM/YYYY'], [placeholder='MM/DD/YYYY']",
   EMAIL_INPUT: "[placeholder='Enter email address']",
   PHONE_NUMBER_PLACEHOLDERS: [
     "[placeholder='Enter phone number']",
@@ -1053,8 +1055,25 @@ class SearchPage {
     return this.page.locator(SELECTORS.GROUP_SELECT_IS_DANGER).isVisible({ timeout: 5000 });
   }
 
+  /**
+   * Fills the guest date-of-birth field, reordering the value when the account renders the
+   * US-locale variant. Callers always pass DD/MM/YYYY, so a MM/DD/YYYY form would otherwise
+   * read 09/12 as September 12th instead of the 9th of December.
+   *
+   * @param {string} dateOfBirth - Date of birth in DD/MM/YYYY format
+   */
   async fillInRandomDateOfBirth(dateOfBirth) {
-    await this.page.fill(SELECTORS.DATE_OF_BIRTH_INPUT, dateOfBirth);
+    const input = this.page.locator(SELECTORS.DATE_OF_BIRTH_INPUT).first();
+    await input.waitFor({ state: 'visible', timeout: 15000 });
+
+    const placeholder = await input.getAttribute('placeholder');
+    let value = dateOfBirth;
+    if (placeholder === 'MM/DD/YYYY') {
+      const [day, month, year] = dateOfBirth.split('/');
+      value = `${month}/${day}/${year}`;
+    }
+
+    await input.fill(value);
   }
 
   async fillInRandomEmail(email) {

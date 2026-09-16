@@ -228,6 +228,8 @@ const SELECTORS = {
   NEW_FLOW_FOOTER_PRICE_SECTION: '.selection-actions .price-section',
   NEW_FLOW_FOOTER_PRICE_AMOUNT: '.selection-actions .price-section .amount',
   NEW_FLOW_FOOTER_TOTAL_PER_TRAVELLER_LABEL: 'Total per traveller',
+  // US-locale accounts render the single-l spelling ("Total per traveler"), so match either.
+  NEW_FLOW_FOOTER_TOTAL_PER_TRAVELLER_PATTERN: /Total per travell?er/i,
 
   // Fare rules note
   FARE_RULES_NOTE: '.note',
@@ -4356,7 +4358,7 @@ async clickSelectForFareWithBaggagePricingOptions(baggageText) {
         `[FlightResultsPage.verifyFlightSelectionFooterTotalPerTraveller] Price amount not visible in footer price section. Original: ${err.message}`
       );
     }
-    const label = priceSection.locator(`text=${SELECTORS.NEW_FLOW_FOOTER_TOTAL_PER_TRAVELLER_LABEL}`);
+    const label = priceSection.getByText(SELECTORS.NEW_FLOW_FOOTER_TOTAL_PER_TRAVELLER_PATTERN);
     const labelVisible = await label.isVisible().catch(() => false);
     if (!labelVisible) {
       throw new Error(
@@ -4364,6 +4366,51 @@ async clickSelectForFareWithBaggagePricingOptions(baggageText) {
         `Expected footer to display per-traveller price label.`
       );
     }
+  }
+
+  /**
+   * Returns the flight-selection footer's "Total per traveller" amount as a number.
+   *
+   * Goes through verifyFlightSelectionFooterTotalPerTraveller above rather than repeating its
+   * waits, so the label check guards the read too: without it a group total rendered in the same
+   * node would be returned as if it were the per-traveller figure.
+   *
+   * @returns {Promise<number|null>} The per-traveller total, or null if the node has no text
+   */
+  async getFlightSelectionFooterTotalPerTravellerValue({ timeout = 20000 } = {}) {
+    await this.verifyFlightSelectionFooterTotalPerTraveller();
+
+    // The footer re-prices a moment after the last leg is picked (same race that
+    // clickNewFlightFlowAddToCartButton documents), so a single read can return the outbound-only
+    // figure and silently understate the per-traveller total. Poll until the amount holds still.
+    const POLL_INTERVAL_MS = 500;
+    const MUST_HOLD_MS = 1500;
+    const deadline = Date.now() + timeout;
+
+    // app-price renders the cents in a nested span, so read the whole node's textContent
+    // rather than the integer part alone.
+    const readAmount = () => extractNumber(this.page, SELECTORS.NEW_FLOW_FOOTER_PRICE_AMOUNT, 0);
+
+    let lastValue = await readAmount();
+    let unchangedSince = Date.now();
+
+    while (Date.now() < deadline) {
+      await this.page.waitForTimeout(POLL_INTERVAL_MS);
+      const currentValue = await readAmount();
+
+      if (currentValue !== null && currentValue === lastValue) {
+        if (Date.now() - unchangedSince >= MUST_HOLD_MS) return currentValue;
+      } else {
+        lastValue = currentValue;
+        unchangedSince = Date.now();
+      }
+    }
+
+    throw new Error(
+      `[FlightResultsPage.getFlightSelectionFooterTotalPerTravellerValue] The footer price never held ` +
+      `steady for ${MUST_HOLD_MS}ms within ${timeout}ms (last read: ${lastValue}). The selection is ` +
+      `still re-pricing, so any value read now could be a partial total.`
+    );
   }
 
   /**

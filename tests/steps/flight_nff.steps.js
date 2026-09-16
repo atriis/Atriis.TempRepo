@@ -26,6 +26,11 @@ When("I select the outbound first option from pricing options new flight flow", 
   await FlightResults.selectOutboundFirstBrandCardNewFlightFlow(this.page);
 });
 
+When("I select the outbound brand card named {string} from pricing options new flight flow", async function (brandName) {
+  logger.info("[NewFlightFlow] Selecting outbound brand card by name", { brandName });
+  await FlightResults.selectOutboundBrandCardByNameNewFlightFlow(this.page, brandName);
+});
+
 When("I select the inbound first option from pricing options new flight flow", async function () {
   logger.info("[NewFlightFlow] Selecting first inbound brand card");
   await FlightResults.selectInboundFirstBrandCardNewFlightFlow(this.page);
@@ -249,6 +254,17 @@ Then("the flight selection footer should display a total price per traveller", a
   logger.info("[NewFlightFlow] Verifying footer shows total price per traveller");
   const result = await FlightResults.verifyFlightSelectionFooterTotalPerTraveller(this.page);
   logger.info("[NewFlightFlow] Footer total per traveller verified", result);
+});
+
+// Pushes onto this.extractedPrices, the array the shared cart-total assertions read from.
+When("I extract the price per traveller from the flight selection footer", async function () {
+  const price = await FlightResults.extractFlightSelectionFooterTotalPerTraveller(this.page);
+  if (!this.extractedPrices) this.extractedPrices = [];
+  this.extractedPrices.push(price);
+  logger.info("[NewFlightFlow] Extracted footer price per traveller", {
+    price,
+    extractedPricesIndex: this.extractedPrices.length - 1,
+  });
 });
 
 When("I select the outbound first non-agreement brand card from pricing options new flight flow", async function () {
