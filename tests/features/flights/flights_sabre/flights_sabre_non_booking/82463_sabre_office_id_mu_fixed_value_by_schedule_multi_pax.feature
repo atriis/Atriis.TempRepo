@@ -31,18 +31,19 @@ Feature: 82463 Sabre - Office ID MU fixed value applied on by schedule round tri
     And the "results.0.avgPricePerPerson" in the intercepted response should equal "results.0.wholePrice" plus "results.0.markup"
     And I close pricing options modal
 
-    # Second search: LAS-LON with office ID MZ#LGDG on VS (non-NDC GDS) — expects £15 MU per pax
+    # Second search: LAS-LON with office ID MZ#LGDG on BA — expects £15 MU per pax. Carrier and
+    # content type are incidental: this markup is on the office ID. VS returns nothing on this route.
     When I click edit search
-    And I search for a flight by schedule from "LAS" to "LON" with preferred carrier "VS" in the edit flight search
+    And I search for a flight by schedule from "LAS" to "LON" with preferred carrier "BA" in the edit flight search
     And I start intercepting the "flightPricing" API response
-    And I click to open pricing options for the first non-NDC result
+    And I click to open first pricing options
     Then the markup in the flight pricing response should be "15" per pax configured in "GBP"
     And the "results.0.avgPricePerPerson" in the intercepted response should equal "results.0.wholePrice" plus "results.0.markup"
     And I select the first option from pricing options
     And I add to trip from pricing options
     And I wait for the change flight button to be visible
     And I start intercepting the "flightPricing" API response
-    And I click to open pricing options for the first non-NDC result
+    And I click to open first pricing options
     Then the markup in the flight pricing response should be "15" per pax configured in "GBP"
     And the "results.0.avgPricePerPerson" in the intercepted response should equal "results.0.wholePrice" plus "results.0.markup"
     And I select the first option from pricing options

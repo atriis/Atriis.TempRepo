@@ -23,11 +23,11 @@ Feature: 80770 Sabre - Origin-Destination MU applied per segment on a separated-
     When I search for a round trip flight by schedule from "LIS" to "PAR" with outbound cabin "Economy" and return cabin "Business"
     And flight results should be available
 
-    # Outbound LIS->ORY (PT->FR, qualifies for the 25% MU) on TAP: use the direct NDC fare (it combines into
-    # the separated selection), verify the 25%, then select it.
+    # Outbound LIS->ORY (PT->FR, qualifies for the 25% MU) on TAP. Any fare: the content type is
+    # incidental, what separates the tickets is the differing cabin, carrier and airport per leg.
     And I filter results by carrier "TAP Air Portugal"
     And I start intercepting the "flightPricing" API response
-    And I click to open pricing options for the first NDC direct rate result
+    And I click to open first pricing options
     Then the origin-destination markup should be "25" percent of the base fare on the published fare
     And I select the first option from pricing options
     And I add to trip from pricing options
@@ -36,7 +36,7 @@ Feature: 80770 Sabre - Origin-Destination MU applied per segment on a separated-
     # Return CDG->LIS (FR->PT, no MU) on Scandinavian: a different carrier/cabin makes the tickets separate.
     And I filter results by carrier "Scandinavian"
     And I start intercepting the "flightPricing" API response
-    And I click to open pricing options for the first NDC direct rate result
+    And I click to open first pricing options
     Then the markup in the flight pricing response should be "0"
     And I select the first option from pricing options
     And I add to trip from pricing options
