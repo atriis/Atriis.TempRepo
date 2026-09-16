@@ -6,7 +6,7 @@
 # Updated: 2025-09-30T10:30:21Z
 
 @regression @galileo @flights @hotel @single_pnr @tmc @hybrid
-Feature: 61170 Galileo and NDC passive booked in single PNR with TMC permission
+Feature: 61170 HYBRID Galileo and NDC passive booked in single PNR with TMC permission
 
   As a TMC agent
   I want Galileo and NDC passive segments to be booked in a single PNR
