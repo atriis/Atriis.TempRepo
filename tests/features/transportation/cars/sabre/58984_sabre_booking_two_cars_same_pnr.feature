@@ -4,7 +4,7 @@
 # Created: 2025-02-27T04:15:44Z
 # Updated: 2025-07-21T11:41:56Z
 
-@regression @cars @sabre @sanity @full-purchase
+@regression @cars @transportation @sabre @sanity @full-purchase
 Feature: 58984 Sabre booking two cars with same PNR
 
   As a traveler booking multiple cars

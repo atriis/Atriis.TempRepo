@@ -3,10 +3,12 @@
     "cars": {
       "knownErrors": [
         "HERTZ", "Error: Reservation with the given data already exists.",
-        "The selected rate changed from", "SYSTEM IS UNAVAILABLE CURRENTLY",
+        "The selected rate changed from", 
+        "SYSTEM IS UNAVAILABLE CURRENTLY",
         "PLEASE TRY AGAIN LATER",
         "Reservation with the given data already exists.",
-        "INVALID IDENTIFICATION NUMBER"
+        "INVALID IDENTIFICATION NUMBER",
+        "The Billback number entered is invalid"
       ],
       "skipOnError": true,
       "description": "Known supplier booking issues that should not cause test failure"
