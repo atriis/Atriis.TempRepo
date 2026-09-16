@@ -8490,6 +8490,24 @@ class CartPage {
   }
 
   /**
+   * Canonicalizes a flight number so the same flight compares equal across responses.
+   *
+   * The app prints `carrier + flightNumber` verbatim off the wire, and the numeric part is not
+   * padded consistently: an Amadeus NDC offer sends KLM 144 while the booked/PNR response for the
+   * SAME flight sends 0144. Only the leading zeros differ, so they are stripped from the digits that
+   * follow the 2-character IATA designator. Anything that does not fit that shape is returned
+   * untouched, so an unexpected format can never be silently rewritten into a different flight.
+   *
+   * @param {string} flightNumber - e.g. "KL0144"
+   * @returns {string} e.g. "KL144"
+   */
+  _normalizeFlightNumber(flightNumber) {
+    const match = String(flightNumber).match(/^([A-Z0-9]{2})0*(\d{1,4})$/);
+
+    return match ? `${match[1]}${match[2]}` : String(flightNumber);
+  }
+
+  /**
    * Gets the first visible flight number shown in the cart quote card.
    *
    * @param {{ timeout?: number }} options
@@ -8506,7 +8524,7 @@ class CartPage {
       throw new Error(`Could not extract a flight number from cart text: "${rawText}"`);
     }
 
-    return match[0];
+    return this._normalizeFlightNumber(match[0]);
   }
 
   /**
@@ -8527,7 +8545,7 @@ class CartPage {
       const match = rawText.match(/\b[A-Z0-9]{2,3}\d{1,4}\b/);
 
       if (match) {
-        values.push(match[0]);
+        values.push(this._normalizeFlightNumber(match[0]));
       }
     }
 
