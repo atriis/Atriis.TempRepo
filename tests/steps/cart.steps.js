@@ -1362,6 +1362,7 @@ Then('the cart total price should match the last extracted price', async functio
     cartTotalPrice,
   });
 
+  // Tolerance is 5 because of test env issues
   expectNumbersToBeEqualWithTolerance(
     cartTotalPrice,
     expectedPrice,

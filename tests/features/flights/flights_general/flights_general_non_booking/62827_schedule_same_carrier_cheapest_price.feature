@@ -12,7 +12,7 @@ Feature: 62827 Amadeus By Schedule - Same carrier cheapest package matches prici
   So that I can trust the price when booking
 
   Scenario: Cheapest package same carrier price matches in pricing page and cart
-    Given I am logged in as "coreytaylor@amadeusclubdubu.com" booking a new trip
+    Given I am logged in as "brunasantosnl@testim.com" booking a new trip
     And I have added myself as the traveler
     When I search for a flight by schedule from "FRA" to "PRG"
     And I filter results by carrier "Lufthansa"
@@ -20,8 +20,9 @@ Feature: 62827 Amadeus By Schedule - Same carrier cheapest package matches prici
     And I wait for the change flight button to be visible
     And I filter results by carrier "Lufthansa"
     And I select one flight segment by schedule
-    And I wait for "Cheapest package" text to be visible
-    And I extract the price from "Cheapest package" fare
-    And I add "Cheapest package" fare to trip
+    # This will handle if the cheapest option appears as a ribbon-text in the "Your selection" card or in a new pricing option card
+    And I wait for the cheapest option to be visible
+    And I extract the price from the cheapest option
+    And I add the cheapest option to trip
     Then the booking status should be "Pending booking"
     Then the cart total price should match the last extracted price
