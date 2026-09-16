@@ -15,6 +15,19 @@ Then("the Manage profiles list should be displayed", async function () {
   await ManageProfiles.verifyListDisplayed(this.page);
 });
 
+// --- What the list is allowed to hold ---
+
+// The table is keyed on email, not on the rendered name — see ManageProfiles.verifyListContainsExactly.
+// The name column rides along so a failure reports a person instead of a bare address.
+Then("the Manage profiles list should hold exactly these profiles:", async function (dataTable) {
+  const expectedProfiles = dataTable.hashes().map((row) => ({
+    name: (row.name || "").trim(),
+    email: (row.email || "").trim(),
+  }));
+  logger.info("Verifying the Manage profiles list holds exactly the expected profiles", { expectedProfiles });
+  await ManageProfiles.verifyListContainsExactly(this.page, expectedProfiles);
+});
+
 // --- Row hover and the pencil it reveals ---
 
 When("I hover over the first profile row in the Manage profiles list", async function () {

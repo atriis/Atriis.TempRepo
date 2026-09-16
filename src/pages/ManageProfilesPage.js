@@ -9,6 +9,19 @@
  * no business logic — those live in the ManageProfiles DSL.
  */
 
+// Selectors here are class-based, NOT data-testid-based, and deliberately so.
+//
+// manage-profiles.vue in Atriis.App carries data-testid attributes (manage-profiles.search,
+// manage-profiles.sort-user, manage-profiles.edit-<profileId>, ...), but NONE of them are
+// deployed: a live probe of both atriis-dev.app and atriis-stg.app returned an empty list for
+// [data-testid] across the whole Manage profiles page. The testids exist only in a build that
+// has not shipped to either environment, so every selector written against them matched zero
+// elements — which surfaced as "the search box was not visible" on a page whose search box was
+// plainly rendered in the failure screenshot.
+//
+// The classes below come from the same template and are present in BOTH the deployed build and
+// the current source, so they work either way. If the testids ever deploy, they are the better
+// anchor and these can move back — verify against a live page first.
 const SELECTORS = {
   // manage-profiles.vue root section + its centred <h1>. The heading text is i18n
   // ('userProfile.manageProfiles'), so anchor on structure rather than on the string.
@@ -17,13 +30,15 @@ const SELECTORS = {
 
   // "Showing X of Y profiles" counter, left of the search box in .actions-container.
   PROFILES_COUNT: ".manage-profiles .profiles-count",
-  SEARCH_INPUT: "[data-testid=\"manage-profiles.search\"] input",
+  // el-input renders the real <input> inside .el-input__wrapper, so go through the
+  // .search-container wrapper the template puts around it.
+  SEARCH_INPUT: ".manage-profiles .search-container input",
 
   // Sortable column headers. Rendered only on desktop (v-if="!isMobile"), which is the
-  // viewport the suite runs at.
-  SORT_HEADER_USER: "[data-testid=\"manage-profiles.sort-user\"]",
-  SORT_HEADER_EMAIL: "[data-testid=\"manage-profiles.sort-email\"]",
-  SORT_HEADER_USER_GROUP: "[data-testid=\"manage-profiles.sort-userGroup\"]",
+  // viewport the suite runs at. The per-column class comes from :class="`sort-header-${column}`".
+  SORT_HEADER_USER: ".manage-profiles .headers .sort-header-user",
+  SORT_HEADER_EMAIL: ".manage-profiles .headers .sort-header-email",
+  SORT_HEADER_USER_GROUP: ".manage-profiles .headers .sort-header-userGroup",
 
   // One row per profile on the current page of the list.
   PROFILE_ROW: ".manage-profiles .profile-row",
@@ -31,14 +46,14 @@ const SELECTORS = {
   ROW_NAME: ".app-column.is-3:nth-child(1) p",
   ROW_EMAIL: ".app-column.is-3:nth-child(2) p",
 
-  // The pencil. Its data-testid carries the profile id, so it is matched by prefix and
-  // scoped to a row rather than looked up globally.
+  // The pencil. Always scoped to a row by the caller rather than looked up globally, which is
+  // what identifies WHICH profile it belongs to now that the id-bearing testid is unavailable.
   // manage-profiles.scss keeps .edit-btn at opacity 0 until the row is hovered (or the
   // button is focus-visible), so it is present in the DOM but not "visible" to a user
   // before the hover — hence the opacity read in isEditIconRevealedOnRow below.
-  ROW_EDIT_BUTTON: "[data-testid^=\"manage-profiles.edit-\"]",
+  ROW_EDIT_BUTTON: ".edit-container .edit-btn",
   // Swapped in for the pencil while the profile is being fetched (openingProfileId).
-  ROW_EDIT_LOADER: "[data-testid^=\"manage-profiles.edit-loading-\"]",
+  ROW_EDIT_LOADER: ".edit-container .edit-loader",
 };
 
 class ManageProfilesPage {
@@ -131,6 +146,34 @@ class ManageProfilesPage {
       this.page.locator(SELECTORS.SORT_HEADER_USER_GROUP).first().isVisible(),
     ]);
     return { user, email, userGroup };
+  }
+
+  /**
+   * Every profile row's name and email, in the order the list renders them.
+   *
+   * Read in one evaluateAll() rather than row by row so the whole set is sampled from a single
+   * DOM state — reading one row at a time would let the list re-sort or re-page between reads
+   * and produce a set that never existed on screen at once. Both cells of a row are read in
+   * that same pass for the same reason: a name and an email taken from two separate reads
+   * could belong to two different people.
+   *
+   * @returns {Promise<Array<{fullName: string, email: string}>>} One entry per row, each
+   *   whitespace-normalized.
+   */
+  async getAllRowProfiles() {
+    return this.page.locator(SELECTORS.PROFILE_ROW).evaluateAll(
+      (rows, selectors) => {
+        const read = (row, selector) => {
+          const cell = row.querySelector(selector);
+          return (cell ? cell.textContent || "" : "").replace(/\s+/g, " ").trim();
+        };
+        return rows.map((row) => ({
+          fullName: read(row, selectors.name),
+          email: read(row, selectors.email),
+        }));
+      },
+      { name: SELECTORS.ROW_NAME, email: SELECTORS.ROW_EMAIL },
+    );
   }
 
   /**

@@ -83,6 +83,97 @@ const ManageProfiles = {
   },
 
   /**
+   * Asserts the Manage profiles list holds exactly the expected people — no more, no fewer.
+   *
+   * This is the assertion that gives the "Can Edit and View Profile for Travellers Assigned"
+   * privilege its meaning: the privilege is defined by what it does NOT grant, so checking
+   * only that the expected people are present would pass just as well for a user who can see
+   * every profile in the account. The set is compared both ways, and the count is asserted
+   * against the "Showing X of Y profiles" counter too — the rows alone would not catch a list
+   * that is correctly scoped on page one but paginated beyond it.
+   *
+   * Rows are identified by EMAIL, never by the name the row renders. Email is the unique key on
+   * a corporate profile; the rendered name is first/middle/last free text that a profile edit
+   * can change without the privilege scoping changing at all. Matching on the name would fail
+   * this test for a spelling correction, and pass it for two different people who happen to
+   * share a display name. The expected names still travel in the data table, so a failure names
+   * a person rather than a bare address — they are reported, not asserted.
+   *
+   * @param {import("@playwright/test").Page} page The Manage profiles tab.
+   * @param {Array<{name: string, email: string}>} expectedProfiles The people the list must show,
+   *   in any order. `email` is what is matched; `name` is used only in the failure message.
+   */
+  async verifyListContainsExactly(page, expectedProfiles) {
+    if (!page) throw new Error("[ManageProfiles.verifyListContainsExactly] \"page\" is required.");
+    if (!Array.isArray(expectedProfiles) || expectedProfiles.length === 0) {
+      throw new Error(
+        "[ManageProfiles.verifyListContainsExactly] \"expectedProfiles\" must be a non-empty " +
+        `array, got: ${JSON.stringify(expectedProfiles)}. Pass the expected people as a Gherkin data table with ` +
+        "name and email columns.",
+      );
+    }
+
+    const withoutEmail = expectedProfiles.filter((profile) => !profile || !String(profile.email || "").trim());
+    if (withoutEmail.length > 0) {
+      throw new Error(
+        "[ManageProfiles.verifyListContainsExactly] Every expected profile needs an email — it is what the rows " +
+        `are matched on. Missing on: ${JSON.stringify(withoutEmail)}.`,
+      );
+    }
+
+    const manageProfilesPage = getPageObject(page, ManageProfilesPage);
+    await manageProfilesPage.waitForList();
+
+    const normalizeEmail = (email) => String(email || "").replace(/\s+/g, "").toLowerCase();
+    const describe = (profile) => `${profile.name || profile.fullName || "(no name)"} <${profile.email}>`;
+
+    const actualRows = await manageProfilesPage.getAllRowProfiles();
+    const expectedEmails = expectedProfiles.map((profile) => normalizeEmail(profile.email));
+    const actualEmails = actualRows.map((row) => normalizeEmail(row.email));
+
+    const missing = expectedProfiles
+      .filter((profile) => !actualEmails.includes(normalizeEmail(profile.email)))
+      .map(describe);
+    const unexpected = actualRows
+      .filter((row) => !expectedEmails.includes(normalizeEmail(row.email)))
+      .map(describe);
+
+    expect(
+      { missing, unexpected },
+      "[ManageProfiles.verifyListContainsExactly] The Manage profiles list did not hold exactly the expected " +
+      `profiles.\n  Expected: ${JSON.stringify(expectedProfiles.map(describe))}\n  Actual:   ` +
+      `${JSON.stringify(actualRows.map(describe))}\n` +
+      "A profile in \"unexpected\" means this user can reach someone outside their " +
+      "\"who I can book for\" list — the scoping the privilege exists to enforce. A profile in " +
+      "\"missing\" means an assigned traveller is not reachable, or the arranger relationship is " +
+      "no longer configured for this test account.",
+    ).toEqual({ missing: [], unexpected: [] });
+
+    // The rows above are only the current page of the list. The counter is the total the backend
+    // matched, so it is what proves nothing is scoped correctly on page one and leaking on page two.
+    const countText = await manageProfilesPage.getProfilesCountText();
+    const totalMatch = countText.match(/(\d+)\D+(\d+)/);
+    expect(
+      totalMatch,
+      "[ManageProfiles.verifyListContainsExactly] Could not read the totals out of the profiles counter " +
+      `("${countText}"). It is expected to read "Showing X of Y profiles".`,
+    ).not.toBeNull();
+
+    const total = Number.parseInt(totalMatch[2], 10);
+    expect(
+      total,
+      `[ManageProfiles.verifyListContainsExactly] The profiles counter reports ${total} profile(s) in total ` +
+      `("${countText}"), but only ${expectedProfiles.length} were expected. The visible rows matched, so the ` +
+      "extra profiles are on a later page of the list — the scoping leaks beyond page one.",
+    ).toBe(expectedProfiles.length);
+
+    logger.info(
+      `[ManageProfiles.verifyListContainsExactly] Manage profiles holds exactly ${expectedProfiles.length} ` +
+      `profile(s): ${JSON.stringify(actualRows.map(describe))}`,
+    );
+  },
+
+  /**
    * Hovers one profile row so its pencil fades in, and reports who that row is for.
    *
    * The name is returned rather than stored here because it is what the profile dialog is

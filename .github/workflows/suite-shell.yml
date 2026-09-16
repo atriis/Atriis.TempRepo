@@ -35,6 +35,13 @@ jobs:
         shell-share-quote-or-itinerary shell-squake shell-travel-arranger
         shell-travel-policy shell-travel-req-remark shell-trip-monitor shell-ui-issues
         shell-user-profile
+      # shell-travel-arranger runs at "parallel": 1, not 2. All three of its features sign in as
+      # the same Stuart@Stuart.com, and 63996 empties that user's "who I can book for" list and
+      # rebuilds it, while 84857 asserts the exact set of profiles that same list produces. Two
+      # workers put the mutation and the assertion in one window, and 84857 then fails as a
+      # privilege-scoping regression that never happened. Serial keeps them apart — the same
+      # reason the booking suites run at 1 (rerun-runner.yml: suites are the unit that isolates
+      # test users).
       matrix: |
         {
           "include": [
@@ -60,7 +67,7 @@ jobs:
             { "suite_id": "shell-roles",                            "suite_name": "Shell Roles",                            "test_path": "tests/features/shell/shell_roles/",                            "parallel": 2, "retry": 1, "job_timeout_minutes": 100, "step_timeout_minutes": 95 },
             { "suite_id": "shell-share-quote-or-itinerary",         "suite_name": "Shell Share Quote Or Itinerary",         "test_path": "tests/features/shell/shell_share_quote_or_itinerary/",         "parallel": 2, "retry": 1, "job_timeout_minutes": 100, "step_timeout_minutes": 95 },
             { "suite_id": "shell-squake",                           "suite_name": "Shell Squake",                           "test_path": "tests/features/shell/shell_squake/",                           "parallel": 2, "retry": 1, "job_timeout_minutes": 100, "step_timeout_minutes": 95 },
-            { "suite_id": "shell-travel-arranger",                  "suite_name": "Shell Travel Arranger",                  "test_path": "tests/features/shell/shell_travel_arranger/",                  "parallel": 2, "retry": 1, "job_timeout_minutes": 100, "step_timeout_minutes": 95 },
+            { "suite_id": "shell-travel-arranger",                  "suite_name": "Shell Travel Arranger",                  "test_path": "tests/features/shell/shell_travel_arranger/",                  "parallel": 1, "retry": 1, "job_timeout_minutes": 100, "step_timeout_minutes": 95 },
             { "suite_id": "shell-travel-policy",                    "suite_name": "Shell Travel Policy",                    "test_path": "tests/features/shell/shell_travel_policy/",                    "parallel": 2, "retry": 1, "job_timeout_minutes": 100, "step_timeout_minutes": 95 },
             { "suite_id": "shell-travel-req-remark",                "suite_name": "Shell Travel Req Remark",                "test_path": "tests/features/shell/shell_travel_req_remark/",                "parallel": 2, "retry": 1, "job_timeout_minutes": 100, "step_timeout_minutes": 95 },
             { "suite_id": "shell-trip-monitor",                     "suite_name": "Shell Trip Monitor",                     "test_path": "tests/features/shell/shell_trip_monitor/",                     "parallel": 2, "retry": 1, "job_timeout_minutes": 100, "step_timeout_minutes": 95 },
