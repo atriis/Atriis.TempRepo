@@ -4557,6 +4557,30 @@ async verifyFareComponentTextColorInPricingOptions(page, expectedColor, index = 
   },
 
   /**
+   * Verifies at least one brand card on a leg of the New Flight Flow selection screen carries the
+   * marine-fare badge, walking the brand-class carousel until it finds one.
+   *
+   * @param {import('playwright').Page} page
+   * @param {number} legIndex - Zero-based leg index (0=outbound, 1=inbound)
+   * @returns {Promise<{found: boolean, cardsScanned: number, arrowClicks: number}>}
+   */
+  async verifyMarineFareIconVisibleInLegBrandCards(page, legIndex = 0) {
+    if (!page) throw new Error('[FlightResults.verifyMarineFareIconVisibleInLegBrandCards] "page" is required.');
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    const result = await flightResultsPage.findMarineFareBrandCardInLeg(legIndex);
+    if (!result.found) {
+      throw new Error(
+        `[FlightResults.verifyMarineFareIconVisibleInLegBrandCards] No brand card on leg ${legIndex} displays ` +
+        `the Marine Fare icon. Scanned ${result.cardsScanned} card(s) across the whole brand-class carousel ` +
+        `(${result.arrowClicks} arrow step(s) to its end). Either the itinerary selected carries no marine ` +
+        `fare — check the "Marine fare" results filter ran and the account holds a SEA agreement — or the ` +
+        `anchor badge stopped rendering in flight-brand-card.vue.`
+      );
+    }
+    return result;
+  },
+
+  /**
    * Hovers the agreement icon of the first pricing-options fare that carries one and returns the
    * tooltip it opens. The tooltip stays open only while the pointer rests on the icon, so the text
    * is read here and handed back for the caller to assert on.

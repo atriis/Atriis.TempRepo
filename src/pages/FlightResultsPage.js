@@ -199,6 +199,16 @@ const SELECTORS = {
   NEW_FLOW_BRAND_CARD_PRICE_DELTA_PREFIX: '.price-delta-prefix',
   NEW_FLOW_BRAND_CARD_FEATURE_TEXT: '.features-text',
   NEW_FLOW_BRAND_CARD_SELECTED: '.card.fare-card.is-selected',
+  // The badge slot in a brand card header (flight-brand-card.vue). A marine fare is a PTC fare
+  // (PricedPtc "SEA") carrying agreementType None, so AB#84228 renders it as an "anchor" ligature
+  // here instead of the .agreement-icon handshake every other agreement type gets — AGREEMENT_ICON
+  // never matches a marine brand card. Combine with MARINE_FARE_ANCHOR_ICON to read the marine one.
+  NEW_FLOW_BRAND_CARD_AGREEMENTS: '.agreements',
+  // Brand-class carousel arrows (app-carousel.vue, Flicking). The strip free-scrolls a fixed step
+  // per click and gets the disabled class once the camera reaches the end of its range. The
+  // data-testids (common.app-carousel.next-arrow) are stripped from the build — key on the class.
+  NEW_FLOW_CAROUSEL_NEXT_ARROW: '.flicking-arrow-next',
+  NEW_FLOW_CAROUSEL_ARROW_DISABLED_CLASS: 'flicking-arrow-disabled',
   // Staging strips data-testid in its build, so target the stable component class instead.
   NEW_FLOW_CHANGE_AND_CANCELLATION_WARNING: '.mixed-rules-warning',
   NEW_FLOW_NFF_CLOSE_BTN: '.flight-results-select-brand button.p-2',
@@ -4812,6 +4822,66 @@ async clickSelectForFareWithBaggagePricingOptions(baggageText) {
       }
     }
     return { agreementCardIndices };
+  }
+
+  /**
+   * Scans a leg's brand cards for the marine-fare badge, stepping the brand-class carousel with its
+   * next arrow until one turns up or the carousel runs out of strip.
+   *
+   * A marine fare is rarely the first brand class offered, and the carousel only ever shows a few
+   * cards at a time, so the scan has to walk the strip the way a tester does rather than read the
+   * first screenful and give up. Each pass re-reads the cards after the arrow animation settles.
+   *
+   * @param {number} legIndex - Zero-based leg index (0=outbound, 1=inbound)
+   * @param {number} maxArrowClicks - Safety cap on carousel steps (default: 20)
+   * @returns {Promise<{found: boolean, cardsScanned: number, arrowClicks: number}>}
+   */
+  async findMarineFareBrandCardInLeg(legIndex = 0, maxArrowClicks = 20) {
+    const leg = this.page.locator(SELECTORS.NEW_FLOW_BRAND_LEG).nth(legIndex);
+    const cards = leg.locator(SELECTORS.NEW_FLOW_BRAND_CARD);
+    try {
+      await cards.first().waitFor({ state: 'visible', timeout: 30000 });
+    } catch (err) {
+      throw new Error(
+        `[FlightResultsPage.findMarineFareBrandCardInLeg] No brand cards rendered for leg ${legIndex} ` +
+        `(selector: ${SELECTORS.NEW_FLOW_BRAND_LEG} >> ${SELECTORS.NEW_FLOW_BRAND_CARD}). ` +
+        `The flight-selection screen may not have opened. Original: ${err.message}`
+      );
+    }
+
+    const marineIcon = cards
+      .locator(SELECTORS.NEW_FLOW_BRAND_CARD_AGREEMENTS)
+      .locator(SELECTORS.MARINE_FARE_ANCHOR_ICON);
+    const nextArrow = leg.locator(SELECTORS.NEW_FLOW_CAROUSEL_NEXT_ARROW).first();
+
+    let arrowClicks = 0;
+    for (;;) {
+      const cardsScanned = await cards.count();
+
+      if (await marineIcon.first().isVisible().catch(() => false)) {
+        await marineIcon.first().scrollIntoViewIfNeeded({ timeout: 5000 }).catch(() => {});
+        return { found: true, cardsScanned, arrowClicks };
+      }
+
+      if (arrowClicks >= maxArrowClicks) {
+        return { found: false, cardsScanned, arrowClicks };
+      }
+
+      // No arrow at all means the whole strip already fits on screen, and a disabled arrow means
+      // the camera is at the end of its range — either way there is nothing further to reveal.
+      if (!(await nextArrow.isVisible().catch(() => false))) {
+        return { found: false, cardsScanned, arrowClicks };
+      }
+      const arrowClass = (await nextArrow.getAttribute('class')) || '';
+      if (arrowClass.includes(SELECTORS.NEW_FLOW_CAROUSEL_ARROW_DISABLED_CLASS)) {
+        return { found: false, cardsScanned, arrowClicks };
+      }
+
+      await nextArrow.click({ timeout: 10000 });
+      arrowClicks += 1;
+      // scrollByAmount animates for 300ms and only updates the disabled state once it settles.
+      await this.page.waitForTimeout(500);
+    }
   }
 
   // Starts waiting for the flightSearch API response (call BEFORE triggering the search).

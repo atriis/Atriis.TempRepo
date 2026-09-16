@@ -279,6 +279,13 @@ Then("the inbound leg brand cards should only display non-agreement fares", asyn
   logger.info("[NewFlightFlow] Inbound non-agreement fares verified", { agreementCardIndices });
 });
 
+Then("at least one brand card on the {string} leg should display the Marine Fare icon", async function (legName) {
+  const legIndex = legName.toLowerCase() === "inbound" ? 1 : 0;
+  logger.info("[NewFlightFlow] Looking for a marine fare brand card across the carousel", { legName });
+  const result = await FlightResults.verifyMarineFareIconVisibleInLegBrandCards(this.page, legIndex);
+  logger.info("[NewFlightFlow] Marine fare brand card found", result);
+});
+
 Then("the fares with {string} should show {string} in pricing options", async function (fareName, expectedText) {
   logger.info("[NewFlightFlow] Verifying brand card feature text", { fareName, expectedText });
   const result = await FlightResults.verifyFareShowsFeatureInBrandCard(this.page, fareName, expectedText);
