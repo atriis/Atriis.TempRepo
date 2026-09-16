@@ -134,12 +134,71 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Download all artifacts
+      # Only the JUnit XML and the Cucumber JSON are ever read from all-results/,
+      # so screenshots and traces are excluded here: on a full domain run they are
+      # ~50 artifacts and ~245MB of downloads this job never opens. Fewer, smaller
+      # requests also means far less exposure to the artifact service throttling
+      # below. The pattern still matches *-allure-results, which is harmless.
+      - name: Download result artifacts
+        id: download-1
         if: always()
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
+          pattern: '*-{results,report}'
           path: all-results
         continue-on-error: true
+
+      # GitHub's artifact service 403s intermittently ("Error from intermediary with
+      # HTTP status code 403"), and the download action classes 403 as non-retryable
+      # and gives up immediately -- so the retry has to happen at the step level.
+      # Without it a healthy run reports zero results for every suite.
+      - name: Back off before retrying the artifact download
+        if: always() && steps.download-1.outcome == 'failure'
+        shell: bash
+        run: sleep 30
+
+      - name: Download result artifacts (retry)
+        id: download-2
+        if: always() && steps.download-1.outcome == 'failure'
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          pattern: '*-{results,report}'
+          path: all-results
+        continue-on-error: true
+
+      - name: Back off before the final artifact download attempt
+        if: always() && steps.download-2.outcome == 'failure'
+        shell: bash
+        run: sleep 90
+
+      - name: Download result artifacts (final attempt)
+        id: download-3
+        if: always() && steps.download-2.outcome == 'failure'
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          pattern: '*-{results,report}'
+          path: all-results
+        continue-on-error: true
+
+      # Every download step is continue-on-error, so without this the job would
+      # sail on and blame the suites for the missing results. Record whether any
+      # attempt actually landed, so Reconcile can tell "the suites produced
+      # nothing" apart from "this job could not fetch what they produced".
+      - name: Record artifact download status
+        id: download-status
+        if: always()
+        shell: bash
+        env:
+          OUTCOME_1: ${{ steps.download-1.outcome }}
+          OUTCOME_2: ${{ steps.download-2.outcome }}
+          OUTCOME_3: ${{ steps.download-3.outcome }}
+        run: |
+          if [ "$OUTCOME_1" = "success" ] || [ "$OUTCOME_2" = "success" ] || [ "$OUTCOME_3" = "success" ]; then
+            echo "ok=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ok=false" >> "$GITHUB_OUTPUT"
+            echo "::error::Could not download result artifacts after 3 attempts (attempts: $OUTCOME_1, $OUTCOME_2, $OUTCOME_3). The suite artifacts are still attached to this run - re-run this Report job alone to publish the report."
+          fi
 
       - name: Download Allure Results
         if: always()
@@ -433,11 +492,22 @@ jobs:
         shell: bash
         env:
           EXPECTED_SUITES: ${{ inputs.expected-suites }}
+          DOWNLOAD_OK: ${{ steps.download-status.outputs.ok }}
         run: |
           node -e "
             const fs = require('fs');
             const path = require('path');
             const expectedSuites = (process.env.EXPECTED_SUITES || '').split(/\s+/).filter(Boolean);
+            // If the artifacts never made it onto this runner, all-results/ is empty and
+            // every suite would look like it produced nothing. That reads as a total test
+            // failure when the suites in fact ran fine and their artifacts are still
+            // attached to the run, so say what actually broke instead.
+            if (process.env.DOWNLOAD_OK === 'false') {
+              const note = ['', '### Suite Reconciliation', '', 'Could not determine suite results: downloading the result artifacts failed (see the download steps above). The suites are NOT known to have failed - their artifacts are still attached to this run. Re-run the Report job alone to publish the report.', ''];
+              fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, note.join('\n') + '\n');
+              console.log('::error::Result artifacts could not be downloaded, so suite results are unknown. Re-run the Report job to publish the report.');
+              process.exit(1);
+            }
             // A suite uploads its JUnit XML and its Cucumber report as two separate
             // artifacts, and GitHub's FinalizeArtifact call 403s intermittently, so the
             // report can go missing for a suite that ran perfectly well. Fall back to the

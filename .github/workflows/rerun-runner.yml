@@ -615,12 +615,61 @@ jobs:
     permissions:
       contents: read
     steps:
+      # GitHub's artifact service 403s intermittently ("Error from intermediary with
+      # HTTP status code 403"), and the download action classes 403 as non-retryable
+      # and gives up immediately - so the retry has to happen at the step level.
+      # Without it a healthy rerun reports every shard as missing.
       - name: Download every shard's report
+        id: download-1
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           pattern: 'rerun-*-report'
           path: shard-reports
         continue-on-error: true
+
+      - name: Back off before retrying the artifact download
+        if: always() && steps.download-1.outcome == 'failure'
+        shell: bash
+        run: sleep 30
+
+      - name: Download every shard's report (retry)
+        id: download-2
+        if: always() && steps.download-1.outcome == 'failure'
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          pattern: 'rerun-*-report'
+          path: shard-reports
+        continue-on-error: true
+
+      - name: Back off before the final artifact download attempt
+        if: always() && steps.download-2.outcome == 'failure'
+        shell: bash
+        run: sleep 90
+
+      - name: Download every shard's report (final attempt)
+        id: download-3
+        if: always() && steps.download-2.outcome == 'failure'
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          pattern: 'rerun-*-report'
+          path: shard-reports
+        continue-on-error: true
+
+      # The downloads are continue-on-error, so without this the aggregation below
+      # would blame the shards for results it simply could not fetch.
+      - name: Fail loudly if no shard report could be downloaded
+        if: always()
+        shell: bash
+        env:
+          OUTCOME_1: ${{ steps.download-1.outcome }}
+          OUTCOME_2: ${{ steps.download-2.outcome }}
+          OUTCOME_3: ${{ steps.download-3.outcome }}
+        run: |
+          if [ "$OUTCOME_1" = "success" ] || [ "$OUTCOME_2" = "success" ] || [ "$OUTCOME_3" = "success" ]; then
+            exit 0
+          fi
+          echo "::error::Could not download the shard reports after 3 attempts (attempts: $OUTCOME_1, $OUTCOME_2, $OUTCOME_3). The shards are NOT known to have failed - their artifacts are still attached to this run. Re-run this rerun report job alone."
+          exit 1
 
       # One table for the whole rerun. A shard that produced no report at all
       # (timed out, or crashed before writing) is called out by name rather than
