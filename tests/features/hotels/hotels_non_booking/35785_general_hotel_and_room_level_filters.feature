@@ -6,7 +6,7 @@
 # Created: 2023-09-13T03:17:11Z
 # Updated: 2025-01-20T12:46:01Z
 
-@regression @provider:amadeus
+@regression @provider:general
 Feature: 35785 MERGED: Hotel - Filters are displayed on availability page (room level)
   As a corporate traveler
   I want to use filters in hotel level and room level results
@@ -19,9 +19,9 @@ Feature: 35785 MERGED: Hotel - Filters are displayed on availability page (room 
     When I search for a hotel in "New York City" for 1 night
     And I wait to see view rates text in results page
     Then I see hotel level filter sections
-    Then the "My corporate" filter tag should be visible in hotel results
     When I apply hotel level filter "Agreement" with option "My corporate"
-    Then all hotels have the "My corporate" agreement tag
+    Then the "My corporate" filter tag should be visible in hotel results
+    Then all hotels have a corporate agreement tag
     And I select the first hotel result
     And I wait for the first add to trip button to be visible in room level results
     Then I see room level filter sections
