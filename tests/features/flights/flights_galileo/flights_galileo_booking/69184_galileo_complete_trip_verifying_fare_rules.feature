@@ -16,7 +16,9 @@ Feature: 69184 Galileo - Complete trip booking verifying fare rules
     Given I am logged in as "bsgalileoflight@galileoflight.com" booking a new trip
     And I have added a random guest traveler
     When I search for a round trip flight from "LON" to "DOH"
-    And I filter results by carrier "Qatar Airways"
+    # Checkbox, not the search box: that one also matches a codeshare's "Operated by" label, and
+    # those itineraries have no pricing options for the fare rules button to sit in.
+    And I filter airline results by "Etihad Airways" checkbox
     And I click to open fare rules
     Then I should see the fare rules note about strictest terms
     And I close fare rules window
