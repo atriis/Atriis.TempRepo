@@ -7,6 +7,7 @@
 
 const { setWorldConstructor, World } = require("@cucumber/cucumber");
 const { launchBrowser } = require("./browserFactory");
+const sessionOptions = require("@utils/sessionOptions");
 
 class CustomWorld extends World {
   constructor(options) {
@@ -85,6 +86,9 @@ class CustomWorld extends World {
     this.browser = await launchBrowser();
 
     this.context = await this.browser.newContext({
+      // Same per-scenario overrides App.createBrowserSession() applies, so a scenario that opens
+      // its browser through the world rather than through a step still honours an @timezone tag.
+      ...sessionOptions.get(),
       viewport: { width: 1920, height: 1080 },
       screen: { width: 1920, height: 1080 },
       ignoreHTTPSErrors: true,

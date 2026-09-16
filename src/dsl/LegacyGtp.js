@@ -8,6 +8,7 @@
 const { getPageObject } = require("@utils/pageObjectCache");
 const { LegacyGtpPage } = require("@pages/LegacyGtpPage");
 const config = require("@config/config");
+const sessionOptions = require("@utils/sessionOptions");
 const logger = require("@utils/logger").child("LegacyGtp");
 
 // The legacy front loads a CookieHub consent widget that renders a MODAL dialog
@@ -39,7 +40,10 @@ const LegacyGtp = {
     if (!browser) throw new Error('[LegacyGtp.createAgentSession] "browser" is required.');
     logger.debug("Creating an isolated legacy GTP context for the agent");
     try {
-      const context = await browser.newContext();
+      // The SAME per-scenario overrides the OBT context gets (App.createBrowserSession). Without
+      // this an @timezone-tagged scenario would run the legacy GTP front in the runner's own zone
+      // while the OBT ran in the tagged one — a half-applied timezone that reports green.
+      const context = await browser.newContext({ ...sessionOptions.get() });
       await context.route(CONSENT_SCRIPT_URL_PATTERN, (route) => route.abort());
       const page = await context.newPage();
       return { context, page };

@@ -12,6 +12,7 @@ const path = require("path");
 const fs = require("fs");
 const { launchBrowser } = require("./browserFactory");
 const config = require("../../src/config/config");
+const sessionOptions = require("@utils/sessionOptions");
 const logger = require("@utils/logger").child("Hooks");
 
 setDefaultTimeout(120000);
@@ -21,6 +22,41 @@ setDefaultTimeout(120000);
  */
 Before(async function (testCase) {
   this.scenarioTags = (testCase.pickle?.tags || []).map((tag) => tag.name);
+
+  // Reset FIRST, unconditionally: a worker runs its scenarios serially in one process, so without
+  // this an @timezone-tagged scenario would leak its zone into every later scenario in the same
+  // worker. Untagged scenarios must always get Playwright's default (the runner's own zone).
+  sessionOptions.reset();
+
+  // @timezone:<IANA zone> — e.g. @timezone:America/New_York — opens the browser context in that
+  // zone, which is how a "change your computer's time zone" manual step is automated. It moves
+  // only the BROWSER clock (Date, getTimezoneOffset, Intl); server-rendered timestamps are
+  // unaffected, so it suits tests about client-side date rendering and nothing else.
+  const timezoneTag = this.scenarioTags.find((tag) => tag.startsWith("@timezone:"));
+  if (timezoneTag) {
+    const timezoneId = timezoneTag.slice("@timezone:".length);
+    if (!timezoneId) {
+      throw new Error(
+        `Scenario "${testCase.pickle.name}" has a bare @timezone: tag. ` +
+        'Give it an IANA zone, e.g. @timezone:America/New_York'
+      );
+    }
+
+    // Fail here rather than in newContext(): Playwright rejects an unknown zone with an opaque
+    // browser-level error at session launch, which reads as an infra failure, not a typo in a tag.
+    try {
+      new Intl.DateTimeFormat("en-US", { timeZone: timezoneId });
+    } catch {
+      throw new Error(
+        `Scenario "${testCase.pickle.name}" carries ${timezoneTag}, but "${timezoneId}" is not a ` +
+        'recognised IANA time zone. Use e.g. America/New_York, Europe/Lisbon, Asia/Tokyo.'
+      );
+    }
+
+    sessionOptions.set({ timezoneId });
+    this.timezoneId = timezoneId;
+    logger.info("Scenario requests an overridden browser timezone", { timezoneId });
+  }
 
   // No scenario may rely on this hook for its browser: the step itself launches it and assigns
   // this.page, so the After hook can screenshot even when the sign-in is what failed. Every step

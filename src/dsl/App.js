@@ -6,6 +6,7 @@ const LogoutPage = require("@pages/LogoutPage");
 const { MenuPage } = require("@pages/MenuPage");
 const { CommonPage } = require("@pages/CommonPage");
 const config = require("@config/config");
+const sessionOptions = require("@utils/sessionOptions");
 const logger = require("@utils/logger").child("App");
 
 /**
@@ -83,7 +84,16 @@ const App = {
    */
   async createBrowserSession() {
     const browser = await launchBrowser();
+    // Per-scenario context overrides (currently `timezoneId`, from an @timezone:<Zone> tag).
+    // Spread FIRST so nothing below can be silently overridden by a tag, and so an untagged
+    // scenario - the overwhelming majority - builds a byte-identical context to before.
+    const overrides = sessionOptions.get();
+    if (overrides.timezoneId) {
+      logger.info("Opening the browser context in an overridden timezone", { timezoneId: overrides.timezoneId });
+    }
+
     const context = await browser.newContext({
+      ...overrides,
       viewport: config.viewport,
       screen: config.viewport,
       ignoreHTTPSErrors: true,
