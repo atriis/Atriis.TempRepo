@@ -182,14 +182,76 @@ async function settleRequestCount(countRequests, { requestType }) {
   return settledCount;
 }
 
-function parseJsonPayload(payload, source, requestType) {
+// Some suppliers log the JSON body with the call's own diagnostics appended after it - Travelport
+// stores "{body}Endpoint URL: ..., Request Details, {headers}" and "{body}  Response Details,
+// {headers}". That is two documents in one blob, so a straight parse throws and every path
+// assertion is unusable. Reading just the first complete document recovers the body; a payload
+// that really is malformed still lands in the error below.
+function extractLeadingJsonDocument(payload) {
+  if (typeof payload !== "string") return null;
+
+  const start = payload.search(/[{[]/);
+  if (start === -1) return null;
+
+  const opening = payload[start];
+  const closing = opening === "{" ? "}" : "]";
+  let depth = 0;
+  let inString = false;
+  let escaped = false;
+
+  for (let i = start; i < payload.length; i++) {
+    const character = payload[i];
+
+    if (inString) {
+      if (escaped) escaped = false;
+      else if (character === "\\") escaped = true;
+      else if (character === "\"") inString = false;
+      continue;
+    }
+
+    if (character === "\"") inString = true;
+    else if (character === opening) depth++;
+    else if (character === closing && --depth === 0) {
+      try {
+        return JSON.parse(payload.slice(start, i + 1));
+      } catch {
+        return null;
+      }
+    }
+  }
+
+  return null;
+}
+
+// Every assertion that parses a CAPTURED payload goes through this, so a supplier that appends
+// diagnostics to the body stays fully assertable. Returns null when there is no JSON to read.
+function tryParseCapturedJson(payload) {
   try {
     return JSON.parse(payload);
   } catch {
-    throw new Error(
-      `Captured ${source} payload for request type \"${requestType}\" is not valid JSON. Use text-based assertions (contains) or capture a JSON payload.`
-    );
+    return extractLeadingJsonDocument(payload);
   }
+}
+
+function parseJsonPayload(payload, source, requestType) {
+  const parsed = tryParseCapturedJson(payload);
+  if (parsed !== null) {
+    return parsed;
+  }
+
+  throw new Error(
+    `Captured ${source} payload for request type \"${requestType}\" is not valid JSON. Use text-based assertions (contains) or capture a JSON payload.`
+  );
+}
+
+// Decides whether an assertion should treat a payload as JSON, tolerating the same appended
+// diagnostics extractLeadingJsonDocument() handles - without it a Travelport body is misread as
+// XML and every JSON-shaped assertion silently takes the exact-tag-match path instead.
+function coerceJsonPayload(rawPayload) {
+  const parsed = tryParseCapturedJson(rawPayload);
+  return parsed === null
+    ? { payloadString: rawPayload, isJson: false }
+    : { payloadString: JSON.stringify(parsed), isJson: true };
 }
 
 function parseSplitExpression(expectedText) {
@@ -523,13 +585,31 @@ function extractXmlAttributeValues(xmlString) {
   return values;
 }
 
-/**
- * Extracts a value at a specific key path from a JSON object.
- * Key path supports dot notation: "data.address.street"
- * Returns the extracted value as a JSON string.
- * Throws error if key path not found.
- */
-function extractJsonBlockByKey(jsonString, keyPath) {
+// Collects every value stored under `keyName`, at any depth, in document order.
+function collectJsonValuesByKey(node, keyName, found = []) {
+  if (Array.isArray(node)) {
+    node.forEach((item) => collectJsonValuesByKey(item, keyName, found));
+    return found;
+  }
+
+  if (node && typeof node === "object") {
+    Object.entries(node).forEach(([key, value]) => {
+      if (key === keyName) {
+        found.push(value);
+      }
+      collectJsonValuesByKey(value, keyName, found);
+    });
+  }
+
+  return found;
+}
+
+// Returns every candidate block for a .block() expression, so the caller can pick the one holding
+// the text it is looking for — the same way the XML branch gathers all <tag> blocks first. A
+// dotted keyPath stays an explicit address from the root; a bare key also searches nested objects,
+// because a supplier can bury the block (a Locator inside a ReceiptConfirmation) at a position
+// that shifts between bookings, and pinning an array index there makes the assertion flaky.
+function extractJsonBlocksByKey(jsonString, keyPath) {
   if (!jsonString || typeof jsonString !== "string") {
     throw new Error("jsonString must be a non-empty string");
   }
@@ -538,19 +618,30 @@ function extractJsonBlockByKey(jsonString, keyPath) {
     throw new Error("keyPath must be a non-empty string");
   }
 
-  let parsed;
-  try {
-    parsed = JSON.parse(jsonString);
-  } catch {
+  const parsed = tryParseCapturedJson(jsonString);
+  if (parsed === null) {
     throw new Error(`Invalid JSON for block extraction: ${jsonString.substring(0, 100)}`);
   }
 
-  const extracted = getByPath(parsed, keyPath);
-  if (extracted === undefined) {
+  const candidates = [];
+  const atPath = getByPath(parsed, keyPath);
+  if (atPath !== undefined) {
+    candidates.push(atPath);
+  }
+
+  if (!/[.[\]]/.test(keyPath)) {
+    collectJsonValuesByKey(parsed, keyPath).forEach((value) => {
+      if (!candidates.includes(value)) {
+        candidates.push(value);
+      }
+    });
+  }
+
+  if (candidates.length === 0) {
     throw new Error(`Key path "${keyPath}" not found in JSON object`);
   }
 
-  return JSON.stringify(extracted, null, 2);
+  return candidates;
 }
 
 const PayloadValidation = {
@@ -815,20 +906,13 @@ const PayloadValidation = {
     // Inner assertion runner — receives a raw payload string, throws if assertion fails.
     // Returns { blockPayload, blockFilters } when a .block() match was found (caller stores it).
     const runAssertion = (rawPayload, filters = {}) => {
-      let payloadString = rawPayload;
-      let isJson = false;
-      try {
-        const parsed = JSON.parse(rawPayload);
-        payloadString = JSON.stringify(parsed);
-        isJson = true;
-      } catch { /* XML or plain text */ }
+      const { payloadString, isJson } = coerceJsonPayload(rawPayload);
 
       const onKeyExpression = parseOnKeyExpression(expectedText);
       if (onKeyExpression) {
         const { key, typedValue, rawValue } = onKeyExpression;
         if (isJson) {
-          let parsed;
-          try { parsed = JSON.parse(rawPayload); } catch { parsed = null; }
+          const parsed = tryParseCapturedJson(rawPayload);
           const actual = parsed !== null ? getByPath(parsed, key) : undefined;
           if (actual === undefined) {
             throw new Error(`JSON key "${key}" not found in captured ${source} payload for request type "${requestType}"`);
@@ -905,19 +989,17 @@ const PayloadValidation = {
       const blockExpression = parseBlockExpression(expectedText);
       if (blockExpression) {
         if (isJson) {
-          // JSON: Extract the value at the key path
-          const extracted = extractJsonBlockByKey(rawPayload, blockExpression.blockTag);
-          const extracted_parsed = JSON.parse(extracted);
+          const candidates = extractJsonBlocksByKey(rawPayload, blockExpression.blockTag);
           const normalizedLookup = normalizeForContains(blockExpression.text);
-          
-          // Check if the extracted block contains the text
-          const blockString = JSON.stringify(extracted_parsed);
-          if (!normalizeForContains(blockString).includes(normalizedLookup)) {
+          const matched = candidates.find((candidate) =>
+            normalizeForContains(JSON.stringify(candidate)).includes(normalizedLookup)
+          );
+          if (matched === undefined) {
             throw new Error(`No block match for "${blockExpression.text}" found in extracted JSON key "${blockExpression.blockTag}" for request type "${requestType}"`);
           }
-          
-          logger.info(`Block match found in JSON: keyPath="${blockExpression.blockTag}" text="${blockExpression.text}"`);
-          return { blockPayload: extracted, blockFilters: {} };
+
+          logger.info(`Block match found in JSON: keyPath="${blockExpression.blockTag}" text="${blockExpression.text}" candidates=${candidates.length}`);
+          return { blockPayload: JSON.stringify(matched, null, 2), blockFilters: {} };
         } else {
           const blocks = extractXmlBlocksByTag(rawPayload, blockExpression.blockTag);
           logger.debug(`Block expression parsed: blockTag="${blockExpression.blockTag}" text="${blockExpression.text}" blocksFound=${blocks.length}`);
@@ -1138,20 +1220,13 @@ const PayloadValidation = {
     logger.debug(`Asserting payload does not contain: source="${source}" requestType="${requestType}" expectedText="${expectedText.substring(0, 100)}${expectedText.length > 100 ? "..." : ""}"`);
 
     const runAssertion = (rawPayload) => {
-      let payloadString = rawPayload;
-      let isJson = false;
-      try {
-        const parsed = JSON.parse(rawPayload);
-        payloadString = JSON.stringify(parsed);
-        isJson = true;
-      } catch { /* XML or plain text */ }
+      const { payloadString, isJson } = coerceJsonPayload(rawPayload);
 
       const onKeyExpression = parseOnKeyExpression(expectedText);
       if (onKeyExpression) {
         const { key, typedValue, rawValue } = onKeyExpression;
         if (isJson) {
-          let parsed;
-          try { parsed = JSON.parse(rawPayload); } catch { parsed = null; }
+          const parsed = tryParseCapturedJson(rawPayload);
           const actual = parsed !== null ? getByPath(parsed, key) : undefined;
           if (actual !== undefined && onKeyValuesMatch(actual, typedValue)) {
             throw new Error(`JSON key "${key}" unexpectedly matched ${JSON.stringify(typedValue)} in captured ${source} payload for request type "${requestType}"`);
@@ -1217,11 +1292,9 @@ const PayloadValidation = {
       const blockExpression = parseBlockExpression(expectedText);
       if (blockExpression) {
         if (isJson) {
-          const extracted = extractJsonBlockByKey(rawPayload, blockExpression.blockTag);
-          const extractedParsed = JSON.parse(extracted);
+          const candidates = extractJsonBlocksByKey(rawPayload, blockExpression.blockTag);
           const normalizedLookup = normalizeForContains(blockExpression.text);
-          const blockString = JSON.stringify(extractedParsed);
-          if (normalizeForContains(blockString).includes(normalizedLookup)) {
+          if (candidates.some((candidate) => normalizeForContains(JSON.stringify(candidate)).includes(normalizedLookup))) {
             throw new Error(`Unexpected block match for "${blockExpression.text}" found in extracted JSON key "${blockExpression.blockTag}" for request type "${requestType}"`);
           }
 
@@ -1421,6 +1494,41 @@ const PayloadValidation = {
         `Path "${path}" not found in captured ${source} payload for request type "${requestType}"`
       );
     }
+  },
+
+  // Carries a value from one payload to an assertion on another. The identifiers a supplier hands
+  // back in a search response are the only proof that a later request re-sent the SAME offer
+  // rather than a re-searched substitute, and their values are unknowable before the run. Stored
+  // on the World so any later assertion can reference it as {name} via resolveWorldPlaceholders().
+  async storeCapturedPayloadPathValue(page, world, source, requestType, path, variableName) {
+    if (!page) {
+      throw new Error("page is required");
+    }
+
+    if (!variableName || typeof variableName !== "string") {
+      throw new Error("variableName must be a non-empty string");
+    }
+
+    const payloadRecord = this.getCapturedPayload(world, source, requestType);
+    const json = parseJsonPayload(payloadRecord.payload, source, requestType);
+    const value = getByPath(json, path);
+
+    if (value === undefined || value === null) {
+      throw new Error(
+        `Path "${path}" not found in captured ${source} payload for request type "${requestType}"`
+      );
+    }
+
+    // Only a primitive can be substituted into an expected string; an object would silently
+    // resolve to "[object Object]" and make the later assertion pass or fail for the wrong reason.
+    if (typeof value === "object") {
+      throw new Error(
+        `Path "${path}" in captured ${source} payload for request type "${requestType}" resolved to ${Array.isArray(value) ? "an array" : "an object"}, not a single value. Point the path at a leaf.`
+      );
+    }
+
+    world[variableName] = String(value);
+    return world[variableName];
   },
 
   async expectCapturedPayloadPath(page, world, source, requestType, path, operator, expectedValue) {
@@ -1663,9 +1771,8 @@ const PayloadValidation = {
       );
     }
 
-    try {
-      actualJson = JSON.parse(payload);
-    } catch {
+    actualJson = tryParseCapturedJson(payload);
+    if (actualJson === null) {
       throw new Error(
         `Captured ${source} payload for request type "${requestType}" is not valid JSON for JSON block validation`
       );
@@ -1811,9 +1918,8 @@ const PayloadValidation = {
       );
     }
 
-    try {
-      actualJson = JSON.parse(payload);
-    } catch {
+    actualJson = tryParseCapturedJson(payload);
+    if (actualJson === null) {
       throw new Error(
         `Captured ${source} payload for request type "${requestType}" is not valid JSON for JSON block validation`
       );
