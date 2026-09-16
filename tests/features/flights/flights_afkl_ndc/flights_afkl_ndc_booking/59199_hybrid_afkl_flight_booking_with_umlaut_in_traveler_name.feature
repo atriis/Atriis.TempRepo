@@ -13,9 +13,9 @@ Feature: 59199 HYBRID AFKL NDC - Flight booking with umlaut in traveler name and
     Given I am logged in as "ndc@testim.com" booking a new trip
     And I have added traveler by name "Sönja Götz"
     And I have added a random guest traveler with middle name "Jonas"
-    When I search for a round trip flight from "DUS" to "CDG"
+    When I search for a round trip flight from "AMS" to "CDG"
     And flight results should be available
-    And I filter results by carrier "AF"
+    And I filter airline results by "Air France" checkbox
     And I add the first flight to cart
     Then the booking status should be "Pending booking"
     When I proceed to checkout
