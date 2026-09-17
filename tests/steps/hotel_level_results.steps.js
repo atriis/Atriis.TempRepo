@@ -232,6 +232,16 @@ Then("the {string} filter tag should be visible in hotel results", async functio
   await HotelLevelResults.verifyHotelFilterTag(this.page, tagText);
 });
 
+Then("the TMC agreement filter is checked in hotel results", async function () {
+  logger.info("Verifying the TMC agreement filter is checked in hotel level results");
+  await HotelLevelResults.verifyTmcAgreementFilterChecked(this.page);
+});
+
+Then("the corporate agreement filter is checked in hotel results", async function () {
+  logger.info("Verifying the corporate agreement filter is checked in hotel level results");
+  await HotelLevelResults.verifyCorporateAgreementFilterChecked(this.page);
+});
+
 Then("all hotels have a corporate agreement tag", async function () {
   logger.info("Verifying all hotels have a corporate agreement tag");
   await HotelLevelResults.verifyCorporateAgreementTagOnAllHotels(this.page);

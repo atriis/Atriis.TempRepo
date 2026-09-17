@@ -691,6 +691,32 @@ const HotelLevelResults = {
   },
 
   /**
+   * Verifies the TMC option of the "Agreement" filter is checked in hotel level results.
+   * Both labels are fixed in the UI, so neither is exposed as a step parameter.
+   * @param {import('playwright').Page} page
+   * @throws {Error} If the TMC agreement option is not checked
+   */
+  async verifyTmcAgreementFilterChecked(page) {
+    if (!page) throw new Error('page is required');
+    const hotelLevelResultsPage = getPageObject(page, HotelLevelResultsPage);
+    const isChecked = await hotelLevelResultsPage.isFilterOptionChecked('Agreement', 'TMC');
+    if (!isChecked) throw new Error('The "TMC" option of the "Agreement" hotel filter is not checked');
+  },
+
+  /**
+   * Verifies the "My corporate" option of the "Agreement" filter is checked in hotel level results.
+   * Both labels are fixed in the UI, so neither is exposed as a step parameter.
+   * @param {import('playwright').Page} page
+   * @throws {Error} If the corporate agreement option is not checked
+   */
+  async verifyCorporateAgreementFilterChecked(page) {
+    if (!page) throw new Error('page is required');
+    const hotelLevelResultsPage = getPageObject(page, HotelLevelResultsPage);
+    const isChecked = await hotelLevelResultsPage.isFilterOptionChecked('Agreement', 'My corporate');
+    if (!isChecked) throw new Error('The "My corporate" option of the "Agreement" hotel filter is not checked');
+  },
+
+  /**
    * Verifies that every visible hotel card in the results carries a corporate agreement label.
    * The card wording varies by agreement type ("Corporate & Agency Rates", "My corporate"), so the
    * shared "corporate" substring is matched instead of one exact label.

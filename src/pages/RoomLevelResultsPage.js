@@ -1153,6 +1153,26 @@ class RoomLevelResultsPage {
   }
 
   /**
+   * Checks whether an option inside a named room-level filter section is checked.
+   * The Element Plus input is visually hidden, so the option label is awaited in the DOM and the
+   * checked state is read off the input it wraps. A disabled option reports its checked state the
+   * same as an enabled one. REFUNDABLE_CHECKBOX_INPUT is the generic el-checkbox input shared by
+   * every checkbox on the page, not just the Refundable one.
+   * @param {string} filterName - Filter section title (e.g. "Agreement")
+   * @param {string} optionText - Option label text (e.g. "TMC")
+   * @param {object} [options]
+   * @param {number} [options.timeout=10000]
+   * @returns {Promise<boolean>}
+   */
+  async isFilterOptionChecked(filterName, optionText, { timeout = 10000 } = {}) {
+    if (!filterName || typeof filterName !== 'string') throw new Error('filterName must be a non-empty string');
+    if (!optionText || typeof optionText !== 'string') throw new Error('optionText must be a non-empty string');
+    const label = this.page.locator(SELECTORS.ROOM_FILTER_CHECKBOX(filterName, optionText)).first();
+    await label.waitFor({ state: 'attached', timeout });
+    return label.locator(SELECTORS.REFUNDABLE_CHECKBOX_INPUT).isChecked();
+  }
+
+  /**
    * Extracts the first non-empty night price from the price breakdown table.
    * Scans all <td> cells in the breakdown table and returns the first numeric value.
    * @returns {Promise<number>} The night price as a number

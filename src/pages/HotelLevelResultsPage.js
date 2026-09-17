@@ -58,6 +58,8 @@ const SELECTORS = {
     `.hotel-filter .filter-container:has(h4:has-text("${filterName}")) label.el-checkbox:has-text("${optionText}")`,
   // Active filter badge tag in the hotel-filter summary bar
   HOTEL_FILTER_SUMMARY_TAG: (text) => `.hotel-filter-summary .el-tag:has-text("${text}")`,
+  // Underlying input of an Element Plus checkbox, used to read its checked state
+  FILTER_CHECKBOX_INPUT: 'input.el-checkbox__original',
   // Agreement label badge in hotel card (e.g. "Corporate rate", "Agency rate")
   AGREEMENT_LABEL: (text) => `.hotel-preview .ticket-agreement:has-text("${text}")`,
   // Agreement label span (exact text match) for El-Plus tooltip triggering via mouse.move
@@ -793,6 +795,25 @@ class HotelLevelResultsPage {
     } catch {
       return false;
     }
+  }
+
+  /**
+   * Checks whether an option inside a named hotel-level filter section is checked.
+   * The Element Plus input is visually hidden, so the option label is awaited in the DOM and the
+   * checked state is read off the input it wraps. A disabled option reports its checked state the
+   * same as an enabled one.
+   * @param {string} filterName - Filter section title (e.g. "Agreement")
+   * @param {string} optionText - Option label text (e.g. "TMC")
+   * @param {object} [options]
+   * @param {number} [options.timeout=10000]
+   * @returns {Promise<boolean>}
+   */
+  async isFilterOptionChecked(filterName, optionText, { timeout = 10000 } = {}) {
+    if (!filterName || typeof filterName !== 'string') throw new Error('filterName must be a non-empty string');
+    if (!optionText || typeof optionText !== 'string') throw new Error('optionText must be a non-empty string');
+    const label = this.page.locator(SELECTORS.HOTEL_FILTER_CHECKBOX(filterName, optionText)).first();
+    await label.waitFor({ state: 'attached', timeout });
+    return label.locator(SELECTORS.FILTER_CHECKBOX_INPUT).isChecked();
   }
 
   /**

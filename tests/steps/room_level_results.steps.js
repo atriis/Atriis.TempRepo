@@ -378,6 +378,16 @@ Then("the {string} filter tag should be visible in room level results", async fu
   await RoomLevelResults.verifyRoomFilterTag(this.page, tagText);
 });
 
+Then("the TMC agreement filter is checked in room level results", async function () {
+  logger.info("Verifying the TMC agreement filter is checked in room level results");
+  await RoomLevelResults.verifyTmcAgreementFilterChecked(this.page);
+});
+
+Then("the corporate agreement filter is checked in room level results", async function () {
+  logger.info("Verifying the corporate agreement filter is checked in room level results");
+  await RoomLevelResults.verifyCorporateAgreementFilterChecked(this.page);
+});
+
 Then("the room level page should be displayed at the top", async function () {
   logger.info("Verifying room level page is displayed at the top");
   await RoomLevelResults.verifyRoomLevelPageAtTop(this.page, {

@@ -909,6 +909,32 @@ const RoomLevelResults = {
   },
 
   /**
+   * Verifies the TMC option of the "Agreement" filter is checked in room level results.
+   * Both labels are fixed in the UI, so neither is exposed as a step parameter.
+   * @param {import('playwright').Page} page
+   * @throws {Error} If the TMC agreement option is not checked
+   */
+  async verifyTmcAgreementFilterChecked(page) {
+    if (!page) throw new Error('page is required');
+    const p = getPageObject(page, RoomLevelResultsPage);
+    const isChecked = await p.isFilterOptionChecked('Agreement', 'TMC');
+    if (!isChecked) throw new Error('The "TMC" option of the "Agreement" room filter is not checked');
+  },
+
+  /**
+   * Verifies the "My corporate" option of the "Agreement" filter is checked in room level results.
+   * Both labels are fixed in the UI, so neither is exposed as a step parameter.
+   * @param {import('playwright').Page} page
+   * @throws {Error} If the corporate agreement option is not checked
+   */
+  async verifyCorporateAgreementFilterChecked(page) {
+    if (!page) throw new Error('page is required');
+    const p = getPageObject(page, RoomLevelResultsPage);
+    const isChecked = await p.isFilterOptionChecked('Agreement', 'My corporate');
+    if (!isChecked) throw new Error('The "My corporate" option of the "Agreement" room filter is not checked');
+  },
+
+  /**
    * Adds a room marked as "Check cancellation policy" to the cart.
    * Handles the optional cancellation terms dialog and conflict quote modal.
    * @param {import('playwright').Page} page

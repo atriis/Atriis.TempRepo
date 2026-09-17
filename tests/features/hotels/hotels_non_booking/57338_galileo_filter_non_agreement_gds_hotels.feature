@@ -19,7 +19,9 @@ Feature: 57338 Galileo Filter non agreement GDS hotels
     And I wait to see view rates text in results page
     Then agreement badge should be visible on all hotels in hotel level results
     Then the "TMC" filter tag should be visible in hotel results
+    And the TMC agreement filter is checked in hotel results
     And I select the first hotel result
     When I wait for the first add to trip button to be visible in room level results
     Then agreement badge should be visible on all rooms in room level results
     Then the "TMC" filter tag should be visible in room level results
+    And the TMC agreement filter is checked in room level results
