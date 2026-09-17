@@ -7,16 +7,15 @@
 # Updated: 2025-10-28T05:30:13Z
 
 @regression @provider:amadeus
-Feature: 66386 Hotels - Amadeus - Agreement results are visible in hotel level
-  As a corporate traveler with a PwC account
-  I want to filter by agreement hotels
-  So that only PwC-negotiated hotels are shown in results
+Feature: 66386 Hotels - Amadeus - agreement that is Separate from other agreement appears in results
+  As a corporate traveler that has agreement defined in the corporate administration as "Separate from other agreement"
+  I want to see this agreement in the hotel level
 
   @priority:high
-  Scenario: Agreement results are visible in hotel level
+  Scenario: Agreement defined as Separate from other agreement appears in hotel level results
     Given I am logged in as "pwc@pec.com" booking a new trip
     And I have added myself as the traveler
-    When I search for a hotel in "Cardiff Lane, Grand Canal Dock, Dub" for 1 night
+    When I search for a hotel in "dublin" for 1 night
     And I wait to see view rates text in results page
     Then the first hotel result should display the "Corporate & Agency Rates" agreement
     Then hovering over the "Corporate & Agency Rates" agreement should show "pcw" in the tooltip
