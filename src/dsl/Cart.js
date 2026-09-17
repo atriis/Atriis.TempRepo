@@ -984,7 +984,7 @@ const Cart = {
       // over the bare supplier token (extracted with an asterisk-bounded regex
       // that isn't reliably present) - logged whether or not the error is known.
       const errorLogValue = supplierMessage || bookingErrorText || supplier || 'UNKNOWN';
-      BookingErrorHandler.handleBookingError(bookingContext.product, errorLogValue, bookingContext.subProduct);
+      BookingErrorHandler.handleBookingError(bookingContext.product, errorLogValue, bookingContext.subProduct, { known: isKnownError });
 
       return {
         bookingErrorDetected: true,
@@ -3242,6 +3242,7 @@ const Cart = {
         bookingContext.product,
         holdErrorLogValue,
         bookingContext.subProduct,
+        { known: knownBookingError },
       );
 
       return {
@@ -3379,6 +3380,7 @@ const Cart = {
         bookingContext.product,
         supplierMessage || bookingErrorText || supplier || 'UNKNOWN',
         bookingContext.subProduct,
+        { known: knownBookingError },
       );
 
       return {

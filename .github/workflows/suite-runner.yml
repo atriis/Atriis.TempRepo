@@ -322,6 +322,28 @@ jobs:
               }
               return [...ids].join(', ');
             };
+            // A scenario abandoned by a known supplier booking error returns
+            // 'pending', and a pending step carries no error_message — so the
+            // table could only ever say "pending step: And I hold the trip".
+            // The step attaches the supplier's own words as a 'BOOKING_ERROR:'
+            // text embedding (BookingErrorHandler.describeSkippedBooking); read it
+            // back the same way as TRIP_IDS so the real reason reaches the table.
+            const extractBookingError = (el) => {
+              for (const step of (el.steps || [])) {
+                for (const emb of (step.embeddings || [])) {
+                  if (!emb || !emb.data) continue;
+                  const mt = emb.mime_type || emb.media_type || '';
+                  if (mt && mt.indexOf('text') === -1 && mt.indexOf('json') === -1) continue;
+                  let text = String(emb.data);
+                  if (text.indexOf('BOOKING_ERROR:') === -1) {
+                    try { text = Buffer.from(emb.data, 'base64').toString('utf8'); } catch (e) { /* not base64 */ }
+                  }
+                  const m = text.match(/BOOKING_ERROR:([\s\S]+)/);
+                  if (m) return m[1].split('\n')[0].trim();
+                }
+              }
+              return '';
+            };
             for (const feature of merged) {
               const name = feature.name || 'Unknown';
               let fp = 0, ff = 0, fsk = 0;
@@ -334,13 +356,14 @@ jobs:
                 if (failStep) {
                   failed++; ff++;
                   const rawErr = ((failStep.result && failStep.result.error_message) || '').split('\n')[0];
+                  const bookingErr = extractBookingError(el);
                   failedScenarios.push({
                     suite: feature.suiteId || '',
                     feature: name,
                     scenario: el.name || '',
                     location: (feature.uri || '') + ':' + (el.line || ''),
                     tripNumbers: extractTripIds(el),
-                    error: (rawErr || (failStep.result.status + ' step: ' + ((failStep.keyword || '') + (failStep.name || '')).trim())).slice(0, 300)
+                    error: (rawErr || bookingErr || (failStep.result.status + ' step: ' + ((failStep.keyword || '') + (failStep.name || '')).trim())).slice(0, 300)
                   });
                 }
                 else if (allSkip) { skipped++; fsk++; }

@@ -68,20 +68,28 @@ class BookingErrorHandler {
 
   /**
    * Logs a booking error and returns whether the test should be skipped.
-   * 
+   *
+   * Callers that matched the error against more than one value (the supplier
+   * line AND the full dialog text) pass their own verdict in `options.known`,
+   * or the log would re-derive it from the single value logged here and could
+   * print "FAIL TEST" for an error the caller is about to skip.
+   *
    * @param {string} product - Product type
    * @param {string} supplierName - Supplier name
    * @param {string} subProduct - Sub-product type (optional, for transportation)
+   * @param {{known?: boolean}} [options] - the caller's own known-error verdict
    * @returns {boolean} True if test should be skipped, false if it should fail
    */
-  static handleBookingError(product, supplierName, subProduct) {
-    const isKnown = this.isKnownBookingError(product, subProduct, supplierName);
+  static handleBookingError(product, supplierName, subProduct, options = {}) {
+    const isKnown = options.known === undefined
+      ? this.isKnownBookingError(product, subProduct, supplierName)
+      : Boolean(options.known);
     const knownErrorSource = knownErrors.getKnownErrorSource?.(
       product,
       subProduct,
       supplierName
     );
-    
+
     if (isKnown) {
       logger.warn("Known Booking Error", { 
         product, 
@@ -100,6 +108,47 @@ class BookingErrorHandler {
       action: "FAIL TEST - Unexpected supplier issue"
     });
     return false; // Don't skip - fail the test
+  }
+
+  /**
+   * Builds the one-line supplier detail used in booking failure messages.
+   *
+   * Prefers the dialog's "supplier:" line - the only part that names the actual
+   * failure - and falls back to the full dialog text when that line could not be
+   * read. Whitespace is collapsed so the message stays on one line in the CI
+   * summary table and in the JUnit XML.
+   *
+   * @param {{supplier?: string|null, bookingErrorText?: string|null}} result - a
+   *   booking result returned by the Cart/Checkout DSL
+   * @returns {string} The supplier's own words, or an explicit "could not read" note
+   */
+  static describeSupplierResponse(result) {
+    const detail = String(result?.supplier || result?.bookingErrorText || "")
+      .replace(/\s+/g, " ")
+      .trim();
+
+    return detail || "no message could be read from the dialog";
+  }
+
+  /**
+   * Builds the message a step attaches to the report when a known booking error
+   * skips the scenario.
+   *
+   * A pending step carries no error_message, so without this the CI summary can
+   * only print "pending step: <step text>" and never says why the booking
+   * stopped. The wording deliberately matches the thrown booking failures, so a
+   * skipped booking and a failed one read the same way.
+   *
+   * @param {string} source - the DSL call that hit the error, e.g. "Cart.holdTrip"
+   * @param {string} consequence - what the error prevented, e.g. "the trip was never put on hold"
+   * @param {{supplier?: string|null, bookingErrorText?: string|null}} result - the booking result
+   * @returns {string} A single-line reason, ready to attach or log
+   */
+  static describeSkippedBooking(source, consequence, result) {
+    return (
+      `[${source}] A known booking error modal blocked the booking, so ${consequence} ` +
+      `and the scenario was skipped. Supplier response: ${this.describeSupplierResponse(result)}`
+    );
   }
 
   /**

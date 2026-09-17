@@ -4,6 +4,7 @@ const { When, Then, setDefaultTimeout } = require("@cucumber/cucumber");
 const { Checkout } = require("@dsl");
 const { DynamicAndReferenceFields } = require("../../src/dsl");
 const logger = require("@utils/logger").child("Checkout");
+const BookingErrorHandler = require("@utils/bookingErrorHandler");
 
 setDefaultTimeout(120000);
 
@@ -39,16 +40,18 @@ When("I complete the booking", { timeout: CHECKOUT_STEP_TIMEOUT_MS }, async func
   this.bookingOutcome = result;
 
   if (result?.knownBookingError && result.shouldSkip) {
+    this.attach('BOOKING_ERROR:' + BookingErrorHandler.describeSkippedBooking('Checkout.bookAndFinalize', 'the booking was never confirmed', result), 'text/plain');
     await Checkout.verifyBookingErrorMessage(this.page, result.bookingErrorText || result.supplier || null);
     await Checkout.clickBackToTripButton(this.page);
     return 'pending';
   }
 
   if (result?.bookingError && !result.knownBookingError) {
-    const errorSummary = result.supplier
-      ? `supplier: ${result.supplier}`
-      : `message: ${result.bookingErrorText || 'unknown booking error'}`;
-    throw new Error(`Unexpected booking error detected during booking finalization (${errorSummary})`);
+    throw new Error(
+      `[Checkout.bookAndFinalize] A booking error modal was shown after Book & Finalize, ` +
+      `so the booking was never confirmed. ` +
+      `Supplier response: ${BookingErrorHandler.describeSupplierResponse(result)}`,
+    );
   }
 });
 

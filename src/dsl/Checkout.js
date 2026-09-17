@@ -109,6 +109,7 @@ const Checkout = {
         bookingContext.product,
         errorLogValue,
         bookingContext.subProduct,
+        { known: knownBookingError },
       );
 
       return {

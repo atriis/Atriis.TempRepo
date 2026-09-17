@@ -18,6 +18,7 @@ const {
 } = require("../../src/assertions/numberAssertions");
 const { extractPriceFromLocation } = require("@utils/priceExtraction");
 const { escapeRegex } = require("@utils/text");
+const BookingErrorHandler = require("@utils/bookingErrorHandler");
 
 setDefaultTimeout(120000);
 
@@ -169,16 +170,17 @@ async function holdTripFromCart(world, { expectMergedQuote = false } = {}) {
   world.bookingOutcome = result;
 
   if (result?.knownBookingError && result.shouldSkip) {
+    world.attach('BOOKING_ERROR:' + BookingErrorHandler.describeSkippedBooking('Cart.holdTrip', 'the trip was never put on hold', result), 'text/plain');
     await Checkout.verifyBookingErrorMessage(world.page, result.bookingErrorText || result.supplier || null);
     await Checkout.clickBackToTripButton(world.page);
     return 'pending';
   }
 
   if (result?.bookingError && !(result.knownBookingError && result.shouldSkip)) {
-    const errorSummary = result.supplier
-      ? `supplier: ${result.supplier}`
-      : `message: ${result.bookingErrorText || 'unknown booking error'}`;
-    throw new Error(`Unexpected booking error detected during booking finalization (${errorSummary})`);
+    throw new Error(
+      `[Cart.holdTrip] A booking error modal blocked the hold, so the trip was never put on hold. ` +
+      `Supplier response: ${BookingErrorHandler.describeSupplierResponse(result)}`,
+    );
   }
 
   if (!result?.status) {
@@ -228,16 +230,18 @@ When("I hold quote {int}", { timeout: CHECKOUT_STEP_TIMEOUT_MS }, async function
   this.bookingOutcome = result;
 
   if (result?.knownBookingError && result.shouldSkip) {
+    this.attach('BOOKING_ERROR:' + BookingErrorHandler.describeSkippedBooking('Cart.holdQuoteByPosition', `quote ${position} was never put on hold`, result), 'text/plain');
     await Checkout.verifyBookingErrorMessage(this.page, result.bookingErrorText || result.supplier || null);
     await Checkout.clickBackToTripButton(this.page);
     return 'pending';
   }
 
   if (result?.bookingError && !(result.knownBookingError && result.shouldSkip)) {
-    const errorSummary = result.supplier
-      ? `supplier: ${result.supplier}`
-      : `message: ${result.bookingErrorText || 'unknown booking error'}`;
-    throw new Error(`Unexpected booking error detected while holding quote ${position} (${errorSummary})`);
+    throw new Error(
+      `[Cart.holdQuoteByPosition] A booking error modal blocked the hold of quote ${position}, ` +
+      `so that quote was never put on hold. ` +
+      `Supplier response: ${BookingErrorHandler.describeSupplierResponse(result)}`,
+    );
   }
 
   if (!result?.status) {
@@ -1294,6 +1298,7 @@ async function verifyBookingStatus(status) {
   });
 
   if (result?.knownBookingError && result.shouldSkip) {
+    this.attach('BOOKING_ERROR:' + BookingErrorHandler.describeSkippedBooking('Cart.expectBookingStatusToBe', `the booking never reached the "${status}" status`, result), 'text/plain');
     await Checkout.verifyBookingErrorMessage(this.page, result.bookingErrorText || result.supplier || null);
 
     const checkoutPage = getPageObject(this.page, CheckoutPage);
@@ -1302,10 +1307,11 @@ async function verifyBookingStatus(status) {
   }
 
   if (result?.bookingErrorDetected && !result.knownBookingError) {
-    const errorSummary = result.supplier
-      ? `supplier: ${result.supplier}`
-      : `message: ${result.bookingErrorText || 'unknown booking error'}`;
-    throw new Error(`Unexpected booking error detected (${errorSummary})`);
+    throw new Error(
+      `[Cart.expectBookingStatusToBe] A booking error modal was shown instead of the "${status}" status, ` +
+      `so the booking never reached that state. ` +
+      `Supplier response: ${BookingErrorHandler.describeSupplierResponse(result)}`,
+    );
   }
 }
 
