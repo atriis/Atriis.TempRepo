@@ -25,12 +25,13 @@ Feature: 23072 - Request Assistance hotel params populated by search with commen
     When I click the send request button
     Then the travel request review should display the field label "Type of traveller"
     And the travel request review should display the field label "Location travel policy"
+    And the travel request review should display the field label "Location"
     And the travel request review should display the field label "Personnel number"
     And the travel request review should display the traveler name "Ofira Refer"
     And the travel request review should display the field label "Payment Group"
     And the travel request review should display the field label "Bank account"
     And the financial reference field should not be displayed in the travel request popup
-    And the number of reference and dynamic fields in the travel request popup should be 5
+    And the number of reference and dynamic fields in the travel request popup should be 6
     When I save the reference field popup if displayed
     Then the "Sent to agent" confirmation should be displayed
     And I click go to trip button
