@@ -324,7 +324,7 @@ jobs:
             };
             // A scenario abandoned by a known supplier booking error returns
             // 'pending', and a pending step carries no error_message — so the
-            // table could only ever say "pending step: And I hold the trip".
+            // table could only ever say 'pending step: And I hold the trip'.
             // The step attaches the supplier's own words as a 'BOOKING_ERROR:'
             // text embedding (BookingErrorHandler.describeSkippedBooking); read it
             // back the same way as TRIP_IDS so the real reason reaches the table.
