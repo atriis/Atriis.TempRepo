@@ -10,9 +10,19 @@ const escapeRegExp = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 const exactText = (value) => new RegExp(`^\\s*${escapeRegExp(value)}\\s*$`);
 
 const SELECTORS = {
-  // "Trip Status" title in the filter panel
-  TRIP_STATUS_FILTER_ICON:
-    "h4.filter-title.is-size-6:has-text(\"Trip Status\")",
+  // Head of the "Trip Status" group in the filter rail (trip-monitor-filter.vue ->
+  // section.filter-group > button.filter-group__head). AB#82671 replaced the old
+  // h4.filter-title with this collapsible section head.
+  //
+  // Reached through the group's own body rather than by text or testid — the rail
+  // renders several identical .filter-group__head buttons and neither way of
+  // telling them apart survives: the title is translated per locale, and
+  // vite.config.ts strips every data-testid from non-dev builds (ADR-002), so the
+  // head's data-testid="trip.monitor-filter.group-status" does not exist on
+  // stg/prod. .status-options belongs to this group alone, and :has() still
+  // matches while the group is collapsed (v-show only hides the body).
+  TRIP_STATUS_FILTER_HEAD:
+    '.trip-monitor-filter .filter-group:has(.status-options) .filter-group__head',
 
   // In-travel trips tab button (el-tab-pane name="intravel-trips")
   IN_TRAVEL_TAB:
@@ -147,26 +157,34 @@ const SELECTORS = {
   SEARCH_NO_RESULTS:
     '.trip-list-container .app-no-results h3',
 
-  // Clear-all control of the status (Trip Status) checkbox group in the filter
-  // panel (app-checkbox-group.vue → .clear-all-btn). Scoped to .filter-options so
-  // it never matches the Clear/Search buttons in the travel-dates section, which
-  // reuse the same .clear-all-btn class.
-  STATUS_FILTER_CLEAR_ALL:
-    '.trip-monitor-filter .filter-options .clear-all-btn',
+  // The Trip Status group has NO "Clear all" control, and never had one under the
+  // rebuild: trip-monitor-filter.vue renders the statuses as a plain el-checkbox
+  // list (.status-options), not through app-checkbox-group.vue, and the SCSS says
+  // so outright — "No select-all/clear-all pair - Reset Filters in the footer
+  // already returns the whole rail to its defaults". Resetting is not what a
+  // scenario clearing the statuses wants, though: the defaults are every status
+  // except Cancelled, so Reset Filters shows trips rather than none. Unticking
+  // each status one at a time is the only way to empty the selection, which is
+  // what uncheckAllStatusFilterOptions does.
 
-  // A single status checkbox in the Trip Status filter group. :visible avoids a
-  // hidden mobile-drawer duplicate; the caller filters it by the status label.
+  // A single status checkbox in the Trip Status filter group. Scoped to
+  // .status-options — .filter-options is a different container and matched no
+  // status checkbox at all. :visible avoids a hidden mobile-drawer duplicate; the
+  // caller filters it by the status label.
   STATUS_FILTER_CHECKBOX:
-    '.trip-monitor-filter .filter-options .el-checkbox:visible',
+    '.trip-monitor-filter .status-options .el-checkbox:visible',
 
   // The ticked variant of STATUS_FILTER_CHECKBOX (Element Plus adds "is-checked");
   // .is-checked is placed before :visible so the CSS parses correctly.
   STATUS_FILTER_CHECKBOX_CHECKED:
-    '.trip-monitor-filter .filter-options .el-checkbox.is-checked:visible',
+    '.trip-monitor-filter .status-options .el-checkbox.is-checked:visible',
 
-  // The status name inside a Trip Status checkbox (app-checkbox-group.vue label).
+  // The status name inside a Trip Status checkbox. The rebuilt list passes the
+  // status through el-checkbox's own `label` prop, so the text renders in Element
+  // Plus' .el-checkbox__label — not the p.filter-title that app-checkbox-group.vue
+  // used to wrap it in.
   STATUS_FILTER_CHECKBOX_LABEL:
-    'p.filter-title',
+    '.el-checkbox__label',
 
   // Element Plus' visual checkbox box — clicking it reliably toggles the control,
   // unlike the nested content <label> which swallows text clicks.
@@ -592,38 +610,64 @@ class TripsPage {
   }
 
   /**
-   * Clicks the "Clear all" control of the Trip Status filter group, unticking
-   * every status checkbox.
+   * Empties the Trip Status selection by unticking every ticked status.
+   *
+   * There is no "Clear all" for this group (see the SELECTORS note above), so the
+   * statuses come off one at a time. Every click re-runs the filter and re-renders
+   * the list, so the ticked set is re-read each pass rather than held across a
+   * render — and each pass waits for its click to register, since a count read
+   * before it lands would count the same status as gone twice and leave another
+   * one ticked.
    */
-  async clickStatusFilterClearAll() {
-    const clearAll = this.page.locator(SELECTORS.STATUS_FILTER_CLEAR_ALL).first();
+  async uncheckAllStatusFilterOptions() {
+    const checked = this.page.locator(SELECTORS.STATUS_FILTER_CHECKBOX_CHECKED);
     try {
-      await clearAll.waitFor({ state: 'visible', timeout: 15000 });
-      await clearAll.click({ timeout: 10000 });
+      // The rail offers a fixed, short status list; the cap is a runaway guard,
+      // not a real bound.
+      for (let pass = 0; pass < 20; pass++) {
+        const remaining = await checked.count();
+        if (remaining === 0) return;
+        await checked.first().locator(SELECTORS.STATUS_FILTER_CHECKBOX_BOX).first().click({ timeout: 10000 });
+        // One fewer status is ticked once the click registers, so the last index of
+        // the ticked set stops matching. Waiting for it to go is what makes the next
+        // pass read a settled count instead of the stale one it just acted on.
+        await checked.nth(remaining - 1).waitFor({ state: 'detached', timeout: 10000 });
+      }
+      throw new Error(`${await checked.count()} status checkbox(es) were still ticked after 20 passes`);
     } catch (err) {
       throw new Error(
-        `[TripsPage.clickStatusFilterClearAll] Could not click the status filter "Clear all" control (${SELECTORS.STATUS_FILTER_CLEAR_ALL}). Original: ${err.message}`
+        `[TripsPage.uncheckAllStatusFilterOptions] Could not untick every Trip Status checkbox (${SELECTORS.STATUS_FILTER_CHECKBOX_CHECKED}). Original: ${err.message}`
       );
     }
   }
 
   /**
-   * Scrolls the Trip Status filter title into view and returns it once visible.
-   * On desktop every status option is always rendered, so "opening" the filter is
-   * simply ensuring its section is in view before ticking an option.
+   * Brings the Trip Status filter into view and open, returning its section head.
+   *
+   * The group is a collapsible section since AB#82671 and starts open, so this is
+   * usually just a scroll — but it expands the group when it is closed rather than
+   * assuming the default, since a collapsed body is display:none and every status
+   * checkbox in it unclickable.
    *
    * @param {object} options
    * @param {number} options.timeout - Maximum time to wait (default: 15000ms)
    */
   async revealStatusFilter({ timeout = 15000 } = {}) {
-    const title = this.page.locator(SELECTORS.TRIP_STATUS_FILTER_ICON).first();
+    const head = this.page.locator(SELECTORS.TRIP_STATUS_FILTER_HEAD).first();
     try {
-      await title.waitFor({ state: 'visible', timeout });
-      await title.scrollIntoViewIfNeeded({ timeout: 10000 });
-      return title;
+      await head.waitFor({ state: 'visible', timeout });
+      await head.scrollIntoViewIfNeeded({ timeout: 10000 });
+      if ((await head.getAttribute('aria-expanded')) === 'false') {
+        await head.click({ timeout: 10000 });
+        await this.page
+          .locator(SELECTORS.STATUS_FILTER_CHECKBOX)
+          .first()
+          .waitFor({ state: 'visible', timeout: 10000 });
+      }
+      return head;
     } catch (err) {
       throw new Error(
-        `[TripsPage.revealStatusFilter] The Trip Status filter title (${SELECTORS.TRIP_STATUS_FILTER_ICON}) was not visible within ${timeout}ms. Original: ${err.message}`
+        `[TripsPage.revealStatusFilter] The Trip Status filter section (${SELECTORS.TRIP_STATUS_FILTER_HEAD}) was not visible within ${timeout}ms. Original: ${err.message}`
       );
     }
   }

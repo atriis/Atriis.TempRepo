@@ -580,7 +580,12 @@ const Trips = {
 
   /**
    * Clears all trip status filters (unticks every status checkbox), which leaves
-   * the search results with no matching status.
+   * the search results with no matching status — the list keeps only trips whose
+   * status is in the selection, so an empty selection keeps none (trip.service.ts
+   * -> selectedFilterStatus?.includes(trip.StateName)).
+   *
+   * Not the same as the rail's "Reset Filters": that restores the defaults, which
+   * are every status except Cancelled, and so shows trips rather than none.
    *
    * @param {import('@playwright/test').Page} page
    */
@@ -589,7 +594,7 @@ const Trips = {
     const tripsPage = getPageObject(page, TripsPage);
     try {
       logger.debug('Clearing all trips filters');
-      await tripsPage.clickStatusFilterClearAll();
+      await tripsPage.uncheckAllStatusFilterOptions();
     } catch (err) {
       throw new Error(
         `[Trips.clearAllTripsFilters] Failed to clear all trips filters. Original: ${err.message}`
