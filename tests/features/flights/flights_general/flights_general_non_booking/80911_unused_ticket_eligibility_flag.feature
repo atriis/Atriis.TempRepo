@@ -27,7 +27,10 @@ Feature: 80911 Unused ticket eligibility flag on matching flights
     When I close the unused tickets modal
     And I filter results by carrier "<carrier>"
     Then all flight results should show the unused tickets eligibility tag
-    When I add the first flight to cart
+    When I select the first flight result in new flight flow
+    And I select the outbound first option from pricing options page
+    And I select the inbound first option from pricing options page
+    And I add to cart from pricing options page
     Then the booking status should be "Pending booking"
 
     Examples:

@@ -8,6 +8,13 @@ const SELECTORS = {
 
   // Unused tickets modal/dialog
   UNUSED_TICKETS_DIALOG: '.app-dialog .app-unused-tickets',
+  // One row per offered ticket. unused-tickets.vue carries a data-testid on this row in source, but
+  // it does not reach the deployed DOM, so the row is matched by class. Counting rows is what
+  // separates a modal that opened with a ticket list from one that opened on "currently
+  // unavailable", which renders no rows at all.
+  UNUSED_TICKETS_MODAL_ROW: '.unused-tickets-container .ticket-title-row',
+  // The traveler the listed tickets belong to — the modal names them once, above the table.
+  UNUSED_TICKETS_MODAL_TRAVELER_NAME: '.app-unused-tickets .traveler-name',
   // El-dialog root wrapping the unused-tickets body — scopes the header close button (a body sibling).
   UNUSED_TICKETS_DIALOG_ROOT: '.app-dialog:has(.app-unused-tickets)',
   UNUSED_TICKETS_CONTAINER: '.app-unused-tickets .unused-tickets-container',
@@ -21,6 +28,13 @@ const SELECTORS = {
 
   // Unused tickets results filter ("Unused Tickets Available" checkbox in the left filter panel)
   UNUSED_TICKETS_FILTER: '.el-checkbox:has-text("Unused Tickets Available")',
+  // The eligible-result tally app-checkbox-group.vue renders at the end of the filter row. Unlike the
+  // carriers group — where `.option-count` holds a price — this group is fed a results map, so here
+  // the value really is a count, and it is what the results list must shrink to once the filter is on.
+  UNUSED_TICKETS_FILTER_COUNT: '.el-checkbox:has-text("Unused Tickets Available") .option-count',
+  // Element Plus stamps `is-checked` on the <label class="el-checkbox"> once the box is ticked.
+  CHECKBOX_CHECKED_CLASS: 'is-checked',
+  CHECKBOX_VISIBLE_BOX: '.el-checkbox__inner',
 
   // Checkout: stable section wrapping the unused tickets checkbox + radio list
   UNUSED_TICKETS_CHECKOUT_SECTION: '.reference-form-contact-details:has(.unused-tickets-checkbox)',
@@ -85,6 +99,76 @@ class UnusedTicketsPage {
     } catch {
       return false;
     }
+  }
+
+  /**
+   * The airplane icon rendered next to a traveler's name on the search page, before any search runs.
+   * @returns {import('@playwright/test').Locator}
+   */
+  getSearchUnusedTicketsIcon() {
+    return this.page.locator(SELECTORS.UNUSED_TICKETS_BTN_SEARCH).first();
+  }
+
+  /**
+   * @returns {import('@playwright/test').Locator} The ticket rows inside the open unused tickets modal
+   */
+  getModalTicketRows() {
+    return this.page.locator(SELECTORS.UNUSED_TICKETS_MODAL_ROW);
+  }
+
+  /**
+   * Reads the traveler name the open unused tickets modal lists its tickets under.
+   * @param {object} [options]
+   * @param {number} [options.timeout=30000]
+   * @returns {Promise<string>}
+   */
+  async getModalTravelerName({ timeout = DEFAULT_TIMEOUT } = {}) {
+    const name = this.page.locator(SELECTORS.UNUSED_TICKETS_MODAL_TRAVELER_NAME).last();
+    await name.waitFor({ state: 'visible', timeout });
+    return (await name.innerText()).replace(/\s+/g, ' ').trim();
+  }
+
+  /**
+   * Reads the eligible-result count shown on the "Unused Tickets Available" filter row.
+   * @param {object} [options]
+   * @param {number} [options.timeout=30000]
+   * @returns {Promise<number>}
+   */
+  async getFilterResultsCount({ timeout = DEFAULT_TIMEOUT } = {}) {
+    const count = this.page.locator(SELECTORS.UNUSED_TICKETS_FILTER_COUNT).first();
+    await count.waitFor({ state: 'visible', timeout });
+    const text = (await count.innerText()).trim();
+    const parsed = Number(text.replace(/[^\d]/g, ''));
+    if (!Number.isInteger(parsed)) {
+      throw new Error(
+        `[UnusedTicketsPage.getFilterResultsCount] Expected a number on the "Unused Tickets Available" ` +
+        `filter row, got: "${text}".`
+      );
+    }
+    return parsed;
+  }
+
+  /**
+   * Ticks the "Unused Tickets Available" filter checkbox. Element Plus nests a <label> inside the
+   * checkbox that swallows a label click, so the visible box is clicked instead and the wait is
+   * anchored to the `is-checked` state rather than to a sleep.
+   *
+   * @param {object} [options]
+   * @param {number} [options.timeout=30000]
+   */
+  async applyUnusedTicketsFilter({ timeout = DEFAULT_TIMEOUT } = {}) {
+    const label = this.page.locator(SELECTORS.UNUSED_TICKETS_FILTER).first();
+    await label.waitFor({ state: 'visible', timeout });
+    await label.scrollIntoViewIfNeeded();
+
+    const alreadyChecked = ((await label.getAttribute('class')) || '').includes(SELECTORS.CHECKBOX_CHECKED_CLASS);
+    if (!alreadyChecked) {
+      await label.locator(SELECTORS.CHECKBOX_VISIBLE_BOX).first().click({ force: true });
+    }
+    await this.page
+      .locator(`${SELECTORS.UNUSED_TICKETS_FILTER}.${SELECTORS.CHECKBOX_CHECKED_CLASS}`)
+      .first()
+      .waitFor({ state: 'attached', timeout });
   }
 
   async waitForUnusedTicketsModal({ timeout = DEFAULT_TIMEOUT } = {}) {

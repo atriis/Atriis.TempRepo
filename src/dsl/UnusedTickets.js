@@ -1,5 +1,6 @@
 const { getPageObject } = require('@utils/pageObjectCache');
 const { UnusedTicketsPage } = require('@pages/UnusedTicketsPage');
+const FlightResultsPage = require('@pages/FlightResultsPage');
 const { expect } = require('@playwright/test');
 const App = require('@dsl/App');
 const logger = require('@utils/logger').child('UnusedTickets-DSL');
@@ -253,6 +254,94 @@ const UnusedTickets = {
     logger.info('Verifying the unused tickets banner is NOT visible in results', { timeout });
     const unusedTicketsPage = getPageObject(page, UnusedTicketsPage);
     await expect(unusedTicketsPage.getBanner(), 'Unused tickets banner should not be visible in results').not.toBeVisible({ timeout });
+  },
+
+  async verifySearchIconVisible(page, { timeout = PRESENCE_TIMEOUT } = {}) {
+    if (!page) throw new Error('page parameter is required');
+    logger.info('Verifying the unused tickets icon is visible next to the traveler on the search page', { timeout });
+    const unusedTicketsPage = getPageObject(page, UnusedTicketsPage);
+    await expect(
+      unusedTicketsPage.getSearchUnusedTicketsIcon(),
+      'Unused tickets icon should be visible next to the traveler on the search page'
+    ).toBeVisible({ timeout });
+  },
+
+  /**
+   * Verifies the open unused tickets modal really lists tickets, and that they belong to the expected
+   * traveler. The modal renders a "currently unavailable" message instead of the table when the
+   * traveler holds none, so a row count of zero is the failure this guards against.
+   */
+  async verifyUnusedTicketsListDisplayed(page, travelerName) {
+    if (!page) throw new Error('page parameter is required');
+    if (!travelerName || typeof travelerName !== 'string') {
+      throw new Error(`travelerName must be a non-empty string, got: ${typeof travelerName}`);
+    }
+    logger.info('Verifying the unused tickets list is displayed', { travelerName });
+
+    const unusedTicketsPage = getPageObject(page, UnusedTicketsPage);
+    const listedTraveler = await unusedTicketsPage.getModalTravelerName();
+    const ticketCount = await unusedTicketsPage.getModalTicketRows().count();
+
+    logger.info('Unused tickets modal contents', { listedTraveler, ticketCount });
+
+    // The modal names the traveler surname-first ("Calvin/Alexandra") while the feature names them
+    // the way a tester would ("Alexandra Calvin"), so compare the name parts rather than the string.
+    const nameParts = (value) => value.toLowerCase().split(/[\s,/]+/).filter(Boolean).sort();
+    const expectedParts = nameParts(travelerName);
+    const listedParts = nameParts(listedTraveler);
+
+    if (JSON.stringify(expectedParts) !== JSON.stringify(listedParts)) {
+      throw new Error(
+        `Expected the unused tickets list to be for traveler "${travelerName}", but it names "${listedTraveler}".`
+      );
+    }
+    if (ticketCount < 1) {
+      throw new Error(
+        `Expected the unused tickets list to show at least one ticket for "${travelerName}", but it shows none.`
+      );
+    }
+
+    return { listedTraveler, ticketCount };
+  },
+
+  async applyFilter(page) {
+    if (!page) throw new Error('page parameter is required');
+    logger.info('Applying the "Unused Tickets Available" results filter');
+
+    const unusedTicketsPage = getPageObject(page, UnusedTicketsPage);
+    await unusedTicketsPage.applyUnusedTicketsFilter();
+  },
+
+  /**
+   * Verifies the results list actually narrowed to the eligible flights: the "Showing {shown} of
+   * {total}" line must report exactly the count the filter row advertises, and fewer than the total.
+   * Comparing the two numbers the page itself renders keeps the check free of any pinned figure.
+   */
+  async verifyResultsCountMatchesFilterCount(page) {
+    if (!page) throw new Error('page parameter is required');
+
+    const unusedTicketsPage = getPageObject(page, UnusedTicketsPage);
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+
+    const expectedCount = await unusedTicketsPage.getFilterResultsCount();
+
+    // The list re-renders after the filter is applied, so poll the line rather than reading it once.
+    await expect(async () => {
+      const { shown } = await flightResultsPage.getResultsCounts();
+      expect(shown, `Results should narrow to the ${expectedCount} eligible flights the filter advertises`)
+        .toBe(expectedCount);
+    }).toPass({ timeout: PRESENCE_TIMEOUT });
+
+    const { shown, total, text } = await flightResultsPage.getResultsCounts();
+    logger.info('Results count after applying the unused tickets filter', { shown, total, expectedCount, text });
+
+    if (shown >= total) {
+      throw new Error(
+        `The unused tickets filter did not narrow the results — the list still reads "${text}".`
+      );
+    }
+
+    return { shown, total, expectedCount };
   },
 
   async verifyFilterVisible(page, { timeout = PRESENCE_TIMEOUT } = {}) {

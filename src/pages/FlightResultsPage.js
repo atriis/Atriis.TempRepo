@@ -110,6 +110,10 @@ const SELECTORS = {
   // digits out of an abbreviated price loses the magnitude.
   FILTER_OPTION_PRICE: '.option-count',
   FILTER_OPTION_NAME: '.el-checkbox__label p.filter-title',
+  // The "Showing {shown} of {total} Results" line above the results list (flight-list-sort.vue).
+  // `shown` tracks the filtered list, `total` the unfiltered response, so the pair is what proves a
+  // filter narrowed the results rather than merely being ticked.
+  RESULTS_COUNT_LINE: '.flight-list-sort .actions p:has-text("Showing")',
   CHECKBOX_CHECKED_INPUT: '.el-checkbox__input.is-checked',
   // State-modifier class Element Plus stamps on a checked el-checkbox label/input.
   CHECKBOX_CHECKED_CLASS: 'is-checked',
@@ -1517,6 +1521,36 @@ class FlightResultsPage {
       .filter({ hasText: /no\s*stops?/i })
       .first()
       .waitFor({ state: 'attached', timeout });
+  }
+
+  /**
+   * Reads the "Showing {shown} of {total} Results" line above the results list.
+   *
+   * @param {object} [options]
+   * @param {number} [options.timeout=30000]
+   * @returns {Promise<{shown: number, total: number, text: string}>}
+   */
+  async getResultsCounts({ timeout = 30000 } = {}) {
+    const line = this.page.locator(SELECTORS.RESULTS_COUNT_LINE).first();
+    try {
+      await line.waitFor({ state: 'visible', timeout });
+    } catch (err) {
+      throw new Error(
+        `[FlightResultsPage.getResultsCounts] The results count line (selector: ${SELECTORS.RESULTS_COUNT_LINE}) ` +
+        `was not visible within ${timeout}ms. Original: ${err.message}`
+      );
+    }
+    const text = (await line.innerText()).replace(/\s+/g, ' ').trim();
+
+    // Read the two numbers positionally so reworded or translated copy does not have to be matched.
+    const numbers = text.match(/\d+/g);
+    if (!numbers || numbers.length < 2) {
+      throw new Error(
+        `[FlightResultsPage.getResultsCounts] Expected the results line to read ` +
+        `"Showing {shown} of {total} Results", but could not read two numbers from: "${text}".`
+      );
+    }
+    return { shown: Number(numbers[0]), total: Number(numbers[1]), text };
   }
 
   // ===== PRICING OPTIONS MODAL =====

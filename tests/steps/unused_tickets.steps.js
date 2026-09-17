@@ -3,6 +3,16 @@ const { When, Then } = require('@cucumber/cucumber');
 const UnusedTickets = require('@dsl/UnusedTickets');
 const logger = require('@utils/logger').child('UnusedTickets');
 
+Then('the unused tickets icon should be visible next to the traveler', async function () {
+  logger.info('Verifying the unused tickets icon is visible next to the traveler on the search page');
+  await UnusedTickets.verifySearchIconVisible(this.page);
+});
+
+Then('the unused tickets list should be displayed for traveler {string}', async function (travelerName) {
+  logger.info('Verifying the unused tickets list is displayed for traveler', { travelerName });
+  await UnusedTickets.verifyUnusedTicketsListDisplayed(this.page, travelerName);
+});
+
 When('I click the airplane icon next to the traveler to view unused tickets', async function () {
   logger.info('Clicking airplane icon next to traveler (search page) to view unused tickets');
   await UnusedTickets.openUnusedTicketsModalFromSearchTraveler(this.page);
@@ -76,6 +86,16 @@ Then('the unused tickets banner should not be visible in results', async functio
 Then('the unused tickets filter should be visible in results', async function () {
   logger.info('Verifying unused tickets filter is visible in results');
   await UnusedTickets.verifyFilterVisible(this.page);
+});
+
+When('I filter results by unused tickets available', async function () {
+  logger.info('Applying the "Unused Tickets Available" results filter');
+  await UnusedTickets.applyFilter(this.page);
+});
+
+Then('the flight results should narrow to the unused tickets filter count', async function () {
+  logger.info('Verifying the results list narrowed to the count the unused tickets filter advertises');
+  await UnusedTickets.verifyResultsCountMatchesFilterCount(this.page);
 });
 
 Then('the unused tickets filter should not be visible in results', async function () {
