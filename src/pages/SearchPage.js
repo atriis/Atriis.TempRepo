@@ -197,6 +197,9 @@ const SELECTORS = {
   MULTI_CITY_DATEPICKER_INPUT: '.flight-date-picker input',
   ADD_FLIGHT_ROW_BUTTON: '.add-flight-btn',
   MULTI_CITY_CABIN_CLASS_FIELD: '.class-input .app-select',
+  // Options of whichever el-select popper is currently open (the poppers are portalled to body,
+  // so they cannot be scoped to the leg row that opened them).
+  VISIBLE_DROPDOWN_ITEMS: '.el-select-dropdown__item:visible',
   MULTI_CITY_REMOVE_BTN: '.remove-btn .material-symbols-outlined',
 
   // Advanced-search "Via" connection airport field (revealed by the Via checkbox). Shares the
@@ -1906,7 +1909,15 @@ class SearchPage {
       const classDropdown = row.locator(SELECTORS.MULTI_CITY_CABIN_CLASS_FIELD);
       await classDropdown.waitFor({ state: 'visible', timeout: 10000 });
       await classDropdown.click();
-      await this.page.locator(`.el-select-dropdown__item:visible:has-text("${cabinClass}")`).click();
+      // Exact text: `has-text("Economy")` is a substring match, so it also hits the
+      // "Premium Economy" option and fails on strict mode. `.last()` is the popper that
+      // just opened — one lingers per leg once several rows have been edited.
+      const option = this.page
+        .locator(SELECTORS.VISIBLE_DROPDOWN_ITEMS)
+        .filter({ hasText: new RegExp(`^\\s*${cabinClass}\\s*$`) })
+        .last();
+      await option.waitFor({ state: 'visible', timeout: 10000 });
+      await option.click();
       await classDropdown.getByText(cabinClass, { exact: true }).first().waitFor({ state: 'visible', timeout: 10000 });
     } catch (err) {
       throw new Error(
@@ -1914,6 +1925,36 @@ class SearchPage {
         `The multi-city form may not be open or the cabin class option is unavailable. Original: ${err.message}`
       );
     }
+  }
+
+  /**
+   * Reads the cabin class currently displayed on a multi-city leg.
+   *
+   * Returns the cabin label on its own so callers can compare it exactly. An exact comparison
+   * matters here: "Economy" is a substring of "Premium Economy", so a contains-style assertion
+   * would pass on the wrong cabin.
+   *
+   * The field's own innerText is not the label — the leading material-symbols icon renders its
+   * ligature name ("flight_class") as text above the value — so only the last non-empty line is
+   * returned.
+   *
+   * @param {number} legIndex - Zero-based leg row index
+   * @returns {Promise<string>} The displayed cabin label, e.g. "Premium Economy"
+   */
+  async getFlightClassTextForLeg(legIndex) {
+    if (!Number.isInteger(legIndex) || legIndex < 0) {
+      throw new Error(`[SearchPage.getFlightClassTextForLeg] "legIndex" must be a non-negative integer, got: ${legIndex}`);
+    }
+    const row = this.page.locator(SELECTORS.MULTI_CITY_LINE).nth(legIndex);
+    const classDropdown = row.locator(SELECTORS.MULTI_CITY_CABIN_CLASS_FIELD);
+    await classDropdown.waitFor({ state: 'visible', timeout: 10000 });
+
+    const lines = (await classDropdown.innerText())
+      .split('\n')
+      .map((line) => line.trim())
+      .filter(Boolean);
+
+    return lines.length ? lines[lines.length - 1] : '';
   }
 
   /**

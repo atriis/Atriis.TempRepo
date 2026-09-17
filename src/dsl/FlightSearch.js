@@ -2173,6 +2173,206 @@ const FlightSearch = {
   },
 
   /**
+   * Opens the multi-city form and fills only its FIRST leg (route, date and cabin), leaving the
+   * form open and unsubmitted.
+   *
+   * Separate from setupMultiCityFlightWithCabinClassWithoutSearch, which adds every row up front
+   * and applies one cabin to all of them. Scenarios that verify what a newly added leg inherits
+   * must add the second leg AFTER the first leg's cabin is set — adding it first would make the
+   * new row copy the default cabin instead.
+   *
+   * @param {import('playwright').Page} page
+   * @param {{from: string, to: string}} leg
+   * @param {string} cabinClass - Cabin class label, e.g. "Premium Economy"
+   * @returns {Promise<{setup: boolean, leg: Object, cabinClass: string}>}
+   */
+  async startMultiCitySearchWithFirstLeg(page, leg, cabinClass) {
+    if (!page) throw new Error('[FlightSearch.startMultiCitySearchWithFirstLeg] "page" is required.');
+    if (!leg || !leg.from || !leg.to) {
+      throw new Error('leg must be a {from, to} object, got: ' + JSON.stringify(leg));
+    }
+    if (!cabinClass || typeof cabinClass !== 'string') {
+      throw new Error('cabinClass must be a non-empty string, got: ' + cabinClass);
+    }
+
+    logger.info('Starting a multi-city search with the first leg only', { leg, cabinClass });
+
+    const flightSearchPage = getPageObject(page, FlightSearchPage);
+    const searchPage = getPageObject(page, SearchPage);
+
+    await flightSearchPage.clickFlightTab();
+    await searchPage.selectMultiCityTrip();
+    await searchPage.waitForMultiCitySection();
+
+    await searchPage.fillMultiCityLeg(leg.from, leg.to, 0);
+    await searchPage.openMultiCityDatePickerAtIndex(0);
+    await searchPage.clickCalendarNextArrow();
+    await selectDatesByNthAvailable(page, {
+      startIndex: SEARCH_DEFAULTS.FLIGHT.DEPARTURE_INDEX,
+      endIndex: null,
+    });
+    // The date-picker portal can linger over the cabin dropdown during a fast fill;
+    // Escape is Element Plus's idiomatic close signal.
+    await page.keyboard.press('Escape');
+    await searchPage.selectFlightClassForLeg(cabinClass, 0);
+
+    return { setup: true, leg, cabinClass };
+  },
+
+  /**
+   * Clicks "Add another flight" and fills the route and date of the newly added multi-city leg,
+   * deliberately leaving its cabin class untouched so the inherited default can be asserted.
+   *
+   * @param {import('playwright').Page} page
+   * @param {{from: string, to: string}} leg
+   * @returns {Promise<{added: boolean, leg: Object, legIndex: number}>}
+   */
+  async addMultiCityLeg(page, leg) {
+    if (!page) throw new Error('[FlightSearch.addMultiCityLeg] "page" is required.');
+    if (!leg || !leg.from || !leg.to) {
+      throw new Error('leg must be a {from, to} object, got: ' + JSON.stringify(leg));
+    }
+
+    const searchPage = getPageObject(page, SearchPage);
+
+    const legIndex = await page.locator('.multi-city-line').count();
+    logger.info('Adding a multi-city leg', { leg, legIndex });
+
+    await searchPage.clickAddFlightRowButton();
+    await page.locator('.multi-city-line').nth(legIndex).waitFor({ state: 'visible', timeout: 10000 });
+
+    await searchPage.fillMultiCityLeg(leg.from, leg.to, legIndex);
+    await searchPage.openMultiCityDatePickerAtIndex(legIndex);
+    await searchPage.clickCalendarNextArrow();
+    await selectDatesByNthAvailable(page, {
+      // Keep this leg's date after the previous one's, mirroring the 3-day spacing used by
+      // the other multi-city helpers.
+      startIndex: SEARCH_DEFAULTS.FLIGHT.DEPARTURE_INDEX + legIndex * 3,
+      endIndex: null,
+    });
+    await page.keyboard.press('Escape');
+
+    return { added: true, leg, legIndex };
+  },
+
+  /**
+   * Sets the cabin class of one multi-city leg, leaving the form open and unsubmitted.
+   *
+   * @param {import('playwright').Page} page
+   * @param {number} legIndex - Zero-based leg row index
+   * @param {string} cabinClass - Cabin class label, e.g. "Economy"
+   * @returns {Promise<{legIndex: number, cabinClass: string}>}
+   */
+  async setCabinClassForMultiCityLeg(page, legIndex, cabinClass) {
+    if (!page) throw new Error('[FlightSearch.setCabinClassForMultiCityLeg] "page" is required.');
+
+    logger.info('Setting the cabin class of a multi-city leg', { legIndex, cabinClass });
+
+    const searchPage = getPageObject(page, SearchPage);
+    await searchPage.selectFlightClassForLeg(cabinClass, legIndex);
+
+    return { legIndex, cabinClass };
+  },
+
+  /**
+   * Asserts the cabin class displayed on a multi-city leg, comparing the label exactly.
+   *
+   * @param {import('playwright').Page} page
+   * @param {number} legIndex - Zero-based leg row index
+   * @param {string} expectedCabin - Expected cabin label, e.g. "Premium Economy"
+   * @returns {Promise<{legIndex: number, cabin: string}>}
+   */
+  async verifyCabinClassForMultiCityLeg(page, legIndex, expectedCabin) {
+    if (!page) throw new Error('[FlightSearch.verifyCabinClassForMultiCityLeg] "page" is required.');
+    if (!expectedCabin || typeof expectedCabin !== 'string') {
+      throw new Error('expectedCabin must be a non-empty string, got: ' + expectedCabin);
+    }
+
+    logger.info('Verifying the cabin class of a multi-city leg', { legIndex, expectedCabin });
+
+    const searchPage = getPageObject(page, SearchPage);
+
+    await expect
+      .poll(
+        async () => searchPage.getFlightClassTextForLeg(legIndex),
+        {
+          message:
+            `Leg ${legIndex + 1} should show cabin "${expectedCabin}". A leg added to a multi-city ` +
+            `search inherits the previous leg's cabin, so a different value here means the ` +
+            `inheritance changed or the wrong row was read.`,
+          timeout: 10000,
+        },
+      )
+      .toBe(expectedCabin);
+
+    return { legIndex, cabin: expectedCabin };
+  },
+
+  /**
+   * Asserts that a search-type radio is greyed out — present but not selectable.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} searchType - Visible radio label: "Complete trip" or "By schedule"
+   * @returns {Promise<{searchType: string, disabled: boolean}>}
+   */
+  async verifySearchTypeDisabled(page, searchType) {
+    if (!page) throw new Error('[FlightSearch.verifySearchTypeDisabled] "page" is required.');
+    if (!searchType || typeof searchType !== 'string') {
+      throw new Error('[FlightSearch.verifySearchTypeDisabled] "searchType" must be a non-empty string, got: ' + typeof searchType);
+    }
+
+    logger.info('Verifying search type is disabled', { searchType });
+
+    const flightSearchPage = getPageObject(page, FlightSearchPage);
+
+    await expect
+      .poll(
+        async () => flightSearchPage.isSearchTypeDisabled(searchType),
+        {
+          message:
+            `Search type "${searchType}" should be greyed out. The form disables a search type ` +
+            `based on the trip type and on whether the legs share one cabin class.`,
+          timeout: 10000,
+        },
+      )
+      .toBe(true);
+
+    return { searchType, disabled: true };
+  },
+
+  /**
+   * Asserts that a search-type radio is selectable — present and not greyed out.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} searchType - Visible radio label: "Complete trip" or "By schedule"
+   * @returns {Promise<{searchType: string, disabled: boolean}>}
+   */
+  async verifySearchTypeSelectable(page, searchType) {
+    if (!page) throw new Error('[FlightSearch.verifySearchTypeSelectable] "page" is required.');
+    if (!searchType || typeof searchType !== 'string') {
+      throw new Error('[FlightSearch.verifySearchTypeSelectable] "searchType" must be a non-empty string, got: ' + typeof searchType);
+    }
+
+    logger.info('Verifying search type is selectable', { searchType });
+
+    const flightSearchPage = getPageObject(page, FlightSearchPage);
+
+    await expect
+      .poll(
+        async () => flightSearchPage.isSearchTypeDisabled(searchType),
+        {
+          message:
+            `Search type "${searchType}" should be selectable. The form disables a search type ` +
+            `based on the trip type and on whether the legs share one cabin class.`,
+          timeout: 10000,
+        },
+      )
+      .toBe(false);
+
+    return { searchType, disabled: false };
+  },
+
+  /**
    * Asserts that a specific search-type radio button is currently selected.
    * Polls for up to 10 seconds to handle Vue's async reactivity when the search
    * type switches automatically (e.g. after setting cabin class in multi-city).

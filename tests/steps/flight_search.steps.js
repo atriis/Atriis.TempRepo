@@ -360,6 +360,42 @@ Then("the search type should be {string}", async function (searchType) {
   await FlightSearch.verifySearchTypeSelected(this.page, searchType);
 });
 
+When("I start a multi-city flight search with the first leg {string} and cabin class {string}", async function (leg, cabinClass) {
+  const parts = leg.toUpperCase().split('-');
+  if (parts.length !== 2) throw new Error(`Invalid leg format "${leg}". Expected "FROM-TO".`);
+  logger.info('Starting a multi-city flight search with the first leg', { leg, cabinClass });
+  await FlightSearch.startMultiCitySearchWithFirstLeg(this.page, { from: parts[0], to: parts[1] }, cabinClass);
+});
+
+When("I add another flight leg {string} to the multi-city search", async function (leg) {
+  const parts = leg.toUpperCase().split('-');
+  if (parts.length !== 2) throw new Error(`Invalid leg format "${leg}". Expected "FROM-TO".`);
+  logger.info('Adding another flight leg to the multi-city search', { leg });
+  await FlightSearch.addMultiCityLeg(this.page, { from: parts[0], to: parts[1] });
+});
+
+When("I set the cabin class for leg {int} to {string}", async function (legNumber, cabinClass) {
+  if (legNumber < 1) throw new Error(`legNumber must be 1-based and >= 1, got: ${legNumber}`);
+  logger.info('Setting the cabin class of a multi-city leg', { legNumber, cabinClass });
+  await FlightSearch.setCabinClassForMultiCityLeg(this.page, legNumber - 1, cabinClass);
+});
+
+Then("the cabin class for leg {int} should be {string}", async function (legNumber, expectedCabin) {
+  if (legNumber < 1) throw new Error(`legNumber must be 1-based and >= 1, got: ${legNumber}`);
+  logger.info('Verifying the cabin class of a multi-city leg', { legNumber, expectedCabin });
+  await FlightSearch.verifyCabinClassForMultiCityLeg(this.page, legNumber - 1, expectedCabin);
+});
+
+Then("the {string} search type should be greyed out", async function (searchType) {
+  logger.info('Verifying search type is greyed out', { searchType });
+  await FlightSearch.verifySearchTypeDisabled(this.page, searchType);
+});
+
+Then("the {string} search type should be selectable", async function (searchType) {
+  logger.info('Verifying search type is selectable', { searchType });
+  await FlightSearch.verifySearchTypeSelectable(this.page, searchType);
+});
+
 When("I remove the last flight leg from the multi-city search", async function () {
   logger.info('Removing the last flight leg from the multi-city search');
   await FlightSearch.removeLastFlightLeg(this.page);

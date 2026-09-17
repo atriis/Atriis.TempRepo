@@ -888,6 +888,48 @@ class FlightSearchPage {
       return false;
     }
   }
+
+  /**
+   * Checks whether a search-type radio button is greyed out (not selectable).
+   *
+   * The two radios are rendered as tabs (`radio-btns-as-tabs`), so "greyed out" cannot be read
+   * from colour — an unselected tab is grey as well. The truthful signal is Element Plus's
+   * disabled state: the `<label class="el-radio">` gains `is-disabled` and the native radio
+   * input becomes `disabled`. Both are read and OR'd, so a change in only one of them cannot
+   * silently turn the assertion green.
+   *
+   * Returns false instead of throwing when the radio is not found, to support polling assertions.
+   *
+   * @param {string} displayLabel - Visible label text of the radio, e.g. "Complete trip" or "By schedule"
+   * @returns {Promise<boolean>}
+   */
+  async isSearchTypeDisabled(displayLabel) {
+    if (!displayLabel || typeof displayLabel !== 'string') {
+      throw new Error('[FlightSearchPage.isSearchTypeDisabled] "displayLabel" must be a non-empty string, got: ' + typeof displayLabel);
+    }
+    try {
+      const radio = this.page
+        .locator(SELECTORS.SEARCH_MODE_SECTION)
+        .locator('.el-radio')
+        .filter({ hasText: displayLabel })
+        .first();
+      await radio.waitFor({ state: 'visible', timeout: 10000 });
+
+      const labelDisabled = await radio.evaluate(el => el.classList.contains('is-disabled'));
+      const inputDisabled = await radio
+        .locator('input[type="radio"]')
+        .first()
+        .isDisabled()
+        .catch(() => false);
+
+      return labelDisabled || inputDisabled;
+    } catch (err) {
+      if (err.message?.includes('Target page') || err.message?.includes('page was closed')) {
+        throw err;
+      }
+      return false;
+    }
+  }
 }
 
 module.exports = FlightSearchPage;
