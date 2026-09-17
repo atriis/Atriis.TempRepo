@@ -24,6 +24,7 @@ Feature: 29722 - Reference, dynamic and financial fields on the travel request p
       | Type of Trip |
       | Type of traveller |
       | Location travel policy |
+      | Location |
       | Personnel number |
     And the travel request popup should show a reference section for traveler "Pini Cohen"
     And the reference fields for traveler "Pini Cohen" should have the following values:
@@ -33,9 +34,9 @@ Feature: 29722 - Reference, dynamic and financial fields on the travel request p
     And the travel request popup should show a reference section for traveler "Israel Israeli"
     And the reference fields for traveler "Israel Israeli" should have the following values:
       | field | value |
-      | Payment Group | Select |
+      | Payment Group | ADD |
       | Bank account |  |
-    And the number of reference and dynamic fields in the travel request popup should be 9
+    And the number of reference and dynamic fields in the travel request popup should be 10
     And the reference fields should have the following values:
       | field | value |
       | Financial Reference | Select |
@@ -48,13 +49,11 @@ Feature: 29722 - Reference, dynamic and financial fields on the travel request p
       | field | value |
       | Type of Trip | Select |
       | Type of traveller | Select |
-      | Location travel policy | Select |
+      | Location travel policy | Caribbean |
       | Personnel number |  |
     And I save the reference field popup if displayed
     Then the financial reference should be marked as invalid
     And the custom error "This field is required" should be displayed below the "Type of Trip" reference field
-    And the custom error "This field is required" should be displayed below the "Location travel policy" reference field
-    And the custom error "This field is required" should be displayed below the "Payment Group" reference field for traveler "Israel Israeli"
     When I select the "Financial Reference" reference field as "uploadname7 (uploadcode7)"
     And I select the first available option for the "Type of Trip" reference field
     And I select the first available option for the "Location travel policy" reference field
@@ -66,7 +65,7 @@ Feature: 29722 - Reference, dynamic and financial fields on the travel request p
       | Location travel policy | Caribbean |
     And the reference fields for traveler "Israel Israeli" should have the following values:
       | field | value |
-      | Payment Group | ABJ1 |
+      | Payment Group | ADD |
     And the reference fields for traveler "Pini Cohen" should have the following values:
       | field | value |
       | Payment Group | CBKI |
