@@ -17,6 +17,41 @@ const { CommonPage } = require("@pages/CommonPage");
 const { normalizeText } = require("@utils/text");
 const logger = require("@utils/logger").child("TravelRequest");
 
+/**
+ * Makes sure the request-assistance form holds exactly ONE flight item, and returns once that
+ * item's form is visible.
+ *
+ * The RA view seeds an item for the active product — flight, when the form was opened from the
+ * flight tab — about 300ms after created(), guarded by `if (!requestAssistanceItems.length)`
+ * (request-assistance.ts). Clicking "Flight" before that timer fires is absorbed by the guard, but
+ * clicking after it adds a SECOND flight item: two flight legs in the request the agent receives,
+ * and a strict-mode violation on `.flight-search-inputs`. Which side of the race a run lands on is
+ * pure timing, so wait for the seeding pass to finish and only add a flight item if none arrived.
+ *
+ * @param {import('@playwright/test').Page} page
+ */
+async function ensureFlightItem(page) {
+  const travelRequestPage = getPageObject(page, TravelRequestPage);
+
+  // Any rendered item means the seeding pass already ran. If none appears, fall through and add the
+  // flight item here — the form is then empty, so there is nothing to duplicate.
+  await travelRequestPage.waitForFirstRequestItem();
+
+  if ((await travelRequestPage.getFlightItemCount()) === 0) {
+    await travelRequestPage.clickFlightButton();
+  }
+  await travelRequestPage.waitForFlightSearchInputs();
+
+  const flightItems = await travelRequestPage.getFlightItemCount();
+  if (flightItems > 1) {
+    throw new Error(
+      `the request-assistance form holds ${flightItems} flight items instead of one, so the leg ` +
+      `filled here would not be the one reviewed and sent (a stale flight item left in the store by ` +
+      `an earlier request-assistance visit is the likely cause)`
+    );
+  }
+}
+
 const TravelRequest = {
   /**
    * Fills and sends a flight travel request.
@@ -38,9 +73,9 @@ const TravelRequest = {
     // Navigate to the Travel Request page
     await searchPage.clickTravelRequestButton();
 
-    // Click "Flight" to render the flight-search-inputs form
-    await travelRequestPage.clickFlightButton();
-    await travelRequestPage.waitForFlightSearchInputs();
+    // Make sure exactly one flight item is rendered (the form seeds one itself when opened from
+    // the flight tab — clicking "Flight" unconditionally would duplicate it)
+    await ensureFlightItem(page);
 
     // Fill origin and destination — same airport-autocomplete selectors as main search
     await searchPage.fillInFromField(from);
@@ -93,9 +128,9 @@ const TravelRequest = {
     const searchPage = getPageObject(page, SearchPage);
     const travelRequestPage = getPageObject(page, TravelRequestPage);
     try {
-      // Render the flight-search-inputs form inside the request item.
-      await travelRequestPage.clickFlightButton();
-      await travelRequestPage.waitForFlightSearchInputs();
+      // Render the flight-search-inputs form inside the request item — reusing the item the form
+      // seeds on its own rather than adding a duplicate one.
+      await ensureFlightItem(page);
 
       // Origin and destination — same airport-autocomplete selectors as the main search.
       await searchPage.fillInFromField(from);
@@ -121,7 +156,7 @@ const TravelRequest = {
 
   /**
    * Opens the advanced round-trip flight search inside the request assistance form.
-   * - Clicks the "Flight" service button to render the flight-search-inputs form
+   * - Ensures the form holds exactly one flight item, whose flight-search-inputs form is rendered
    * - Ensures the trip type is "Round trip" (separate outbound/return legs)
    * - Expands the advanced-search options panel (reveals per-leg date-type/time/cabin fields
    *   and the preferred-airline selector)
@@ -135,13 +170,11 @@ const TravelRequest = {
   async openAdvancedFlightSearch(page) {
     if (!page) throw new Error('[TravelRequest.openAdvancedFlightSearch] "page" is required.');
 
-    const travelRequestPage = getPageObject(page, TravelRequestPage);
     const searchPage = getPageObject(page, SearchPage);
     const flightSearchPage = getPageObject(page, FlightSearchPage);
 
     try {
-      await travelRequestPage.clickFlightButton();
-      await travelRequestPage.waitForFlightSearchInputs();
+      await ensureFlightItem(page);
       // The flight form initializes asynchronously (loads carriers, re-renders). That late
       // re-render resets the advanced toggle back to collapsed, so let it settle BEFORE opening
       // advanced — otherwise the panel opens and then silently closes a moment later.
@@ -169,8 +202,8 @@ const TravelRequest = {
     } catch (err) {
       throw new Error(
         '[TravelRequest.openAdvancedFlightSearch] Could not open the advanced round-trip flight ' +
-        'search in the request assistance form. The "Flight" service button may not have rendered the ' +
-        'flight-search-inputs form, the Round trip trip type was unavailable, the advanced-search panel ' +
+        'search in the request assistance form. The flight-search-inputs form may not have rendered, ' +
+        'the Round trip trip type was unavailable, the advanced-search panel ' +
         `did not expand, or the Via checkbox was missing. Original: ${err.message}`
       );
     }

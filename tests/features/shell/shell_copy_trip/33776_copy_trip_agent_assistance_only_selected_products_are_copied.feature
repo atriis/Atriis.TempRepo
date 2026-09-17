@@ -28,7 +28,7 @@ Feature: 33776 - Copy trip only copies products added to the trip (agent assista
     And I open the current trip in legacy GTP as the agent
     And I add a flight to the trip as the agent from "DOH"
     And I add a car to the trip as the agent
-    And I add a hotel to the trip as the agent through "Search Online"
+    And I add a refundable hotel to the trip as the agent through "Search Online"
     # --- back as the corporate: add only the car quote to the trip, then copy ---
     When I refresh the page
     And I open the trip overview tab

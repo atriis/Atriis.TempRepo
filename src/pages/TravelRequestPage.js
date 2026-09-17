@@ -5,7 +5,13 @@
 
 const SELECTORS = {
   FLIGHT_SERVICE_BUTTON: ".product-btn",
-  FLIGHT_SEARCH_INPUTS: ".flight-search-inputs",
+  // Scoped to the request-assistance form: the search page underneath renders its own
+  // .flight-search-inputs, so an unscoped match resolves to more than one element.
+  FLIGHT_SEARCH_INPUTS: ".request-assistance-main .flight-search-inputs",
+  // Root of one request-assistance item (request-assistance.vue v-for over requestAssistanceItems).
+  // The view seeds an item for the active product ~300ms after created(), so the presence of any
+  // item means that seeding pass has already run.
+  SEARCH_INPUTS_CONTAINER: ".request-assistance-main .search-inputs-container",
 
   // Requested-item card title in travel-request quotes (general-product-card.vue ~L37-38):
   // h5.center-title inside .quote-names-container renders "{{ $t('common.requested') }} {{ quote.productName }} ...",
@@ -133,12 +139,42 @@ class TravelRequestPage {
   }
 
   /**
-   * Waits for the flight-search-inputs form to be visible after clicking the Flight button.
+   * Waits for the request-assistance form to finish seeding its initial item — i.e. for the first
+   * item container to render. Reports whether one appeared instead of throwing, so the caller can
+   * fall through to adding an item itself.
+   *
+   * @param {number} [timeout=15000] - Max time (ms) to wait.
+   * @returns {Promise<boolean>}
    */
-  async waitForFlightSearchInputs() {
+  async waitForFirstRequestItem(timeout = 15000) {
+    return this.page
+      .locator(SELECTORS.SEARCH_INPUTS_CONTAINER)
+      .first()
+      .waitFor({ state: 'visible', timeout })
+      .then(() => true)
+      .catch(() => false);
+  }
+
+  /**
+   * Counts the flight items currently rendered in the request-assistance form, so a caller can tell
+   * "no flight item yet" (add one) from "a flight item is already there" (adding would duplicate it).
+   * @returns {Promise<number>}
+   */
+  async getFlightItemCount() {
+    return this.page.locator(SELECTORS.FLIGHT_SEARCH_INPUTS).count();
+  }
+
+  /**
+   * Waits for a flight item's search-inputs form to be visible. Takes the FIRST match so a duplicate
+   * item surfaces as the caller's descriptive count error rather than a strict-mode violation here.
+   *
+   * @param {number} [timeout=15000] - Max time (ms) to wait.
+   */
+  async waitForFlightSearchInputs(timeout = 15000) {
     await this.page
       .locator(SELECTORS.FLIGHT_SEARCH_INPUTS)
-      .waitFor({ state: 'visible', timeout: 15000 });
+      .first()
+      .waitFor({ state: 'visible', timeout });
   }
 
   /**
