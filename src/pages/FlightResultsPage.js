@@ -93,6 +93,11 @@ const SELECTORS = {
   // Each quick-sort option renders three <p> elements inside its inner wrapper: the label, the
   // price (`.price`) and the average duration. The first one carries the option label.
   QUICK_SORT_OPTION_LABEL: '.el-radio-button__inner p',
+  // The third and last <p> of a quick-sort option: "Average: 9h 55m". The "Average: " prefix is
+  // `common.average` and only renders for complete-trip searches (flight-list-sort.showAverageDuration
+  // is false by schedule); the value is utilService.formattedTime of the store's rounded mean of
+  // the advertised flight's segment durations (flight.store recalculateQuickSortBy).
+  QUICK_SORT_OPTION_AVERAGE_DURATION: '.el-radio-button__inner > p:last-of-type',
 
   // Carriers checkbox filter (flight-filter.vue → .carriers-filter). Element Plus marks a checked
   // checkbox with the `is-checked` class on its `.el-checkbox__input`.
@@ -262,6 +267,10 @@ const SELECTORS = {
   SELECT_FLIGHT_BUTTON_TEXT: 'Select',
   RESULT_SEGMENT_CARRIER_NAME: '.carrier-container .carrier-name',
   RESULT_SEGMENT_FLIGHT_NUMBER_TEXT: '.carrier-container .carrier-name + p',
+  // The leg duration chip above the stops line of each result-card leg ("12h 50m"):
+  // flight-preview-segment.vue renders `flightSegment.segmentDuration.flightDuration` in `p.duration`.
+  // Scoped to the leg container so the stop-duration span beside the stops line is never matched.
+  RESULT_SEGMENT_DURATION: 'p.duration',
   FLIGHT_TIME: '.flight-time',
   FLIGHT_LOCATION_CODE: '.loc-code',
   MARKED_FLIGHT_LOCATION_CODE: '.loc-code.marked, .loc-code.markedEdge',
@@ -1161,6 +1170,123 @@ class FlightResultsPage {
     await label.waitFor({ state: 'visible', timeout });
 
     return (await label.textContent()).trim();
+  }
+
+  /**
+   * Reads the average trip time advertised on a quick-sort option (Best / Cheapest / Quickest).
+   * The option's last <p> reads "Average: 9h 55m" for complete-trip searches: the store's rounded
+   * mean of the advertised flight's leg durations. Returns both the raw text (so callers can
+   * assert the "Average:" prefix, which a by-schedule search drops) and the parsed minutes.
+   *
+   * @param {string} sortLabel - Sort option label as shown in the UI (e.g. "Best")
+   * @param {number} timeout - Max wait time in ms (default: 30000)
+   * @returns {Promise<{ text: string, minutes: number }>} The raw duration text and its minutes
+   */
+  async getQuickSortOptionAverageDuration(sortLabel, timeout = 30000) {
+    if (!sortLabel || typeof sortLabel !== 'string') {
+      throw new Error(
+        `[FlightResultsPage.getQuickSortOptionAverageDuration] "sortLabel" must be a non-empty string, got: ${typeof sortLabel}`
+      );
+    }
+
+    const sortButton = this.page
+      .locator(SELECTORS.QUICK_SORT_RADIO_BUTTON)
+      .filter({ hasText: new RegExp(`\\b${escapeRegExp(sortLabel)}\\b`, 'i') })
+      .first();
+
+    try {
+      await sortButton.waitFor({ state: 'visible', timeout });
+    } catch (err) {
+      throw new Error(
+        `[FlightResultsPage.getQuickSortOptionAverageDuration] The "${sortLabel}" quick-sort option did not become ` +
+        `visible within ${timeout}ms (selector: ${SELECTORS.QUICK_SORT_RADIO_BUTTON}). The quick-sort bar only renders ` +
+        `on desktop once results have loaded, and "${sortLabel}" must be one of its labelled options. Original: ${err.message}`
+      );
+    }
+
+    const durationElement = sortButton.locator(SELECTORS.QUICK_SORT_OPTION_AVERAGE_DURATION).first();
+    let text;
+    try {
+      await durationElement.waitFor({ state: 'visible', timeout });
+      text = ((await durationElement.textContent()) ?? '').replace(/\s+/g, ' ').trim();
+    } catch (err) {
+      throw new Error(
+        `[FlightResultsPage.getQuickSortOptionAverageDuration] Could not read the duration paragraph of the "${sortLabel}" ` +
+        `quick-sort option within ${timeout}ms (selector: ${SELECTORS.QUICK_SORT_OPTION_AVERAGE_DURATION}). The option ` +
+        `layout may have changed (label / price / duration paragraphs). Original: ${err.message}`
+      );
+    }
+
+    let minutes;
+    try {
+      // Drop the localized "Average:" prefix before parsing; the duration itself is "9h 55m" / "9h" / "55m".
+      minutes = parseDurationToMinutes(text.replace(/^[^\d]*:/, '').trim());
+    } catch (err) {
+      throw new Error(
+        `[FlightResultsPage.getQuickSortOptionAverageDuration] The "${sortLabel}" quick-sort duration text "${text}" ` +
+        `does not contain a parsable "<h>h <m>m" duration. Original: ${err.message}`
+      );
+    }
+
+    return { text, minutes };
+  }
+
+  /**
+   * Reads every leg's duration, in minutes, from each rendered flight result card.
+   *
+   * Each card renders one `.flight-info-container` per itinerary leg and each leg one `p.duration`
+   * chip (flight-preview-segment.vue: `segmentDuration.flightDuration`, e.g. "12h 50m"). The list
+   * is infinite-scroll (flight-list.vue observes `#last-item`), so this covers the cards currently
+   * rendered - the first page on a fresh results view - not the whole result set.
+   *
+   * @param {{ timeout?: number }} options
+   * @returns {Promise<number[][]>} one entry per rendered card, each the card's leg durations in minutes
+   */
+  async getLegDurationsPerResult({ timeout = 60000 } = {}) {
+    try {
+      await this.waitForFlightResults(timeout);
+    } catch (err) {
+      throw new Error(
+        `[FlightResultsPage.getLegDurationsPerResult] No flight result card became visible within ${timeout}ms ` +
+        `(selector: ${SELECTORS.FLIGHT_PREVIEW}). The search may have returned no results, or a filter may still ` +
+        `be reloading the list. Original: ${err.message}`
+      );
+    }
+
+    const cards = this.page.locator(SELECTORS.FLIGHT_PREVIEW);
+    const cardCount = await cards.count();
+    const durationsPerCard = [];
+
+    for (let cardIndex = 0; cardIndex < cardCount; cardIndex++) {
+      const durationChips = cards.nth(cardIndex).locator(SELECTORS.FLIGHT_PREVIEW_SEGMENT).locator(SELECTORS.RESULT_SEGMENT_DURATION);
+
+      try {
+        await durationChips.first().waitFor({ state: 'visible', timeout });
+      } catch (err) {
+        throw new Error(
+          `[FlightResultsPage.getLegDurationsPerResult] Result card ${cardIndex + 1} of ${cardCount} rendered no leg ` +
+          `duration chip within ${timeout}ms (selector: ${SELECTORS.FLIGHT_PREVIEW} > ${SELECTORS.FLIGHT_PREVIEW_SEGMENT} ` +
+          `${SELECTORS.RESULT_SEGMENT_DURATION}). The card layout may have changed. Original: ${err.message}`
+        );
+      }
+
+      const texts = await durationChips.allTextContents();
+      const legMinutes = texts.map((raw, legIndex) => {
+        const text = (raw ?? '').replace(/\s+/g, ' ').trim();
+        try {
+          return parseDurationToMinutes(text);
+        } catch (err) {
+          throw new Error(
+            `[FlightResultsPage.getLegDurationsPerResult] Leg ${legIndex + 1} of result card ${cardIndex + 1} shows the ` +
+            `duration "${text}", which is not a parsable "<h>h <m>m" duration. Original: ${err.message}`
+          );
+        }
+      });
+
+      durationsPerCard.push(legMinutes);
+    }
+
+    return durationsPerCard;
   }
 
   /**

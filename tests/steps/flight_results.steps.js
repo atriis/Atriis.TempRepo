@@ -1412,6 +1412,34 @@ Then('the first flight result price should match the {string} sort price', async
   );
 });
 
+Then('the {string} sort option should display an average trip time', async function (sortLabel) {
+  logger.info('Verifying the quick-sort option shows an average trip time', { sortLabel });
+  const average = await FlightResults.verifyQuickSortOptionShowsAverageDuration(this.page, sortLabel);
+  logger.info('Quick-sort option average trip time', { sortLabel, ...average });
+});
+
+When('I extract the average time of each flight in flight results', async function () {
+  logger.info('Extracting the average leg duration of each rendered flight result');
+  this.flightResultAverageDurations = await FlightResults.extractFlightResultAverageDurations(this.page);
+  logger.info('Extracted flight result average durations', {
+    results: this.flightResultAverageDurations.length,
+    first: this.flightResultAverageDurations[0],
+  });
+});
+
+Then('the best average time is the average time of all legs', async function () {
+  const resultAverages = this.flightResultAverageDurations;
+  if (!Array.isArray(resultAverages) || !resultAverages.length) {
+    throw new Error(
+      "No stored flight result averages. Run 'When I extract the average time of each flight in flight results' before this assertion."
+    );
+  }
+
+  logger.info('Verifying the "Best" quick-sort average equals the average of the first result\'s leg durations');
+  const outcome = await FlightResults.verifyQuickSortAverageMatchesFirstResult(this.page, 'Best', resultAverages);
+  logger.info('"Best" quick-sort average matches the first result', outcome);
+});
+
 Then('the flight search response should have no {string} result from source system {string}', async function (carrier, source) {
   logger.info(`Verifying no "${carrier}" result comes from the "${source}" source system in the flightSearch response`);
   await FlightResults.verifyNoResultForCarrierFromSource(this.page, this.lastInterceptedResponsePromise, carrier, source);

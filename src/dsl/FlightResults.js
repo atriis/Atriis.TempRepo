@@ -5006,6 +5006,178 @@ async verifyFareComponentTextColorInPricingOptions(page, expectedColor, index = 
   },
 
   /**
+   * Verifies a quick-sort option (Best / Cheapest / Quickest) advertises an average trip time,
+   * i.e. its duration paragraph reads "Average: <h>h <m>m". The "Average:" prefix is asserted on
+   * purpose: the store always fills a duration, but the prefix only renders for complete-trip
+   * searches, so a bare duration means the average feature is not what is on screen.
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @param {string} sortLabel - Sort option label (e.g. "Best")
+   * @returns {Promise<{ text: string, minutes: number }>} The advertised text and its minutes
+   */
+  async verifyQuickSortOptionShowsAverageDuration(page, sortLabel) {
+    if (!page) {
+      throw new Error('[FlightResults.verifyQuickSortOptionShowsAverageDuration] "page" is required');
+    }
+    if (!sortLabel || typeof sortLabel !== 'string') {
+      throw new Error(
+        `[FlightResults.verifyQuickSortOptionShowsAverageDuration] "sortLabel" must be a non-empty string, got: ${typeof sortLabel}`
+      );
+    }
+
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    logger.debug('[FlightResults.verifyQuickSortOptionShowsAverageDuration] Reading the quick-sort average trip time', { sortLabel });
+
+    let average;
+    try {
+      average = await flightResultsPage.getQuickSortOptionAverageDuration(sortLabel);
+    } catch (err) {
+      throw new Error(
+        `[FlightResults.verifyQuickSortOptionShowsAverageDuration] Failed to read the "${sortLabel}" quick-sort average ` +
+        `trip time. Verify the results loaded on desktop and "${sortLabel}" is an available sort option. Original: ${err.message}`
+      );
+    }
+
+    if (!/^Average:\s*(\d+h(\s\d+m)?|\d+m)$/.test(average.text)) {
+      throw new Error(
+        `[FlightResults.verifyQuickSortOptionShowsAverageDuration] The "${sortLabel}" quick-sort option shows "${average.text}", ` +
+        `expected "Average: <h>h <m>m". A missing "Average:" prefix means the results are a by-schedule search, where the ` +
+        `average trip time is intentionally not shown.`
+      );
+    }
+    if (!Number.isInteger(average.minutes) || average.minutes <= 0) {
+      throw new Error(
+        `[FlightResults.verifyQuickSortOptionShowsAverageDuration] The "${sortLabel}" quick-sort average "${average.text}" ` +
+        `parsed to ${average.minutes} minutes; a real itinerary average must be a positive whole number of minutes.`
+      );
+    }
+
+    return average;
+  },
+
+  /**
+   * Extracts, for every rendered flight result card, its leg durations and their average
+   * (round(sum of leg minutes / leg count) - the same formula flight.store's
+   * recalculateQuickSortBy applies to the flight each quick-sort option advertises).
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @returns {Promise<Array<{ index: number, legMinutes: number[], averageMinutes: number }>>}
+   */
+  async extractFlightResultAverageDurations(page) {
+    if (!page) {
+      throw new Error('[FlightResults.extractFlightResultAverageDurations] "page" is required');
+    }
+
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    logger.debug('[FlightResults.extractFlightResultAverageDurations] Reading leg durations from the rendered result cards');
+
+    let durationsPerCard;
+    try {
+      durationsPerCard = await flightResultsPage.getLegDurationsPerResult();
+    } catch (err) {
+      throw new Error(
+        `[FlightResults.extractFlightResultAverageDurations] Failed to read leg durations from the flight result cards. ` +
+        `Original: ${err.message}`
+      );
+    }
+
+    if (!durationsPerCard.length) {
+      throw new Error(
+        '[FlightResults.extractFlightResultAverageDurations] No flight result cards were rendered, so no average trip ' +
+        'time can be computed. Expected at least one result on the page.'
+      );
+    }
+
+    return durationsPerCard.map((legMinutes, index) => {
+      if (!legMinutes.length) {
+        throw new Error(
+          `[FlightResults.extractFlightResultAverageDurations] Result card ${index + 1} rendered no legs, so it has no ` +
+          `average trip time. Every result card must show at least one leg.`
+        );
+      }
+      const total = legMinutes.reduce((sum, minutes) => sum + minutes, 0);
+      return { index, legMinutes, averageMinutes: Math.round(total / legMinutes.length) };
+    });
+  },
+
+  /**
+   * Verifies the average trip time a quick-sort option advertises equals the average of the leg
+   * durations of the result it puts first. The option must be the active sort: the store computes
+   * the tile from the flight that wins that sort, and only under that sort is that flight the
+   * first card in the list.
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @param {string} sortLabel - Sort option label (e.g. "Best")
+   * @param {Array<{ index: number, legMinutes: number[], averageMinutes: number }>} resultAverages - From extractFlightResultAverageDurations
+   * @returns {Promise<{ sortLabel: string, advertisedMinutes: number, firstResultAverageMinutes: number, legMinutes: number[] }>}
+   */
+  async verifyQuickSortAverageMatchesFirstResult(page, sortLabel, resultAverages) {
+    if (!page) {
+      throw new Error('[FlightResults.verifyQuickSortAverageMatchesFirstResult] "page" is required');
+    }
+    if (!sortLabel || typeof sortLabel !== 'string') {
+      throw new Error(
+        `[FlightResults.verifyQuickSortAverageMatchesFirstResult] "sortLabel" must be a non-empty string, got: ${typeof sortLabel}`
+      );
+    }
+    if (!Array.isArray(resultAverages) || !resultAverages.length) {
+      throw new Error(
+        `[FlightResults.verifyQuickSortAverageMatchesFirstResult] "resultAverages" must be a non-empty array, got: ` +
+        `${Array.isArray(resultAverages) ? 'empty array' : typeof resultAverages}`
+      );
+    }
+
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    logger.debug('[FlightResults.verifyQuickSortAverageMatchesFirstResult] Comparing the quick-sort average with the first result', { sortLabel });
+
+    let activeLabel;
+    try {
+      activeLabel = await flightResultsPage.getActiveQuickSortLabel();
+    } catch (err) {
+      throw new Error(
+        `[FlightResults.verifyQuickSortAverageMatchesFirstResult] Could not read which quick-sort option is active. ` +
+        `Original: ${err.message}`
+      );
+    }
+    if (activeLabel.toLowerCase() !== sortLabel.toLowerCase()) {
+      throw new Error(
+        `[FlightResults.verifyQuickSortAverageMatchesFirstResult] The results are sorted by "${activeLabel}", not "${sortLabel}". ` +
+        `The "${sortLabel}" tile describes the flight that wins that sort, which is only the first card while that sort is active.`
+      );
+    }
+
+    let advertised;
+    try {
+      advertised = await flightResultsPage.getQuickSortOptionAverageDuration(sortLabel);
+    } catch (err) {
+      throw new Error(
+        `[FlightResults.verifyQuickSortAverageMatchesFirstResult] Failed to read the "${sortLabel}" quick-sort average trip time. ` +
+        `Original: ${err.message}`
+      );
+    }
+
+    // Thrown rather than asserted with expect(): the numbers alone ("574 vs 561") say nothing about
+    // which legs produced them, and this repo's Playwright drops expect's custom message, so the
+    // leg breakdown would never reach the failure report.
+    const first = resultAverages[0];
+    if (first.averageMinutes !== advertised.minutes) {
+      throw new Error(
+        `[FlightResults.verifyQuickSortAverageMatchesFirstResult] The "${sortLabel}" option advertises "${advertised.text}" ` +
+        `(${advertised.minutes} min) but the first result's legs [${first.legMinutes.join(', ')}] min average to ` +
+        `${first.averageMinutes} min (round(${first.legMinutes.reduce((sum, m) => sum + m, 0)} / ${first.legMinutes.length} legs)). ` +
+        `The tile must equal the average of the leg durations of the flight it advertises.`
+      );
+    }
+
+    return {
+      sortLabel,
+      advertisedMinutes: advertised.minutes,
+      firstResultAverageMinutes: first.averageMinutes,
+      legMinutes: first.legMinutes,
+    };
+  },
+
+  /**
    * Selects a carrier by clicking its logo in the comparison table, which filters results to
    * that carrier and re-sorts them by cheapest.
    *
