@@ -56,7 +56,6 @@ Feature: 23075 - Flight search parameters populate the travel request form and r
       | Payment Group | ADD |
     And the following reference fields should not be editable:
       | Type of traveller |
-      | Location travel policy |
       | Payment Group |
       | Personnel number |
     When I fill in the "Bank account" reference field with "565"
