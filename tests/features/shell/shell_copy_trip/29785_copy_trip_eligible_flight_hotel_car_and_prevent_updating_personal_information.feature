@@ -36,10 +36,10 @@ Feature: 29785 - Copy trip with eligible products and prevent updating personal 
     When I click passenger info in extras
     And I fill in the passport number "456789" in passenger info section
     And I fill in the nationality in passenger info section with "netherlands"
-    And I fill in the passport expiry date "03/05/2030" in passenger info section
+    And I fill in the passport expiry date "03 May 2030" in passenger info section
     And I save the passenger info
     When I click frequent flyer in extras
-    And I add loyalty number "789654" using airline "el al"
+    And I add loyalty number "789654" using airline "JetBlue"
     When I add a car driver loyalty number "854712" in the extras
     # Copy the trip 
     When I open the copy trip dialog
