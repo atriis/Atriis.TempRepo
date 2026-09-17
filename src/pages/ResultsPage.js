@@ -219,12 +219,14 @@ class ResultsPage {
    * displayed on the results page instead of bookable products.
    *
    * Includes the empty-state title text so the failure message is actionable
-   * in CI logs instead of a generic timeout.
+   * in CI logs instead of a generic timeout — or, worse, a bare
+   * `expect(received).toBe(expected)` from a caller that only had a boolean to assert on.
    *
-   * @param {string} expectedButton - The button label that was expected (e.g. "Select", "Add to trip")
+   * @param {string} expectedTarget - What was expected instead, already quoted for the message
+   *   (e.g. '"Add to trip" button', '"Select" button', 'flight result cards')
    * @throws {Error} Always throws when this is called
    */
-  async _throwNoResultsError(expectedButton) {
+  async throwNoResultsError(expectedTarget = 'a bookable result') {
     let titleText = 'No results found';
     try {
       titleText = (await this.getNoResultsTitle().textContent({ timeout: 1000 }))?.trim() || titleText;
@@ -233,7 +235,7 @@ class ResultsPage {
     }
     throw new Error(
       `No results found on results page. The "${titleText}" empty state was displayed ` +
-      `instead of bookable results; expected "${expectedButton}" button never appeared. ` +
+      `instead of bookable results; expected ${expectedTarget} never appeared. ` +
       `This is typically a data/availability issue (supplier returned zero options for the search criteria), ` +
       `not a test bug.`
     );
@@ -259,7 +261,7 @@ class ResultsPage {
     const winner = await Promise.race([buttonPromise, noResultsPromise]).catch(() => null);
 
     if (winner === 'no-results') {
-      await this._throwNoResultsError(expectedButton);
+      await this.throwNoResultsError(`"${expectedButton}" button`);
     }
 
     if (winner !== 'button') {

@@ -780,7 +780,7 @@ Then('flight times on the results page should be displayed in 12-hour AM\\/PM fo
   logger.info('Results page times verified', { count: times.length, times });
 });
 
-// Longer than isResultDisplayed's own 120s budget on purpose. When the two were equal, Cucumber
+// Longer than verifyFlightResultsAvailable's own 120s budget on purpose. When the two were equal, Cucumber
 // killed this step first, so the DSL never reached its no-results branch and every cause - zero
 // availability, the empty state rendering, or a search that never left the form - printed the same
 // "timed out after 120000ms". The headroom lets the DSL fail with its own reason instead.
@@ -788,8 +788,9 @@ const RESULTS_STEP_TIMEOUT_MS = 180000;
 
 Then("flight results should be available", { timeout: RESULTS_STEP_TIMEOUT_MS }, async function () {
   logger.info("Verifying flight results are available");
-  const isDisplayed = await FlightResults.isResultDisplayed(this.page);
-  expect(isDisplayed).toBe(true);
+  // No expect() here: the DSL throws the empty-state reason itself. A boolean assertion would
+  // collapse "supplier returned nothing" back into a bare expect(received).toBe(expected).
+  await FlightResults.verifyFlightResultsAvailable(this.page);
 });
 
 Then("the displayed results departure times match the selected time frame", async function () {

@@ -431,13 +431,19 @@ function normalizeBrandName(name) {
  */
 const FlightResults = {
   /**
-   * Checks whether flight results are available.
+   * Asserts that bookable flight results rendered, and fails with the reason when they did not.
    *
-   * Useful for:
-   * - conditional flows
-   * - negative test scenarios
+   * Throws rather than returning a boolean on purpose: the caller used to assert
+   * `expect(isDisplayed).toBe(true)`, which reported every distinct cause — zero availability, a
+   * filter that emptied the list, a search that never left the form — as the same bare
+   * `expect(received).toBe(expected)` with nothing to act on. Here the "No results found" empty
+   * state is named explicitly, matching the "Add to trip" / "Select" button waits.
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @throws {Error} If the empty state rendered, or results never appeared before the budget
+   * @returns {Promise<{displayed: true}>}
    */
-  async isResultDisplayed(page) {
+  async verifyFlightResultsAvailable(page) {
     if (!page) {
       throw new Error('page is required');
     }
@@ -463,16 +469,26 @@ const FlightResults = {
 
       const remainingTimeout = Math.max(1000, timeout - (Date.now() - startTime));
       await flightResultsPage.waitForFlightResults(remainingTimeout);
-      return true;
-    } catch {
-      const remainingTimeout = Math.max(1000, timeout - (Date.now() - startTime));
+      return { displayed: true };
+    } catch (error) {
+      // Results never rendered. Give the empty state a short window to confirm WHY: it usually
+      // paints alongside the failed wait, so this is a read of state already on the page, not a
+      // second full-length wait.
+      const emptyStateTimeout = Math.min(10000, Math.max(1000, timeout - (Date.now() - startTime)));
 
       try {
-        await resultsPage.waitForNoResults(remainingTimeout);
-        return false;
+        await resultsPage.waitForNoResults(emptyStateTimeout);
       } catch {
-        return false;
+        // No empty state either — the page is neither results nor "No results found", so the
+        // original wait failure is the honest diagnosis (still loading, or never left the search).
+        throw new Error(
+          `[FlightResults.verifyFlightResultsAvailable] Flight results never rendered, and the ` +
+          `"No results found" empty state was not displayed either — the page is in neither state. ` +
+          `The search may still be loading, or it never left the search form. Original: ${error.message}`,
+        );
       }
+
+      await resultsPage.throwNoResultsError('flight result cards');
     }
   },
 
