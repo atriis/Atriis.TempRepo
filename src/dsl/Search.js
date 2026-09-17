@@ -1,7 +1,7 @@
 const { expect } = require("@playwright/test");
 const { getPageObject } = require("@utils/pageObjectCache");
 const { SearchPage } = require("@pages/SearchPage");
-const { generateRandomGuestData } = require("@utils/data/generateRandomGuestData.js");
+const { generateRandomGuestData, resolveTitleForName } = require("@utils/data/generateRandomGuestData.js");
 const config = require("@config/config");
 const logger = require("@utils/logger").child("Search");
 
@@ -399,13 +399,16 @@ const Search = {
     }
 
     const searchPage = getPageObject(page, SearchPage);
-    const { firstName, lastName, dateOfBirth, email, phone } = generateRandomGuestData();
+    const { firstName, lastName, title, gender, dateOfBirth, email, phone } = generateRandomGuestData();
 
     await searchPage.clickAddTravelerButton();
     await searchPage.clickAddGuestTravelerButton();
     await searchPage.fillInRandomFirstName(firstName);
     await searchPage.fillInRandomLastName(lastName);
-    await searchPage.selectGenderMale();
+    // Selecting the title is what sets the gender (see SearchPage.selectTitleByName), so the guest's
+    // gender agrees with the name that was generated instead of being Male every time.
+    logger.debug('[Search.addRandomGuest] Generated guest identity', { title, gender, firstName });
+    await searchPage.selectTitleByName(title);
     await searchPage.fillInRandomDateOfBirth(dateOfBirth);
     await searchPage.fillInRandomEmail(email);
     await searchPage.fillInRandomPhone(phone);
@@ -421,7 +424,7 @@ const Search = {
       added: true,
       starIconVisible,
       selectedTravelerCount,
-      guestData: { firstName, lastName, dateOfBirth, email, phone, phoneType },
+      guestData: { firstName, lastName, title, gender, dateOfBirth, email, phone, phoneType },
     };
   },
 
@@ -468,6 +471,10 @@ const Search = {
     const firstName = nameOverrides.firstName || random.firstName;
     const lastName = nameOverrides.lastName || random.lastName;
     const { dateOfBirth, email, phone } = random;
+    // The title drives the gender, and the gender has to suit the FIRST name -- so an overridden
+    // first name gets its title looked up, while a generated one keeps the title generated with it.
+    const title = nameOverrides.firstName ? resolveTitleForName(firstName) : random.title;
+    const gender = title === 'Mr' ? 'Male' : 'Female';
 
     let via;
     try {
@@ -487,7 +494,7 @@ const Search = {
       }
       await searchPage.fillInRandomFirstName(firstName);
       await searchPage.fillInRandomLastName(lastName);
-      await searchPage.selectGenderMale();
+      await searchPage.selectTitleByName(title);
       await searchPage.fillInRandomDateOfBirth(dateOfBirth);
       await searchPage.fillInRandomEmail(email);
       await searchPage.fillInRandomPhone(phone);
@@ -512,7 +519,7 @@ const Search = {
       starIconVisible,
       isPrimary,
       selectedTravelerCount,
-      guestData: { firstName, lastName, dateOfBirth, email, phone, userGroupName },
+      guestData: { firstName, lastName, title, gender, dateOfBirth, email, phone, userGroupName },
     };
   },
 
@@ -640,21 +647,25 @@ const Search = {
    * @param {Object} page - Playwright page instance
    * @param {string} firstName - Guest's first name
    * @param {string} lastName - Guest's last name
+   * @param {string} [title] - Title to select, which is also what sets the guest's gender. Left
+   *   out, it is looked up from the first name (resolveTitleForName), which falls back to Mr for
+   *   any name it does not recognise.
    * @returns {{ added: boolean, starIconVisible: boolean, guestData: Object }}
    */
-  async addRandomGuestWithName(page, firstName, lastName) {
+  async addRandomGuestWithName(page, firstName, lastName, title = null) {
     if (!page) throw new Error('page is required');
     if (!firstName || typeof firstName !== 'string') throw new Error('firstName must be a non-empty string');
     if (!lastName || typeof lastName !== 'string') throw new Error('lastName must be a non-empty string');
 
     const searchPage = getPageObject(page, SearchPage);
     const { dateOfBirth, email, phone } = generateRandomGuestData();
+    const resolvedTitle = title || resolveTitleForName(firstName);
 
     await searchPage.clickAddTravelerButton();
     await searchPage.clickAddGuestTravelerButton();
     await searchPage.fillInRandomFirstName(firstName);
     await searchPage.fillInRandomLastName(lastName);
-    await searchPage.selectGenderMale();
+    await searchPage.selectTitleByName(resolvedTitle);
     await searchPage.fillInRandomDateOfBirth(dateOfBirth);
     await searchPage.fillInRandomEmail(email);
     await searchPage.fillInRandomPhone(phone);
@@ -667,7 +678,7 @@ const Search = {
       added: true,
       starIconVisible,
       selectedTravelerCount,
-      guestData: { firstName, lastName, dateOfBirth, email, phone },
+      guestData: { firstName, lastName, title: resolvedTitle, dateOfBirth, email, phone },
     };
   },
 
@@ -683,13 +694,13 @@ const Search = {
     if (!email || typeof email !== 'string') throw new Error('email must be a non-empty string');
 
     const searchPage = getPageObject(page, SearchPage);
-    const { firstName, lastName, dateOfBirth, phone } = generateRandomGuestData();
+    const { firstName, lastName, title, gender, dateOfBirth, phone } = generateRandomGuestData();
 
     await searchPage.clickAddTravelerButton();
     await searchPage.clickAddGuestTravelerButton();
     await searchPage.fillInRandomFirstName(firstName);
     await searchPage.fillInRandomLastName(lastName);
-    await searchPage.selectGenderMale();
+    await searchPage.selectTitleByName(title);
     await searchPage.fillInRandomDateOfBirth(dateOfBirth);
     await searchPage.fillInRandomEmail(email);
     await searchPage.fillInRandomPhone(phone);
@@ -702,7 +713,7 @@ const Search = {
       added: true,
       starIconVisible,
       selectedTravelerCount,
-      guestData: { firstName, lastName, dateOfBirth, email, phone },
+      guestData: { firstName, lastName, title, gender, dateOfBirth, email, phone },
     };
   },
 
@@ -728,9 +739,12 @@ const Search = {
    *   is the empty avatar in the trip header's avatar-list — the ONLY route on a flight-only trip
    *   page, which mounts no travellers list at all. Only the trigger and the post-add verification
    *   differ; the dialog and every field in it are the same.
+   * @param {string} [options.title] - Title to select, which is also what sets the guest's gender.
+   *   Left out, it is looked up from the first name (resolveTitleForName), which falls back to Mr
+   *   for any name it does not recognise.
    * @returns {{ added: boolean, starIconVisible: boolean, guestData: Object }}
    */
-  async addGuestWithNameAndEmail(page, fullName, email, { trigger = 'travelersList' } = {}) {
+  async addGuestWithNameAndEmail(page, fullName, email, { trigger = 'travelersList', title = null } = {}) {
     if (!page) throw new Error('[Search.addGuestWithNameAndEmail] "page" is required.');
     if (!fullName || typeof fullName !== 'string' || !fullName.trim()) {
       throw new Error(`[Search.addGuestWithNameAndEmail] "fullName" must be a non-empty string, got: ${JSON.stringify(fullName)}`);
@@ -751,6 +765,9 @@ const Search = {
     const searchPage = getPageObject(page, SearchPage);
     const { phone } = generateRandomGuestData();
     const dateOfBirth = getFixedAgeDateOfBirth(30);
+    // The scenario supplies the name, so the title has to follow it rather than the other way round.
+    const resolvedTitle = title || resolveTitleForName(firstName);
+    logger.debug('[Search.addGuestWithNameAndEmail] Resolved guest title', { firstName, resolvedTitle });
     const fromTripInfoBar = trigger === 'tripInfoBar';
     // Avatar counts before the add, so the info-bar route has something to verify against: it cannot
     // use the star icon / traveller-tag count below, since neither widget exists on that page.
@@ -781,7 +798,7 @@ const Search = {
       await searchPage.clickAddGuestTravelerButton();
       await searchPage.fillInRandomFirstName(firstName);
       await searchPage.fillInRandomLastName(lastName);
-      await searchPage.selectGenderMale();
+      await searchPage.selectTitleByName(resolvedTitle);
       await searchPage.fillInRandomDateOfBirth(dateOfBirth);
       await searchPage.fillInRandomEmail(email);
       await searchPage.fillInRandomPhone(phone);
@@ -845,9 +862,11 @@ const Search = {
    * @param {import('playwright').Page} page
    * @param {string} firstName
    * @param {string} lastName
+   * @param {string} [title] - Title to select, which is also what sets the guest's gender. Left
+   *   out, it is looked up from the first name (resolveTitleForName).
    * @returns {{ added: boolean, starIconVisible: boolean, selectedTravelerCount: number, guestData: Object }}
    */
-  async addGuestWithoutDateOfBirth(page, firstName, lastName) {
+  async addGuestWithoutDateOfBirth(page, firstName, lastName, title = null) {
     if (!page) throw new Error('[Search.addGuestWithoutDateOfBirth] "page" is required.');
     if (!firstName || typeof firstName !== 'string') {
       throw new Error(`[Search.addGuestWithoutDateOfBirth] "firstName" must be a non-empty string, got: ${typeof firstName}`);
@@ -858,13 +877,14 @@ const Search = {
 
     const searchPage = getPageObject(page, SearchPage);
     const { email, phone } = generateRandomGuestData();
+    const resolvedTitle = title || resolveTitleForName(firstName);
 
     try {
       await searchPage.clickAddTravelerButton();
       await searchPage.clickAddGuestTravelerButton();
       await searchPage.fillInRandomFirstName(firstName);
       await searchPage.fillInRandomLastName(lastName);
-      await searchPage.selectGenderMale();
+      await searchPage.selectTitleByName(resolvedTitle);
       await searchPage.fillInRandomEmail(email);
       await searchPage.fillInRandomPhone(phone);
       await searchPage.clickAddGuestButton();
@@ -896,9 +916,11 @@ const Search = {
    * @param {string} firstName
    * @param {string} lastName
    * @param {string} userGroupName - Visible label of the user group (e.g. "Adis Ababa")
+   * @param {string} [title] - Title to select, which is also what sets the guest's gender. Left
+   *   out, it is looked up from the first name (resolveTitleForName).
    * @returns {Promise<{added: boolean, starIconVisible: boolean, selectedTravelerCount: number}>}
    */
-  async addGuestWithUserGroup(page, firstName, lastName, userGroupName) {
+  async addGuestWithUserGroup(page, firstName, lastName, userGroupName, title = null) {
     if (!page) throw new Error('[Search.addGuestWithUserGroup] "page" is required.');
     if (!firstName || typeof firstName !== 'string') throw new Error('[Search.addGuestWithUserGroup] "firstName" must be a non-empty string');
     if (!lastName || typeof lastName !== 'string') throw new Error('[Search.addGuestWithUserGroup] "lastName" must be a non-empty string');
@@ -908,6 +930,7 @@ const Search = {
 
     const searchPage = getPageObject(page, SearchPage);
     const { dateOfBirth, email, phone } = generateRandomGuestData();
+    const resolvedTitle = title || resolveTitleForName(firstName);
 
     try {
       await searchPage.clickAddTravelerButton();
@@ -916,7 +939,7 @@ const Search = {
       await searchPage.selectUserGroupByName(userGroupName);
       await searchPage.fillInRandomFirstName(firstName);
       await searchPage.fillInRandomLastName(lastName);
-      await searchPage.selectGenderMale();
+      await searchPage.selectTitleByName(resolvedTitle);
       await searchPage.fillInRandomDateOfBirth(dateOfBirth);
       await searchPage.fillInRandomEmail(email);
       await searchPage.fillInRandomPhone(phone);
@@ -954,7 +977,7 @@ const Search = {
     }
 
     const searchPage = getPageObject(page, SearchPage);
-    const { firstName, lastName, dateOfBirth, email, phone } = generateRandomGuestData();
+    const { firstName, lastName, title, gender, dateOfBirth, email, phone } = generateRandomGuestData();
 
     try {
       await searchPage.clickAddTravelerButton();
@@ -964,7 +987,7 @@ const Search = {
       await searchPage.selectUserGroupByName(userGroupName);
       await searchPage.fillInRandomFirstName(firstName);
       await searchPage.fillInRandomLastName(lastName);
-      await searchPage.selectGenderMale();
+      await searchPage.selectTitleByName(title);
       await searchPage.fillInRandomDateOfBirth(dateOfBirth);
       await searchPage.fillInRandomEmail(email);
       await searchPage.fillInRandomPhone(phone);
@@ -995,9 +1018,11 @@ const Search = {
   async addRandomGuestWithSpacesInFirstName(page) {
     if (!page) throw new Error('page is required');
 
-    const { firstName, lastName } = generateRandomGuestData();
+    const { firstName, lastName, title } = generateRandomGuestData();
     const paddedFirstName = ` ${firstName} `;
-    return Search.addRandomGuestWithName(page, paddedFirstName, lastName);
+    // The name is generated here, not supplied by the caller, so its matching title has to travel
+    // with it -- otherwise addRandomGuestWithName's Mr default would reintroduce the mismatch.
+    return Search.addRandomGuestWithName(page, paddedFirstName, lastName, title);
   },
 
   /**
@@ -1015,14 +1040,14 @@ const Search = {
     }
 
     const searchPage = getPageObject(page, SearchPage);
-    const { firstName, lastName, dateOfBirth, email, phone } = generateRandomGuestData();
+    const { firstName, lastName, title, gender, dateOfBirth, email, phone } = generateRandomGuestData();
 
     await searchPage.clickAddTravelerButton();
     await searchPage.clickAddGuestTravelerButton();
     await searchPage.fillInRandomFirstName(firstName);
     await searchPage.fillInGuestMiddleName(middleName);
     await searchPage.fillInRandomLastName(lastName);
-    await searchPage.selectGenderMale();
+    await searchPage.selectTitleByName(title);
     await searchPage.fillInRandomDateOfBirth(dateOfBirth);
     await searchPage.fillInRandomEmail(email);
     await searchPage.fillInRandomPhone(phone);
@@ -1035,7 +1060,7 @@ const Search = {
       added: true,
       starIconVisible,
       selectedTravelerCount,
-      guestData: { firstName, middleName, lastName, dateOfBirth, email, phone },
+      guestData: { firstName, middleName, lastName, title, gender, dateOfBirth, email, phone },
     };
   },
 

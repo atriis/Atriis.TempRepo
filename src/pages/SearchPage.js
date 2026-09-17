@@ -78,6 +78,9 @@ const SELECTORS = {
   // name='gender' is present on BOTH the desktop and the mobile copy of add-guest-form.vue, so
   // callers must always use :visible / .first() and must never assert a count of 1.
   GUEST_GENDER_SELECT: ".edit-traveler section.app-select[name='gender']",
+  // Same <section name=...> shape as GUEST_GENDER_SELECT above, and likewise duplicated across the
+  // desktop and mobile copies of add-guest-form.vue -- so :visible / .first() applies here too.
+  GUEST_TITLE_SELECT: ".edit-traveler section.app-select[name='title']",
   GUEST_GENDER_PLACEHOLDER: ".el-select__placeholder",
   // Fallback for GUEST_GENDER_PLACEHOLDER: while the select holds no value, the wrapper's own
   // text content IS just the placeholder.
@@ -973,11 +976,6 @@ class SearchPage {
     }
   }
 
-  async selectGenderMale() {
-    await this.page.locator(SELECTORS.GENDER_DROPDOWN).click();
-    await this.page.getByRole("option", { name: "Male" }).first().click();
-  }
-
   /**
    * Selects a gender option by its visible label in the guest form.
    * Reuses the GENDER_DROPDOWN selector (anchored to "Please select gender" placeholder)
@@ -991,6 +989,64 @@ class SearchPage {
     const option = this.page.getByRole('option', { name: genderName }).first();
     await option.waitFor({ state: 'visible', timeout: 10000 });
     await option.click();
+  }
+
+  /**
+   * Selects a title in the guest form.
+   *
+   * Setting the title is enough on its own: add-guest-form.ts's handleTitleChange derives the
+   * guest's gender from it (Mr -> Male, Ms/Mrs/Miss -> Female), which is what satisfies the
+   * mandatory gender field. Dr and Prof are deliberately excluded from that mapping and would
+   * leave gender empty, so they must not be passed here.
+   *
+   * The option's visible label carries a trailing period ("Mr.") while the value the app stores
+   * does not ("Mr"), so either spelling is accepted. The match is anchored rather than a substring
+   * because Playwright's default substring matching would let "Mr" select "Mrs.".
+   *
+   * @param {string} title - 'Mr', 'Mrs', 'Ms' or 'Miss', with or without a trailing period
+   * @param {{ timeout?: number }} [options]
+   */
+  async selectTitleByName(title, { timeout = 10000 } = {}) {
+    if (!title || typeof title !== 'string') {
+      throw new Error(`[SearchPage.selectTitleByName] "title" must be a non-empty string, got: ${typeof title}`);
+    }
+
+    const bareTitle = title.trim().replace(/\.$/, '');
+    const dropdown = this.page.locator(`${SELECTORS.GUEST_TITLE_SELECT}:visible`).first();
+
+    try {
+      await dropdown.waitFor({ state: 'visible', timeout });
+      await dropdown.click();
+    } catch (err) {
+      throw new Error(
+        `[SearchPage.selectTitleByName] The guest form's title select never became visible ` +
+        `(${SELECTORS.GUEST_TITLE_SELECT}). The add-guest form may not be open. Original: ${err.message}`
+      );
+    }
+
+    const escapedTitle = bareTitle.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const titlePattern = new RegExp(`^${escapedTitle}\\.?$`, 'i');
+    const option = this.page.getByRole('option', { name: titlePattern }).first();
+
+    try {
+      await option.waitFor({ state: 'visible', timeout });
+      await option.click();
+    } catch (err) {
+      throw new Error(
+        `[SearchPage.selectTitleByName] No "${bareTitle}" option appeared in the guest form's title ` +
+        `dropdown. Expected one of Mr / Mrs / Ms / Miss. Original: ${err.message}`
+      );
+    }
+
+    // Read the selection back. Picking the wrong title would not fail anything downstream -- the
+    // form would simply hold a title nobody asked for -- so the mismatch has to be caught here.
+    const selected = (await dropdown.innerText()).replace(/\s+/g, ' ').trim();
+    if (!titlePattern.test(selected)) {
+      throw new Error(
+        `[SearchPage.selectTitleByName] Selected the "${bareTitle}" option but the title select now ` +
+        `reads "${selected}". The dropdown may have matched a different option.`
+      );
+    }
   }
 
   /**
