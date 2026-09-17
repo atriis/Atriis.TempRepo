@@ -7,23 +7,22 @@
 # Updated: 2025-05-27T12:48:56Z
 
 @regression @provider:amadeus
-Feature: 40204 Amadeus - Agreement hotels displayed and filterable
-  As a corporate traveler
-  I want to see agreement (preferred) hotels first and filter by agreement in room level
-  So that I can easily identify and book company-preferred properties
+Feature: 40204 Amadeus - Filter non agreement GDS hotels
+  As a corporate traveler using Amadeus, that has "Filter non agreement GDS hotels" in the administration
+  I want to see only hotels and rooms with agreements
 
   @priority:high
   Scenario: Agreement hotels are displayed and agreement filter works in room level
     Given I am logged in as "brunasantos@filternonagreement.com" booking a new trip
     And I have added myself as the traveler
-    When I search for a hotel in "LHR" for 1 night
+    When I search for a hotel in "London, UK" for 1 night
     And I wait to see view rates text in results page
-    Then handshake badge should be visible in hotel level results
+    Then agreement badge should be visible on all hotels in hotel level results
     Then the "TMC" filter tag should be visible in hotel results
     Then the "My Corporate" filter tag should be visible in hotel results
     Then the sort filter has "Most recommended" selected
     And I select the first hotel result
     And I wait for the first add to trip button to be visible in room level results
-    Then handshake badge should be visible in room level results
+    Then agreement badge should be visible on all rooms in room level results
     Then the "TMC" filter tag should be visible in room level results
     Then the "My Corporate" filter tag should be visible in room level results
