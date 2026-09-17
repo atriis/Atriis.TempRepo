@@ -172,6 +172,9 @@ const SELECTORS = {
   VISA_NUMBER_INPUT: '.visa-inputs .field.app-column:nth-child(3) input',
   VISA_REMOVE_BUTTON: '.visa-inputs .remove-btn-wrapper .remove-btn',
   SAVE_PASSPORTS_VISAS_BUTTON: '.passport-visa-form .btns-container button',
+  // app-btn renders `is-loading` while handleSubmit awaits userStore/savePassportInfo,
+  // and clears it in its finally block - the save's own completion signal.
+  SAVE_PASSPORTS_VISAS_BUTTON_LOADING: '.passport-visa-form .btns-container button.is-loading',
   KNOWN_TRAVELER_INPUT: '.additional-inputs-container .field.app-column:first-child input',
   DATE_PICKER_PANEL: '.el-picker-panel:visible',
   DATE_PICKER_NEXT_YEAR_ARROW: 'button.el-picker-panel__icon-btn.d-arrow-right:visible',
@@ -2203,11 +2206,18 @@ class ProfilePage {
       const saveBtn = this.page.locator(SELECTORS.SAVE_PASSPORTS_VISAS_BUTTON).first();
       await saveBtn.waitFor({ state: 'visible', timeout: 10000 });
       await saveBtn.click({ timeout: 10000 });
-      await this.page.waitForLoadState('networkidle', { timeout: 15000 });
+      // Do NOT wait on networkidle here: the profile page keeps long-lived LogRocket
+      // connections open (passport-visa-form.ts tracks on both submit and response), so the
+      // network may never go idle and the save times out even though it succeeded.
+      // Wait on the button's own loading class instead - it clears in handleSubmit's finally
+      // block, on the success and the error path alike. The caller asserts the outcome.
+      await this.page
+        .locator(SELECTORS.SAVE_PASSPORTS_VISAS_BUTTON_LOADING)
+        .waitFor({ state: 'hidden', timeout: 15000 });
     } catch (err) {
       throw new Error(
-        `[ProfilePage.clickSavePassportsVisas] Could not click "Save Passports and Visas" button (selector: ${SELECTORS.SAVE_PASSPORTS_VISAS_BUTTON}). ` +
-        `The form may have validation errors or the button is not visible. Original: ${err.message}`
+        `[ProfilePage.clickSavePassportsVisas] Could not save the Passports & Visas form (selector: ${SELECTORS.SAVE_PASSPORTS_VISAS_BUTTON}). ` +
+        `The button may not be visible, or the save never finished (the button stayed in its loading state). Original: ${err.message}`
       );
     }
   }
