@@ -831,6 +831,11 @@ Then('the flight comparison row for {string} should have prices', async function
   await FlightResults.verifyComparisonRowHasPrices(this.page, stopLabel);
 });
 
+Then('every price in the flight comparison table should fit inside its cell box', async function () {
+  logger.info('Verifying every comparison-table price fits inside its cell box');
+  await FlightResults.verifyComparisonPricesFitTheirCells(this.page);
+});
+
 Then('the flight comparison toggle should display {string}', async function (expectedText) {
   logger.info('Verifying flight comparison toggle text', { expectedText });
   await FlightResults.verifyComparisonToggleText(this.page, expectedText);

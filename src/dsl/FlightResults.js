@@ -821,6 +821,73 @@ const FlightResults = {
   },
 
   /**
+   * Verifies that every price in the comparison table is rendered inside its own cell box.
+   *
+   * The box is the 75x48px `div.cell` rectangle flight-comparison.scss draws behind each
+   * carrier/stop intersection. Its size is fixed, so a long amount or a multi-character currency
+   * prefix can spill outside it while the DOM still looks perfectly correct -- the only way to
+   * catch that is to compare the price rect against the box rect.
+   *
+   * Every overflowing cell is collected before failing, so one run reports the whole set rather
+   * than only the first offender.
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @param {number} tolerance - Sub-pixel slack in px, to absorb fractional layout rounding
+   * @returns {Promise<{cellsChecked: number}>}
+   */
+  async verifyComparisonPricesFitTheirCells(page, tolerance = 0.5) {
+    if (!page) {
+      throw new Error('[FlightResults.verifyComparisonPricesFitTheirCells] "page" is required');
+    }
+
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    const cells = await flightResultsPage.getComparisonPriceCellGeometry();
+
+    // A comparison table with no prices at all would make every containment check below vacuously
+    // true, so the count is asserted first -- an empty matrix must fail loudly, not pass silently.
+    if (cells.length === 0) {
+      throw new Error(
+        '[FlightResults.verifyComparisonPricesFitTheirCells] Expected the flight comparison table to ' +
+          'show at least one price, but no priced cell was found. Either the table never rendered or ' +
+          'every carrier/stop intersection came back with isFound=false.'
+      );
+    }
+
+    const overflowing = cells
+      .map((cell) => {
+        const { cellRect, priceRect } = cell;
+        const spill = {
+          left: cellRect.x - priceRect.x,
+          right: priceRect.x + priceRect.width - (cellRect.x + cellRect.width),
+          top: cellRect.y - priceRect.y,
+          bottom: priceRect.y + priceRect.height - (cellRect.y + cellRect.height),
+        };
+
+        const sides = Object.entries(spill)
+          .filter(([, overshoot]) => overshoot > tolerance)
+          .map(([side, overshoot]) => `${side} by ${overshoot.toFixed(1)}px`);
+
+        return sides.length > 0 ? `"${cell.priceText}" in the "${cell.stopLabel}" row (${cell.column}) overflows ${sides.join(' and ')}` : null;
+      })
+      .filter(Boolean);
+
+    // expect()'s second argument is discarded by this repo's @playwright/test, and the overshoot
+    // detail IS the failure report here, so it is thrown rather than attached to a matcher.
+    if (overflowing.length > 0) {
+      throw new Error(
+        `[FlightResults.verifyComparisonPricesFitTheirCells] ${overflowing.length} of ${cells.length} ` +
+          `comparison-table prices overflow their cell box:\n  - ${overflowing.join('\n  - ')}`
+      );
+    }
+
+    logger.debug('[FlightResults.verifyComparisonPricesFitTheirCells] All comparison prices fit their cells', {
+      cellsChecked: cells.length,
+    });
+
+    return { cellsChecked: cells.length };
+  },
+
+  /**
    * Hides the comparison table from flight results.
    *
    * @param {import('playwright').Page} page

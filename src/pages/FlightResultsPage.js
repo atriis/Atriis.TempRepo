@@ -1116,6 +1116,83 @@ class FlightResultsPage {
   }
 
   /**
+   * Reads, in a single layout pass, the geometry of every priced cell in the comparison table.
+   *
+   * The grey rounded rectangle a shopper reads as "the box" is `td.el-table__cell > div.cell`,
+   * hard-coded to 75x48px in flight-comparison.scss. The price is a `.cell-price` span nested
+   * inside it, so a long amount (or a 3-letter currency code such as "EUR 1,234") can overflow
+   * the box without the DOM changing at all -- which is why this reads rects rather than nodes.
+   *
+   * Both rects are taken inside one page.evaluate so they come from the same layout: read as two
+   * separate boundingBox() calls, the table's horizontal scroll can shift one rect relative to
+   * the other and manufacture a false overflow.
+   *
+   * Cells whose carrier has no fare (`carrierData[carrier].isFound === false`) render an empty
+   * box and are skipped -- there is no price to contain. The fixed stop-type column is skipped
+   * for the same reason: it holds a `.stop-type` label, not a `.cell-price`.
+   *
+   * @returns {Promise<Array<{stopLabel: string, column: string, priceText: string,
+   *   cellRect: {x: number, y: number, width: number, height: number},
+   *   priceRect: {x: number, y: number, width: number, height: number}}>>}
+   */
+  async getComparisonPriceCellGeometry() {
+    await this.waitForComparisonTable();
+    await this.page
+      .locator(SELECTORS.COMPARISON_PRICE_CELL)
+      .first()
+      .waitFor({ state: 'visible', timeout: 30000 });
+
+    return await this.page.evaluate(
+      ({ tableSelector, stopTypeSelector, priceSelector }) => {
+        const toRect = (element) => {
+          const { x, y, width, height } = element.getBoundingClientRect();
+          return { x, y, width, height };
+        };
+
+        const table = document.querySelector(tableSelector);
+        if (!table) {
+          return [];
+        }
+
+        const records = [];
+
+        table.querySelectorAll('tbody tr').forEach((row) => {
+          const stopTypeElement = row.querySelector(stopTypeSelector);
+          const stopLabel = stopTypeElement ? stopTypeElement.textContent.trim() : '';
+
+          row.querySelectorAll('td').forEach((cell, cellIndex) => {
+            const box = cell.querySelector('div.cell');
+            const price = box ? box.querySelector(priceSelector) : null;
+            if (!box || !price) {
+              return;
+            }
+
+            records.push({
+              stopLabel,
+              // el-table stamps a per-column class (el-table_1_column_N) on every td, so a failure
+              // can name which column overflowed. The carrier code deliberately is NOT used: the
+              // header logo is inlined as a base64 data URI by the build and app-img leaves `alt`
+              // empty, so the carrier name exists only inside an el-tooltip that has to be hovered.
+              column: Array.from(cell.classList).find((name) => name.includes('column')) || `td-${cellIndex}`,
+              priceText: price.textContent.replace(/\s+/g, ' ').trim(),
+              cellRect: toRect(box),
+              priceRect: toRect(price),
+            });
+          });
+        });
+
+        return records;
+      },
+      {
+        tableSelector: SELECTORS.COMPARISON_TABLE,
+
+        stopTypeSelector: SELECTORS.COMPARISON_STOP_TYPE,
+        priceSelector: SELECTORS.COMPARISON_PRICE_CELL,
+      }
+    );
+  }
+
+  /**
    * Clicks the "Clear all" filters link that resets every applied flight-result filter.
    *
    * @param {number} timeout - Max wait time in ms (default: 30000)
