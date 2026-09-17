@@ -12,6 +12,12 @@ Feature: 74842 [ManualQuote][Ground] - Manual quote new format
   @priority:high
   Scenario: Optional new-format fields reach the share-quote email but not the cart card, and the selected form of payment is kept
     Given I am logged in as "pmac@corp.am" booking a new trip
+    # Every assertion below matches English copy ("Flight number", "Pre paid", "Prepaid"), but the
+    # display language is persisted on the user profile — a run left this account in German and the
+    # whole scenario failed on a form that had rendered perfectly. Reset the baseline here, while
+    # the trip is still empty: the switch reloads the app, and a reload after the traveller is
+    # added would drop them.
+    And I switch the application language to "English (UK)"
     And I have added myself as the traveler
 
     When I open the ground transport manual quote form
