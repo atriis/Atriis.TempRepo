@@ -137,8 +137,16 @@ const SELECTORS = {
   ADMIN_MODAL_OVERLAY: ".ui-widget-overlay",
 
   // --- Roles admin section (test 40136) ---
-  // First column header of the roles datatable — reads "Role" once the Roles list has rendered
-  ROLES_DATATABLE_HEADER: ".datatable-header tr > :nth-child(1)",
+  // The Roles panel's own readiness flag. The admin app keeps the whole roles datatable wrapper
+  // ng-hide'd until it has loaded the roles collection (200+ rows on staging) and flips
+  // rolesViewMode to ViewMode.Ready. Until then the datatable renders with its header text
+  // already in place but collapsed to 0x0, so waiting on the header's VISIBILITY is really
+  // waiting on the roles query to come back. Gate on this flag, with a data-load timeout.
+  ROLES_VIEW_READY: ".roles-container [data-ng-show='rolesViewMode==ViewMode.Ready']:not(.ng-hide)",
+  // First column header of the roles datatable — reads "Role" once the Roles list has rendered.
+  // Scoped to .roles-container: a bare .datatable-header also matches the Users section's
+  // datatable, so an unscoped .first() can resolve a different section's header.
+  ROLES_DATATABLE_HEADER: ".roles-container .datatable-header tr > :nth-child(1)",
   // "Add new role" button (click target is its inner span, mirroring the add-user button)
   ADD_NEW_ROLE_BTN: "[data-ng-click='onAddNewRoleClicked()'] span",
   // Role name input on the role edit form
@@ -1488,12 +1496,31 @@ class AdministrationPage {
   // --- Roles admin section (test 40136) ---
 
   /**
-   * Waits for the roles datatable to render by asserting its first column header reads "Role".
+   * Waits for the Roles panel to report ready (its own rolesViewMode==ViewMode.Ready flag), then
+   * sanity-checks that the rendered datatable's first column header reads "Role".
    */
   async waitForRolesListReady() {
     try {
+      // Wait on the app's own readiness flag rather than the header's visibility. The roles
+      // collection is large, so this is a data load, not a render tick — allow time for it.
+      await this.page
+        .locator(SELECTORS.ROLES_VIEW_READY)
+        .first()
+        .waitFor({ state: 'visible', timeout: 60000 });
+    } catch (err) {
+      throw new Error(
+        `[AdministrationPage.waitForRolesListReady] The Roles list never became ready ` +
+        `(readiness selector: ${SELECTORS.ROLES_VIEW_READY}). ` +
+        `The Roles section may not have opened, or loading the roles collection took over 60s. ` +
+        `Original: ${err.message}`
+      );
+    }
+
+    // The panel reported ready, so the datatable is laid out now — this is a cheap sanity check
+    // that it really is the Roles list on screen.
+    try {
       const header = this.page.locator(SELECTORS.ROLES_DATATABLE_HEADER).first();
-      await header.waitFor({ state: 'visible', timeout: 20000 });
+      await header.waitFor({ state: 'visible', timeout: 15000 });
       const text = (await header.textContent() ?? '').replace(/\s+/g, ' ').trim();
       if (!text.includes('Role')) {
         throw new Error(
@@ -1503,8 +1530,8 @@ class AdministrationPage {
     } catch (err) {
       throw new Error(
         `[AdministrationPage.waitForRolesListReady] The Roles datatable did not render ` +
-        `(header selector: ${SELECTORS.ROLES_DATATABLE_HEADER}). ` +
-        `The Roles section may not have opened. Original: ${err.message}`
+        `(header selector: ${SELECTORS.ROLES_DATATABLE_HEADER}) even though the Roles panel ` +
+        `reported ready. Original: ${err.message}`
       );
     }
   }
