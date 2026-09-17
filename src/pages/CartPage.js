@@ -3410,13 +3410,31 @@ class CartPage {
   /**
    * Waits until "Proceed to Checkout" is ready.
    * Ensures button is visible and ready to click.
+   *
+   * The default is generous on purpose. Adding a manual quote returns to the trip overview as soon
+   * as the "Saved successfully" toast fires, but the cart itself re-fetches and renders el-skeleton
+   * placeholders meanwhile — the CTA does not exist in the DOM at all until that fetch lands. A 10s
+   * ceiling made test 41117 flaky on CI, failing on a cart that was merely still loading.
+   *
+   * @param {{ timeout?: number }} [options]
+   * @throws {Error} If the CTA never renders
+   * @returns {Promise<void>}
    */
-  async waitForProceedToCheckout() {
+  async waitForProceedToCheckout({ timeout = 45000 } = {}) {
     // Wait for button with exact text
-    await this.page.locator(SELECTORS.PROCEED_TO_CHECKOUT_BUTTON).waitFor({
-      state: 'visible',
-      timeout: 10000
-    });
+    try {
+      await this.page.locator(SELECTORS.PROCEED_TO_CHECKOUT_BUTTON).waitFor({
+        state: 'visible',
+        timeout,
+      });
+    } catch (error) {
+      throw new Error(
+        `[CartPage.waitForProceedToCheckout] The "Proceed to Checkout" CTA never rendered within ` +
+        `${timeout}ms (selector: ${SELECTORS.PROCEED_TO_CHECKOUT_BUTTON}). The cart may still be ` +
+        `loading behind its el-skeleton placeholders, the trip may be empty, or the CTA may be ` +
+        `relabelled "Send For Approvals" for a pre-booking-approval user. Original: ${error.message}`
+      );
+    }
   }
 
   /**
@@ -3431,7 +3449,7 @@ class CartPage {
    * @returns {Promise<void>}
    */
   async waitForProceedToCheckoutEnabled({ timeout = 30000 } = {}) {
-    await this.waitForProceedToCheckout();
+    await this.waitForProceedToCheckout({ timeout });
 
     try {
       await this.page.locator(SELECTORS.PROCEED_TO_CHECKOUT_ENABLED_BTN).first().waitFor({
