@@ -126,6 +126,10 @@ const SELECTORS = {
   PER_DIEM_SELECT2_TRIGGER: "[on='settings.isDisplayCorporatePerdiemIdInherited'] .select2-choice",
   PER_DIEM_SELECT2_ARROW: "[on='settings.isDisplayCorporatePerdiemIdInherited'] .select2-arrow",
   PER_DIEM_SELECT2_CHOSEN: "[on='settings.isDisplayCorporatePerdiemIdInherited'] .select2-chosen",
+  // The native <select> select2 mirrors. Its per-diem options arrive asynchronously (ng-repeat over
+  // the "perdiems" collection), so they are the signal that the list is ready to be opened.
+  PER_DIEM_NATIVE_OPTION:
+    "[on='settings.isDisplayCorporatePerdiemIdInherited'] select[data-ng-model='user.CorporatePerdiemId'] option[data-ng-repeat*='perdiem']",
   // select2 open dropdown (rendered at body level) — options list
   PER_DIEM_SELECT2_DROPDOWN: ".select2-drop:visible",
   PER_DIEM_SELECT2_OPTION: ".select2-drop:visible .select2-results .select2-result-selectable > div",
@@ -1309,6 +1313,16 @@ class AdministrationPage {
    */
   async openPerDiemSelect2() {
     try {
+      // The per-diem list is fetched asynchronously after the user form renders. Opening select2
+      // before it lands shows an EMPTY results list, and the late-arriving list then re-renders the
+      // widget and closes the dropdown — so the option can never be picked and the wait times out
+      // against a dropdown that is no longer open. Wait for the native <select> to carry its
+      // per-diem options first.
+      await this.page
+        .locator(SELECTORS.PER_DIEM_NATIVE_OPTION)
+        .first()
+        .waitFor({ state: 'attached', timeout: 30000 });
+
       const arrow = this.page.locator(SELECTORS.PER_DIEM_SELECT2_ARROW).first();
       await arrow.waitFor({ state: 'visible', timeout: 15000 });
       await arrow.click({ timeout: 10000 });
@@ -1319,8 +1333,9 @@ class AdministrationPage {
     } catch (err) {
       throw new Error(
         `[AdministrationPage.openPerDiemSelect2] Could not open the per diem select2 dropdown ` +
-        `(arrow: ${SELECTORS.PER_DIEM_SELECT2_ARROW}). ` +
-        `The user-level per diem control may not be enabled. Original: ${err.message}`
+        `(arrow: ${SELECTORS.PER_DIEM_SELECT2_ARROW}, options: ${SELECTORS.PER_DIEM_NATIVE_OPTION}). ` +
+        `The user-level per diem control may not be enabled, or the per diem list never loaded. ` +
+        `Original: ${err.message}`
       );
     }
   }
@@ -1358,10 +1373,17 @@ class AdministrationPage {
         .click({ timeout: 5000 })
         .catch(() => {});
     } catch (err) {
+      // Name the options actually on offer — a closed dropdown and a dropdown missing the option
+      // fail identically otherwise.
+      const available = await this.page
+        .locator(SELECTORS.PER_DIEM_NATIVE_OPTION)
+        .allTextContents()
+        .catch(() => []);
       throw new Error(
         `[AdministrationPage.selectPerDiemOption] Could not select per diem option "${optionText}" ` +
         `(selector: ${SELECTORS.PER_DIEM_SELECT2_OPTION}). ` +
-        `The option may not exist in the per diem list. Original: ${err.message}`
+        `The per diem list offers: ${available.length ? available.map((t) => `"${t.trim()}"`).join(', ') : '(none)'}. ` +
+        `Original: ${err.message}`
       );
     }
   }
