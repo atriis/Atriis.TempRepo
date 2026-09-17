@@ -572,6 +572,157 @@ class HomePage {
       );
     }
   }
+
+  /**
+   * Reads the document-expiry evaluation the app made for the signed-in user straight from Vuex.
+   *
+   * An absence assertion needs proof that the evaluation actually RAN: "no card rendered" is the
+   * same DOM whether the visibility gate suppressed the alerts (the behaviour under test) or the
+   * component never evaluated anything at all — the feature flag off, the build without the
+   * component, a profile that never loaded. The store carries the only evidence that separates
+   * them, so this reads it directly rather than inferring it from the empty stack.
+   *
+   * Pure read: it reports what the store holds and makes no verdict, and never throws — the
+   * Homepage DSL turns the shape below into a descriptive failure.
+   *
+   * @returns {Promise<{ userId: any, hasEntry: boolean, alertCount: number, isLoading: boolean } | { error: string }>}
+   */
+  async getDocumentExpiryEvaluationFromStore() {
+    try {
+      return await this.page.evaluate(() => {
+        const store = document.querySelector("#app")?.__vue_app__?.config?.globalProperties?.$store;
+        if (!store) return { error: "Vuex store not reachable from #app.__vue_app__" };
+
+        const moduleState = store.state?.documentExpiryStore;
+        if (!moduleState) {
+          return { error: "documentExpiryStore is not registered on the Vuex store" };
+        }
+
+        const userId = store.getters["authStore/loggedinUser"]?.id;
+        if (!userId) return { error: "authStore/loggedinUser carries no id" };
+
+        const entry = moduleState.alertsByUserId?.[userId];
+        return {
+          userId,
+          hasEntry: Array.isArray(entry),
+          alertCount: Array.isArray(entry) ? entry.length : 0,
+          isLoading: !!store.getters["documentExpiryStore/isLoading"],
+        };
+      });
+    } catch (err) {
+      return { error: err.message };
+    }
+  }
+
+  /**
+   * Resolves what the RUNNING app currently calls a document expiry call-to-action, by asking its
+   * own i18n for the key the card renders (documentExpiry.<type>.cta).
+   *
+   * Needed because the button assertion is an ABSENCE check against a literal label. The display
+   * language is persisted on the user profile, so a session that left this account in German finds
+   * no button named "Update Passport" and the assertion passes without proving anything. Reading the
+   * app's own translation lets the DSL detect that mismatch instead of inheriting it. Pure read,
+   * never throws.
+   *
+   * @param {string} documentType - "passport" | "visa" | "creditCard"
+   * @returns {Promise<{ label: string, locale: string } | { error: string }>}
+   */
+  async getDocumentExpiryCtaLabelFromApp(documentType) {
+    try {
+      return await this.page.evaluate((type) => {
+        // vue-i18n is INJECTED, not exposed on globalProperties: this app installs it in legacy mode
+        // but the composition build, so there is no $t/$i18n to read. The instance is the one provide
+        // carrying both `mode` and `global`, and its `global` holds t() and the active locale.
+        const app = document.querySelector("#app")?.__vue_app__;
+        const provides = app?._context?.provides;
+        if (!provides) return { error: "Vue app not reachable from #app.__vue_app__" };
+
+        const i18n = Object.getOwnPropertySymbols(provides)
+          .map((symbol) => provides[symbol])
+          .find((value) => value && typeof value === "object" && value.global && typeof value.mode === "string");
+        if (!i18n) return { error: "vue-i18n is not among the Vue app's provides" };
+
+        const key = `documentExpiry.${type}.cta`;
+        const label = i18n.global.t(key);
+        if (!label || label === key) {
+          return { error: `the app has no translation for "${key}" in the active locale` };
+        }
+
+        return { label, locale: i18n.global.locale?.value ?? i18n.global.locale ?? "unknown" };
+      }, documentType);
+    } catch (err) {
+      return { error: err.message };
+    }
+  }
+
+  /**
+   * Polls the store until the signed-in user's document-expiry evaluation has settled — an entry
+   * committed for their id and the load no longer in flight — then reports whatever it holds.
+   *
+   * Deliberately never throws, for the same reason as waitForDocumentExpiryAlertCount: the DSL owns
+   * the verdict and can say WHICH of the three "the evaluation never ran" causes applies, which a
+   * bare timeout here could not. An unsettled probe is returned as-is so the caller can diagnose it.
+   *
+   * @param {number} [timeout=20000]
+   * @returns {Promise<{ userId: any, hasEntry: boolean, alertCount: number, isLoading: boolean } | { error: string }>}
+   */
+  async waitForDocumentExpiryEvaluation(timeout = 20000) {
+    try {
+      await expect
+        .poll(
+          async () => {
+            const state = await this.getDocumentExpiryEvaluationFromStore();
+            return !!(state.hasEntry && !state.isLoading);
+          },
+          { timeout },
+        )
+        .toBe(true);
+    } catch {
+      // Deliberately swallowed: the caller reports the settled (or unsettled) probe descriptively.
+    }
+    return this.getDocumentExpiryEvaluationFromStore();
+  }
+
+  /**
+   * Counts the VISIBLE buttons anywhere on the page whose accessible name is exactly `label`.
+   *
+   * Deliberately NOT scoped to SELECTORS.DOCUMENT_EXPIRY_ALERT — scoping the button count to the
+   * card locator would make it strictly implied by the card assertion and therefore worthless; the
+   * DSL doc comment records why the two must stay independent.
+   *
+   * Keyed on the button ROLE, never on a data-testid: Atriis.OBT's vite.config.ts applies
+   * removeDataTestId on every non-dev build, so the testids do not exist on staging. app-btn.vue
+   * renders a native <button>, so the role resolves.
+   *
+   * @param {string} label - the exact accessible name, e.g. "Update Passport"
+   * @param {{ settleTimeout?: number }} [options] - settleTimeout: how long to let a late render
+   *   appear before counting, so a slow card is not read as an absence
+   * @returns {Promise<number>}
+   */
+  async countVisibleDocumentExpiryCtaButtonsByLabel(label, { settleTimeout = 2000 } = {}) {
+    if (!label || typeof label !== "string") {
+      throw new Error(
+        `[HomePage.countVisibleDocumentExpiryCtaButtonsByLabel] "label" must be a non-empty string, got: ` +
+          `${typeof label} (${JSON.stringify(label)}). An undefined name matches EVERY button, which would ` +
+          "turn an absence assertion into a guaranteed failure for the wrong reason.",
+      );
+    }
+
+    const buttons = this.page.getByRole("button", { name: label, exact: true });
+
+    try {
+      // A short settle only: the expected outcome IS zero, so this must not be a hard wait. It
+      // gives a late-rendering card a chance to appear rather than counting an empty page too soon.
+      await buttons.first().waitFor({ state: "visible", timeout: settleTimeout });
+    } catch {
+      // Deliberately swallowed: nothing rendered within the settle window, which is the expected
+      // outcome here. The count below is the answer either way.
+    }
+
+    // getByRole already excludes anything hidden from the accessibility tree, so a per-element
+    // isVisible() pass would only repeat that check one round trip at a time.
+    return buttons.count();
+  }
 }
 
 module.exports = { HomePage, SELECTORS };

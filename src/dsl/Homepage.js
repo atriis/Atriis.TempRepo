@@ -77,6 +77,103 @@ async function ensureOnDocumentExpirySurface(page, surface, caller, purpose) {
 }
 
 /**
+ * Maps a CTA label to the document type whose `documentExpiry.<type>.cta` key produces it, so the
+ * DSL can ask the running app what IT calls that button and refuse a label the active locale would
+ * never render. Keyed by the English copy the scenarios pass in (assets/locale/en.json).
+ */
+const DOCUMENT_EXPIRY_CTA_TYPES = {
+  "Update Passport": "passport",
+  "Update Visa": "visa",
+  "Update Card": "creditCard",
+};
+
+/**
+ * Refuses any surface the evaluation guard cannot actually vouch for.
+ *
+ * ensureDocumentExpiryEvaluationRan reads the entry keyed by the SIGNED-IN user, which only the
+ * homepage ever writes (loadForSelf). The trip search screen evaluates the booker's selected
+ * travellers instead (loadForUsers, document-expiry-alerts.ts), and the store is deliberately not
+ * cleared between routes — so on that surface the guard would find the stale homepage entry, declare
+ * the evaluation "ran", and let a page-wide absence pass with no evidence about the travellers at
+ * all. A booker-surface absence check needs a per-traveller guard, which does not exist yet.
+ *
+ * @param {string} surface
+ * @param {string} caller - the calling method name, for the error prefix
+ */
+function assertGuardableSurface(surface, caller) {
+  if (surface !== "homepage") {
+    throw new Error(
+      `[Homepage.${caller}] Only the "homepage" surface is supported, got "${surface}". The evaluation ` +
+        "guard proves the app evaluated the SIGNED-IN user's documents; the trip search page evaluates " +
+        "the selected travellers instead, and the store keeps the homepage entry across routes, so the " +
+        "guard would pass there on stale evidence. Add a per-traveller guard before asserting absence " +
+        "on that surface.",
+    );
+  }
+}
+
+/**
+ * Confirms the app actually EVALUATED the signed-in user's documents, and returns what it decided.
+ *
+ * Every absence assertion below needs this first. "No warning rendered" is the same empty DOM
+ * whether the AB#84862 visibility gate suppressed the alerts — the behaviour under test — or the
+ * evaluation never happened at all, in which case the absence proves nothing. The store holds the
+ * evidence that separates the two, so it is read before any DOM count is believed.
+ *
+ * It closes the two likely holes — the reminders feature flag being off, and the component not being
+ * in the deployed build — because neither commits an entry. It does NOT close a failed profile read:
+ * loadOne() (document-expiry.store.ts) records an empty alert list when getProfileForExpiry throws,
+ * which is indistinguishable from a suppressed profile at this layer. Proving that would mean
+ * re-reading the /userProfile payload and checking editDiabled plus a still-expired document.
+ *
+ * @param {import('playwright').Page} page
+ * @param {string} caller - the calling method name, for the error prefix
+ * @returns {Promise<{ userId: any, alertCount: number }>}
+ */
+async function ensureDocumentExpiryEvaluationRan(page, caller) {
+  const homePage = getPageObject(page, HomePage);
+
+  logger.debug(`[${caller}] Reading the document expiry evaluation from the Vuex store`);
+  const state = await homePage.waitForDocumentExpiryEvaluation();
+
+  if (state.error) {
+    throw new Error(
+      `[Homepage.${caller}] Could not read the document expiry evaluation from the Vuex store on ` +
+        `${page.url()}: ${state.error}. Without it an empty warning stack proves nothing about AB#84862, ` +
+        "so the assertion is refused rather than passed.",
+    );
+  }
+
+  if (state.hasEntry === false) {
+    throw new Error(
+      `[Homepage.${caller}] The app never evaluated document expiry for user ${state.userId} on ` +
+        `${page.url()}: documentExpiryStore holds no entry for that id. Either the ` +
+        "\"Atriis.App.OBT.IsDocumentExpiryRemindersEnabled\" flag is off for this corporation " +
+        "(document-expiry-alerts.ts returns early from created() and never dispatches loadForSelf), or the " +
+        "document-expiry-alerts component is not deployed in this build, or the homepage never finished " +
+        "loading the profile. In every one of those cases the absence of a warning proves nothing about " +
+        "AB#84862 — the gate was never reached.\n" +
+        "  Note the one case this guard does NOT catch: document-expiry.store.ts loadOne() records an " +
+        "EMPTY alert list when the profile read itself throws, so a 500 or a timeout on /userProfile " +
+        "still looks like a committed evaluation here. Closing that needs the payload, not the store.",
+    );
+  }
+
+  // waitForDocumentExpiryEvaluation polls for "entry committed AND not loading", but returns the
+  // unsettled probe when it times out rather than throwing. Without this, a read still in flight
+  // would hand back a mid-load alertCount that the DOM count is then compared against.
+  if (state.isLoading) {
+    throw new Error(
+      `[Homepage.${caller}] Document expiry is still loading for user ${state.userId} on ${page.url()} ` +
+        "after the poll window. The evaluation has not settled, so neither its alert count nor an empty " +
+        "warning stack can be believed yet.",
+    );
+  }
+
+  return { userId: state.userId, alertCount: state.alertCount };
+}
+
+/**
  * Homepage DSL
  *
  * High-level actions the user performs on the application homepage
@@ -651,6 +748,152 @@ const Homepage = {
     }
 
     return targetPage;
+  },
+
+  /**
+   * Verifies the surface shows NO document expiry warning at all — the AB#84862 visibility gate.
+   *
+   * canShowExpiryAlerts() (document-expiry.logic.ts:162) suppresses every alert for a profile whose
+   * userProfile response carries editDiabled:false (the historical, inverted name — false means
+   * "not editable"), because the warning's only action opens that profile for editing. So the
+   * expected state here is an empty stack for a user who DOES have documents that would otherwise
+   * raise one.
+   *
+   * @param {import('playwright').Page} page
+   * @param {'homepage'} surface
+   * @returns {Promise<{ count: number, storeAlertCount: number, userId: any }>}
+   */
+  async verifyNoDocumentExpiryAlerts(page, surface) {
+    if (!page) throw new Error("[Homepage.verifyNoDocumentExpiryAlerts] \"page\" is required.");
+    assertGuardableSurface(surface, "verifyNoDocumentExpiryAlerts");
+
+    const config = await ensureOnDocumentExpirySurface(
+      page,
+      surface,
+      "verifyNoDocumentExpiryAlerts",
+      "asserting no warning renders",
+    );
+
+    logger.info(`Verifying no document expiry warning renders on the ${config.label}`);
+
+    // Order is load-bearing: this must run BEFORE the count below. waitForDocumentExpiryAlertCount(0)
+    // is satisfied the instant the stack is empty, which it also is while the component has not
+    // rendered yet — so counting first would let "nothing has happened" pass as "the gate suppressed
+    // the alerts". Proving the evaluation ran first is what makes the zero meaningful.
+    const { userId, alertCount } = await ensureDocumentExpiryEvaluationRan(
+      page,
+      "verifyNoDocumentExpiryAlerts",
+    );
+
+    const homePage = getPageObject(page, HomePage);
+    const count = await homePage.waitForDocumentExpiryAlertCount(0);
+
+    if (count !== 0) {
+      const titles = await homePage.getDocumentExpiryAlertTitles();
+      throw new Error(
+        `[Homepage.verifyNoDocumentExpiryAlerts] Expected no document expiry warning on the ${config.label} ` +
+          `for user ${userId}, but ${count} rendered: ${JSON.stringify(titles)}. canShowExpiryAlerts() ` +
+          "(document-expiry.logic.ts:162) failed to suppress them for a profile carrying editDiabled:false, " +
+          "so this user is being handed a call to action they have no privilege to complete (AB#84862).",
+      );
+    }
+
+    if (alertCount > 0) {
+      throw new Error(
+        `[Homepage.verifyNoDocumentExpiryAlerts] No warning rendered on the ${config.label}, but ` +
+          `documentExpiryStore holds ${alertCount} alert(s) for user ${userId}. The gate did not suppress at ` +
+          "source: AB#84862 requires toAlerts to raise no alert at all for a profile the user may not edit, " +
+          "not a card that is built and then hidden.",
+      );
+    }
+
+    logger.info(`No document expiry warning on the ${config.label}`, { userId, storeAlertCount: alertCount });
+    return { count: 0, storeAlertCount: alertCount, userId };
+  },
+
+  /**
+   * Verifies no document expiry call-to-action button with the given label renders on the surface.
+   *
+   * The count is page-wide, NOT scoped to the warning card: the feature header requires this
+   * assertion to be INDEPENDENT of the card assertion, because a card rendered without its button is
+   * a different defect from no card at all — Yael confirmed on AB#84862 (2026-09-17) that "this
+   * should not show" means the whole card, action included. Scoping the button count to the card
+   * locator would make this assertion strictly implied by verifyNoDocumentExpiryAlerts and therefore
+   * worthless.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} expectedCtaLabel - e.g. "Update Passport" (documentExpiry.<type>.cta)
+   * @param {'homepage'} surface
+   * @returns {Promise<{ count: number, label: string, userId: any }>}
+   */
+  async verifyNoDocumentExpiryAlertCta(page, expectedCtaLabel, surface) {
+    if (!page) throw new Error("[Homepage.verifyNoDocumentExpiryAlertCta] \"page\" is required.");
+    assertGuardableSurface(surface, "verifyNoDocumentExpiryAlertCta");
+    if (!expectedCtaLabel || typeof expectedCtaLabel !== "string") {
+      throw new Error(
+        `[Homepage.verifyNoDocumentExpiryAlertCta] "expectedCtaLabel" must be a non-empty string, got: ${typeof expectedCtaLabel}`,
+      );
+    }
+
+    const config = await ensureOnDocumentExpirySurface(
+      page,
+      surface,
+      "verifyNoDocumentExpiryAlertCta",
+      `asserting no "${expectedCtaLabel}" button renders`,
+    );
+
+    logger.info(`Verifying no "${expectedCtaLabel}" document expiry button renders on the ${config.label}`);
+
+    // Repeated on purpose, even though verifyNoDocumentExpiryAlerts already ran it in the scenario:
+    // this step must not be able to pass for the wrong reason when it is run on its own, and an
+    // absent button is as meaningless as an absent card if the evaluation never happened.
+    const { userId } = await ensureDocumentExpiryEvaluationRan(page, "verifyNoDocumentExpiryAlertCta");
+
+    const homePage = getPageObject(page, HomePage);
+
+    // The label is i18n copy and the language is persisted on the profile, so an account left in
+    // another language would render "Passport aktualisieren" and this absence check would pass
+    // against a label that was never going to appear. Asking the running app what it calls the CTA
+    // turns that silent pass into a named failure. The scenario still switches to English first —
+    // this is the assertion that the switch actually took.
+    const documentType = DOCUMENT_EXPIRY_CTA_TYPES[expectedCtaLabel];
+    if (!documentType) {
+      throw new Error(
+        `[Homepage.verifyNoDocumentExpiryAlertCta] "${expectedCtaLabel}" is not a document expiry ` +
+          `call-to-action. Expected one of: ${Object.keys(DOCUMENT_EXPIRY_CTA_TYPES).join(", ")}.`,
+      );
+    }
+
+    const rendered = await homePage.getDocumentExpiryCtaLabelFromApp(documentType);
+    if (rendered.error) {
+      throw new Error(
+        `[Homepage.verifyNoDocumentExpiryAlertCta] Could not read what the app calls the "${expectedCtaLabel}" ` +
+          `call-to-action on ${page.url()}: ${rendered.error}. Without it an absent button cannot be told ` +
+          "apart from a button this locale never names that way, so the assertion is refused rather than passed.",
+      );
+    }
+    if (rendered.label !== expectedCtaLabel) {
+      throw new Error(
+        `[Homepage.verifyNoDocumentExpiryAlertCta] The app renders this call-to-action as ` +
+          `"${rendered.label}" (locale "${rendered.locale}"), not "${expectedCtaLabel}". Searching for a label ` +
+          "the app would never show makes the absence below meaningless — set the expected language before " +
+          "asserting, or pass the label this locale uses.",
+      );
+    }
+
+    const count = await homePage.countVisibleDocumentExpiryCtaButtonsByLabel(expectedCtaLabel);
+
+    if (count !== 0) {
+      throw new Error(
+        `[Homepage.verifyNoDocumentExpiryAlertCta] Expected no "${expectedCtaLabel}" button on the ` +
+          `${config.label} for user ${userId}, but ${count} rendered. The only source of that label on the ` +
+          "homepage is a document expiry card's alert-cta (documentExpiry.<type>.cta), so the AB#84862 gate " +
+          "did not suppress the card for a profile this user may not edit.",
+      );
+    }
+
+    logger.info(`No "${expectedCtaLabel}" button on the ${config.label}`, { userId });
+    return { count: 0, label: expectedCtaLabel, userId };
   },
 };
 

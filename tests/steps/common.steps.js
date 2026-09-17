@@ -522,3 +522,24 @@ When(
 // Where the CTA LANDS is asserted by "the user profile of {string} should open in a new tab on the
 // passports and visas section", which lives in profile.steps.js — it drives the profile screen and
 // belongs with the rest of that screen's steps.
+
+// --- Absence: the profile edit privilege gate (AB#84862) ---
+
+// The negative side of the feature: canShowExpiryAlerts() suppresses every warning for a profile the
+// signed-in user may not edit, because the warning's only action opens that profile for editing. The
+// DSL proves the app actually evaluated the documents (via the Vuex store) before it believes an
+// empty stack — otherwise the flag being off would pass this step for the wrong reason.
+Then("no document expiry warning should be displayed on the homepage", async function () {
+  logger.info("Verifying no document expiry warning is displayed on the homepage");
+  await Homepage.verifyNoDocumentExpiryAlerts(this.page, "homepage");
+});
+
+// Asserted independently of the card above, not scoped to it: a card rendered WITHOUT its button is
+// a different defect from no card at all, and only a page-wide button count tells those two apart.
+Then(
+  "no {string} document expiry button should be displayed on the homepage",
+  async function (ctaLabel) {
+    logger.info("Verifying no document expiry call-to-action is displayed on the homepage", { ctaLabel });
+    await Homepage.verifyNoDocumentExpiryAlertCta(this.page, ctaLabel, "homepage");
+  },
+);
