@@ -3689,6 +3689,19 @@ Then("{string} should be displayed for the {string} flight leg in flight details
   await Cart.verifyCabinInFlightDetailsDrawer(this.page, legPosition, cabinText);
 });
 
+When("I wait for flight details in cart to load", async function () {
+  logger.info("Waiting for the cart flight details drawer to finish loading");
+  await Cart.waitForFlightDetailsInCartToLoad(this.page);
+});
+
+// The first {string} is a leg heading in the open flight details drawer, as flight-details.vue
+// renders it from the leg's airport codes ("KUL - SYD"), NOT the cart quote card title.
+Then("{string} has {string} cabin class", async function (legTitle, cabinText) {
+  logger.info('Verifying the cabin class of a named flight details leg', { legTitle, cabinText });
+  const result = await Cart.verifyCabinForNamedLegInFlightDetails(this.page, legTitle, cabinText);
+  logger.info('Cabin class verified for flight details leg', result);
+});
+
 Then("the flight details table headers should be visible", async function () {
   logger.info("Verifying post-ticketing flight details table headers");
   const headers = await Cart.verifyFlightDetailsTableHeaders(this.page);

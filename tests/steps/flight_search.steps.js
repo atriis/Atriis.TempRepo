@@ -5,6 +5,14 @@ const logger = require("@utils/logger").child('FlightSearch');
 
 setDefaultTimeout(120000);
 
+// Parses a multi-city leg written as "FROM-TO" in the Gherkin. The older multi-city steps below
+// each declare their own copy inline; new steps use this one rather than adding an eleventh.
+const parseMultiCityLeg = (leg) => {
+  const parts = leg.toUpperCase().split('-');
+  if (parts.length !== 2) throw new Error(`Invalid leg format "${leg}". Expected "FROM-TO".`);
+  return { from: parts[0], to: parts[1] };
+};
+
 // ========================================
 // WHEN STEPS - FLIGHT SEARCH
 // ========================================
@@ -318,6 +326,17 @@ When("I search for a multi-city flight with legs {string} and {string}", async f
   const legs = [leg1, leg2].map(parseLeg);
   logger.info('Searching for multi-city flight', { legs });
   await FlightSearch.searchFlightMultiCity(this.page, legs);
+});
+
+// Explicit-offset variant: each leg lands on exactly today + the given number of days. The plain
+// two-leg step above advances the calendar a month PER LEG, which compounds and pushes the second
+// leg months out (AMS-KUL/KUL-SYD came back "05 Dec - 08 Mar" on an 18 Sep run). Spell the offsets
+// out in the Gherkin when a test's inventory depends on how far out its legs sit.
+When("I search for a multi-city flight with legs {string} and {string} departing in {int} and {int} days", async function (leg1, leg2, offset1, offset2) {
+  const legs = [leg1, leg2].map(parseMultiCityLeg);
+  const dayOffsets = [offset1, offset2];
+  logger.info('Searching for multi-city flight with explicit leg day offsets', { legs, dayOffsets });
+  await FlightSearch.searchFlightMultiCity(this.page, legs, { dayOffsets });
 });
 
 // Compact-dates variant: legs a few days apart (near-term) instead of the default wider spread,

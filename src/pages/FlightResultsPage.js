@@ -3275,6 +3275,67 @@ async clickSelectForFareWithBaggagePricingOptions(baggageText) {
     }
   }
 
+  /**
+   * Reads the codeshare operator line ("Operated by <carrier>") from ONE leg of ONE
+   * flight result card.
+   *
+   * Scoping matters: a result card renders one `.flight-info-container` per itinerary leg
+   * (flight-preview.vue loops `flightResult.segments`), and each leg renders at most one
+   * `.flight-operator` paragraph for its first flight (flight-preview-segment.vue). The
+   * unscoped `isFlightOperatorVisibleInResults()` reads whichever operator line happens to
+   * come first in the DOM, so it cannot tell an outbound codeshare from an inbound one.
+   *
+   * @param {number} resultIndex - Zero-based flight result card index
+   * @param {number} legIndex - Zero-based leg index within that card (0 = outbound, 1 = inbound)
+   * @param {{ timeout?: number }} options
+   * @returns {Promise<string>} The operator line text, whitespace-collapsed
+   */
+  async getOperatorTextForResultLeg(resultIndex = 0, legIndex = 0, { timeout = 30000 } = {}) {
+    if (!Number.isInteger(resultIndex) || resultIndex < 0) {
+      throw new Error(
+        `[FlightResultsPage.getOperatorTextForResultLeg] "resultIndex" must be a non-negative integer, got: ${resultIndex}`
+      );
+    }
+    if (!Number.isInteger(legIndex) || legIndex < 0) {
+      throw new Error(
+        `[FlightResultsPage.getOperatorTextForResultLeg] "legIndex" must be a non-negative integer, got: ${legIndex}`
+      );
+    }
+
+    const leg = this.page
+      .locator(SELECTORS.FLIGHT_PREVIEW)
+      .nth(resultIndex)
+      .locator(SELECTORS.FLIGHT_PREVIEW_SEGMENT)
+      .nth(legIndex);
+
+    try {
+      await leg.waitFor({ state: 'visible', timeout });
+    } catch (error) {
+      throw new Error(
+        `[FlightResultsPage.getOperatorTextForResultLeg] Flight result card ${resultIndex + 1} did not render a ` +
+        `visible leg at index ${legIndex} within ${timeout}ms (selector: ${SELECTORS.FLIGHT_PREVIEW} > ` +
+        `${SELECTORS.FLIGHT_PREVIEW_SEGMENT}). The card may render fewer legs than requested - a one-way result ` +
+        `has no inbound leg. Original: ${error.message}`
+      );
+    }
+
+    const operator = leg.locator(SELECTORS.FLIGHT_OPERATOR).first();
+
+    try {
+      await operator.waitFor({ state: 'visible', timeout });
+    } catch (error) {
+      throw new Error(
+        `[FlightResultsPage.getOperatorTextForResultLeg] Leg ${legIndex} of flight result card ${resultIndex + 1} ` +
+        `renders no "${SELECTORS.OPERATED_BY_TEXT}" line within ${timeout}ms (selector: ${SELECTORS.FLIGHT_OPERATOR}). ` +
+        `That leg is most likely not a codeshare, so the marketing carrier also operates it. ` +
+        `Original: ${error.message}`
+      );
+    }
+
+    const text = (await operator.textContent()) ?? '';
+    return text.replace(/\s+/g, ' ').trim();
+  }
+
   // ===== BRANDED FARES =====
 
   /**

@@ -11887,6 +11887,81 @@ const Cart = {
   },
 
   /**
+   * Waits for the flight details drawer opened from the cart to finish loading, so the next
+   * assertion reads real flight data instead of the drawer's loading skeleton.
+   *
+   * @param {import('playwright').Page} page
+   */
+  async waitForFlightDetailsInCartToLoad(page) {
+    if (!page) throw new Error('[Cart.waitForFlightDetailsInCartToLoad] "page" is required.');
+    const cartPage = getPageObject(page, CartPage);
+    logger.debug('Waiting for the cart flight details drawer to finish loading');
+    await cartPage.waitForFlightDetailsDrawerLoaded();
+  },
+
+  /**
+   * Verifies that ONE leg of the open flight details drawer — identified by its heading, e.g.
+   * "KUL - SYD" — shows the expected cabin class on every flight it holds.
+   *
+   * The heading is how flight-details.vue labels a leg (`getLegTitle` joins the leg's airport
+   * codes), so a leg with a connection reads "KUL - SIN - SYD" and carries one cabin chip per
+   * flight. Every chip of that leg is checked, so a connecting leg cannot pass on its first hop.
+   *
+   * The chip reads "<description> (<booking class>)"; only the description is compared, and
+   * case-insensitively, because suppliers differ on casing ("ECONOMY" vs "Economy") while the
+   * booking class letter varies per flight.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} legTitle - Leg heading in the drawer, e.g. "KUL - SYD"
+   * @param {string} cabinText - Expected cabin description, e.g. "ECONOMY"
+   * @returns {Promise<{ legTitle: string, legIndex: number, cabins: string[] }>}
+   */
+  async verifyCabinForNamedLegInFlightDetails(page, legTitle, cabinText) {
+    if (!page) throw new Error('[Cart.verifyCabinForNamedLegInFlightDetails] "page" is required.');
+    if (typeof legTitle !== 'string' || !legTitle.trim()) {
+      throw new Error(
+        `[Cart.verifyCabinForNamedLegInFlightDetails] "legTitle" must be a non-empty string, got: ${typeof legTitle} (${legTitle})`
+      );
+    }
+    if (typeof cabinText !== 'string' || !cabinText.trim()) {
+      throw new Error(
+        `[Cart.verifyCabinForNamedLegInFlightDetails] "cabinText" must be a non-empty string, got: ${typeof cabinText} (${cabinText})`
+      );
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+    logger.debug('Verifying the cabin class of a named flight details leg', { legTitle, cabinText });
+
+    // Spacing around the dash is the template's, not the test author's, so compare normalized.
+    const normalize = (text) => text.replace(/\s+/g, ' ').trim().toLowerCase();
+    const titles = await cartPage.getLegTitlesInFlightDetailsDrawer();
+    const legIndex = titles.findIndex((title) => normalize(title) === normalize(legTitle));
+
+    if (legIndex === -1) {
+      throw new Error(
+        `[Cart.verifyCabinForNamedLegInFlightDetails] The flight details drawer has no leg headed ` +
+        `"${legTitle.trim()}" - it renders [${titles.join(', ')}]. The itinerary may route differently than the ` +
+        `test expects, or a connection may have added a stop to the heading.`
+      );
+    }
+
+    const cabins = await cartPage.getCabinChipsForLegInFlightDetailsDrawer(legIndex);
+    const expected = normalize(cabinText);
+    // "ECONOMY (Y)" -> "economy". The trailing booking class is per-flight noise.
+    const mismatched = cabins.filter((chip) => normalize(chip.replace(/\s*\([^)]*\)\s*$/, '')) !== expected);
+
+    if (mismatched.length) {
+      throw new Error(
+        `[Cart.verifyCabinForNamedLegInFlightDetails] Expected every flight of leg "${titles[legIndex]}" to be in ` +
+        `"${cabinText.trim()}" cabin, but the flight details drawer shows [${cabins.join(', ')}]. ` +
+        `Mismatched: [${mismatched.join(', ')}].`
+      );
+    }
+
+    return { legTitle: titles[legIndex], legIndex, cabins };
+  },
+
+  /**
    * Verifies the carrier name in the cart more details drawer.
    * @param {import('playwright').Page} page
    * @param {string} expectedName

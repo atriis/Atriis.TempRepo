@@ -340,6 +340,19 @@ const SELECTORS = {
   // Text-based locator for baggage advisory inside the flight details drawer body.
   // Robust against layout changes (avoids position-based selectors like :nth-child(3)).
   FLIGHT_DETAILS_DRAWER_BAGGAGE_TEXT: (text) => `.app-drawer.flight-details-drawer .el-drawer__body :text("${text}")`,
+  // One leg of the itinerary inside the flight details drawer (flight-details.vue renders one
+  // `.segment-details-wrapper` per `flightDetails.segments` entry, outbound first).
+  FLIGHT_DETAILS_DRAWER_LEG: '.app-drawer.flight-details-drawer .el-drawer__body .segment-details-wrapper',
+  // Leg heading, RELATIVE to FLIGHT_DETAILS_DRAWER_LEG. `getLegTitle` joins the leg's airport
+  // codes, so a direct leg reads "KUL - SYD" and a connecting one "KUL - SIN - SYD".
+  FLIGHT_DETAILS_DRAWER_LEG_TITLE: 'h3.flight-headline',
+  // Cabin-class chip, RELATIVE to FLIGHT_DETAILS_DRAWER_LEG. flight-details.vue renders one
+  // `.text-background` chip per advisory (brand name, cabin, baggage, seats left…) and they share
+  // every class, so the chip is identified by its leading `flight_class` icon ligature. Its <p>
+  // reads "<flightClassDesc> (<flightClass>)", e.g. "ECONOMY (Y)". One chip per FLIGHT, so a leg
+  // with a connection yields several.
+  FLIGHT_DETAILS_DRAWER_CABIN_CHIP:
+    '.flight-details-bottom-bar .text-background:has(span.material-symbols-outlined:text-is("flight_class")) p',
   FLIGHT_CART_MORE_DETAILS_DRAWER: "[aria-label='More details']",
   FLIGHT_CART_MORE_DETAILS_PRICE_TEXT: /\$\s*\d[\d,]*(?:\.\d+)?/,
   // Fare-rules button scoped inside the open More Details drawer. Manual quotes
@@ -11992,6 +12005,111 @@ class CartPage {
     }
     const target = this.page.locator(SELECTORS.FLIGHT_DETAILS_DRAWER_CABIN_TEXT(expectedText)).nth(occurrenceIndex);
     await target.waitFor({ state: 'visible', timeout });
+  }
+
+  /**
+   * Waits for the open flight details drawer in cart to finish loading its body.
+   *
+   * The drawer opens immediately and fetches its content behind `el-skeleton` placeholders, so a
+   * read issued the moment it appears sees grey blocks and no flight data. Scoped to the drawer's
+   * CLASS rather than its aria-label: the title is "More details" on staging and "Flight Details"
+   * once AB#84760 ships, while `.flight-details-drawer` holds across both.
+   *
+   * @param {{ timeout?: number }} options
+   */
+  async waitForFlightDetailsDrawerLoaded({ timeout = 30000 } = {}) {
+    const body = this.page.locator(SELECTORS.FLIGHT_DETAILS_DRAWER_BODY).first();
+
+    try {
+      await body.waitFor({ state: 'visible', timeout });
+    } catch (error) {
+      throw new Error(
+        `[CartPage.waitForFlightDetailsDrawerLoaded] The flight details drawer did not open within ${timeout}ms ` +
+        `(selector: ${SELECTORS.FLIGHT_DETAILS_DRAWER_BODY}). "I open flight details in cart" must run first. ` +
+        `Original: ${error.message}`
+      );
+    }
+
+    // A locator matching nothing counts as detached, so this resolves at once when the body
+    // rendered without placeholders.
+    const skeletons = body.locator(SELECTORS.MORE_DETAILS_DRAWER_SKELETON);
+
+    try {
+      await skeletons.first().waitFor({ state: 'detached', timeout });
+    } catch (error) {
+      throw new Error(
+        `[CartPage.waitForFlightDetailsDrawerLoaded] The flight details drawer was still showing its loading ` +
+        `skeleton after ${timeout}ms (selector: ${SELECTORS.MORE_DETAILS_DRAWER_SKELETON}). The quote details ` +
+        `request has most likely not returned. Original: ${error.message}`
+      );
+    }
+
+    const text = ((await body.innerText()) ?? '').trim();
+    if (!text) {
+      throw new Error(
+        `[CartPage.waitForFlightDetailsDrawerLoaded] The flight details drawer finished its loading skeleton but ` +
+        `its body rendered no text (selector: ${SELECTORS.FLIGHT_DETAILS_DRAWER_BODY}). The quote details response ` +
+        `may have come back empty.`
+      );
+    }
+  }
+
+  /**
+   * Reads the heading of every itinerary leg rendered in the open flight details drawer,
+   * outbound first, e.g. ["AMS - KUL", "KUL - SYD"].
+   *
+   * @param {{ timeout?: number }} options
+   * @returns {Promise<string[]>}
+   */
+  async getLegTitlesInFlightDetailsDrawer({ timeout = 15000 } = {}) {
+    const legs = this.page.locator(SELECTORS.FLIGHT_DETAILS_DRAWER_LEG);
+
+    try {
+      await legs.first().waitFor({ state: 'visible', timeout });
+    } catch (error) {
+      throw new Error(
+        `[CartPage.getLegTitlesInFlightDetailsDrawer] The flight details drawer rendered no itinerary leg within ` +
+        `${timeout}ms (selector: ${SELECTORS.FLIGHT_DETAILS_DRAWER_LEG}). The drawer may not be open, or it may ` +
+        `still be showing its loading skeleton. Original: ${error.message}`
+      );
+    }
+
+    const titles = await legs.locator(SELECTORS.FLIGHT_DETAILS_DRAWER_LEG_TITLE).allInnerTexts();
+    return titles.map((title) => title.replace(/\s+/g, ' ').trim());
+  }
+
+  /**
+   * Reads the cabin-class chips of ONE leg of the open flight details drawer — one chip per
+   * flight, so a leg with a connection returns several.
+   *
+   * @param {number} legIndex - Zero-based leg index within the drawer (0 = outbound)
+   * @param {{ timeout?: number }} options
+   * @returns {Promise<string[]>} e.g. ["ECONOMY (Y)"]
+   */
+  async getCabinChipsForLegInFlightDetailsDrawer(legIndex, { timeout = 15000 } = {}) {
+    if (!Number.isInteger(legIndex) || legIndex < 0) {
+      throw new Error(
+        `[CartPage.getCabinChipsForLegInFlightDetailsDrawer] "legIndex" must be a non-negative integer, got: ${legIndex}`
+      );
+    }
+
+    const chips = this.page
+      .locator(SELECTORS.FLIGHT_DETAILS_DRAWER_LEG)
+      .nth(legIndex)
+      .locator(SELECTORS.FLIGHT_DETAILS_DRAWER_CABIN_CHIP);
+
+    try {
+      await chips.first().waitFor({ state: 'visible', timeout });
+    } catch (error) {
+      throw new Error(
+        `[CartPage.getCabinChipsForLegInFlightDetailsDrawer] Leg ${legIndex} of the flight details drawer showed ` +
+        `no cabin-class chip within ${timeout}ms (selector: ${SELECTORS.FLIGHT_DETAILS_DRAWER_CABIN_CHIP}). The ` +
+        `advisories bar may no longer mark the cabin chip with the "flight_class" icon. Original: ${error.message}`
+      );
+    }
+
+    const texts = await chips.allInnerTexts();
+    return texts.map((text) => text.replace(/\s+/g, ' ').trim()).filter(Boolean);
   }
 
   /**

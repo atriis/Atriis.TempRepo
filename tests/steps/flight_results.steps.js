@@ -1071,6 +1071,14 @@ Then('the "Operated by" text should be visible in flight details', async functio
   await FlightResults.verifyOperatedByInFlightDetails(this.page);
 });
 
+// {string} is the whole operator line, e.g. "Operated by MH"; {int} is the ONE-BASED flight
+// result card number. The leg is always the card's inbound (second) leg.
+Then('the {string} text should be visible for the {int} inbound result', async function (expectedText, resultNumber) {
+  logger.info('Verifying the operator line on the inbound leg of a flight result', { expectedText, resultNumber });
+  const { actualText } = await FlightResults.verifyOperatorTextInInboundResult(this.page, expectedText, resultNumber);
+  logger.info('Inbound leg operator line verified', { actualText });
+});
+
 // ========================================
 // BY SCHEDULE - ROLE-BASED BUTTON VISIBILITY
 // ========================================

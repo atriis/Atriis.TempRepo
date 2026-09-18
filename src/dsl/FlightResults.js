@@ -19,6 +19,10 @@ const {
   normalizeCurrencyCode,
 } = require("../utils/currencyConversion");
 
+// A result card renders one leg container per itinerary leg, outbound first. "Inbound" is the
+// second leg — on a multi-city search that is the second requested leg.
+const INBOUND_LEG_INDEX = 1;
+
 const MONTH_NAMES = [
   'January', 'February', 'March', 'April', 'May', 'June',
   'July', 'August', 'September', 'October', 'November', 'December',
@@ -2903,6 +2907,49 @@ async verifyFareComponentTextColorInPricingOptions(page, expectedColor, index = 
     const flightResultsPage = getPageObject(page, FlightResultsPage);
     const isVisible = await flightResultsPage.isFlightOperatorVisibleInDrawer();
     expect(isVisible).toBe(true);
+  },
+
+  /**
+   * Verifies the codeshare operator line of the INBOUND leg of one flight result card
+   * contains the expected text, e.g. "Operated by MH".
+   *
+   * Inbound is leg index 1 of the card - on a multi-city search that is the second
+   * requested leg, which is what the manual test means by "the inbound result".
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} expectedText - Operator line the leg must show, e.g. "Operated by MH"
+   * @param {number} [resultNumber=1] - One-based flight result card number
+   * @returns {Promise<{ actualText: string }>}
+   */
+  async verifyOperatorTextInInboundResult(page, expectedText, resultNumber = 1) {
+    if (!page) throw new Error('[FlightResults.verifyOperatorTextInInboundResult] "page" is required.');
+    if (typeof expectedText !== 'string' || !expectedText.trim()) {
+      throw new Error(
+        `[FlightResults.verifyOperatorTextInInboundResult] "expectedText" must be a non-empty string, got: ${typeof expectedText} (${expectedText})`
+      );
+    }
+    if (!Number.isInteger(resultNumber) || resultNumber < 1) {
+      throw new Error(
+        `[FlightResults.verifyOperatorTextInInboundResult] "resultNumber" must be a positive integer, got: ${resultNumber}`
+      );
+    }
+
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    logger.debug('Reading the inbound leg operator line of a flight result', { expectedText, resultNumber });
+
+    const actualText = await flightResultsPage.getOperatorTextForResultLeg(resultNumber - 1, INBOUND_LEG_INDEX);
+
+    // Thrown rather than asserted: the operator line actually rendered is the whole diagnostic,
+    // and expect()'s second argument is discarded by this repo's @playwright/test.
+    if (!actualText.includes(expectedText.trim())) {
+      throw new Error(
+        `[FlightResults.verifyOperatorTextInInboundResult] Expected the inbound leg of flight result ` +
+        `${resultNumber} to show "${expectedText.trim()}", but it reads "${actualText}". The result order or the ` +
+        `carrier operating that leg may have changed.`
+      );
+    }
+
+    return { actualText };
   },
 
   // ===== BRANDED FARES =====
