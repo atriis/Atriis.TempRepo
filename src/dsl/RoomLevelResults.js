@@ -713,6 +713,35 @@ const RoomLevelResults = {
   },
 
   /**
+   * Verifies the address in the room level header carries the expected text.
+   *
+   * A contains check, not an exact match: the header renders the full street address of the
+   * hotel and the assertion is only interested in the city it sits in.
+   * @param {import('playwright').Page} page - The tab showing the room level page
+   * @param {string} expectedText - Case-insensitive substring the address must contain (e.g. "Turin")
+   * @returns {Promise<{address: string}>} The address shown on the room level page
+   * @throws {Error} If the address does not contain the expected text
+   */
+  async verifyHotelAddressInRoomLevel(page, expectedText) {
+    if (!page) throw new Error('page parameter is required');
+    if (!expectedText || typeof expectedText !== 'string') {
+      throw new Error(`"expectedText" must be a non-empty string, got: ${typeof expectedText} (${JSON.stringify(expectedText)})`);
+    }
+
+    const roomLevelResultsPage = getPageObject(page, RoomLevelResultsPage);
+    const address = await roomLevelResultsPage.getHotelAddressText();
+
+    if (!address.toLowerCase().includes(expectedText.toLowerCase())) {
+      throw new Error(
+        `Expected the room level hotel address to contain "${expectedText}", but it was "${address}". ` +
+        `The selected hotel may not be in the intended city.`
+      );
+    }
+
+    return { address };
+  },
+
+  /**
    * Verifies every listed room shows a real price - none priced at zero or below.
    *
    * Reuses the reader behind the policy indicator check and ignores its policy half:

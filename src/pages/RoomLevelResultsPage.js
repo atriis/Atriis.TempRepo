@@ -99,6 +99,9 @@ const SELECTORS = {
   // Hotel name heading (h1) at the top of the room level page - the first piece of
   // real content below the breadcrumb, used as the "top of page" anchor
   HOTEL_NAME_HEADING: 'h1.hotel-name',
+  // Hotel address in the room level header (hotel-info.vue rendered by hotel-details.vue).
+  // Scoped to the desktop section so it cannot resolve to the mobile variant of the same block.
+  HOTEL_ADDRESS: '.hotel-details-desktop .address-distance p',
   // Room list section wrapping the room cards, used to find the element that scrolls
   ROOM_LIST: '.room-list',
   // Room card loading skeleton (card-img-skeleton.vue). Rendered while the rooms load and
@@ -1069,6 +1072,23 @@ class RoomLevelResultsPage {
     const heading = this.page.locator(SELECTORS.HOTEL_NAME_HEADING).first();
     await heading.waitFor({ state: 'visible', timeout: 60000 });
     return normalizeText(await heading.innerText());
+  }
+
+  /**
+   * Reads the hotel address shown in the room level page header.
+   * @returns {Promise<string>} The address text, whitespace-normalized
+   */
+  async getHotelAddressText() {
+    const address = this.page.locator(SELECTORS.HOTEL_ADDRESS).first();
+    try {
+      await address.waitFor({ state: 'visible', timeout: 60000 });
+    } catch (err) {
+      throw new Error(
+        `[RoomLevelResultsPage.getHotelAddressText] Hotel address not visible in the room level header ` +
+        `(selector: ${SELECTORS.HOTEL_ADDRESS}). The hotel details header may still be loading. Original: ${err.message}`
+      );
+    }
+    return normalizeText(await address.innerText());
   }
 
   /**

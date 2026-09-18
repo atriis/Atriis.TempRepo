@@ -400,6 +400,12 @@ When("I add the room marked as check cancellation policy", async function () {
   await RoomLevelResults.addCheckCancellationPolicyRoomToCart(this.page);
 });
 
+Then("the hotel address in room level results should contain {string}", async function (expectedText) {
+  logger.info("Verifying hotel address in room level results", { expectedText });
+  const result = await RoomLevelResults.verifyHotelAddressInRoomLevel(this.page, expectedText);
+  logger.info("Room level hotel address verified", result);
+});
+
 Then("I should see a provided by label in room level results", async function () {
   logger.info("Verifying 'Provided by' label is visible in room level results");
   await RoomLevelResults.verifyProviderLabelVisible(this.page);

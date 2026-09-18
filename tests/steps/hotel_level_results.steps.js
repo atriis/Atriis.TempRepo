@@ -360,6 +360,13 @@ Then("the first hotel has the text {string} on the address", async function (tex
   await HotelLevelResults.verifyFirstHotelAddress(this.page, text);
 });
 
+// Same assertion as "the first hotel has the text {string} on the address" above, kept under the
+// phrasing the manual test uses. Both read the address line of the first hotel card.
+Then("the first hotel results should have {string} in the address", async function (text) {
+  logger.info("Verifying first hotel result address contains text", { text });
+  await HotelLevelResults.verifyFirstHotelAddress(this.page, text);
+});
+
 Then("Reset Filters button is displayed in hotel filter summary", async function () {
   logger.info("Verifying Reset Filters button is displayed in hotel filter summary");
   await HotelLevelResults.verifyResetFiltersButtonDisplayed(this.page);
