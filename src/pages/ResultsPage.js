@@ -381,7 +381,19 @@ class ResultsPage {
     await this._waitForResultButtonOrNoResults(this.getResultButtonByText(text), text, timeout);
   }
 
-  async waitForNoResultsTitle(expectedText, timeout = 60000) {
+  /**
+   * Waits for the no-results panel and its title text.
+   *
+   * `timeout` is the budget for BOTH waits together, not for each: a "Complete trip" search only
+   * renders this panel once every product (flights, hotels, cars) has finished, which measures at
+   * ~55-60s, so the container wait needs the whole budget while the title — already in the DOM by
+   * then — only needs what is left. Spending `timeout` twice would let a failure run to 2x the
+   * value and blow the 120s cucumber step budget before this could report the real reason.
+   *
+   * @param {string} expectedText - Expected no-results title text
+   * @param {number} timeout - Total budget in ms for the panel AND its title
+   */
+  async waitForNoResultsTitle(expectedText, timeout = 90000) {
     if (!expectedText || typeof expectedText !== 'string') {
       throw new Error('expectedText must be a non-empty string');
     }
@@ -390,8 +402,10 @@ class ResultsPage {
       throw new Error(`timeout must be a non-negative number, got ${timeout}`);
     }
 
+    const deadline = Date.now() + timeout;
     await this.getNoResultsContainer().waitFor({ state: 'visible', timeout });
-    await waitForText(this.page, SELECTORS.NO_RESULTS_TITLE, expectedText, timeout);
+    const remaining = Math.max(1000, deadline - Date.now());
+    await waitForText(this.page, SELECTORS.NO_RESULTS_TITLE, expectedText, remaining);
   }
 
   async waitForNoResults(timeout = 60000) {
