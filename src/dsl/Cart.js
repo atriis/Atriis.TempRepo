@@ -12396,6 +12396,31 @@ const Cart = {
   },
 
   /**
+   * Verifies the flight details drawer shows the PNR of the held trip.
+   * The drawer must already be open, on a trip that is on hold.
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @returns {Promise<{pnr: string}>}
+   */
+  async verifyPnrInFlightDetails(page) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+    const pnr = await cartPage.getFlightDetailsPnrText();
+
+    if (!/^[A-Z0-9]{5,8}$/.test(pnr)) {
+      throw new Error(
+        `The flight details drawer shows "${pnr}" as the PNR, which is not a record locator. ` +
+        'Expected 5 to 8 letters or digits.'
+      );
+    }
+
+    return { pnr };
+  },
+
+  /**
    * Verifies that the "Booked by" text with date/time is visible in the price breakdown drawer.
    * Expects the text to match pattern: "Booked by {name} on {date}".
    *

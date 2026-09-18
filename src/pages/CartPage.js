@@ -1273,7 +1273,11 @@ const SELECTORS = {
   // Hotel address in More Details drawer
   HOTEL_ADDRESS: '.hotel-address',
   MORE_DETAILS_DRAWER_CLOSE: "[aria-label='More details'] [fill='currentColor'], [aria-label='More details'] .el-dialog__close",
-  TIME_LIMIT_CONTAINER: '.time-limit-container',
+  // The ticketing deadline in the flight details drawer, in either of the two markups in
+  // circulation: the older container's paragraph, and the header field that replaced it.
+  TIME_LIMIT_VALUE: '.time-limit-container p, .fd-header__time-limit-value',
+  // Shown in the same header once the trip is held, next to the deadline. Redesign only.
+  FLIGHT_DETAILS_PNR_VALUE: '.fd-header__pnr-value',
   // More Details drawer — hotel quote total price in footer (hotel-quote-more-details.vue → app-footer → app-price → h4.amount)
   MORE_DETAILS_TOTAL_PRICE: ".cart-more-details-drawer .app-footer .total-price .amount",
   MORE_DETAILS_DRAWER_CONTAINER: ".cart-more-details-drawer",
@@ -12171,10 +12175,20 @@ class CartPage {
    * @returns {Promise<string>} The time limit text (e.g. "Mon, 31 Mar 26 14:00")
    */
   async getTimeLimitText({ timeout = 10000 } = {}) {
-    const container = this.page.locator(SELECTORS.TIME_LIMIT_CONTAINER);
-    await container.waitFor({ state: 'visible', timeout });
-    const text = await container.locator('p').innerText();
-    return text.trim();
+    const value = this.page.locator(SELECTORS.TIME_LIMIT_VALUE).first();
+    await value.waitFor({ state: 'visible', timeout });
+    return ((await value.innerText()) ?? '').replace(/\s+/g, ' ').trim();
+  }
+
+  /**
+   * Gets the PNR from the flight details drawer, which carries it only once the trip is held.
+   * @param {{ timeout?: number }} options
+   * @returns {Promise<string>} The PNR text (e.g. "9KBU76")
+   */
+  async getFlightDetailsPnrText({ timeout = 10000 } = {}) {
+    const value = this.page.locator(SELECTORS.FLIGHT_DETAILS_PNR_VALUE).first();
+    await value.waitFor({ state: 'visible', timeout });
+    return ((await value.innerText()) ?? '').replace(/\s+/g, ' ').trim();
   }
 
   // ========================================

@@ -3522,6 +3522,12 @@ Then("the time limit hour should be displayed in flight details", async function
   logger.info("Time limit text found", { text });
 });
 
+Then("the PNR should be displayed in flight details", async function () {
+  logger.info("Verifying the PNR is displayed in flight details");
+  const result = await Cart.verifyPnrInFlightDetails(this.page);
+  logger.info("PNR found in flight details", result);
+});
+
 Then("the cancel trip button should be disabled", async function () {
   logger.info("Verifying cancel trip button is disabled");
   await Cart.verifyCancelTripButtonIsDisabled(this.page);

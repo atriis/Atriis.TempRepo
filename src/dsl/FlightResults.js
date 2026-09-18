@@ -2909,6 +2909,380 @@ async verifyFareComponentTextColorInPricingOptions(page, expectedColor, index = 
     expect(isVisible).toBe(true);
   },
 
+  // ===== FLIGHT DETAILS DRAWER (redesigned in US 84214) =====
+
+  /**
+   * Opens the flight details of the leg being priced, from inside the pricing options drawer.
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @returns {Promise<{opened: true}>}
+   */
+  async openFlightDetailsFromPricingOptions(page) {
+    if (!page) throw new Error('page is required');
+
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    await flightResultsPage.clickFlightDetailsToggleInPricingOptions();
+    await flightResultsPage.waitForRedesignedFlightDetails();
+    return { opened: true };
+  },
+
+  /**
+   * Closes the flight details inside the pricing options drawer, returning to the fare list.
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @returns {Promise<{closed: true}>}
+   */
+  async closeFlightDetailsInPricingOptions(page) {
+    if (!page) throw new Error('page is required');
+
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    await flightResultsPage.clickFlightDetailsToggleInPricingOptions();
+    await flightResultsPage.waitForRedesignedFlightDetailsToClose();
+    return { closed: true };
+  },
+
+  /**
+   * Reads what the open flight details drawer shows, so a later screen can be held to it.
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @returns {Promise<{title: string, legs: object[]}>}
+   */
+  async captureFlightDetails(page) {
+    if (!page) throw new Error('page is required');
+
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    const title = await flightResultsPage.getRedesignedFlightDetailsTitle();
+    const legs = await flightResultsPage.getRedesignedFlightDetailsLegs();
+
+    if (!legs.length) {
+      throw new Error('The flight details drawer is open but shows no legs, so there is nothing to capture.');
+    }
+
+    return { title, legs };
+  },
+
+  /**
+   * Verifies the open flight details drawer is laid out as US 84214 specifies: every leg titled,
+   * routed and dated, and every flight in it carrying its carrier, flight number, aircraft,
+   * departure and arrival times, duration and fare attributes.
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @param {object} options
+   * @param {number} [options.expectedLegs] - Legs the screen must show, when the caller knows it
+   * @returns {Promise<{legs: number, segments: number}>}
+   */
+  async verifyFlightDetailsLayout(page, { expectedLegs } = {}) {
+    if (!page) throw new Error('page is required');
+    if (expectedLegs !== undefined && (typeof expectedLegs !== 'number' || expectedLegs < 1)) {
+      throw new Error(`expectedLegs must be a number >= 1, got: ${expectedLegs}`);
+    }
+
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    const legs = await flightResultsPage.getRedesignedFlightDetailsLegs();
+
+    if (expectedLegs !== undefined && legs.length !== expectedLegs) {
+      throw new Error(
+        `The flight details drawer shows ${legs.length} leg(s), expected ${expectedLegs}: ` +
+        `${legs.map((leg) => leg.route || '(no route)').join(', ')}`
+      );
+    }
+
+    let segmentCount = 0;
+
+    legs.forEach((leg, legIndex) => {
+      const where = `Leg ${legIndex + 1} of ${legs.length}`;
+
+      if (!leg.title) throw new Error(`${where} has no title (e.g. "Flight to Madrid").`);
+      if (!/^[A-Z]{3}( - [A-Z]{3})+$/.test(leg.route)) {
+        throw new Error(`${where} shows "${leg.route}" as its route; expected airport codes such as "LHR - MAD".`);
+      }
+      if (!leg.date) throw new Error(`${where} (${leg.route}) shows no date.`);
+      if (!leg.segments.length) throw new Error(`${where} (${leg.route}) shows no flight.`);
+
+      leg.segments.forEach((segment, segmentIndex) => {
+        const flight = `${where}, flight ${segmentIndex + 1} of ${leg.segments.length}`;
+
+        if (!segment.carrier) throw new Error(`${flight} shows no carrier name.`);
+        if (!/^[A-Z0-9]{2}\s?\d{1,4}[A-Z]?$/.test(segment.flightNumber)) {
+          throw new Error(`${flight} shows "${segment.flightNumber}" as its flight number.`);
+        }
+        if (!segment.aircraft) throw new Error(`${flight} (${segment.flightNumber}) shows no aircraft.`);
+        [['departure', segment.departure], ['arrival', segment.arrival]].forEach(([label, value]) => {
+          if (!/^\d{1,2}:\d{2}$/.test(value)) {
+            throw new Error(`${flight} (${segment.flightNumber}) shows "${value}" as its ${label} time.`);
+          }
+        });
+        if (!/\d+\s*h/.test(segment.duration)) {
+          throw new Error(`${flight} (${segment.flightNumber}) shows "${segment.duration}" as its duration.`);
+        }
+        if (!/\b(Economy|Business|First|Premium)\b/i.test(segment.amenities.join(' '))) {
+          throw new Error(
+            `${flight} (${segment.flightNumber}) lists no cabin class among its fare attributes: ` +
+            `${segment.amenities.join(' | ') || '(none)'}`
+          );
+        }
+
+        segmentCount += 1;
+      });
+    });
+
+    logger.info('Flight details drawer layout verified', { legs: legs.length, segments: segmentCount });
+    return { legs: legs.length, segments: segmentCount };
+  },
+
+  /**
+   * Verifies the open flight details drawer shows the same flights as an earlier capture.
+   *
+   * Matched by route rather than by position, because pricing options shows only the leg being
+   * priced while results and the cart show them all.
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @param {{legs: object[]}} captured - What captureFlightDetails() returned earlier
+   * @returns {Promise<{legsCompared: number}>}
+   */
+  async verifyFlightDetailsMatchCapture(page, captured) {
+    if (!page) throw new Error('page is required');
+    if (!captured || !Array.isArray(captured.legs) || !captured.legs.length) {
+      throw new Error('captured must be the result of captureFlightDetails(), holding at least one leg');
+    }
+
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    const legs = await flightResultsPage.getRedesignedFlightDetailsLegs();
+
+    if (!legs.length) throw new Error('The flight details drawer shows no legs to compare.');
+
+    const describe = (segment) => `${segment.flightNumber} ${segment.departure}-${segment.arrival}`;
+
+    legs.forEach((leg) => {
+      const reference = captured.legs.find((candidate) => candidate.route === leg.route);
+
+      if (!reference) {
+        throw new Error(
+          `The flight details drawer shows leg "${leg.route}", which was not among the legs first ` +
+          `shown: ${captured.legs.map((candidate) => candidate.route).join(', ')}`
+        );
+      }
+
+      if (!leg.segments.length) {
+        throw new Error(`Leg "${leg.route}" shows no flights, so there is nothing to compare.`);
+      }
+
+      const shown = leg.segments.map(describe).join(', ');
+      const expected = reference.segments.map(describe).join(', ');
+
+      if (shown !== expected) {
+        throw new Error(
+          `Leg "${leg.route}" is no longer the same flights: the drawer now shows [${shown}] where ` +
+          `it first showed [${expected}].`
+        );
+      }
+    });
+
+    logger.info('Flight details drawer matches the captured itinerary', { legsCompared: legs.length });
+    return { legsCompared: legs.length };
+  },
+
+  /**
+   * Verifies the drawer holding the flight details is titled as expected — the title is what
+   * #84772 found differing between results and the cart.
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @param {string} expectedTitle - Title the panel must carry
+   * @returns {Promise<{title: string}>}
+   */
+  async verifyFlightDetailsTitle(page, expectedTitle) {
+    if (!page) throw new Error('page is required');
+    if (typeof expectedTitle !== 'string' || !expectedTitle.trim()) {
+      throw new Error(`expectedTitle must be a non-empty string, got: ${typeof expectedTitle}`);
+    }
+
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    const title = await flightResultsPage.getRedesignedFlightDetailsTitle();
+
+    // Exact, case included: the title is the whole point of #84772, so a copy change should be
+    // seen rather than tolerated.
+    if (title !== expectedTitle.trim()) {
+      throw new Error(`The flight details panel is titled "${title}", expected "${expectedTitle}".`);
+    }
+
+    return { title };
+  },
+
+  /**
+   * Opens the flight details of the first result whose itinerary has a long layover, so the badge
+   * #84773 was raised against is on screen. Not every itinerary on a route has one.
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @param {object} options
+   * @param {number} [options.maxResults] - Results to look through before giving up (default: 8)
+   * @returns {Promise<{resultIndex: number, layover: string}>}
+   */
+  async openFlightDetailsForResultWithLongLayover(page, { maxResults = 8 } = {}) {
+    if (!page) throw new Error('page is required');
+    if (typeof maxResults !== 'number' || maxResults < 1) {
+      throw new Error(`maxResults must be a number >= 1, got: ${maxResults}`);
+    }
+
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    await flightResultsPage.waitForFlightDetailsButton();
+    const available = Math.min(maxResults, await flightResultsPage.getFlightDetailsButtonCount());
+
+    for (let index = 0; index < available; index += 1) {
+      await flightResultsPage.clickFlightDetailsButton(index);
+      await flightResultsPage.waitForRedesignedFlightDetails();
+
+      const legs = await flightResultsPage.getRedesignedFlightDetailsLegs();
+      const badged = legs.flatMap((leg) => leg.connections).find((connection) => connection.longLayover);
+
+      if (badged) {
+        logger.info('Opened a result with a long layover', { resultIndex: index + 1, layover: badged.duration });
+        return { resultIndex: index + 1, layover: badged.duration };
+      }
+
+      await flightResultsPage.closeOpenFlightDetailsDrawer();
+    }
+
+    throw new Error(
+      `None of the first ${available} results has a connection flagged as a long layover, so the ` +
+      'badge this check exists for is not on screen. Pick a route whose itineraries wait longer.'
+    );
+  },
+
+  /**
+   * Verifies the long layover badge sits on the connection it describes: it is read from inside a
+   * connection row, and the flagged connection has to be the longest wait on screen.
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @returns {Promise<{flagged: number, layover: string}>}
+   */
+  async verifyLongLayoverFlaggedOnItsConnection(page) {
+    if (!page) throw new Error('page is required');
+
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    const connections = (await flightResultsPage.getRedesignedFlightDetailsLegs())
+      .flatMap((leg) => leg.connections);
+
+    const toMinutes = (duration) => {
+      const hours = Number((duration.match(/(\d+)\s*h/i) || [])[1] || 0);
+      const minutes = Number((duration.match(/(\d+)\s*m/i) || [])[1] || 0);
+      return hours * 60 + minutes;
+    };
+
+    const flagged = connections.filter((connection) => connection.longLayover);
+    const plain = connections.filter((connection) => !connection.longLayover);
+
+    if (!flagged.length) {
+      throw new Error(
+        'No connection on screen carries the long layover badge, so there is nothing to judge. ' +
+        'Open an itinerary that waits long enough between flights.'
+      );
+    }
+
+    flagged.forEach((connection) => {
+      const shorter = plain.find((other) => toMinutes(other.duration) >= toMinutes(connection.duration));
+      if (shorter) {
+        throw new Error(
+          `The connection waiting ${connection.duration} is badged "${connection.longLayover}" while ` +
+          `one waiting ${shorter.duration} is not, so the badge is not on the connection it describes.`
+        );
+      }
+    });
+
+    logger.info('Long layover badge verified', { flagged: flagged.length, layover: flagged[0].duration });
+    return { flagged: flagged.length, layover: flagged[0].duration };
+  },
+
+  /**
+   * Verifies each stop within a leg is shown as a connection between the two flights it joins,
+   * carrying its own layover duration — the row #84773 was raised against.
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @returns {Promise<{connections: number}>}
+   */
+  async verifyFlightDetailsConnections(page) {
+    if (!page) throw new Error('page is required');
+
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    const legs = await flightResultsPage.getRedesignedFlightDetailsLegs();
+    const total = legs.reduce((count, leg) => count + leg.connections.length, 0);
+
+    if (!total) {
+      throw new Error(
+        'No leg in this itinerary has a stop, so there is no connection on screen to judge. ' +
+        'Pick a connecting itinerary.'
+      );
+    }
+
+    legs.forEach((leg, legIndex) => {
+      const where = `Leg ${legIndex + 1} (${leg.route})`;
+      const expected = leg.segments.length - 1;
+
+      if (leg.connections.length !== expected) {
+        throw new Error(
+          `${where} shows ${leg.segments.length} flight(s) but ${leg.connections.length} ` +
+          `connection(s); a stop between each pair means ${expected} were expected.`
+        );
+      }
+
+      leg.connections.forEach((connection, index) => {
+        if (!connection.title) {
+          throw new Error(`${where}, connection ${index + 1} has no heading.`);
+        }
+        if (!/\d+\s*(h|m)/.test(connection.duration)) {
+          throw new Error(
+            `${where}, connection ${index + 1} shows "${connection.duration}" as its layover.`
+          );
+        }
+      });
+    });
+
+    logger.info('Flight details connections verified', { connections: total });
+    return { connections: total };
+  },
+
+  /**
+   * Verifies every flight that is operated by another airline names that airline before its
+   * flight number, which is the ordering #84760 was raised for.
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @returns {Promise<{operatedFlights: number}>}
+   */
+  async verifyOperatorShownBeforeFlightNumber(page) {
+    if (!page) throw new Error('page is required');
+
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    const legs = await flightResultsPage.getRedesignedFlightDetailsLegs();
+    const operated = legs.flatMap((leg) => leg.segments).filter((segment) => segment.operatedBy);
+
+    if (!operated.length) {
+      throw new Error(
+        'No flight in this itinerary is marked as operated by another airline, so the ordering ' +
+        'this check exists for is not on screen. Pick a codeshare itinerary.'
+      );
+    }
+
+    operated.forEach((segment) => {
+      const operatorAt = segment.carrierLine.indexOf(segment.operatedBy);
+      const flightNumberAt = segment.carrierLine.indexOf(segment.flightNumber);
+
+      if (operatorAt === -1 || flightNumberAt === -1) {
+        throw new Error(
+          `Could not locate "${segment.operatedBy}" and "${segment.flightNumber}" in the carrier ` +
+          `line "${segment.carrierLine}".`
+        );
+      }
+      if (operatorAt > flightNumberAt) {
+        throw new Error(
+          `"${segment.carrierLine}" puts the flight number before the operating airline; the ` +
+          'operator has to come first.'
+        );
+      }
+    });
+
+    logger.info('Operating airline precedes the flight number', { operatedFlights: operated.length });
+    return { operatedFlights: operated.length };
+  },
+
   /**
    * Verifies the codeshare operator line of the INBOUND leg of one flight result card
    * contains the expected text, e.g. "Operated by MH".

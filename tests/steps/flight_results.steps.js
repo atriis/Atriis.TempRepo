@@ -1457,3 +1457,73 @@ Then('the flight search response should have no {string} result from source syst
   logger.info(`Verifying no "${carrier}" result comes from the "${source}" source system in the flightSearch response`);
   await FlightResults.verifyNoResultForCarrierFromSource(this.page, this.lastInterceptedResponsePromise, carrier, source);
 });
+
+// ========================================
+// FLIGHT DETAILS DRAWER (redesigned in US 84214)
+// ========================================
+
+When("I open flight details from pricing options", async function () {
+  logger.info("Opening flight details from inside pricing options");
+  await FlightResults.openFlightDetailsFromPricingOptions(this.page);
+});
+
+When("I close flight details in pricing options", async function () {
+  logger.info("Closing flight details inside pricing options");
+  await FlightResults.closeFlightDetailsInPricingOptions(this.page);
+});
+
+Then("the flight details drawer should show {int} leg(s) in the redesigned layout", async function (expectedLegs) {
+  logger.info("Verifying the flight details drawer layout", { expectedLegs });
+  const result = await FlightResults.verifyFlightDetailsLayout(this.page, { expectedLegs });
+  logger.info("Flight details drawer layout verified", result);
+});
+
+When("I store what the flight details drawer shows", async function () {
+  this.capturedFlightDetails = await FlightResults.captureFlightDetails(this.page);
+  logger.info("Stored the flight details drawer contents", {
+    title: this.capturedFlightDetails.title,
+    legs: this.capturedFlightDetails.legs.map((leg) => leg.route).join(", "),
+  });
+});
+
+Then("the flight details drawer should show the same flights", async function () {
+  if (!this.capturedFlightDetails) {
+    throw new Error(
+      "No flight details were stored. Run 'I store what the flight details drawer shows' on the " +
+      "first screen that opens the drawer, before comparing a later one against it."
+    );
+  }
+
+  logger.info("Verifying the flight details drawer still shows the same flights");
+  const result = await FlightResults.verifyFlightDetailsMatchCapture(this.page, this.capturedFlightDetails);
+  logger.info("Flight details drawer compared", result);
+});
+
+Then("the flight details panel should be titled {string}", async function (expectedTitle) {
+  logger.info("Verifying the flight details panel title", { expectedTitle });
+  await FlightResults.verifyFlightDetailsTitle(this.page, expectedTitle);
+});
+
+Then("each stop should be shown as a connection between the flights it joins in flight details", async function () {
+  logger.info("Verifying the connection rows in flight details");
+  const result = await FlightResults.verifyFlightDetailsConnections(this.page);
+  logger.info("Connection rows verified", result);
+});
+
+Then("the operating airline should be shown before the flight number in flight details", async function () {
+  logger.info("Verifying the operating airline precedes the flight number");
+  const result = await FlightResults.verifyOperatorShownBeforeFlightNumber(this.page);
+  logger.info("Operating airline position verified", result);
+});
+
+When("I open flight details for the first result with a long layover", async function () {
+  logger.info("Opening flight details for the first result with a long layover");
+  const result = await FlightResults.openFlightDetailsForResultWithLongLayover(this.page);
+  logger.info("Result with a long layover opened", result);
+});
+
+Then("the long layover should be flagged on the connection it belongs to", async function () {
+  logger.info("Verifying the long layover badge sits on its own connection");
+  const result = await FlightResults.verifyLongLayoverFlaggedOnItsConnection(this.page);
+  logger.info("Long layover badge verified", result);
+});

@@ -357,8 +357,8 @@ const SELECTORS = {
   // live drawer: a LON->JFK round trip renders exactly two .segment-details-wrapper elements,
   // outbound first.
   //
-  // NOT keyed on the .fd-leg / .fd-card structure in the Atriis.App working copy: that refactor
-  // is not deployed, and selectors written from unreleased source match nothing on staging.
+  // The .fd-leg / .fd-card structure below — see FD_* — is what replaced this one; both are still
+  // in circulation, so the drawer has to be recognised either way.
   FLIGHT_DETAILS_LEG_WRAPPER: '.segment-details-wrapper',
   // Within a leg wrapper: the combined time-and-date line, rendered as "20:05 · Fri, 16 Oct 26".
   // Two per leg in DOM order — departure first, arrival last — and BOTH the date and the time
@@ -368,6 +368,41 @@ const SELECTORS = {
   // Flight details — segment top bar with carrier and equipment info
   FLIGHT_DETAILS_TOP_BAR: '.flight-details-top-bar',
   FLIGHT_DETAILS_AIRCRAFT_NAME: '.aircraft-name',
+
+  // ===== Flight details drawer, redesigned in US 84214 =====
+  // The same component renders on results, inside pricing options and in the cart. Its own
+  // namespace, and it matches nothing where an environment still serves the older drawer.
+  FD_ROOT: '.flight-details--redesign',
+  FD_OPEN_DRAWER: '.el-overlay:visible .app-drawer:has(.flight-details--redesign)',
+  FD_PANEL_TITLE: '.el-drawer__title',
+  FD_LEG: '.flight-details-leg',
+  FD_LEG_TITLE: '.fd-leg__title',
+  FD_LEG_SUBTITLE: '.fd-leg__subtitle',
+  FD_LEG_DATE: '.fd-leg__date',
+  FD_SEGMENT_CARD: '.flight-details-segment-card',
+  // The carrier line holds, in reading order, the carrier, any "Operated by", the flight number
+  // and the aircraft — reading it whole is what lets the operator's position be judged (#84760).
+  FD_CARD_CARRIER_LINE: '.fd-card__carrier',
+  FD_CARD_CARRIER_NAME: '.fd-card__carrier-name',
+  FD_CARD_OPERATED_BY: '.fd-card__operated-by',
+  FD_CARD_FLIGHT_NUMBER: '.fd-card__flight-no',
+  FD_CARD_AIRCRAFT: '.fd-card__aircraft',
+  // The icon renders as its ligature text, so it is subtracted before judging the name present.
+  FD_CARD_AIRCRAFT_GLYPH: '.fd-card__aircraft-glyph',
+  FD_CARD_DEPARTURE_ROW: '.fd-card__row--dep',
+  FD_CARD_ARRIVAL_ROW: '.fd-card__row--arr',
+  FD_CARD_TIME: '.fd-card__time',
+  FD_CARD_DURATION: '.fd-card__duration-value',
+  FD_CARD_AMENITY: '.fd-card__strip-item',
+  // One per stop within a leg, sitting between the two flights it joins.
+  FD_CONNECTION: '.flight-details-connection',
+  FD_CONNECTION_TITLE: '.fd-connection__title',
+  FD_CONNECTION_DURATION: '.fd-connection__part--duration',
+  // Only rendered on a connection the app considers long, inside that connection's own row.
+  FD_CONNECTION_LAYOVER_TEXT: '.fd-connection__layover-text',
+  FD_DRAWER_CLOSE: '.el-drawer__close-btn',
+  // Inside pricing options, swaps the fare list for the details of the leg being priced, and back.
+  FD_PRICING_OPTIONS_TOGGLE: '.el-overlay:visible .app-drawer .more-details-btn',
   // NDC direct rate label in flight info top bar
   FLIGHT_INFO_TOP_BAR_LABEL: '.flight-info-top-bar .is-align-items-center > :nth-child(2)',
   // "NDC direct rate" label text ($t('flight.ndcDirectRate')) — rendered only on NDC content in
@@ -513,11 +548,150 @@ class FlightResultsPage {
   }
 
   /**
-   * Gets the "Fare rules" button element.
+   * The open flight details panel. Found by its own root, because every drawer in the app carries
+   * the .flight-details-drawer class and only this one holds the panel.
+   *
+   * @returns {import('@playwright/test').Locator}
+   */
+  getRedesignedFlightDetailsPanel() {
+    return this.page.locator(SELECTORS.FD_OPEN_DRAWER).locator(SELECTORS.FD_ROOT).first();
+  }
+
+  /**
+   * Waits for the redesigned flight details panel to have rendered its first leg.
+   *
+   * @param {number} timeout - Max wait time in ms (default: 30000)
+   */
+  async waitForRedesignedFlightDetails(timeout = 30000) {
+    await this.getRedesignedFlightDetailsPanel()
+      .locator(SELECTORS.FD_LEG)
+      .first()
+      .waitFor({ state: 'visible', timeout });
+  }
+
+  /**
+   * Waits for the redesigned flight details panel to be gone — inside pricing options that means
+   * the fare list is back.
+   *
+   * @param {number} timeout - Max wait time in ms (default: 15000)
+   */
+  async waitForRedesignedFlightDetailsToClose(timeout = 15000) {
+    await this.page.locator(SELECTORS.FD_ROOT).first().waitFor({ state: 'hidden', timeout });
+  }
+
+  /**
+   * Reads the title of the drawer holding the redesigned flight details panel.
+   *
+   * @param {number} timeout - Max wait time in ms (default: 30000)
+   * @returns {Promise<string>}
+   */
+  async getRedesignedFlightDetailsTitle(timeout = 30000) {
+    const title = this.page.locator(SELECTORS.FD_OPEN_DRAWER).locator(SELECTORS.FD_PANEL_TITLE).first();
+    await title.waitFor({ state: 'visible', timeout });
+    return ((await title.innerText()) ?? '').replace(/\s+/g, ' ').trim();
+  }
+
+  /**
+   * Reads what the redesigned flight details panel says about each leg and each segment within it.
+   *
+   * One reader for the whole panel because every assertion on this drawer — the layout, the
+   * carrier line order, and whether a later screen still shows the same flights — is about the
+   * same set of values, and reading them separately would let those assertions disagree.
+   *
+   * @param {number} timeout - Max wait for the first leg to become visible (default: 30000)
+   * @returns {Promise<Array<{title: string, route: string, date: string, segments: Array<{
+   *   carrierLine: string, carrier: string, operatedBy: string, flightNumber: string,
+   *   aircraft: string, departure: string, arrival: string, duration: string,
+   *   amenities: string[]}>, connections: Array<{title: string, duration: string,
+   *   longLayover: string}>}>>} Legs in DOM order, outbound first.
+   */
+  async getRedesignedFlightDetailsLegs(timeout = 30000) {
+    const panel = this.getRedesignedFlightDetailsPanel();
+    const legs = panel.locator(SELECTORS.FD_LEG);
+
+    try {
+      await legs.first().waitFor({ state: 'visible', timeout });
+    } catch (error) {
+      throw new Error(
+        `[FlightResultsPage.getRedesignedFlightDetailsLegs] No leg (${SELECTORS.FD_LEG}) appeared in ` +
+        `the flight details panel within ${timeout}ms. Either the panel never opened, it is still ` +
+        `showing its loading skeleton, or this environment is serving the older drawer. ` +
+        `Original: ${error.message}`
+      );
+    }
+
+    const read = async (locator) =>
+      (await locator.count()) ? ((await locator.first().innerText()) ?? '').replace(/\s+/g, ' ').trim() : '';
+
+    const legCount = await legs.count();
+    const summaries = [];
+
+    for (let legIndex = 0; legIndex < legCount; legIndex += 1) {
+      const leg = legs.nth(legIndex);
+      const cards = leg.locator(SELECTORS.FD_SEGMENT_CARD);
+      const cardCount = await cards.count();
+      const segments = [];
+
+      for (let cardIndex = 0; cardIndex < cardCount; cardIndex += 1) {
+        const card = cards.nth(cardIndex);
+        const aircraft = await read(card.locator(SELECTORS.FD_CARD_AIRCRAFT));
+        const aircraftGlyph = await read(card.locator(SELECTORS.FD_CARD_AIRCRAFT_GLYPH));
+
+        segments.push({
+          carrierLine: await read(card.locator(SELECTORS.FD_CARD_CARRIER_LINE)),
+          carrier: await read(card.locator(SELECTORS.FD_CARD_CARRIER_NAME)),
+          operatedBy: await read(card.locator(SELECTORS.FD_CARD_OPERATED_BY)),
+          flightNumber: await read(card.locator(SELECTORS.FD_CARD_FLIGHT_NUMBER)),
+          aircraft: aircraftGlyph ? aircraft.replace(aircraftGlyph, '').trim() : aircraft,
+          departure: await read(card.locator(SELECTORS.FD_CARD_DEPARTURE_ROW).locator(SELECTORS.FD_CARD_TIME)),
+          arrival: await read(card.locator(SELECTORS.FD_CARD_ARRIVAL_ROW).locator(SELECTORS.FD_CARD_TIME)),
+          duration: await read(card.locator(SELECTORS.FD_CARD_DURATION)),
+          amenities: (await card.locator(SELECTORS.FD_CARD_AMENITY).allInnerTexts())
+            .map((text) => text.replace(/\s+/g, ' ').trim())
+            .filter(Boolean),
+        });
+      }
+
+      const connectionRows = leg.locator(SELECTORS.FD_CONNECTION);
+      const connectionCount = await connectionRows.count();
+      const connections = [];
+
+      for (let rowIndex = 0; rowIndex < connectionCount; rowIndex += 1) {
+        const row = connectionRows.nth(rowIndex);
+        connections.push({
+          title: await read(row.locator(SELECTORS.FD_CONNECTION_TITLE)),
+          duration: await read(row.locator(SELECTORS.FD_CONNECTION_DURATION)),
+          // Read from inside the row, so a badge can only count for the connection it sits in.
+          longLayover: await read(row.locator(SELECTORS.FD_CONNECTION_LAYOVER_TEXT)),
+        });
+      }
+
+      // The subtitle nests the date: it reads "LHR - MAD/Sunday, 01 November".
+      const subtitle = await read(leg.locator(SELECTORS.FD_LEG_SUBTITLE));
+      const date = await read(leg.locator(SELECTORS.FD_LEG_DATE));
+
+      summaries.push({
+        title: await read(leg.locator(SELECTORS.FD_LEG_TITLE)),
+        route: (date ? subtitle.replace(date, '') : subtitle).replace(/[\s/·|]+$/, '').trim(),
+        date,
+        segments,
+        connections,
+      });
+    }
+
+    return summaries;
+  }
+
+  /**
+   * Gets the "Flight details" control. Either role counts: <app-btn isLinkStyle> renders as an
+   * anchor on the new flight flow's selection screen and as a button on results.
+   *
    * @returns {import('@playwright/test').Locator}
    */
   getFlightDetailsButton() {
-    return this.page.getByRole('button', { name: SELECTORS.FLIGHT_DETAILS_BUTTON_NAME });
+    return this.page
+      .getByRole('button', { name: SELECTORS.FLIGHT_DETAILS_BUTTON_NAME })
+      .or(this.page.getByRole('link', { name: SELECTORS.FLIGHT_DETAILS_BUTTON_NAME }));
   }
 
   /**
@@ -2401,13 +2575,45 @@ class FlightResultsPage {
    * @param {number} timeout - Max wait time in ms (default: 30000)
    */
   async waitForFlightDetailsHeadline(timeout = 30000) {
-    await this.page.getByRole('heading', {
-      level: 3,
-      name: SELECTORS.FLIGHT_DETAILS_HEADLINE_PATTERN,
-    }).first().waitFor({
-      state: 'visible',
-      timeout,
-    });
+    // Either markup counts: the leg heading is an h3 on the older drawer and the leg subtitle on
+    // the one that replaced it.
+    await this.page
+      .getByRole('heading', { level: 3, name: SELECTORS.FLIGHT_DETAILS_HEADLINE_PATTERN })
+      .or(this.page.locator(SELECTORS.FD_OPEN_DRAWER).locator(SELECTORS.FD_LEG_SUBTITLE))
+      .first()
+      .waitFor({ state: 'visible', timeout });
+  }
+
+  /**
+   * How many results currently offer a "Flight details" control.
+   *
+   * @returns {Promise<number>}
+   */
+  async getFlightDetailsButtonCount() {
+    return this.getFlightDetailsButton().count();
+  }
+
+  /**
+   * Closes the open flight details drawer.
+   *
+   * @param {number} timeout - Max wait time in ms (default: 10000)
+   */
+  async closeOpenFlightDetailsDrawer(timeout = 10000) {
+    const close = this.page.locator(SELECTORS.FD_OPEN_DRAWER).locator(SELECTORS.FD_DRAWER_CLOSE).first();
+    await close.click({ timeout });
+    await this.waitForRedesignedFlightDetailsToClose(timeout);
+  }
+
+  /**
+   * Clicks the link that toggles between the fare list and the flight details inside the open
+   * pricing options drawer.
+   *
+   * @param {number} timeout - Max wait time in ms (default: 30000)
+   */
+  async clickFlightDetailsToggleInPricingOptions(timeout = 30000) {
+    const toggle = this.page.locator(SELECTORS.FD_PRICING_OPTIONS_TOGGLE).first();
+    await toggle.waitFor({ state: 'visible', timeout });
+    await toggle.click();
   }
 
   async getFlightDetailsTotalPrice(timeout = 30000) {
