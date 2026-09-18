@@ -817,6 +817,47 @@ class SearchPage {
   }
 
   /**
+   * Reads the names on the visible traveller chips, once the list has stopped changing.
+   *
+   * The container is awaited FIRST, exactly as waitForAnyTravelerChip below does and for the same
+   * reason: trip-travelers-list.vue wraps the tag list in `v-if="!isSingleEmptyTraveler"`, so a
+   * page that never loaded renders no tag either. Without that check an empty result would be
+   * indistinguishable from a healthy trip, and a caller asserting "no duplicate chip" would be
+   * satisfied by a blank page.
+   *
+   * The count is then stabilise-polled the same way getSelectedTravelerCount does, because a chip
+   * added by a network round-trip can land after the first sample.
+   *
+   * Matched with `:visible`: the app renders hidden responsive-duplicate chips (see
+   * waitForTravelerNamesDisplayed), so an unfiltered locator would report the same traveller twice
+   * and fake a duplicate that the UI never showed.
+   *
+   * @param {{ settleMs?: number }} [options] window the count must stay unchanged for
+   * @returns {Promise<string[]>} whitespace-normalised names of the visible traveller chips
+   */
+  async getSelectedTravelerNames({ settleMs = 3000 } = {}) {
+    await this.page
+      .locator(SELECTORS.TRAVELERS_LIST)
+      .first()
+      .waitFor({ state: 'visible', timeout: 20000 });
+
+    const visibleNames = this.page.locator(`${SELECTORS.SELECTED_TRAVELER_NAME}:visible`);
+
+    // Poll until the count stabilizes — a chip added by a network round-trip may not be rendered yet.
+    let previous = -1;
+    let current = await visibleNames.count();
+    const deadline = Date.now() + settleMs;
+    while (previous !== current && Date.now() < deadline) {
+      await this.page.waitForTimeout(200);
+      previous = current;
+      current = await visibleNames.count();
+    }
+
+    const names = await visibleNames.allInnerTexts();
+    return names.map((text) => text.replace(/\s+/g, ' ').trim());
+  }
+
+  /**
    * Waits up to `timeout` for a traveller chip to appear, and reports whether one did.
    *
    * getSelectedTravelerCount above waits for a filled chip first, so it cannot express "none was

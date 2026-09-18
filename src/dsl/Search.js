@@ -381,6 +381,54 @@ const Search = {
   },
 
   /**
+   * Reports how many times a traveller appears on the trip, plus the shape of the traveller list.
+   *
+   * Used for the negative check "the same person was not added twice": the add-traveller
+   * autocomplete filters out travellers already on the trip, so a refused second add leaves the
+   * traveller with exactly one named chip.
+   *
+   * Returns data only — the caller asserts. `emptySlotCount` is reported rather than judged
+   * because a refused add still appends an EMPTY slot, which is expected and must not be mistaken
+   * for a duplicate passenger.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} name - Traveler name to count on the trip
+   * @returns {Promise<{occurrences: number, namedCount: number, emptySlotCount: number, names: string[]}>}
+   */
+  async countTravelerOccurrencesOnTrip(page, name) {
+    if (!page) {
+      throw new Error('[Search.countTravelerOccurrencesOnTrip] "page" is required.');
+    }
+    if (!name || typeof name !== 'string') {
+      throw new Error(
+        `[Search.countTravelerOccurrencesOnTrip] "name" must be a non-empty string, got: ${typeof name}`
+      );
+    }
+
+    logger.debug(`[Search.countTravelerOccurrencesOnTrip] Counting occurrences of "${name}" on the trip`);
+    const searchPage = getPageObject(page, SearchPage);
+
+    try {
+      const names = await searchPage.getSelectedTravelerNames();
+      const { named, empty } = await searchPage.getTravelerTagCounts();
+
+      const occurrences = names.filter((n) => n.toLowerCase().includes(name.toLowerCase())).length;
+      logger.info(
+        `[Search.countTravelerOccurrencesOnTrip] Traveler "${name}" appears ${occurrences} time(s) ` +
+        `among [${names.join(', ')}] (named chips: ${named}, empty slots: ${empty})`
+      );
+
+      return { occurrences, namedCount: named, emptySlotCount: empty, names };
+    } catch (err) {
+      throw new Error(
+        `[Search.countTravelerOccurrencesOnTrip] Failed to count how many times traveler "${name}" ` +
+        `appears on the trip. Ensure the travellers list rendered on the search page after the ` +
+        `add-traveller attempt. Original: ${err.message}`
+      );
+    }
+  },
+
+  /**
    * Add a new guest traveler using random test data.
    * Returns the generated data and star icon visibility status.
    *

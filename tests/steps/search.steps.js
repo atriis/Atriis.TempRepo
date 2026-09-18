@@ -159,6 +159,34 @@ Then("the traveler name {string} is added successfully", async function (name) {
   await Search.verifyTravelerNameVisible(this.page, name);
 });
 
+// Negative sibling of the step above: the add-traveller autocomplete filters out travellers who are
+// already on the trip, so a second add attempt must leave exactly ONE named chip for that person.
+// The total tag count is deliberately NOT asserted: trip-travelers-list.ts raises the passenger
+// count before opening the edit modal, so the refused attempt legitimately leaves an extra EMPTY
+// slot behind. Only NAMED chips prove whether a second passenger was created.
+Then("I should not see {string} added as second passenger", async function (name) {
+  logger.info("Verifying the traveler was not added a second time to the trip", { name });
+  const { occurrences, namedCount, emptySlotCount, names } =
+    await Search.countTravelerOccurrencesOnTrip(this.page, name);
+
+  // Thrown rather than expect(value, "message"): this repo's @playwright/test discards expect's
+  // second argument, and which names are actually on the chips is the whole point of the diagnostic.
+  if (occurrences !== 1) {
+    throw new Error(
+      `Expected traveler "${name}" to appear exactly ONCE on the trip — the add-traveller autocomplete ` +
+      `filters out travellers already on the trip, so the second add must not create a second passenger. ` +
+      `Got ${occurrences} occurrence(s) in [${names.join(', ')}] (${emptySlotCount} empty slot(s), which are expected).`
+    );
+  }
+
+  if (namedCount !== 1) {
+    throw new Error(
+      `Expected exactly ONE named traveler chip on the trip after the refused second add, got ${namedCount} ` +
+      `in [${names.join(', ')}] (empty slots are expected and not counted).`
+    );
+  }
+});
+
 Then("the selected traveler should be {string} by default", async function (name) {
   logger.info("Verifying traveler is preselected by default", { name });
   await Search.verifyTravelerNameVisible(this.page, name);
