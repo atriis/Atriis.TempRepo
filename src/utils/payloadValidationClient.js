@@ -20,6 +20,9 @@ const logger = require("@utils/logger").child("PayloadValidationClient");
 // seen landing ~18s after the booking completes, which 3 attempts 1s apart could never reach.
 const DEFAULT_LOOKUP_ATTEMPTS = 8;
 const DEFAULT_LOOKUP_RETRY_MS = 3000;
+// The internal API rate-limits bursts: downloads are spaced, and a 429 is given one longer pause.
+const BULK_DOWNLOAD_SPACING_MS = 250;
+const RATE_LIMIT_BACKOFF_MS = 5000;
 
 /**
  * Timeout wrapper to prevent indefinite iteration in asynchronous flows.
@@ -239,6 +242,17 @@ async function downloadPayload({ baseUrl, tripId, rowKey, source, operationTimeo
         `get content (${source}) retry after 400`,
         token,
         true
+      );
+    } else if (error instanceof HttpError && error.statusCode === 429) {
+      // Downloading every payload of a busy trip - Amadeus prices a selection once per fare family,
+      // dozens of calls - is answered with a rate limit. One backoff clears it.
+      await sleepWithinBudget(RATE_LIMIT_BACKOFF_MS, `get content (${source}) retry after 429`);
+      responseJson = await fetchJson(
+        url.toString(),
+        remainingTimeoutMs(`get content (${source}) retry after 429`),
+        `get content (${source}) retry after 429`,
+        token,
+        includeAuth
       );
     } else {
       throw error;
@@ -601,7 +615,9 @@ async function fetchPayloadFromStorage({ source, requestType, tripId, transactio
     const limitedEntries = entries.slice(0, Math.max(1, Number.isFinite(maxRequestsMatches) ? maxRequestsMatches : 10));
     const matches = [];
 
-    for (const entry of limitedEntries) {
+    for (const [index, entry] of limitedEntries.entries()) {
+      // Paced: a burst of downloads is what earns the rate limit in the first place.
+      if (index > 0) await new Promise((resolve) => setTimeout(resolve, BULK_DOWNLOAD_SPACING_MS));
       const payload = await downloadPayload({
         baseUrl,
         tripId: tripIdString,

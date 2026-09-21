@@ -503,7 +503,7 @@ Canonical example: `tests/features/flights/flights_amadeus/flights_amadeus_non_b
 
 ### 2.10.12 `collectXmlBlockAttributesPerCall()` — repeated blocks, grouped by call
 
-Returns the named attributes of every occurrence of one or more XML blocks, keeping each call's blocks separate. Generic plumbing: the product DSL calling it decides what the values mean — see `FlightResults.captureFareLaddersPerLeg()`.
+Returns the named attributes of every occurrence of one or more XML blocks, keeping each call's blocks separate. Generic plumbing: the product DSL calling it decides what the values mean — see `FlightResults.captureGalileoFareLaddersPerLeg()`, reached through the one `captureFareLaddersPerLeg()` entry point.
 
 - **Signature:** `(world, requestType, blockSpecs, options)` — `blockSpecs` maps tag to attributes, e.g. `{ AirSegment: ["Origin", "Destination"], Brand: ["Name"] }`. `options.source` defaults to `"request"`.
 - **Returns** `{ perCall }`: one entry per call, each an object keyed by tag holding that call's blocks.

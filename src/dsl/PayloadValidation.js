@@ -2416,6 +2416,74 @@ const PayloadValidation = {
   },
 
   /**
+   * Reads the named fields inside every occurrence of an XML block, per call. The contents
+   * counterpart of collectXmlBlockAttributesPerCall, and per call for the same reason: a supplier
+   * that prices a whole itinerary in one call says which leg got which fare inside that one reply.
+   * For fields whose blocks stand on their own across the trip, use collectXmlBlockFieldsForTrip.
+   *
+   * Each field returns every occurrence in document order, so a block holding the same field twice
+   * - a segment's board and off point, say - stays self-contained.
+   *
+   * @param {object} world
+   * @param {string} requestType - e.g. "*Fare_InformativePricingWithoutPNR*"
+   * @param {Object<string, string[]>} blockSpecs - tag to fields, e.g. { segmentLevelGroup: ["itemNumber"] }
+   * @param {{source?: string, purpose?: string}} [options] - source defaults to "request"
+   * @returns {Promise<{perCall: Array<Object<string, Array<Object<string, string[]>>>>}>}
+   */
+  async collectXmlBlockFieldsPerCall(world, requestType, blockSpecs, options = {}) {
+    assertWorld(world);
+    const tags = Object.keys(blockSpecs || {});
+    if (tags.length === 0) {
+      throw new Error(
+        `[PayloadValidation.collectXmlBlockFieldsPerCall] "blockSpecs" must name at least one block tag.`
+      );
+    }
+    for (const tag of tags) {
+      if (!Array.isArray(blockSpecs[tag]) || blockSpecs[tag].length === 0) {
+        throw new Error(
+          `[PayloadValidation.collectXmlBlockFieldsPerCall] "${tag}" must list at least one field.`
+        );
+      }
+    }
+
+    const { source = "request", purpose } = options;
+    const normalizedRequestType = normalizeRequestType(requestType);
+
+    const result = await fetchAllRequestsForTrip(
+      world,
+      normalizedRequestType,
+      purpose || `collect ${tags.map((t) => `"${t}"`).join(" and ")} fields`,
+      source
+    );
+
+    const perCall = result.matches.map((match) => {
+      const byTag = {};
+      for (const tag of tags) {
+        byTag[tag] = extractXmlBlocksByTag(match.payload, tag).map((block) => {
+          const fields = {};
+          for (const fieldName of blockSpecs[tag]) {
+            fields[fieldName] = collectParameterValues(block, fieldName)
+              .map((occurrence) => (occurrence.value || "").trim())
+              .filter(Boolean);
+          }
+          return fields;
+        });
+      }
+      return byTag;
+    });
+
+    logger.info("Collected XML block fields per call", {
+      requestType: normalizedRequestType,
+      source,
+      tags,
+      calls: perCall.length,
+      blocksPerCall: perCall.map((byTag) => tags.map((t) => `${t}:${byTag[t].length}`).join(" ")),
+    });
+
+    return { perCall };
+  },
+
+  /**
    * Asserts that no two requests of the given type carry the same value for a named parameter.
    *
    * For OfferPrice the parameter is OfferID: each request should price a different offer, so the

@@ -2,6 +2,7 @@ const { expect } = require("@playwright/test");
 const FlightResultsPage = require("@pages/FlightResultsPage");
 const PayloadValidation = require("./PayloadValidation");
 const logger = require("@utils/logger").child("FlightResults-DSL");
+// The distributor log publishes after the screen has rendered, so a read of it waits this long.
 const { CartPage } = require("@pages/CartPage");
 const { ResultsPage } = require("@pages/ResultsPage");
 const Results = require("./Results");
@@ -4990,6 +4991,41 @@ async verifyFareComponentTextColorInPricingOptions(page, expectedColor, index = 
   },
 
   /**
+   * Reads the fare ladder the supplier priced for each leg and stores it on the world.
+   *
+   * One entry point for every supplier: the ladder means the same thing on each, only the message
+   * that carries it differs, so the Gherkin stays one step and the payload shape is resolved here.
+   * The request type names the message, which is what says whose reader applies - adding a third
+   * supplier is one row below, not a new step.
+   *
+   * @param {object} world - Must carry searchedLegs from the multi-city search step
+   * @param {string} requestType - the supplier message, e.g. "AirPriceRsp"
+   * @returns {Promise<{ladders: Array<{leg: string, brands: string[]}>, combinations: number}>}
+   */
+  async captureFareLaddersPerLeg(world, requestType) {
+    if (!world) throw new Error('[FlightResults.captureFareLaddersPerLeg] "world" is required.');
+    if (typeof requestType !== 'string' || !requestType.trim()) {
+      throw new Error(
+        `[FlightResults.captureFareLaddersPerLeg] "requestType" must be a non-empty string, got: ${typeof requestType}`
+      );
+    }
+
+    const readers = [
+      { matches: /Fare_InformativePricingWithoutPNR/i, read: this.captureAmadeusFareLaddersPerLeg },
+      { matches: /AirPriceRsp/i, read: this.captureGalileoFareLaddersPerLeg },
+    ];
+    const reader = readers.find((candidate) => candidate.matches.test(requestType));
+    if (!reader) {
+      throw new Error(
+        `[FlightResults.captureFareLaddersPerLeg] No fare ladder reader knows the message "${requestType}". ` +
+        `Known: ${readers.map((candidate) => candidate.matches.source).join(', ')}.`
+      );
+    }
+
+    return reader.read.call(this, world, requestType);
+  },
+
+  /**
    * Reads the fare ladder the supplier priced for each leg and stores it on the world. Guards
    * ADO 83321 / 83337.
    *
@@ -5001,11 +5037,11 @@ async verifyFareComponentTextColorInPricingOptions(page, expectedColor, index = 
    * @param {string} requestType - e.g. "AirPriceRsp"
    * @returns {Promise<{ladders: Array<{leg: string, brands: string[]}>, combinations: number}>}
    */
-  async captureFareLaddersPerLeg(world, requestType) {
-    if (!world) throw new Error('[FlightResults.captureFareLaddersPerLeg] "world" is required.');
+  async captureGalileoFareLaddersPerLeg(world, requestType) {
+    if (!world) throw new Error('[FlightResults.captureGalileoFareLaddersPerLeg] "world" is required.');
     if (!Array.isArray(world.searchedLegs) || world.searchedLegs.length === 0) {
       throw new Error(
-        '[FlightResults.captureFareLaddersPerLeg] No searched legs on the world. Run the multi-city ' +
+        '[FlightResults.captureGalileoFareLaddersPerLeg] No searched legs on the world. Run the multi-city ' +
         'search step first - the leg order is what maps a payload route to a leg on screen.'
       );
     }
@@ -5058,6 +5094,116 @@ async verifyFareComponentTextColorInPricingOptions(page, expectedColor, index = 
 
     world.capturedFareLadders = ladders;
     return { ladders, combinations };
+  },
+
+  /**
+   * The same ladder, read from Amadeus. Guards ADO 83329.
+   *
+   * Amadeus prices the whole selection once per fare family rather than repricing a leg at a time,
+   * so which family a leg can sell is read from those replies: each names its segments and its fare
+   * components, and a segment's item number is the component that priced it. A reply that comes
+   * back "NO FARES/RBD/CARRIER/PASSENGER TYPE" is a family that selection cannot sell.
+   *
+   * Only about a third of those replies carry a price - the rest are the families that selection
+   * cannot sell - so the ladder is what the priced ones agree on. The route is chosen to keep their
+   * number near the thirty the payload API answers for comfortably.
+   *
+   * @param {object} world
+   * @param {string} requestType - e.g. "*Fare_InformativePricingWithoutPNR*"
+   * @returns {Promise<{ladders: Array<{leg: string, brands: string[]}>, combinations: number, priced: number}>}
+   */
+  async captureAmadeusFareLaddersPerLeg(world, requestType) {
+    if (!world) throw new Error('[FlightResults.captureAmadeusFareLaddersPerLeg] "world" is required.');
+    if (!Array.isArray(world.searchedLegs) || world.searchedLegs.length === 0) {
+      throw new Error(
+        '[FlightResults.captureAmadeusFareLaddersPerLeg] No searched legs on the world. Run the ' +
+        'multi-city search step first - the leg order is what maps a payload route to a leg on screen.'
+      );
+    }
+    if (!Array.isArray(world.capturedFareFamilies) || world.capturedFareFamilies.length === 0) {
+      throw new Error(
+        '[FlightResults.captureAmadeusFareLaddersPerLeg] No fare families captured. Run the step that ' +
+        'captures the fare families described in the search reply first: the pricing replies name a ' +
+        'family by its filed code, and the card shows the airline description of it where one exists.'
+      );
+    }
+
+    const { perCall } = await PayloadValidation.collectXmlBlockFieldsPerCall(
+      world,
+      requestType,
+      {
+        // Read inside each block: a segment holds its board point, its off point and its item
+        // number, and the component that priced it repeats that number.
+        segmentLevelGroup: ["trueLocationId", "itemNumber"],
+        fareComponentDetailsGroup: ["fareFamilyname", "number"],
+      },
+      { source: "response", purpose: "read which fare family each leg was priced into" }
+    );
+
+    const codesByLeg = new Map();
+    let priced = 0;
+
+    for (const call of perCall) {
+      // A reply that priced nothing carries no segment group at all.
+      if (!call.segmentLevelGroup.length) continue;
+      priced += 1;
+
+      const familyByItem = new Map();
+      for (const component of call.fareComponentDetailsGroup) {
+        const [family] = component.fareFamilyname;
+        const [reference] = component.number;
+        if (family && reference) familyByItem.set(reference, family);
+      }
+
+      for (const segment of call.segmentLevelGroup) {
+        const [origin, destination] = segment.trueLocationId;
+        const [itemNumber] = segment.itemNumber;
+        const code = familyByItem.get(itemNumber);
+        if (!origin || !destination || !code) continue;
+        const leg = `${origin}-${destination}`;
+        if (!codesByLeg.has(leg)) codesByLeg.set(leg, new Set());
+        codesByLeg.get(leg).add(code);
+      }
+    }
+
+    // The card carries the filed code on one itinerary and the airline's description of it on
+    // another - 82771 found the two cannot be told apart from the label - so each fare is held to
+    // either form.
+    const describedAs = (code) => {
+      const family = world.capturedFareFamilies.find((f) => (f.code || "").toUpperCase() === code.toUpperCase());
+      return (family && family.description) || code;
+    };
+
+    const ladders = world.searchedLegs.map((leg) => {
+      const codes = [...(codesByLeg.get(leg) || new Set())];
+      return { leg, brands: codes, brandAlternatives: codes.map((code) => [describedAs(code)]) };
+    });
+    const combinations = ladders.reduce((total, l) => total * Math.max(l.brands.length, 1), 1);
+
+    logger.info("Captured the fare ladder priced for each leg", {
+      requestType,
+      replies: perCall.length,
+      pricedCalls: priced,
+      ladders: ladders.map((l) => `${l.leg}:${l.brands.join("/")}`),
+      combinations,
+    });
+
+    expect(
+      priced,
+      `None of the ${perCall.length} "${requestType}" replies priced anything, so there is no ladder ` +
+      `to hold the screen to. They may all have come back "NO FARES" - check the carrier filter ` +
+      `reached every leg.`
+    ).toBeGreaterThan(0);
+
+    const empty = ladders.filter((l) => l.brands.length === 0).map((l) => l.leg);
+    expect(
+      empty,
+      `No fare was priced for leg(s) [${empty.join(", ")}], so there is nothing to compare their ` +
+      `cards against. Check the legs searched match the routes the replies price.`
+    ).toEqual([]);
+
+    world.capturedFareLadders = ladders;
+    return { ladders, combinations, priced };
   },
 
   /**
@@ -5225,7 +5371,13 @@ async verifyFareComponentTextColorInPricingOptions(page, expectedColor, index = 
 
     const normalize = (value) => value.trim().toLowerCase();
     const displayedSet = new Set([...displayed].map(normalize));
-    const missing = ladder.brands.filter((brand) => !displayedSet.has(normalize(brand)));
+    // A fare can be labelled in more than one way - Amadeus cards carry either the filed code or
+    // the airline's description of it - so a ladder entry may offer alternatives, and any of them
+    // being on screen means that fare is offered.
+    const missing = ladder.brands.filter((brand, index) => {
+      const accepted = [brand, ...((ladder.brandAlternatives && ladder.brandAlternatives[index]) || [])];
+      return !accepted.some((label) => displayedSet.has(normalize(label)));
+    });
 
     logger.info("Compared the displayed leg's brand cards against the ladder its reprice priced", {
       leg: ladder.leg,

@@ -206,7 +206,11 @@ Then("the displayed leg {int} should offer a brand card for every fare in its la
   logger.info("[NewFlightFlow] Displayed leg brand cards cover the ladder", result);
 });
 
-Then("the outbound leg brand cards are displayed", async function () {
+// Above the page's own 180s wait for the cards, so a slow render reports what the page object saw
+// rather than a bare "function timed out".
+const BRAND_CARDS_STEP_TIMEOUT_MS = 240000;
+
+Then("the outbound leg brand cards are displayed", { timeout: BRAND_CARDS_STEP_TIMEOUT_MS }, async function () {
   logger.info("[NewFlightFlow] Verifying outbound leg brand cards are visible");
   const result = await FlightResults.verifyOutboundLegBrandCardsVisible(this.page);
   logger.info("[NewFlightFlow] Outbound brand cards visible", result);

@@ -4464,7 +4464,9 @@ async clickSelectForFareWithBaggagePricingOptions(baggageText) {
    * Waits for the brand cards within a specific leg to appear.
    * @param {number} legIndex - Zero-based leg index (0=outbound, 1=inbound)
    */
-  async waitForNewFlightFlowBrandCards(legIndex = 0, timeout = 120000) {
+  // 180s rather than the usual two minutes: Amadeus prices a by-schedule multi-city selection once
+  // per fare family before the cards can render, which is dozens of supplier calls.
+  async waitForNewFlightFlowBrandCards(legIndex = 0, timeout = 180000) {
     try {
       await this.getNewFlightFlowBrandCards(legIndex).first()
         .waitFor({ state: 'visible', timeout });
