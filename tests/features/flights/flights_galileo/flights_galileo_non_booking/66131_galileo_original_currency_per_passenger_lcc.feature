@@ -19,8 +19,8 @@ Feature: 66131 Galileo - Original currency per passenger with LCC complete trip
     And I have added a random guest traveler
     And I have added a random guest traveler
     When I search for a one way flight from "BCN" to "LGW"
-    And I filter airline results by "EasyJet" checkbox
     And flight results should be available
+    And I filter airline results by "EasyJet" checkbox
     Then the original currency symbol "€" should be visible in flight results
     When I store the first flight result display and original prices
     When I click to open first pricing options
