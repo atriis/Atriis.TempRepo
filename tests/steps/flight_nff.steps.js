@@ -292,6 +292,14 @@ Then("the fares with {string} should show {string} in pricing options", async fu
   logger.info("[NewFlightFlow] Brand card feature text verified", result);
 });
 
+// Stronger than the step above: asserts the feature row's green check icon as well as its text, so a
+// fare that renders the same wording greyed out with a "close" icon fails instead of passing.
+Then("{string} fare should have {string} text enabled with a green check mark", async function (fareName, expectedText) {
+  logger.info("[NewFlightFlow] Verifying brand card feature is included with a green check mark", { fareName, expectedText });
+  const result = await FlightResults.verifyFareShowsFeatureInBrandCard(this.page, fareName, expectedText, { requireGreenCheck: true });
+  logger.info("[NewFlightFlow] Brand card feature verified as included", result);
+});
+
 When("I select outbound and inbound brands with different cancellation and change rules from pricing options new flight flow", { timeout: 300000 }, async function () {
   logger.info("[NewFlightFlow] Selecting outbound and inbound brands with different cancellation and change rules");
   await FlightResults.selectBrandsWithDifferentRulesAcrossLegs(this.page);

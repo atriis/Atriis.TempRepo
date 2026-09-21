@@ -5110,22 +5110,57 @@ async verifyFareComponentTextColorInPricingOptions(page, expectedColor, index = 
     return { tooltipText };
   },
 
-  async verifyFareShowsFeatureInBrandCard(page, fareName, expectedText) {
+  /**
+   * Verifies a brand card shows a feature, optionally asserting it is shown as INCLUDED.
+   *
+   * A not-included feature reuses the same row markup with a different icon ('close' plus a
+   * 'light-gray' text class), and a feature the supplier sent no data for gets a grey
+   * 'error_outline' — so the text alone proves the wording but not the state. Pass
+   * `requireGreenCheck` when the test cares that the feature is actually granted.
+   *
+   * On a round trip the first card matching `fareName` is the outbound leg's.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} fareName - Brand name as rendered in the card header (e.g. "Smart")
+   * @param {string} expectedText - Feature text as rendered (e.g. "Free standard seat selection")
+   * @param {Object} [options]
+   * @param {boolean} [options.requireGreenCheck=false] - Also assert the green check mark
+   * @returns {Promise<{fareName: string, expectedText: string, featureTexts: string[], icon: string, iconClasses: string}>}
+   */
+  async verifyFareShowsFeatureInBrandCard(page, fareName, expectedText, { requireGreenCheck = false } = {}) {
     if (!page) throw new Error('[FlightResults.verifyFareShowsFeatureInBrandCard] "page" is required.');
     if (!fareName || typeof fareName !== 'string') throw new Error('[FlightResults.verifyFareShowsFeatureInBrandCard] "fareName" must be a non-empty string, got: ' + typeof fareName);
     if (!expectedText || typeof expectedText !== 'string') throw new Error('[FlightResults.verifyFareShowsFeatureInBrandCard] "expectedText" must be a non-empty string, got: ' + typeof expectedText);
+
     const flightResultsPage = getPageObject(page, FlightResultsPage);
-    const featureTexts = await flightResultsPage.getBrandCardFeatureTexts(fareName);
-    const found = featureTexts.some((t) => t.trim() === expectedText);
-    if (!found) {
+    const features = await flightResultsPage.getBrandCardFeatureRows(fareName);
+    const featureTexts = features.map((f) => f.text);
+    const feature = features.find((f) => f.text === expectedText);
+
+    if (!feature) {
       throw new Error(
         `[FlightResults.verifyFareShowsFeatureInBrandCard] Fare "${fareName}" does not show "${expectedText}". ` +
-        `Found: [${featureTexts.map((t) => `"${t.trim()}"`).join(', ')}]`
+        `Found: [${featureTexts.map((t) => `"${t}"`).join(', ')}]`
       );
     }
-    return { fareName, expectedText, featureTexts };
-  },
 
+    if (requireGreenCheck) {
+      const hasGreenIcon = feature.iconClasses.split(/\s+/).includes('green') && feature.icon === 'check';
+      const textIsDimmed = feature.textClasses.split(/\s+/).includes('light-gray');
+
+      if (!hasGreenIcon || textIsDimmed) {
+        throw new Error(
+          `[FlightResults.verifyFareShowsFeatureInBrandCard] Fare "${fareName}" shows "${expectedText}" but not ` +
+          `as included: expected a green check mark (icon "check" with the "green" class and no "light-gray" ` +
+          `text class), got icon "${feature.icon}" with classes "${feature.iconClasses}" and text classes ` +
+          `"${feature.textClasses}". An icon of "close" means the supplier reported the feature as not ` +
+          `included; "error_outline" means it sent no data for it.`
+        );
+      }
+    }
+
+    return { fareName, expectedText, featureTexts, icon: feature.icon, iconClasses: feature.iconClasses };
+  },
   async selectInboundBrandMatchingOutboundRules(page, timeout = 30000) {
     if (!page) throw new Error('[FlightResults.selectInboundBrandMatchingOutboundRules] "page" is required.');
     logger.info('[NewFlightFlow] Selecting inbound brand card with same cancellation and change rules as outbound');

@@ -207,6 +207,11 @@ const SELECTORS = {
   NEW_FLOW_BRAND_CARD_PRICE_DELTA: '[data-testid="flight.flight-selection.brand-card.price-delta"]',
   NEW_FLOW_BRAND_CARD_PRICE_DELTA_PREFIX: '.price-delta-prefix',
   NEW_FLOW_BRAND_CARD_FEATURE_TEXT: '.features-text',
+  // One feature row of a brand card. flight-brand-card.vue renders each row as
+  // <li><span class="features-icon {iconClass}">{icon}</span><span class="features-text">{name}</span></li>,
+  // so the row is what pairs a feature's text with the icon encoding whether it is included.
+  NEW_FLOW_BRAND_CARD_FEATURE_ROW: '.features-list-section li',
+  NEW_FLOW_BRAND_CARD_FEATURE_ICON: '.features-icon',
   NEW_FLOW_BRAND_CARD_SELECTED: '.card.fare-card.is-selected',
   // The badge slot in a brand card header (flight-brand-card.vue). A marine fare is a PTC fare
   // (PricedPtc "SEA") carrying agreementType None, so AB#84228 renders it as an "anchor" ligature
@@ -5117,14 +5122,22 @@ async clickSelectForFareWithBaggagePricingOptions(baggageText) {
     await this.page.locator(SELECTORS.NEW_FLOW_FOOTER_PRICE_AMOUNT).waitFor({ state: 'visible', timeout: 15000 });
   }
 
-  async getBrandCardFeatureTexts(fareName, timeout = 30000) {
+  /**
+   * Locates the first New Flight Flow brand card whose brand name equals `fareName`.
+   * On a round trip each leg renders its own carousel, so the first match is the outbound leg's
+   * card — a caller that needs a specific leg must scope the search itself.
+   *
+   * @param {string} fareName - Brand name exactly as rendered in the card header (e.g. "Smart")
+   * @param {string} caller - Calling method name, used to prefix the thrown error
+   * @param {number} timeout
+   * @returns {Promise<import('@playwright/test').Locator>}
+   */
+  async findBrandCardByFareName(fareName, caller, timeout = 30000) {
     const allCards = this.page.locator(SELECTORS.NEW_FLOW_BRAND_CARD);
     try {
       await allCards.first().waitFor({ state: 'visible', timeout });
     } catch (err) {
-      throw new Error(
-        `[FlightResultsPage.getBrandCardFeatureTexts] No brand cards visible. Original: ${err.message}`
-      );
+      throw new Error(`[FlightResultsPage.${caller}] No brand cards visible. Original: ${err.message}`);
     }
 
     const count = await allCards.count();
@@ -5136,15 +5149,49 @@ async clickSelectForFareWithBaggagePricingOptions(baggageText) {
       if ((await brandNameEl.count()) === 0) continue;
       const cardBrandName = (await brandNameEl.first().innerText()).trim();
       foundBrandNames.push(cardBrandName);
-      if (cardBrandName === fareName) {
-        return card.locator(SELECTORS.NEW_FLOW_BRAND_CARD_FEATURE_TEXT).allInnerTexts();
-      }
+      if (cardBrandName === fareName) return card;
     }
 
     throw new Error(
-      `[FlightResultsPage.getBrandCardFeatureTexts] No brand card found with fare name "${fareName}". ` +
+      `[FlightResultsPage.${caller}] No brand card found with fare name "${fareName}". ` +
       `Available: [${foundBrandNames.map((n) => `"${n}"`).join(', ')}]`
     );
+  }
+
+  /**
+   * Reads every feature row of one brand card together with the state its icon encodes.
+   * _flight-brand-builder.logic.ts only ever pairs `iconClass: 'green'` with `icon: 'check'` for an
+   * included feature; a not-included one gets a `close` ligature plus a `light-gray` text class, and
+   * a feature the supplier sent no data for gets a grey `error_outline`. Reading the whole row rather
+   * than the text alone is what lets a caller tell those three apart.
+   *
+   * @param {string} fareName
+   * @param {number} timeout
+   * @returns {Promise<Array<{text: string, icon: string, iconClasses: string, textClasses: string}>>}
+   */
+  async getBrandCardFeatureRows(fareName, timeout = 30000) {
+    const card = await this.findBrandCardByFareName(fareName, 'getBrandCardFeatureRows', timeout);
+    const rows = card.locator(SELECTORS.NEW_FLOW_BRAND_CARD_FEATURE_ROW);
+    const rowCount = await rows.count();
+    const features = [];
+
+    for (let i = 0; i < rowCount; i++) {
+      const row = rows.nth(i);
+      const textEl = row.locator(SELECTORS.NEW_FLOW_BRAND_CARD_FEATURE_TEXT).first();
+      if ((await textEl.count()) === 0) continue;
+
+      const iconEl = row.locator(SELECTORS.NEW_FLOW_BRAND_CARD_FEATURE_ICON).first();
+      const hasIcon = (await iconEl.count()) > 0;
+
+      features.push({
+        text: (await textEl.innerText()).trim(),
+        icon: hasIcon ? (await iconEl.innerText()).trim() : '',
+        iconClasses: hasIcon ? ((await iconEl.getAttribute('class')) || '') : '',
+        textClasses: (await textEl.getAttribute('class')) || '',
+      });
+    }
+
+    return features;
   }
 
   async getOutboundSelectedBrandName(timeout = 30000) {
