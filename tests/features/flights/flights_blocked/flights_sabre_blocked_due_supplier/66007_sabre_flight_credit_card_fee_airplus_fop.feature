@@ -14,7 +14,7 @@ Feature: 66007 Sabre - Credit card fee displayed when booking with Airplus as FO
   Scenario: Credit card fee is displayed in price breakdown after booking with Airplus FOP
     Given I am logged in as "blancaneves@sabreairplus.com" booking a new trip
     And I have added myself as the traveler
-    When I search for a multi-city flight with legs "AMS-KRS" and "HEL-AMS"
+    When I search for a multi-city flight with legs "AMS-KRS, HEL-AMS"
     And flight results should be available
     And I filter results by carrier "KLM"
     And I add the first flight to cart

@@ -15,5 +15,5 @@ Feature: 58671 Flights - Multicity Portuguese results are displayed
     Given I am logged in as "aiva@amadeusportuguese.com" booking a new trip
     And the welcome heading should contain "Bem-vindo"
     And I have added myself as the traveler
-    When I search for a multi-city flight with legs "LON-MAD" and "MAD-ROM" and "ROM-LON"
+    When I search for a multi-city flight with legs "LON-MAD, MAD-ROM, ROM-LON"
     Then the "Adicionar à viagem" text should be visible in results

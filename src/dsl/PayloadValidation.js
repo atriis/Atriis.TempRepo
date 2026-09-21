@@ -2213,6 +2213,9 @@ const PayloadValidation = {
    * type. Generic plumbing only: no meaning is attached to the fields, that belongs in the product
    * DSL calling this (see FlightResults.captureFareFamilyDescriptions for the fare-family use).
    *
+   * For more than one tag, or when the answer depends on which blocks share a call, use
+   * collectXmlBlockAttributesPerCall instead.
+   *
    * Scoped to the block on purpose. A reply carries several unrelated `description` or `name` nodes,
    * so reading the fields off the whole payload would mix records that have nothing to do with each
    * other; extracting the block first keeps each field set with the record it came from.
@@ -2313,6 +2316,103 @@ const PayloadValidation = {
     });
 
     return { perCall, entriesTotal };
+  },
+
+  /**
+   * Returns every payload of a type logged for the trip, untouched, for content this DSL cannot
+   * parse generically - a supplier's own trace format. Prefer the structured readers for XML or JSON.
+   *
+   * @param {object} world
+   * @param {string} requestType
+   * @param {{source?: string, purpose?: string}} [options] - source defaults to "request"
+   * @returns {Promise<{payloads: string[]}>}
+   */
+  async collectPayloadsForTrip(world, requestType, options = {}) {
+    assertWorld(world);
+    const { source = "request", purpose } = options;
+    const normalizedRequestType = normalizeRequestType(requestType);
+
+    const result = await fetchAllRequestsForTrip(
+      world,
+      normalizedRequestType,
+      purpose || `read "${normalizedRequestType}" payloads`,
+      source
+    );
+    const payloads = result.matches.map((match) => match.payload);
+
+    logger.info("Collected payloads for the trip", {
+      requestType: normalizedRequestType,
+      source,
+      payloads: payloads.length,
+      sizes: payloads.map((p) => p.length),
+    });
+
+    return { payloads };
+  },
+
+  /**
+   * Reads the named attributes of every occurrence of an XML block, per call. Per call because a
+   * call is what ties its blocks together; several tags in one pass because fetching the same large
+   * payloads twice gets rate-limited. For one tag whose blocks stand on their own, use
+   * collectXmlBlockFieldsForTrip, which reads the block's contents rather than its attributes.
+   *
+   * @param {object} world
+   * @param {string} requestType - e.g. "AirPriceRsp"
+   * @param {Object<string, string[]>} blockSpecs - tag to attributes, e.g. { Brand: ["Name"] }
+   * @param {{source?: string, purpose?: string}} [options] - source defaults to "request"
+   * @returns {Promise<{perCall: Array<Object<string, Array<Object<string, string|null>>>>}>}
+   */
+  async collectXmlBlockAttributesPerCall(world, requestType, blockSpecs, options = {}) {
+    assertWorld(world);
+    const tags = Object.keys(blockSpecs || {});
+    if (tags.length === 0) {
+      throw new Error(
+        `[PayloadValidation.collectXmlBlockAttributesPerCall] "blockSpecs" must name at least one block tag.`
+      );
+    }
+    for (const tag of tags) {
+      if (!Array.isArray(blockSpecs[tag]) || blockSpecs[tag].length === 0) {
+        throw new Error(
+          `[PayloadValidation.collectXmlBlockAttributesPerCall] "${tag}" must list at least one attribute.`
+        );
+      }
+    }
+
+    const { source = "request", purpose } = options;
+    const normalizedRequestType = normalizeRequestType(requestType);
+
+    const result = await fetchAllRequestsForTrip(
+      world,
+      normalizedRequestType,
+      purpose || `collect ${tags.map((t) => `"${t}"`).join(" and ")} attributes`,
+      source
+    );
+
+    const perCall = result.matches.map((match) => {
+      const byTag = {};
+      for (const tag of tags) {
+        const openTagRegex = new RegExp(`<(?:[\\w.-]+:)?${escapeRegex(tag)}\\b[^>]*>`, "gi");
+        byTag[tag] = (match.payload.match(openTagRegex) || []).map((openTag) => {
+          const attributes = {};
+          for (const attributeName of blockSpecs[tag]) {
+            const found = openTag.match(new RegExp(`\\b${escapeRegex(attributeName)}\\s*=\\s*"([^"]*)"`, "i"));
+            attributes[attributeName] = found ? found[1].trim() || null : null;
+          }
+          return attributes;
+        });
+      }
+      return byTag;
+    });
+
+    logger.info("Collected XML block attributes per call", {
+      requestType: normalizedRequestType,
+      source,
+      tags,
+      calls: perCall.length,
+      blocksPerCall: perCall.map((byTag) => tags.map((t) => `${t}:${byTag[t].length}`).join(" ")),
+    });
+
+    return { perCall };
   },
 
   /**

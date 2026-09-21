@@ -160,6 +160,52 @@ Then(
   }
 );
 
+// Payload steps: they read the trip's reprice log and take `world`, not `page`. The timeout clears
+// the DSL's own 180s download budget - at the default 120s the step dies first and reports nothing.
+const PAYLOAD_STEP_TIMEOUT_MS = 240000;
+
+When("I capture the fare ladder priced for each leg in {string} from Storage", { timeout: PAYLOAD_STEP_TIMEOUT_MS }, async function (requestType) {
+  if (!config.payloadValidation.enabled) {
+    logger.warn("PAYLOAD_VALIDATION_ENABLED=false", { step: "captureFareLaddersPerLeg", requestType });
+    return;
+  }
+  logger.info("Capturing the fare ladder priced for each leg", {
+    requestType,
+    tripId: this.tripId || this.currentTripId || this.createdTripId || null,
+  });
+  const result = await FlightResults.captureFareLaddersPerLeg(this, requestType);
+  logger.info("Fare ladders captured", { combinations: result.combinations });
+});
+
+Then("the fare ladder combinations should exceed {int}", async function (cap) {
+  if (!config.payloadValidation.enabled) {
+    logger.warn("PAYLOAD_VALIDATION_ENABLED=false", { step: "expectFareLadderCombinationsExceed", cap });
+    return;
+  }
+  logger.info("Validating the selection is wider than the combination cap", { cap });
+  await FlightResults.expectFareLadderCombinationsExceed(this, cap);
+});
+
+Then("every priced fare should be reachable in some combination in {string}", { timeout: PAYLOAD_STEP_TIMEOUT_MS }, async function (requestType) {
+  if (!config.payloadValidation.enabled) {
+    logger.warn("PAYLOAD_VALIDATION_ENABLED=false", { step: "expectEveryFareReachableInSomeOption", requestType });
+    return;
+  }
+  logger.info("Validating no fare was lost when the combination matrix was capped", { requestType });
+  const result = await FlightResults.expectEveryFareReachableInSomeOption(this, requestType);
+  logger.info("Every priced fare is reachable", { rows: result.rows });
+});
+
+Then("the displayed leg {int} should offer a brand card for every fare in its ladder", async function (legNumber) {
+  if (!config.payloadValidation.enabled) {
+    logger.warn("PAYLOAD_VALIDATION_ENABLED=false", { step: "verifyDisplayedLegBrandCardsMatchFareLadder", legNumber });
+    return;
+  }
+  logger.info("[NewFlightFlow] Comparing the displayed leg's brand cards with the ladder its reprice priced", { legNumber });
+  const result = await FlightResults.verifyDisplayedLegBrandCardsMatchFareLadder(this.page, this, legNumber - 1);
+  logger.info("[NewFlightFlow] Displayed leg brand cards cover the ladder", result);
+});
+
 Then("the outbound leg brand cards are displayed", async function () {
   logger.info("[NewFlightFlow] Verifying outbound leg brand cards are visible");
   const result = await FlightResults.verifyOutboundLegBrandCardsVisible(this.page);

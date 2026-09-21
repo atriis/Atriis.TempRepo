@@ -14,7 +14,7 @@ Feature: 69245 NDC Flights - Multi city all segments displayed in pricing option
   Scenario: All NDC multi-city segments are visible in pricing options
     Given I am logged in as "claraaguiar@ndclhclara.com" booking a new trip
     And I have added myself as the traveler
-    When I search for a multi-city flight with legs "FRA-ZRH" and "ZRH-SIN" and "SIN-ZRH"
+    When I search for a multi-city flight with legs "FRA-ZRH, ZRH-SIN, SIN-ZRH"
     And flight results should be available
     And I click to open first pricing options
     Then all pricing option segments "FRA-ZRH" and "ZRH-SIN" and "SIN-ZRH" should be visible and selectable

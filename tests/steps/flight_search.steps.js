@@ -195,6 +195,8 @@ When('I search from the edit flight search form', async function () {
 
 When("I search for a flight by schedule from {string} to {string}", async function (from, to) {
   logger.info('Searching for flight by schedule', { from, to });
+  // By schedule is always a round trip, so the return leg is the outbound reversed.
+  this.searchedLegs = [`${from.toUpperCase()}-${to.toUpperCase()}`, `${to.toUpperCase()}-${from.toUpperCase()}`];
   await FlightSearch.searchFlightBySchedule(this.page, { from, to });
 });
 
@@ -243,90 +245,73 @@ When("I search for a random round trip flight in {string}", async function (regi
   await FlightSearch.searchRoundTripRandomFlight(this.page, region);
 });
 
-// Three-leg complete trip: today + 30/40/50 days, one leg every ~10 days. The default
-// nth-available-day strategy clicks the calendar's next-month arrow once per leg without
-// rewinding, so leg 3 lands three months past leg 1 — on the 14 Sep nightly these searches
-// spanned "05 Dec - 11 Jun" and the GDS returned nothing at all. Same reason the two-leg
-// by-schedule variant below pins its dates; keep the gaps here wide enough to be a plausible
-// itinerary and near enough that suppliers still have content.
-const MULTI_CITY_THREE_LEG_DAY_OFFSETS = [30, 40, 50];
 
-When("I search for a multi-city flight with legs {string} and {string} and {string}", async function (leg1, leg2, leg3) {
-  const parseLeg = (leg) => {
-    const parts = leg.toUpperCase().split('-');
-    if (parts.length !== 2) throw new Error(`Invalid leg format "${leg}". Expected "FROM-TO".`);
-    return { from: parts[0], to: parts[1] };
-  };
-  const legs = [leg1, leg2, leg3].map(parseLeg);
-  logger.info('Searching for multi-city flight', { legs, dayOffsets: MULTI_CITY_THREE_LEG_DAY_OFFSETS });
-  await FlightSearch.searchFlightMultiCity(this.page, legs, {
-    dayOffsets: MULTI_CITY_THREE_LEG_DAY_OFFSETS,
+// Multi-city legs are written as one comma-separated list - "LIS-MAD, MAD-CDG, CDG-LHR" - so a
+// search of any length is one step instead of a new step per leg count. Only the trip type varies
+// below; every other multi-city step calls a different DSL method and keeps its own wording.
+function parseLeg(leg) {
+  const parts = String(leg).toUpperCase().split("-");
+  if (parts.length !== 2) {
+    throw new Error(`Invalid leg format "${leg}". Expected "FROM-TO".`);
+  }
+  return { from: parts[0], to: parts[1] };
+}
+
+function parseMultiCityLegs(legList) {
+  const legs = String(legList)
+    .split(",")
+    .map((leg) => leg.trim())
+    .filter(Boolean)
+    .map(parseLeg);
+  if (legs.length < 2) {
+    throw new Error(`A multi-city search needs at least two legs, got: "${legList}"`);
+  }
+  return legs;
+}
+
+// Dates pinned per trip type and leg count, exactly as the separate steps pinned them. The default
+// nth-available-day strategy advances a month per leg without rewinding, so an unpinned four-leg
+// search lands three months past its first leg and the GDS returns nothing; a leg count absent
+// here is one that was never pinned and keeps the DSL default.
+const MULTI_CITY_DAY_OFFSETS = {
+  completeTrip: { 3: [30, 40, 50] },
+  bySchedule: { 2: [30, 40], 4: [21, 35, 49, 51] },
+};
+
+async function searchMultiCity(world, legList, searchType) {
+  const legs = parseMultiCityLegs(legList);
+  const dayOffsets = (MULTI_CITY_DAY_OFFSETS[searchType] || {})[legs.length];
+
+  logger.info("Searching for multi-city flight", { legs, searchType, dayOffsets });
+
+  // Payload assertions read legs by route, the screen renders them by index: the searched order is
+  // what maps one to the other.
+  world.searchedLegs = legs.map((leg) => `${leg.from}-${leg.to}`);
+
+  await FlightSearch.searchFlightMultiCity(world.page, legs, {
+    ...(searchType === "bySchedule" ? { searchType: "bySchedule" } : {}),
+    ...(dayOffsets ? { dayOffsets } : {}),
   });
+}
+
+When("I search for a multi-city flight with legs {string}", async function (legList) {
+  await searchMultiCity(this, legList, "completeTrip");
+});
+
+When("I search for a multi-city by-schedule flight with legs {string}", async function (legList) {
+  await searchMultiCity(this, legList, "bySchedule");
 });
 
 When("I search for a multi-city flight with legs {string} and {string} and {string} with a longer stay after the first leg", async function (leg1, leg2, leg3) {
-  const parseLeg = (leg) => {
-    const parts = leg.toUpperCase().split('-');
-    if (parts.length !== 2) throw new Error(`Invalid leg format "${leg}". Expected "FROM-TO".`);
-    return { from: parts[0], to: parts[1] };
-  };
   const legs = [leg1, leg2, leg3].map(parseLeg);
   logger.info('Searching for multi-city flight with a longer stay after the first leg', { legs });
   await FlightSearch.searchFlightMultiCityWithLongerFirstStay(this.page, legs);
 });
 
-When("I search for a multi-city by-schedule flight with legs {string} and {string} and {string}", async function (leg1, leg2, leg3) {
-  const parseLeg = (leg) => {
-    const parts = leg.toUpperCase().split('-');
-    if (parts.length !== 2) throw new Error(`Invalid leg format "${leg}". Expected "FROM-TO".`);
-    return { from: parts[0], to: parts[1] };
-  };
-  const legs = [leg1, leg2, leg3].map(parseLeg);
-  logger.info('Searching for multi-city by-schedule flight', { legs });
-  await FlightSearch.searchFlightMultiCity(this.page, legs, { searchType: 'bySchedule' });
-});
 
-// Two-leg by-schedule variant: each leg is picked on its own results page, so carrier filters and
-// fare rules can be applied per leg (complete-trip multi-city returns one combined itinerary instead).
-// Dates are fixed at today + 30 days (outbound) and today + 40 days (return): the default
-// nth-available-day strategy advances a month per leg, which compounds and pushed these legs months out.
-const MULTI_CITY_BY_SCHEDULE_DAY_OFFSETS = [30, 40];
 
-When("I search for a multi-city by-schedule flight with legs {string} and {string}", async function (leg1, leg2) {
-  const parseLeg = (leg) => {
-    const parts = leg.toUpperCase().split('-');
-    if (parts.length !== 2) throw new Error(`Invalid leg format "${leg}". Expected "FROM-TO".`);
-    return { from: parts[0], to: parts[1] };
-  };
-  const legs = [leg1, leg2].map(parseLeg);
-  logger.info('Searching for multi-city by-schedule flight', { legs, dayOffsets: MULTI_CITY_BY_SCHEDULE_DAY_OFFSETS });
-  await FlightSearch.searchFlightMultiCity(this.page, legs, {
-    searchType: 'bySchedule',
-    dayOffsets: MULTI_CITY_BY_SCHEDULE_DAY_OFFSETS,
-  });
-});
 
-When("I search for a multi-city flight with legs {string} and {string} and {string} and {string}", async function (leg1, leg2, leg3, leg4) {
-  const parseLeg = (leg) => {
-    const parts = leg.toUpperCase().split('-');
-    if (parts.length !== 2) throw new Error(`Invalid leg format "${leg}". Expected "FROM-TO".`);
-    return { from: parts[0], to: parts[1] };
-  };
-  const legs = [leg1, leg2, leg3, leg4].map(parseLeg);
-  logger.info('Searching for multi-city flight', { legs });
-  await FlightSearch.searchFlightMultiCity(this.page, legs);
-});
 
-When("I search for a multi-city flight with legs {string} and {string}", async function (leg1, leg2) {
-  const parseLeg = (leg) => {
-    const parts = leg.toUpperCase().split('-');
-    if (parts.length !== 2) throw new Error(`Invalid leg format "${leg}". Expected "FROM-TO".`);
-    return { from: parts[0], to: parts[1] };
-  };
-  const legs = [leg1, leg2].map(parseLeg);
-  logger.info('Searching for multi-city flight', { legs });
-  await FlightSearch.searchFlightMultiCity(this.page, legs);
-});
 
 // Explicit-offset variant: each leg lands on exactly today + the given number of days. The plain
 // two-leg step above advances the calendar a month PER LEG, which compounds and pushes the second
@@ -342,33 +327,18 @@ When("I search for a multi-city flight with legs {string} and {string} departing
 // Compact-dates variant: legs a few days apart (near-term) instead of the default wider spread,
 // so short-haul multi-city routes return bookable results.
 When("I search for a multi-city flight with legs {string} and {string} with close dates", async function (leg1, leg2) {
-  const parseLeg = (leg) => {
-    const parts = leg.toUpperCase().split('-');
-    if (parts.length !== 2) throw new Error(`Invalid leg format "${leg}". Expected "FROM-TO".`);
-    return { from: parts[0], to: parts[1] };
-  };
   const legs = [leg1, leg2].map(parseLeg);
   logger.info('Searching for multi-city flight with close leg dates', { legs });
   await FlightSearch.searchFlightMultiCityWithCloseDates(this.page, legs);
 });
 
 When("I search for a multi-city flight with legs {string} and {string} with parallel car search", async function (leg1, leg2) {
-  const parseLeg = (leg) => {
-    const parts = leg.toUpperCase().split('-');
-    if (parts.length !== 2) throw new Error(`Invalid leg format "${leg}". Expected "FROM-TO".`);
-    return { from: parts[0], to: parts[1] };
-  };
   const legs = [leg1, leg2].map(parseLeg);
   logger.info('Searching for multi-city flight with parallel car search', { legs });
   await FlightSearch.searchFlightMultiCityWithParallelCar(this.page, legs);
 });
 
 When("I search for a multi-city flight with legs {string} and {string} with cabin class {string} without clicking search button", async function (leg1, leg2, cabinClass) {
-  const parseLeg = (leg) => {
-    const parts = leg.toUpperCase().split('-');
-    if (parts.length !== 2) throw new Error(`Invalid leg format "${leg}". Expected "FROM-TO".`);
-    return { from: parts[0], to: parts[1] };
-  };
   const legs = [leg1, leg2].map(parseLeg);
   logger.info('Setting up multi-city flight with cabin class without clicking search', { legs, cabinClass });
   await FlightSearch.setupMultiCityFlightWithCabinClassWithoutSearch(this.page, legs, cabinClass);

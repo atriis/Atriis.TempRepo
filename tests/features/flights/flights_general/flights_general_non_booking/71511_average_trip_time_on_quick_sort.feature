@@ -22,7 +22,7 @@ Feature: 71511 - Average trip time is displayed on the quick-sort options
     Given I am logged in as "brunasantosnl@testim.com" booking a new trip
     And I have added myself as the traveler
     # Three legs keep the average visibly different from any single leg duration.
-    When I search for a multi-city flight with legs "BUD-NYC" and "NYC-IAH" and "IAH-BUD"
+    When I search for a multi-city flight with legs "BUD-NYC, NYC-IAH, IAH-BUD"
     Then flight results should be available
     # Each tile's third line reads "Average: <h>h <m>m"; the literal prefix is what a by-schedule
     # search drops, so it is asserted rather than just the duration.

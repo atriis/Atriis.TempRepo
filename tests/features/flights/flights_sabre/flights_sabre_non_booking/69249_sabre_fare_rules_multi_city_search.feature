@@ -14,7 +14,7 @@ Feature: 69249 Sabre - Fare rules displayed in multi-city search
   Scenario: Fare rules are accessible in results, pricing options, flight details, and cart for multi-city
     Given I am logged in as "robsoncruz@sabrecargdg.com" booking a new trip
     And I have added myself as the traveler
-    When I search for a multi-city flight with legs "IAH-DFW" and "MIA-IAH" and "ORD-IAH"
+    When I search for a multi-city flight with legs "IAH-DFW, MIA-IAH, ORD-IAH"
     And flight results should be available
     And I click to open fare rules
     Then I should see the fare rules note about strictest terms

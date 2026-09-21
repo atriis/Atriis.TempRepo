@@ -501,6 +501,24 @@ The same repeated-block shape covers rail fares, hotel rate plans and car rate c
 
 Canonical example: `tests/features/flights/flights_amadeus/flights_amadeus_non_booking/84698_amadeus_edifact_fare_family_display_name_from_description.feature`
 
+### 2.10.12 `collectXmlBlockAttributesPerCall()` — repeated blocks, grouped by call
+
+Returns the named attributes of every occurrence of one or more XML blocks, keeping each call's blocks separate. Generic plumbing: the product DSL calling it decides what the values mean — see `FlightResults.captureFareLaddersPerLeg()`.
+
+- **Signature:** `(world, requestType, blockSpecs, options)` — `blockSpecs` maps tag to attributes, e.g. `{ AirSegment: ["Origin", "Destination"], Brand: ["Name"] }`. `options.source` defaults to `"request"`.
+- **Returns** `{ perCall }`: one entry per call, each an object keyed by tag holding that call's blocks.
+- **Per call, not flattened.** A call is what ties its blocks together. Which segments a reprice covers and which brands it priced only mean something read side by side — flattened, a brand can no longer be attributed to a leg.
+- **Several tags in ONE pass.** Reading two tags with two calls downloads the same large payloads twice and gets rate-limited (HTTP 429); this reads them once.
+- **Reads the open tag's attributes**, where §2.10.11 reads the block's contents. Use that one for a single tag whose blocks stand on their own.
+
+### 2.10.13 `collectPayloadsForTrip()` — the raw payloads, unparsed
+
+Returns every payload of a type logged for the trip, untouched, for content this DSL cannot parse generically — a supplier's own trace format, say — where the product DSL has to read it itself.
+
+- **Signature:** `(world, requestType, options)`; **returns** `{ payloads }`.
+- **Prefer the structured readers** when the content is XML or JSON. This exists for the cases they cannot serve, and hands the caller the parsing problem along with the payload.
+- Used by `FlightResults.expectEveryFareReachableInSomeOption()`, which reads the Galileo pricing trace — diagnostic output rather than a contract, so a format change breaks it loudly there rather than weakening an assertion quietly.
+
 ---
 
 ## 3. Helper Functions (Internal)
@@ -556,6 +574,8 @@ All step definitions are in `tests/steps/payload_validation.steps.js`. Here is t
 | `Then every "{requestType}" request should have "{parameterName}" within "{blockTag}" containing "{expectedValue}"` | `expectEveryRequestParameterContains()` | Same, but only inside the named XML block — tells round-trip legs apart (§2.10.7) |
 | `Then every "{requestType}" request should reference a different "{attributeName}"` | `expectRequestAttributeValuesAreUnique()` | Assert no two requests share the same attribute value (§2.10.8) |
 | `When I wait until "{requestType}" requests have been sent for the trip` | `waitForRequestType()` | Anchor an absence assertion: prove the log is publishing for this trip before claiming a request type is missing (§2.10.10) |
+
+> Fare brand coverage steps are also in `tests/steps/flight_nff.steps.js`: `When I capture the fare ladder priced for each leg in "..." from Storage`, `Then the fare ladder combinations should exceed {int}` and `Then every priced fare should be reachable in some combination in "..."` call `FlightResults.captureFareLaddersPerLeg()` / `expectFareLadderCombinationsExceed()` / `expectEveryFareReachableInSomeOption()` on top of `collectXmlBlockAttributesPerCall()` (§2.10.12) and `collectPayloadsForTrip()` (§2.10.13).
 
 > Fare family steps are all defined in `tests/steps/flight_nff.steps.js`, not here — they carry product meaning, which this DSL does not. The batching ones (`Then the fare family descriptions should be batched in ...`, `Then more than {int} fare families should have been described in ...`) call `FlightResults.expectFareFamilyDescriptionsBatched()` / `FlightResults.expectMoreFareFamiliesDescribedThan()` on top of `collectParameterOccurrencesPerCall()` (§2.10.9); the display-name one (`When I capture the fare families described in "..." from Storage`) calls `FlightResults.captureFareFamilyDescriptions()` on top of `collectXmlBlockFieldsForTrip()` (§2.10.11).
 

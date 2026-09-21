@@ -14,7 +14,7 @@ Feature: 69243 GDS Flights - Multi city all segments displayed in pricing option
   Scenario: All multi-city segments are visible in pricing options
     Given I am logged in as "ruimariano@amadeus.com" booking a new trip
     And I have added myself as the traveler
-    When I search for a multi-city flight with legs "MAD-LHR" and "DUB-ORY" and "BRU-MAD"
+    When I search for a multi-city flight with legs "MAD-LHR, DUB-ORY, BRU-MAD"
     And flight results should be available
     And I click to open first pricing options
     Then all pricing option segments "MAD-LHR" and "DUB-ORY" and "BRU-MAD" should be visible and selectable

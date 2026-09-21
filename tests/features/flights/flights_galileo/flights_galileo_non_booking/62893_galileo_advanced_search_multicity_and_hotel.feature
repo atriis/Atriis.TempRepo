@@ -16,5 +16,5 @@ Feature: 62893 Galileo - Search button works for multicity flight and hotel
     Given I am logged in as "bsgalileoflight@galileoflight.com" booking a new trip
     And I have added myself as the traveler
     And I click on the flight tab and check Add hotel to this trip
-    When I search for a multi-city flight with legs "SAL-MEX" and "MEX-GDL" and "GDL-SAL"
+    When I search for a multi-city flight with legs "SAL-MEX, MEX-GDL, GDL-SAL"
     Then flight results should be available

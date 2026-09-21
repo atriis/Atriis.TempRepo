@@ -9,7 +9,7 @@ Feature: 61600 Amadeus - Fare rules stay consistent from results through pricing
   Scenario: Fare rules extracted per leg in results match the pricing page and cart tabs
     Given I am logged in as "henry@uni.com" booking a new trip
     And I have added a random guest traveler
-    When I search for a multi-city by-schedule flight with legs "FRA-DFW" and "DFW-BRU"
+    When I search for a multi-city by-schedule flight with legs "FRA-DFW, DFW-BRU"
     And flight results should be available
 
     # --- First leg FRA-DFW: Lufthansa ---

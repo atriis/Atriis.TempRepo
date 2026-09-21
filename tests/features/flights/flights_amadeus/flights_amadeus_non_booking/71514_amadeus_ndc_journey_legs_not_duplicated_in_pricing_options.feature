@@ -18,7 +18,7 @@ Feature: 71514 Amadeus NDC - Journey legs are not duplicated in pricing options
   Scenario: Pricing options of a 1-stop multi-city quote show one tab per leg
     Given I am logged in as "amadeus@ndcCorp.ams" booking a new trip
     And I have added myself as the traveler
-    When I search for a multi-city flight with legs "HEL-LON" and "EWR-LON"
+    When I search for a multi-city flight with legs "HEL-LON, EWR-LON"
     Then flight results should be available
     When I filter results by "1 stop" checkbox
     Then flight results should be available

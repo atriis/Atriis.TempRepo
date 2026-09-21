@@ -19,7 +19,7 @@ Feature: 84297 Amadeus - Multi city fare family descriptions are requested in ba
   Scenario: Fare families across multi city legs are described in batched requests
     Given I am logged in as "nff.edifactonly@amadeus.ams" booking a new trip
     And I have added myself as the traveler
-    When I search for a multi-city flight with legs "LON-MAD" and "MAD-CDG"
+    When I search for a multi-city flight with legs "LON-MAD, MAD-CDG"
     Then flight results should be available
     When I select the first flight result in new flight flow
     Then the outbound leg brand cards are displayed

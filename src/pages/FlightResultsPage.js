@@ -5202,10 +5202,31 @@ async clickSelectForFareWithBaggagePricingOptions(baggageText) {
     return (await selectedCard.locator(SELECTORS.BRAND_NAME).first().innerText()).trim();
   }
 
-  async getOutboundBrandCardNames(timeout = 30000) {
-    const outboundLeg = this.page.locator(SELECTORS.NEW_FLOW_BRAND_LEG).nth(0);
-    await outboundLeg.locator(SELECTORS.NEW_FLOW_BRAND_CARD).first().waitFor({ state: 'visible', timeout });
-    const cards = outboundLeg.locator(SELECTORS.NEW_FLOW_BRAND_CARD);
+  /**
+   * Waits until a leg stops adding brand cards. A leg revealed by picking a fare on the one before
+   * it renders its first card and fills the rest in after, so a plain "at least one card" wait can
+   * read a half-built ladder.
+   */
+  async waitForLegBrandCardsToSettle(legIndex = 0, timeout = 30000) {
+    const cards = this.page.locator(SELECTORS.NEW_FLOW_BRAND_LEG).nth(legIndex).locator(SELECTORS.NEW_FLOW_BRAND_CARD);
+    await cards.first().waitFor({ state: 'visible', timeout });
+
+    const deadline = Date.now() + timeout;
+    let settled = await cards.count();
+    let stableReads = 1;
+    while (stableReads < 3 && Date.now() < deadline) {
+      await this.page.waitForTimeout(500); // No event marks the ladder complete; poll until it stops growing.
+      const current = await cards.count();
+      if (current === settled) stableReads += 1;
+      else { settled = current; stableReads = 1; }
+    }
+    return settled;
+  }
+
+  async getLegBrandCardNames(legIndex = 0, timeout = 30000) {
+    const leg = this.page.locator(SELECTORS.NEW_FLOW_BRAND_LEG).nth(legIndex);
+    await leg.locator(SELECTORS.NEW_FLOW_BRAND_CARD).first().waitFor({ state: 'visible', timeout });
+    const cards = leg.locator(SELECTORS.NEW_FLOW_BRAND_CARD);
     const count = await cards.count();
     const names = [];
     for (let i = 0; i < count; i++) {
@@ -5215,17 +5236,12 @@ async clickSelectForFareWithBaggagePricingOptions(baggageText) {
     return names;
   }
 
+  async getOutboundBrandCardNames(timeout = 30000) {
+    return this.getLegBrandCardNames(0, timeout);
+  }
+
   async getInboundBrandCardNames(timeout = 30000) {
-    const inboundLeg = this.page.locator(SELECTORS.NEW_FLOW_BRAND_LEG).nth(1);
-    await inboundLeg.locator(SELECTORS.NEW_FLOW_BRAND_CARD).first().waitFor({ state: 'visible', timeout });
-    const cards = inboundLeg.locator(SELECTORS.NEW_FLOW_BRAND_CARD);
-    const count = await cards.count();
-    const names = [];
-    for (let i = 0; i < count; i++) {
-      const nameEl = cards.nth(i).locator(SELECTORS.BRAND_NAME);
-      names.push((await nameEl.count()) > 0 ? (await nameEl.first().innerText()).trim() : null);
-    }
-    return names;
+    return this.getLegBrandCardNames(1, timeout);
   }
 
   async clickInboundBrandCardAt(index, timeout = 30000) {

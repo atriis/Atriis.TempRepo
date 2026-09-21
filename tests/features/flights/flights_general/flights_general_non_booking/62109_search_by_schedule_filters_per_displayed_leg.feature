@@ -31,7 +31,7 @@ Feature: 62109 - Search by schedule filters in results page updated according to
   Scenario: Filters follow the displayed leg in a by-schedule multi-city search
     Given I am logged in as "brunasantosnl@testim.com" booking a new trip
     And I have added myself as the traveler
-    And I search for a multi-city by-schedule flight with legs "CPH-SEA" and "LAX-CPH"
+    And I search for a multi-city by-schedule flight with legs "CPH-SEA, LAX-CPH"
     And I wait for select text to be visible
     And I extract the 1 price in preferred airlines "outbound" filter
     And I extract the 3 price in preferred airlines "outbound" filter

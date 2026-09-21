@@ -14,7 +14,7 @@ Feature: 61149 Fusion - Multi-city by-schedule search returns results
   Scenario: Multi-city by-schedule Fusion search returns results for all legs
     Given I am logged in as "mikeshinoda@travelfusion.com" booking a new trip
     And I have added myself as the traveler
-    When I search for a multi-city by-schedule flight with legs "BRS-GLA" and "GLA-AMS" and "AMS-BRS"
+    When I search for a multi-city by-schedule flight with legs "BRS-GLA, GLA-AMS, AMS-BRS"
     And flight results should be available
     When I select one flight segment by schedule
     And I wait for the change flight button to be visible

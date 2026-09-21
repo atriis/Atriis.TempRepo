@@ -16,7 +16,7 @@ Feature: 80294 Amadeus - Origin-Destination MU applied on multi city complete tr
     And I have added a random guest traveler
 
     # Multi-city complete trip: LON -> LAS (UK->US, MU applies) -> AMS -> BER
-    When I search for a multi-city flight with legs "LON-LAS" and "LAS-AMS" and "AMS-BER"
+    When I search for a multi-city flight with legs "LON-LAS, LAS-AMS, AMS-BER"
     And flight results should be available
 
     # Validate on the published fare: markup = 50% of the base fare, and wholePrice + markup = displayed price.

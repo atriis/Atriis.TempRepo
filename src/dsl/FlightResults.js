@@ -4989,6 +4989,263 @@ async verifyFareComponentTextColorInPricingOptions(page, expectedColor, index = 
     return { thirdLegBrandCardsVisible: true };
   },
 
+  /**
+   * Reads the fare ladder the supplier priced for each leg and stores it on the world. Guards
+   * ADO 83321 / 83337.
+   *
+   * Only single-segment reprices count. A by-schedule trip also reprices the whole itinerary, and
+   * those calls carry every leg's segments at once - reading one as a leg inflates the count and
+   * invents a leg that is not on screen.
+   *
+   * @param {object} world - Must carry searchedLegs from the multi-city search step
+   * @param {string} requestType - e.g. "AirPriceRsp"
+   * @returns {Promise<{ladders: Array<{leg: string, brands: string[]}>, combinations: number}>}
+   */
+  async captureFareLaddersPerLeg(world, requestType) {
+    if (!world) throw new Error('[FlightResults.captureFareLaddersPerLeg] "world" is required.');
+    if (!Array.isArray(world.searchedLegs) || world.searchedLegs.length === 0) {
+      throw new Error(
+        '[FlightResults.captureFareLaddersPerLeg] No searched legs on the world. Run the multi-city ' +
+        'search step first - the leg order is what maps a payload route to a leg on screen.'
+      );
+    }
+
+    const { perCall } = await PayloadValidation.collectXmlBlockAttributesPerCall(
+      world,
+      requestType,
+      { AirSegment: ["Origin", "Destination"], Brand: ["Name", "BrandID"] },
+      { source: "response", purpose: "read which leg each reprice covers and what it priced" }
+    );
+
+    const brandsByLeg = new Map();
+    let wholeItineraryCalls = 0;
+
+    for (const call of perCall) {
+      const routes = [...new Set(call.AirSegment.map((s) => `${s.Origin}-${s.Destination}`))];
+      if (routes.length !== 1) {
+        if (routes.length > 1) wholeItineraryCalls += 1;
+        continue;
+      }
+      const leg = routes[0];
+      if (!brandsByLeg.has(leg)) brandsByLeg.set(leg, new Map());
+      for (const brand of call.Brand) {
+        // Keyed by id: it is what the pricing trace names a row's fares by, and two brands can
+        // share a name across carriers while ids stay distinct.
+        if (brand.BrandID) brandsByLeg.get(leg).set(brand.BrandID, brand.Name || brand.BrandID);
+      }
+    }
+
+    const ladders = world.searchedLegs.map((leg) => {
+      const byId = brandsByLeg.get(leg) || new Map();
+      return { leg, brandIds: [...byId.keys()], brands: [...byId.values()] };
+    });
+    const combinations = ladders.reduce((total, l) => total * Math.max(l.brands.length, 1), 1);
+
+    logger.info("Captured the fare ladder priced for each leg", {
+      requestType,
+      wholeItineraryCalls,
+      ladders: ladders.map((l) => `${l.leg}:${l.brands.length}`),
+      combinations,
+    });
+
+    const empty = ladders.filter((l) => l.brands.length === 0).map((l) => l.leg);
+    expect(
+      empty,
+      `No fare ladder was priced for leg(s) [${empty.join(", ")}], so there is nothing to compare ` +
+      `their cards against. The flight selected on such a leg was not priced separately - check the ` +
+      `carrier filter reached every leg.`
+    ).toEqual([]);
+
+    world.capturedFareLadders = ladders;
+    return { ladders, combinations };
+  },
+
+  /**
+   * Asserts no leg lost a fare when the combination matrix was capped. Guards ADO 83321 / 83337.
+   *
+   * A fare missing from one screen is filtered by what was picked before it; a fare missing from
+   * EVERY row is lost. Only the second is a defect, and only this can tell them apart.
+   *
+   * Reads the pricing trace, which is diagnostic output rather than a contract: a format change
+   * fails loudly here instead of quietly weakening the assertion.
+   *
+   * @param {object} world - Must carry capturedFareLadders
+   * @param {string} requestType - the pricing trace type, e.g. "FlightPricingV3"
+   * @returns {Promise<{rows: number, perLeg: Array<{leg: string, offered: number, unreachable: string[]}>}>}
+   */
+  async expectEveryFareReachableInSomeOption(world, requestType) {
+    if (!world || !Array.isArray(world.capturedFareLadders)) {
+      throw new Error(
+        '[FlightResults.expectEveryFareReachableInSomeOption] No captured fare ladders. Run the capture step first.'
+      );
+    }
+    const ladders = world.capturedFareLadders;
+
+    const { payloads } = await PayloadValidation.collectPayloadsForTrip(world, requestType, {
+      source: "response",
+      purpose: "read the combination rows the pricing matrix produced",
+    });
+
+    // option[n] ... brands=<id>/<class>/bag:...,<id>/... - one entry per leg, in leg order. Rows
+    // carrying fewer entries price a single leg rather than a combination, and are not rows.
+    const rows = [];
+    for (const payload of payloads) {
+      // Unanchored: the trace indents these lines, so matching from line start finds nothing.
+      for (const match of payload.matchAll(/option\[\d+\][^\n]*?\bbrands=([^\n]*)/gi)) {
+        const ids = match[1]
+          .split(/\s+keys=/)[0]
+          .split(",")
+          .map((entry) => (entry.trim().match(/^(\d+)/) || [])[1])
+          .filter(Boolean);
+        if (ids.length === ladders.length) rows.push(ids);
+      }
+    }
+
+    expect(
+      rows.length,
+      `No combination rows were found in the "${requestType}" trace for this trip, so there is ` +
+      `nothing to check reachability against. The trace format may have changed - it is diagnostic ` +
+      `output, not a contract.`
+    ).toBeGreaterThan(0);
+
+    const perLeg = ladders.map((ladder, legIndex) => {
+      const reachable = new Set(rows.map((row) => row[legIndex]));
+      const unreachable = ladder.brandIds
+        .filter((id) => !reachable.has(id))
+        .map((id, i) => `${ladder.brands[ladder.brandIds.indexOf(id)] || id} (${id})`);
+      return { leg: ladder.leg, offered: ladder.brandIds.length, unreachable };
+    });
+
+    logger.info("Checked every priced fare is reachable in some combination row", {
+      requestType,
+      rows: rows.length,
+      perLeg: perLeg.map((l) => `${l.leg}:${l.offered - l.unreachable.length}/${l.offered}`),
+    });
+
+    const lost = perLeg.filter((l) => l.unreachable.length > 0);
+    expect(
+      lost.map((l) => `${l.leg}: ${l.unreachable.join(", ")}`),
+      `Fares priced by the supplier appear in no combination row at all, so no choice on the other ` +
+      `legs can reach them - they are lost, not merely filtered. ${rows.length} rows were built.`
+    ).toEqual([]);
+
+    return { rows: rows.length, perLeg };
+  },
+
+  /**
+   * Asserts the selection is wide enough that the cap has to truncate something. Below it every leg
+   * gets its full ladder for free and the scenario covers nothing. Same role as 84298's width guard.
+   *
+   * @param {object} world - Must carry capturedFareLadders
+   * @param {number} cap - The product's combination cap, stated in Gherkin so it is visible
+   * @returns {Promise<{combinations: number, cap: number}>}
+   */
+  async expectFareLadderCombinationsExceed(world, cap) {
+    if (!world || !Array.isArray(world.capturedFareLadders)) {
+      throw new Error(
+        '[FlightResults.expectFareLadderCombinationsExceed] No captured fare ladders. Run the capture step first.'
+      );
+    }
+    if (!Number.isInteger(cap) || cap < 1) {
+      throw new Error(`[FlightResults.expectFareLadderCombinationsExceed] "cap" must be a positive integer, got: ${cap}`);
+    }
+
+    const ladders = world.capturedFareLadders;
+    const combinations = ladders.reduce((total, l) => total * Math.max(l.brands.length, 1), 1);
+
+    logger.info("Checked the selection exceeds the combination cap", {
+      cap,
+      combinations,
+      ladders: ladders.map((l) => `${l.leg}:${l.brands.length}`),
+    });
+
+    expect(
+      combinations,
+      `This scenario exists to exercise a selection wider than the ${cap}-combination cap, but the ` +
+      `legs offered ${ladders.map((l) => l.brands.length).join(" x ")} = ${combinations}. The route's ` +
+      `ladders have narrowed - pick one that still exceeds the cap, or the truncation path stops ` +
+      `being covered.`
+    ).toBeGreaterThan(cap);
+
+    return { combinations, cap };
+  },
+
+  /**
+   * Asserts the leg currently on screen offers a card for every fare its reprice priced.
+   *
+   * The expectation is read from the payload for this run, never a fixed list: what a leg offers
+   * follows live availability. Coverage is a property of the finished card set - a fare is on the
+   * screen if any card carries it - so this compares sets, not order or count.
+   *
+   * By schedule renders ONE leg at a time, and splits its ladder across cabin tabs
+   * (Economy / Premium / First). A reprice does not split that way, so every tab is read and the
+   * names unioned - comparing the whole ladder against one tab would fail a correct screen.
+   *
+   * @param {import('playwright').Page} page
+   * @param {object} world - Must carry capturedFareLadders
+   * @param {number} legIndex - Zero-based, in the order the legs were searched
+   * @returns {Promise<{leg: string, expected: string[], displayed: string[], cabins: string[]}>}
+   */
+  async verifyDisplayedLegBrandCardsMatchFareLadder(page, world, legIndex) {
+    if (!page) throw new Error('[FlightResults.verifyDisplayedLegBrandCardsMatchFareLadder] "page" is required.');
+    if (!world || !Array.isArray(world.capturedFareLadders)) {
+      throw new Error(
+        '[FlightResults.verifyDisplayedLegBrandCardsMatchFareLadder] No captured fare ladders. Run the capture step first.'
+      );
+    }
+    const ladder = world.capturedFareLadders[legIndex];
+    if (!ladder) {
+      throw new Error(
+        `[FlightResults.verifyDisplayedLegBrandCardsMatchFareLadder] No ladder captured for leg index ${legIndex}; ` +
+        `the trip has ${world.capturedFareLadders.length} legs.`
+      );
+    }
+
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    // A leg's container only appears once a fare is picked on the one before it, and it fills in
+    // progressively, so settle on this leg's cards rather than reading whatever is on screen.
+    const settledCards = await flightResultsPage.waitForLegBrandCardsToSettle(legIndex);
+
+    // Tabs render one per available cabin, so a leg selling a single cabin has none and the reader
+    // throws rather than returning empty - that is a shape, not a failure.
+    const cabins = await flightResultsPage.getNewFlightFlowCabinClassTabNames(legIndex).catch(() => []);
+    const displayed = new Set();
+
+    if (cabins.length === 0) {
+      (await flightResultsPage.getLegBrandCardNames(legIndex)).filter(Boolean).forEach((n) => displayed.add(n));
+    } else {
+      for (const cabin of cabins) {
+        await flightResultsPage.clickNewFlightFlowCabinClassTab(cabin, legIndex);
+        (await flightResultsPage.getLegBrandCardNames(legIndex)).filter(Boolean).forEach((n) => displayed.add(n));
+      }
+      // Back to the first cabin: reading the ladder must not leave the flow on a tab the scenario
+      // never chose, or the fare picked next comes from the wrong cabin.
+      await flightResultsPage.clickNewFlightFlowCabinClassTab(cabins[0], legIndex);
+    }
+
+    const normalize = (value) => value.trim().toLowerCase();
+    const displayedSet = new Set([...displayed].map(normalize));
+    const missing = ladder.brands.filter((brand) => !displayedSet.has(normalize(brand)));
+
+    logger.info("Compared the displayed leg's brand cards against the ladder its reprice priced", {
+      leg: ladder.leg,
+      legIndex,
+      cabins,
+      settledCards,
+      expected: ladder.brands,
+      displayed: [...displayed],
+      missing,
+    });
+
+    expect(
+      missing,
+      `The "${ladder.leg}" leg was priced for [${ladder.brands.join(", ")}] but its cards, across ` +
+      `cabins [${cabins.join(", ")}], show [${[...displayed].join(", ")}]. Missing: [${missing.join(", ")}].`
+    ).toEqual([]);
+
+    return { leg: ladder.leg, expected: ladder.brands, displayed: [...displayed], cabins };
+  },
+
   async verifyThirdLegShowsDeltaPricing(page) {
     if (!page) throw new Error('[FlightResults.verifyThirdLegShowsDeltaPricing] "page" is required.');
     const flightResultsPage = getPageObject(page, FlightResultsPage);
