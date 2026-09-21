@@ -13,7 +13,7 @@ Feature: 46303 Galileo - Can reserve paid seat before booking
   So that I can secure my preferred seat
 
   Scenario: Paid seat reservation before booking for multi-pax
-    Given I am logged in as "shareQuote@btp.com" booking a new trip
+    Given I am logged in as "beatrizpamplonacorp@galileo.com" booking a new trip
     And I have added a random guest traveler
     And I have added a random guest traveler
     When I search for a round trip flight from "LHR" to "ATH" with preferred carrier "A3"
@@ -38,7 +38,7 @@ Feature: 46303 Galileo - Can reserve paid seat before booking
     When I accept Terms & Conditions
     And I hold the trip
     When I capture the "request" payload for request type "AirMerchandisingFulfillmentReq" from Storage
-    Then the captured "request" payload for request type "AirMerchandisingFulfillmentReq" should contain "GTPShare".onKey("AuthorizedBy")
+    Then the captured "request" payload for request type "AirMerchandisingFulfillmentReq" should contain "GTPBeatriz".onKey("AuthorizedBy")
     When I capture the "response" payload for request type "AirMerchandisingFulfillmentReq" from Storage
     Then the captured "response" payload for request type "AirMerchandisingFulfillmentReq" should contain "HK".block("AirSeatAssignment")
     Then the captured "block" payload for request type "AirMerchandisingFulfillmentReq" should contain "HK".onKey("Status")
