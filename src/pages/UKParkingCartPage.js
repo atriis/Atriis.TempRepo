@@ -4,6 +4,15 @@
  * Contains only UI-level interactions.
  */
 
+const { getNetworkInterceptor } = require("@utils/networkInterceptor");
+
+// The two parking extras each POST their own endpoint, and both then emit `validationChanged`,
+// which sends trip-cart.ts back for a fresh GET /tripValidations before the cart CTA becomes
+// genuinely clickable (parking-contact-information.ts / parking-delivery-pickup.ts).
+const CONTACT_INFO_SAVE_API_PATH = '/SaveParkingDetails';
+const DELIVERY_PICKUP_SAVE_API_PATH = '/SavePickupDropOffPopup';
+const TRIP_VALIDATIONS_API_PATH = '/tripValidations';
+
 const SELECTORS = {
   // Contact Information (contact + vehicle details)
   CONTACT_INFO_CARD_TITLE: '.contact-information .card-title',
@@ -76,9 +85,13 @@ class UKParkingCartPage {
     await this.page.locator(SELECTORS.CAR_COLOUR_INPUT).fill(colour);
   }
 
-  /** Saves the Contact Information extra, collapsing it back. */
+  /** Saves the Contact Information extra and waits for the cart to finish re-validating. */
   async saveContactInformation() {
-    await this.page.locator(SELECTORS.CONTACT_INFO_SAVE_BUTTON).click();
+    await this.saveExtraAndWaitForRevalidation(
+      SELECTORS.CONTACT_INFO_SAVE_BUTTON,
+      CONTACT_INFO_SAVE_API_PATH,
+      'Contact Information',
+    );
   }
 
   /** Expands the collapsed Delivery/Pickup extra. */
@@ -106,9 +119,58 @@ class UKParkingCartPage {
     await this.page.locator(SELECTORS.RETURN_TERMINAL_INPUT).fill(terminal);
   }
 
-  /** Saves the Delivery/Pickup extra, collapsing it back. */
+  /** Saves the Delivery/Pickup extra and waits for the cart to finish re-validating. */
   async saveDeliveryPickup() {
-    await this.page.locator(SELECTORS.DELIVERY_PICKUP_SAVE_BUTTON).click();
+    await this.saveExtraAndWaitForRevalidation(
+      SELECTORS.DELIVERY_PICKUP_SAVE_BUTTON,
+      DELIVERY_PICKUP_SAVE_API_PATH,
+      'Delivery/Pickup',
+    );
+  }
+
+  /**
+   * Clicks one extra's Save button and holds until the cart has re-read its trip validations.
+   *
+   * Saving is NOT finished when the panel collapses: the component closes itself and fires the
+   * "Saved" toast as soon as its own POST resolves, then emits `validationChanged`, which sends
+   * trip-cart.ts back for a fresh GET /tripValidations. A "Proceed to Checkout" click inside that
+   * window runs validateRequiredInfo() against the stale validations, so the app answers with
+   * "In order to proceed, please add all required information", sets markDisabledBtn and swallows
+   * the click — then clears the message a moment later once the new validations land. The run is
+   * left sitting on the cart with nothing to retry against, which is how test 19197 failed.
+   *
+   * Both waits are armed BEFORE the click because either response can land first.
+   *
+   * @param {string} saveButtonSelector - The extra's Save button
+   * @param {string} saveApiPath - The extra's own save endpoint
+   * @param {string} label - Extra name, used in the thrown error
+   */
+  async saveExtraAndWaitForRevalidation(saveButtonSelector, saveApiPath, label) {
+    const interceptor = getNetworkInterceptor(this.page);
+    const savePromise = interceptor.waitForResponse(
+      { urlIncludes: saveApiPath, method: 'POST', caseInsensitive: true },
+      { timeout: 30000 },
+    );
+    const validationsPromise = interceptor.waitForResponse(
+      { urlIncludes: TRIP_VALIDATIONS_API_PATH, method: 'GET', caseInsensitive: true },
+      { timeout: 30000 },
+    );
+
+    await this.page.locator(saveButtonSelector).click();
+
+    try {
+      await savePromise;
+      await validationsPromise;
+    } catch (error) {
+      throw new Error(
+        `[UKParkingCartPage.saveExtraAndWaitForRevalidation] Saving the ${label} extra never ` +
+        `completed: expected a POST ${saveApiPath} followed by the cart's GET ` +
+        `${TRIP_VALIDATIONS_API_PATH} re-fetch within 30000ms. Either the Save click did not reach ` +
+        `a pending quote (both components only POST while the quote is Pending booking), or a ` +
+        `required field was left empty so the form marked itself instead of saving. ` +
+        `Original: ${error.message}`,
+      );
+    }
   }
 }
 

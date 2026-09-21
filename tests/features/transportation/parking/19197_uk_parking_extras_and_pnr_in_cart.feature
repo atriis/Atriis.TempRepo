@@ -21,7 +21,9 @@ Feature: 19197 UK Parking - Extras and PNR in cart and trip overview
     And I filter parking results by service type "Park and Ride"
     And I add the first result to trip
     Then the booking status should be "Pending booking"
-    When I fill in UK parking trip details with mobile "1234567890", car make "Tesla", model "Car", registration "ABC123", colour "Black", outbound flight "1234", terminal "3", return flight "6777" and return terminal "3"
+    # The registration is passed as "unique" so a fresh plate is generated per run: the supplier
+    # de-duplicates incoming bookings and rejects a repeat of one it has already seen.
+    When I fill in UK parking trip details with mobile "1234567890", car make "Tesla", model "Car", registration "unique", colour "Black", outbound flight "1234", terminal "3", return flight "6777" and return terminal "3"
     And the booking status should be "Pending booking"
     And I proceed to checkout
     And I complete the booking
