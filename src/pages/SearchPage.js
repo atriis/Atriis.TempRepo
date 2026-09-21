@@ -213,6 +213,32 @@ const SELECTORS = {
   AUTOCOMPLETE_LIST:
     ".el-scrollbar__view.el-autocomplete-suggestion__list li[id*='item-0']:visible",
 
+  // Whichever autocomplete input currently holds focus. This is the anchor for the product-agnostic
+  // typer/reader pair below: a scenario that only says "no autocomplete suggestions are displayed"
+  // names no field, so the field it means is the one the preceding When step left the caret in.
+  // Both wrapper classes are accepted because app-autocomplete.vue wraps el-autocomplete, and only
+  // some builds carry the `.el-autocomplete` class on the outer node. The second branch is pinned
+  // to `section.autocomplete` — app-autocomplete.vue's root element — because a bare `.autocomplete`
+  // is the broadest class in the app and would let any unrelated container claim the anchor.
+  FOCUSED_AUTOCOMPLETE_INPUT: '.el-autocomplete input:focus, section.autocomplete input:focus',
+
+  // Any open autocomplete popper, used only as the FALLBACK anchor when the focused widget exposes
+  // no ARIA ownership attribute. app-autocomplete.vue appends its own `popperClass` to this base
+  // class, so every consumer on the page shares it — including the traveller field
+  // (user-autocomplete.vue) — which is why the reader demands exactly one visible match rather
+  // than taking .last(). Element Plus also leaves closed poppers mounted, hence `:visible`.
+  AUTOCOMPLETE_POPPER_ANY: '.app-autocomplete-popper:visible',
+
+  // One real, selectable suggestion row inside a popper. Same `li[id*='item-']` rule, and same
+  // reason, as EDIT_TRAVELER_OPTION above: the handler-less loading <li> carries no id, so a bare
+  // `li` would count the loading placeholder as a suggestion. Unlike AUTOCOMPLETE_LIST this does
+  // not pin item-0 — the point here is to count every row, not to click the first one.
+  AUTOCOMPLETE_SUGGESTION_ROW: "li[id*='item-']",
+
+  // The inverse of the row selector: the loading placeholder itself. Reading a list while this is
+  // present reads a list that has not resolved yet, which is the false pass the reader guards.
+  AUTOCOMPLETE_LOADING_ROW: ".el-autocomplete-suggestion__list li:not([id*='item-'])",
+
   // Precise positional selectors for editing pre-filled airport fields
   // inside the edit-search drawer.
   EDIT_AIRPORT_AUTOCOMPLETE: '.airport-autocomplete input',
@@ -2965,6 +2991,281 @@ class SearchPage {
         `renders once the trip has at least one passenger. Original: ${err.message}`
       );
     }
+  }
+
+  /**
+   * Clears whatever autocomplete input currently holds focus and types a query into it, leaving the
+   * term UNCOMMITTED so the popper it triggers stays open for a reader.
+   *
+   * Focus is the addressing scheme on purpose: a scenario that says only "no autocomplete
+   * suggestions are displayed" names no field, so the field it means is the one the preceding step
+   * left the caret in. That also makes this the same method a positive control can use to retype
+   * into that field without knowing which product's form it belongs to.
+   *
+   * Two things it deliberately never does:
+   *  - Tab. It blurs, which closes the popper and destroys the focus anchor every later read
+   *    depends on. On consumers that bind `@autoFillField` it is worse still: app-autocomplete.vue
+   *    only re-emits the value, but airport-autocomplete.vue answers that emit with
+   *    `handleSelect(results[0])`, so Tab also silently commits the first suggestion.
+   *  - fill(). Same reason as editAirportField above: the Vue-bound autocomplete model does not
+   *    reliably reset on a programmatic fill, so the old value re-renders.
+   *
+   * @param {string} query - Text to type into the focused autocomplete
+   * @throws {Error} If query is not a non-empty string, or no autocomplete input is focused
+   */
+  async typeIntoFocusedAutocomplete(query) {
+    if (typeof query !== 'string' || !query.trim()) {
+      throw new Error(
+        `[SearchPage.typeIntoFocusedAutocomplete] "query" must be a non-empty string, got: ` +
+        `${JSON.stringify(query)}`
+      );
+    }
+
+    const input = this.page.locator(SELECTORS.FOCUSED_AUTOCOMPLETE_INPUT).first();
+    if ((await input.count()) === 0) {
+      throw new Error(
+        `[SearchPage.typeIntoFocusedAutocomplete] No autocomplete input is focused ` +
+        `(${SELECTORS.FOCUSED_AUTOCOMPLETE_INPUT}), so "${query}" has nowhere to go. The preceding ` +
+        `step must leave focus in the field (e.g. UKParkingSearchPage.focusLocationField) and must ` +
+        `not Tab, click elsewhere or navigate before this runs.`
+      );
+    }
+
+    try {
+      await input.press('Control+A');
+      await input.press('Backspace');
+      // The clear fires its own debounced empty search. Let it resolve first, or its late "no
+      // results" state lands on top of the popper the next query is about to render.
+      await this.page.waitForTimeout(300);
+      await input.pressSequentially(query, { delay: 50 });
+      // app-autocomplete binds el-autocomplete with :debounce="300", so nothing is even requested
+      // until 300ms after the last keystroke — wait that out plus a margin, otherwise a reader
+      // sees the previous query's popper, or none at all, and calls it "no suggestions".
+      await this.page.waitForTimeout(600);
+    } catch (err) {
+      throw new Error(
+        `[SearchPage.typeIntoFocusedAutocomplete] Could not type "${query}" into the focused ` +
+        `autocomplete input — it refused the keystrokes or lost focus mid-type. ` +
+        `Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Reads the current value of whichever autocomplete input holds focus.
+   *
+   * Product-agnostic counterpart to the per-product value getters (getUKAirportValue and friends):
+   * the generic assertion has to be able to name the term it was reading without knowing which
+   * form the field belongs to.
+   *
+   * @returns {Promise<string>} The field's current text, trimmed
+   * @throws {Error} If no autocomplete input is focused
+   */
+  async getFocusedAutocompleteValue() {
+    const input = this.page.locator(SELECTORS.FOCUSED_AUTOCOMPLETE_INPUT).first();
+    if ((await input.count()) === 0) {
+      throw new Error(
+        `[SearchPage.getFocusedAutocompleteValue] No autocomplete input is focused ` +
+        `(${SELECTORS.FOCUSED_AUTOCOMPLETE_INPUT}), so there is no typed term to read. Focus was ` +
+        `lost between typing and reading — check for a Tab, a click or a navigation in between.`
+      );
+    }
+
+    return (await input.inputValue()).trim();
+  }
+
+  /**
+   * Reads what the FOCUSED autocomplete is currently offering, without selecting anything.
+   *
+   * Returns data and never asserts: "no suggestions" is a legitimate outcome this is asked to
+   * report. app-autocomplete.vue has no `#empty`/no-data slot (the same fact already recorded at
+   * TRAVELER_AUTOCOMPLETE_RESULT), so a query that matches nothing renders no popper at all —
+   * zero visible poppers is therefore reported as `popperVisible: false`, not thrown on.
+   *
+   * It DOES throw when no autocomplete input is focused. Returning "no suggestions" from a page
+   * with no autocomplete on it would be the worst possible false pass for the caller.
+   *
+   * Anchoring never guesses, because `.app-autocomplete-popper` is shared by every consumer on the
+   * page (the traveller field included) and Element Plus leaves closed poppers mounted:
+   *  1. the focused widget's own ARIA ownership attribute (`aria-owns`, then `aria-controls`),
+   *     read from the wrapper and then the input — Element Plus puts it on either depending on
+   *     build. Same technique as GroundTransportSearchPage's select-option reader.
+   *  2. failing that, the single visible popper. TWO or more is an ambiguity, not a race to be
+   *     won with `.last()`, so it throws and names them.
+   *
+   * False-pass guards, all load-bearing:
+   *  (a) nothing is read while the handler-less loading <li> is present — see EDIT_TRAVELER_OPTION
+   *      for the same trap on the traveller field. Whether it appeared is reported as loadingSeen;
+   *  (b) only `li[id*='item-']` rows count, so the loading placeholder is never a phantom
+   *      suggestion;
+   *  (c) an empty list must be SUSTAINED for settleMs of consecutive empty, not-loading polls — a
+   *      read that merely beat the 300ms debounce returns [] for ANY query;
+   *  (d) real rows short-circuit immediately, so the positive case pays no fixed delay.
+   *
+   * @param {object} [options]
+   * @param {number} [options.settleMs=1200] - How long emptiness must hold before it is believed;
+   *   must be smaller than timeout, or the empty verdict can never be reached
+   * @param {number} [options.timeout=8000] - Overall budget for the read
+   * @returns {Promise<{texts: string[], popperVisible: boolean, loadingSeen: boolean, anchoredBy: string}>}
+   * @throws {Error} If no autocomplete is focused, if the anchor is ambiguous, if the list never
+   *   stopped loading, or if emptiness never held for a full settleMs within the budget
+   */
+  async getFocusedAutocompleteSuggestions({ settleMs = 1200, timeout = 8000 } = {}) {
+    if (typeof settleMs !== 'number' || settleMs < 0) {
+      throw new Error(
+        `[SearchPage.getFocusedAutocompleteSuggestions] "settleMs" must be a number >= 0, got: ${settleMs}`
+      );
+    }
+    if (typeof timeout !== 'number' || timeout <= 0) {
+      throw new Error(
+        `[SearchPage.getFocusedAutocompleteSuggestions] "timeout" must be a number > 0, got: ${timeout}`
+      );
+    }
+    if (settleMs >= timeout) {
+      throw new Error(
+        `[SearchPage.getFocusedAutocompleteSuggestions] "settleMs" (${settleMs}) must be smaller ` +
+        `than "timeout" (${timeout}): emptiness can only be believed once it has held for ` +
+        `settleMs, so with this pair the empty verdict is unreachable and every empty list would ` +
+        `be reported as a never-settling read.`
+      );
+    }
+
+    const input = this.page.locator(SELECTORS.FOCUSED_AUTOCOMPLETE_INPUT).first();
+    if ((await input.count()) === 0) {
+      throw new Error(
+        `[SearchPage.getFocusedAutocompleteSuggestions] No autocomplete input is focused ` +
+        `(${SELECTORS.FOCUSED_AUTOCOMPLETE_INPUT}). Reporting "no suggestions" from here would ` +
+        `pass the scenario on a page that has no autocomplete at all, so it is refused instead. ` +
+        `Focus must survive from the typing step into this read — no Tab, no click, no navigation.`
+      );
+    }
+
+    // Closest ancestor whose class mentions "autocomplete": the el-autocomplete wrapper on builds
+    // that carry the class, the app-autocomplete root otherwise.
+    const wrapper = input.locator('xpath=ancestor::*[contains(@class, "autocomplete")][1]');
+
+    const readOwnedPopperId = async () => {
+      for (const node of [wrapper, input]) {
+        if ((await node.count()) === 0) continue;
+        for (const attribute of ['aria-owns', 'aria-controls']) {
+          const value = await node.getAttribute(attribute);
+          // aria-owns is an id LIST; the popper is the first entry.
+          const id = (value || '').trim().split(/\s+/)[0];
+          if (id) return id;
+        }
+      }
+      return null;
+    };
+
+    const resolveAnchor = async () => {
+      const ownedId = await readOwnedPopperId();
+      if (ownedId) {
+        return { popper: this.page.locator(`[id="${ownedId}"]`), anchoredBy: 'aria' };
+      }
+
+      const visiblePoppers = this.page.locator(SELECTORS.AUTOCOMPLETE_POPPER_ANY);
+      const visibleCount = await visiblePoppers.count();
+      if (visibleCount > 1) {
+        const classLists = await visiblePoppers.evaluateAll((nodes) => nodes.map((node) => node.className));
+        throw new Error(
+          `[SearchPage.getFocusedAutocompleteSuggestions] The focused autocomplete exposes no ` +
+          `aria-owns/aria-controls, and ${visibleCount} poppers are visible at once ` +
+          `(${classLists.join(' | ')}), so there is no way to tell which one belongs to this ` +
+          `field. Picking one would make the result meaningless.`
+        );
+      }
+
+      // Zero visible poppers is not an error — it is exactly what "no suggestions" looks like.
+      return { popper: visibleCount === 1 ? visiblePoppers.first() : null, anchoredBy: 'single-visible' };
+    };
+
+    const deadline = Date.now() + timeout;
+    let loadingSeen = false;
+    let popperVisible = false;
+    let anchoredBy = 'single-visible';
+    let emptySince = null;
+    let lastPollWasLoading = false;
+    // The empty verdict is only ever earned by guard (c). Tracked explicitly because any loading
+    // flicker resets emptySince, so the loop can run out of budget having never once held a full
+    // settle window — and that case must not look like "no suggestions".
+    let settleWindowSatisfied = false;
+
+    try {
+      while (true) {
+        // Re-resolved every poll: the popper (and the aria attribute pointing at it) only appears
+        // once the debounced search has fired.
+        const anchor = await resolveAnchor();
+        anchoredBy = anchor.anchoredBy;
+        popperVisible = anchor.popper ? await anchor.popper.isVisible() : false;
+        lastPollWasLoading = false;
+
+        if (popperVisible) {
+          if ((await anchor.popper.locator(SELECTORS.AUTOCOMPLETE_LOADING_ROW).count()) > 0) {
+            // Guard (a): the list has not resolved — reading it now proves nothing either way, and
+            // the settle window restarts from scratch once it does.
+            loadingSeen = true;
+            lastPollWasLoading = true;
+            emptySince = null;
+          } else {
+            // Guard (b): only rows carrying an `item-` id are real suggestions.
+            const rows = anchor.popper.locator(SELECTORS.AUTOCOMPLETE_SUGGESTION_ROW);
+            if ((await rows.count()) > 0) {
+              // Guard (d). The text is for the caller's diagnostic, so the whole row is read
+              // rather than a product-specific label node — a row's icon ligature riding along is
+              // far better than reporting [] for a populated list.
+              const texts = (await rows.allTextContents()).map(normalizeText).filter(Boolean);
+              return { texts, popperVisible: true, loadingSeen, anchoredBy };
+            }
+          }
+        }
+
+        if (!lastPollWasLoading) {
+          // Guard (c): emptiness only counts once it has held, uninterrupted, for settleMs.
+          if (emptySince === null) {
+            emptySince = Date.now();
+          } else if (Date.now() - emptySince >= settleMs) {
+            settleWindowSatisfied = true;
+            break;
+          }
+        }
+
+        if (Date.now() >= deadline) break;
+        // Poll cadence: how often the popper is re-resolved and re-read while it settles.
+        await this.page.waitForTimeout(100);
+      }
+    } catch (err) {
+      // The ambiguity error above is already a full diagnostic; only genuine Playwright failures
+      // need wrapping.
+      if (err.message.startsWith('[SearchPage.getFocusedAutocompleteSuggestions]')) {
+        throw err;
+      }
+      throw new Error(
+        `[SearchPage.getFocusedAutocompleteSuggestions] Could not read the focused autocomplete's ` +
+        `suggestions (rows: ${SELECTORS.AUTOCOMPLETE_SUGGESTION_ROW}, fallback popper: ` +
+        `${SELECTORS.AUTOCOMPLETE_POPPER_ANY}). Original: ${err.message}`
+      );
+    }
+
+    if (lastPollWasLoading) {
+      throw new Error(
+        `[SearchPage.getFocusedAutocompleteSuggestions] The suggestion list was still showing its ` +
+        `loading row after ${timeout}ms, so it never resolved into either suggestions or ` +
+        `emptiness. Returning "no suggestions" from an unresolved list would be a false pass.`
+      );
+    }
+
+    if (!settleWindowSatisfied) {
+      throw new Error(
+        `[SearchPage.getFocusedAutocompleteSuggestions] The suggestion list never held ` +
+        `${settleMs}ms of uninterrupted emptiness within the ${timeout}ms budget, so it never ` +
+        `settled into a verdict — every candidate window was cut short by the list flickering ` +
+        `back into its loading state. (loadingSeen=${loadingSeen}, popperVisible=${popperVisible}, ` +
+        `anchoredBy=${anchoredBy}.) Reporting an unsettled list as "no suggestions" would be a ` +
+        `false pass, so it is refused instead.`
+      );
+    }
+
+    return { texts: [], popperVisible, loadingSeen, anchoredBy };
   }
 
 }

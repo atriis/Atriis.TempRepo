@@ -562,3 +562,37 @@ Then(
     await Search.verifyTripTypeOptionDisplayed(this.page, optionLabel);
   }
 );
+
+// Product-agnostic: the field under test is whichever location autocomplete the preceding When
+// step left the caret in, so this serves parking, flights, rail and hotels alike — which is why it
+// lives here and not in a product's own step file.
+Then("no autocomplete suggestions are displayed", async function () {
+  logger.info("Verifying the focused location autocomplete offers nothing for the typed term");
+  const probe = await Search.getFocusedAutocompleteProbe(this.page);
+
+  // Thrown rather than asserted through expect(): a custom expect() message never reaches the
+  // cucumber report, and here the diagnostic IS the message.
+  //
+  // Only the business expectation is checked here — the probe's own integrity (the control term
+  // must match) is enforced inside the DSL, so it cannot be skipped by any caller.
+  //
+  // BOTH reads of the term must be empty. The first ran cold, before the control warmed the
+  // client-side airport store; the second ran after. One empty read alone cannot tell "this term
+  // matches nothing" from "nothing was loaded yet".
+  const offenders = [
+    { read: "before the control (cold)", texts: probe.suggestions },
+    { read: "after the control (warm)", texts: probe.suggestionsAfterControl },
+  ].filter((entry) => entry.texts.length > 0);
+
+  if (offenders.length > 0) {
+    throw new Error(
+      `Expected no autocomplete suggestions for "${probe.typedValue}", but ` +
+      offenders
+        .map((entry) => `${entry.texts.length} were offered ${entry.read}: ${entry.texts.join(" | ")}`)
+        .join("; and ") +
+      `. (popperVisible=${probe.popperVisible}, loadingSeen=${probe.loadingSeen}, ` +
+      `anchoredBy=${probe.anchoredBy}; the control term "${probe.controlQuery}" returned ` +
+      `${probe.controlSuggestions.length} suggestions.)`
+    );
+  }
+});

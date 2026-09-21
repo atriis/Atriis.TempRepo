@@ -160,6 +160,39 @@ class UKParkingSearchPage {
   }
 
   /**
+   * Puts the caret in the location field and leaves it there — nothing is typed, nothing committed.
+   *
+   * Exists so the generic autocomplete typer/reader on SearchPage can work off `input:focus`: the
+   * only genuinely parking-specific part of that flow is knowing WHICH field to aim at, and that
+   * is this method. typeUKAirport cannot serve the same purpose — it presses Tab, which blurs the
+   * field, closing the popper and destroying the very focus anchor everything downstream depends
+   * on. Here it also commits: app-autocomplete.vue only re-emits the value on `@keydown.tab`, but
+   * this field mounts airport-autocomplete.vue, which answers that emit with
+   * `handleSelect(results[0])` — so the first suggestion is silently selected too.
+   *
+   * The scroll is not cosmetic: opened from the cart drawer the form can sit partly outside the
+   * viewport, and Playwright's own stability retries on an off-screen input are what detach it
+   * mid-keystroke.
+   *
+   * @throws {Error} If the location field never became focusable
+   */
+  async focusLocationField() {
+    const input = this.page.locator(SELECTORS.SEARCH_FIELD_UK_PARKING).first();
+
+    try {
+      await input.waitFor({ state: 'visible', timeout: 10000 });
+      await input.scrollIntoViewIfNeeded();
+      await input.focus();
+    } catch (error) {
+      throw new Error(
+        `[UKParkingSearchPage.focusLocationField] Could not put focus in the parking location ` +
+        `field (${SELECTORS.SEARCH_FIELD_UK_PARKING}) — the parking form either never rendered ` +
+        `or is still sliding in. Original: ${error.message}`
+      );
+    }
+  }
+
+  /**
    * Reads the UK airport field's current value without waiting for it to be set.
    * @returns {Promise<string>} The current value, empty string when unset
    */

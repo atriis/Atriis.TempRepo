@@ -397,6 +397,58 @@ const UKParkingSearch = {
   },
 
   /**
+   * Types text into the UK parking location field and leaves it uncommitted, so the autocomplete
+   * popper it triggers can be inspected.
+   *
+   * Nothing is selected and the field is never blurred — committing a value is what the real
+   * search flow (searchUKParking) does, and it would close the popper this exists to expose.
+   *
+   * The typing itself is the generic SearchPage helper, not a parking one: clearing, typing and
+   * waiting out the autocomplete debounce is identical for every location field in the app, and
+   * the same helper has to be able to retype into this field for the assertion's positive control.
+   * The only parking-specific part left here is aiming at the right field.
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @param {string} text - Location text to type
+   * @returns {Promise<{typed: true, text: string}>}
+   * @throws {Error} If page is missing or text is not a non-empty string
+   */
+  async typeInUKParkingLocationField(page, text) {
+    if (!page) {
+      throw new Error('[UKParkingSearch.typeInUKParkingLocationField] "page" is required.');
+    }
+    if (typeof text !== 'string' || !text.trim()) {
+      throw new Error(
+        `[UKParkingSearch.typeInUKParkingLocationField] "text" must be a non-empty string, got: ${typeof text}`
+      );
+    }
+
+    logger.debug('Typing an uncommitted query into the UK parking location field', { text });
+
+    const ukParkingSearchPage = getPageObject(page, UKParkingSearchPage);
+    const searchPage = getPageObject(page, SearchPage);
+
+    try {
+      // clickParkingTab no-ops when the parking form is already the one on screen, so this covers
+      // both the standalone search page and the cart's parking drawer; waitForSearchFormReady
+      // then waits out the drawer slide-in before anything touches a field.
+      await ukParkingSearchPage.clickParkingTab();
+      await ukParkingSearchPage.waitForSearchFormReady();
+      await ukParkingSearchPage.focusLocationField();
+      await searchPage.typeIntoFocusedAutocomplete(text);
+    } catch (error) {
+      throw new Error(
+        `[UKParkingSearch.typeInUKParkingLocationField] Could not put "${text}" into the UK ` +
+        `parking location field — the parking form never became usable. Original: ${error.message}`
+      );
+    }
+
+    // The caret is deliberately left in the field: the assertion that follows identifies the
+    // autocomplete under test by focus alone.
+    return { typed: true, text };
+  },
+
+  /**
    * Reads the location the parking search form arrived pre-populated with.
    *
    * Opened from the cart, parking-search-inputs.vue seeds its origin from the trip's existing

@@ -1987,6 +1987,125 @@ const Search = {
       'for this trip — either way the restricted user has no way to book at all.',
     ).toBeVisible({ timeout: 30000 });
   },
+
+  /**
+   * Probes what the FOCUSED location autocomplete is offering for the term already typed into it,
+   * and then proves the probe itself works by repeating it with a term that must match.
+   *
+   * Product-agnostic by construction: the field is identified by focus, so this serves the parking
+   * location field, the flight From/To field, a rail station field or the traveller field without
+   * knowing which one it is looking at.
+   *
+   * Returns data and asserts nothing — the caller decides what an empty list means (dsl.md).
+   *
+   * The ORDER is load-bearing and is not interchangeable:
+   *  1. The term under test is read FIRST, while the field is still exactly as the When step left
+   *     it. Any typing before that read leaves a popper behind that could contaminate it.
+   *  2. The typed term is captured from the focused input itself, so the caller's failure message
+   *     can name what it was actually reading.
+   *  3. Only THEN the control. An empty suggestion list is otherwise unfalsifiable: a broken
+   *     selector, the wrong anchor, a popper that never opened, a debounce that never fired and a
+   *     term that genuinely matches nothing all look identical from the outside. Running a term
+   *     that MUST match through the same field, the same anchor and the same selectors in the same
+   *     run is the only thing that separates them.
+   *  4. Finally the ORIGINAL term again, now that the control has proven the widget is awake. The
+   *     first read is a COLD read: airport-autocomplete.vue matches client-side against the Vuex
+   *     `allAirports` store, so if that store had not populated yet, EVERY term comes back empty —
+   *     and by control time the store is warm, so the control passes and hides it. Only a term
+   *     that is still empty on a demonstrably warm field is genuinely unmatched.
+   *
+   * Nothing is ever selected or committed. The control necessarily replaces the term in the field,
+   * and step 4 types the original back, so the field is left holding what it held on entry.
+   * The control defaults to "London": the one location token every location autocomplete in this
+   * app matches (Heathrow/Gatwick/City for airports, Euston/St Pancras for rail, the city itself
+   * for car, ground transport and hotel), comfortably over the widget's minimum character count,
+   * and deliberately different from the negative terms these scenarios use.
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @param {object} [options]
+   * @param {string} [options.controlQuery='London'] - Term that must produce suggestions
+   * @returns {Promise<{typedValue: string, suggestions: string[], suggestionsAfterControl: string[], popperVisible: boolean, loadingSeen: boolean, anchoredBy: string, controlQuery: string, controlSuggestions: string[]}>}
+   * @throws {Error} If page is missing, controlQuery is invalid, no autocomplete is focused, or the
+   *   control term produced nothing (probe-integrity failure, not a business outcome)
+   */
+  async getFocusedAutocompleteProbe(page, { controlQuery = 'London' } = {}) {
+    if (!page) {
+      throw new Error('[Search.getFocusedAutocompleteProbe] "page" is required.');
+    }
+    if (typeof controlQuery !== 'string' || !controlQuery.trim()) {
+      throw new Error(
+        `[Search.getFocusedAutocompleteProbe] "controlQuery" must be a non-empty string, got: ${typeof controlQuery}`
+      );
+    }
+
+    logger.debug('[Search.getFocusedAutocompleteProbe] Reading the focused autocomplete before running the control');
+    const searchPage = getPageObject(page, SearchPage);
+
+    let typedValue;
+    let underTest;
+    let controlSuggestions;
+    let afterControl;
+
+    try {
+      // 1. The term under test, read before anything else touches the field.
+      underTest = await searchPage.getFocusedAutocompleteSuggestions();
+
+      // 2. What is actually in the field, read product-agnostically off the focused input.
+      typedValue = await searchPage.getFocusedAutocompleteValue();
+
+      // 3. The control, proving the widget, the debounce, the anchor and the row selector all work
+      //    right now, in this run, on this very field.
+      await searchPage.typeIntoFocusedAutocomplete(controlQuery);
+      controlSuggestions = (await searchPage.getFocusedAutocompleteSuggestions()).texts;
+
+      // 4. The term under test again, on the now-demonstrably-warm field. Read 1 could have come
+      //    back empty only because the client-side airport store had not loaded yet; read 4 cannot.
+      await searchPage.typeIntoFocusedAutocomplete(typedValue);
+      afterControl = (await searchPage.getFocusedAutocompleteSuggestions()).texts;
+    } catch (error) {
+      throw new Error(
+        `[Search.getFocusedAutocompleteProbe] Could not probe the focused location autocomplete ` +
+        `(control query "${controlQuery}"). The field the When step typed into must still hold ` +
+        `focus for this to work. Original: ${error.message}`
+      );
+    }
+
+    // Probe integrity, not a business assertion, so it belongs here rather than in the step: a
+    // control term that surfaces nothing proves the field, the anchor or the row selector are
+    // broken, and every verdict this method could return would be meaningless. Throwing from the
+    // DSL means no future caller can opt out of the check by simply not reading the field.
+    if (controlSuggestions.length === 0) {
+      throw new Error(
+        `[Search.getFocusedAutocompleteProbe] The probe itself is broken: the control term ` +
+        `"${controlQuery}" surfaced no suggestions in the same field, through the same anchor ` +
+        `(anchoredBy=${underTest.anchoredBy}) and the same row selector, so nothing this probe ` +
+        `reports about "${typedValue}" can be trusted. Check the popper anchor, the ` +
+        `suggestion-row selector and the location search itself.`
+      );
+    }
+
+    logger.info('[Search.getFocusedAutocompleteProbe] Probed the focused autocomplete', {
+      typedValue,
+      suggestionCount: underTest.texts.length,
+      suggestionAfterControlCount: afterControl.length,
+      popperVisible: underTest.popperVisible,
+      loadingSeen: underTest.loadingSeen,
+      anchoredBy: underTest.anchoredBy,
+      controlQuery,
+      controlSuggestionCount: controlSuggestions.length,
+    });
+
+    return {
+      typedValue,
+      suggestions: underTest.texts,
+      suggestionsAfterControl: afterControl,
+      popperVisible: underTest.popperVisible,
+      loadingSeen: underTest.loadingSeen,
+      anchoredBy: underTest.anchoredBy,
+      controlQuery,
+      controlSuggestions,
+    };
+  },
 };
 
 module.exports = Search;

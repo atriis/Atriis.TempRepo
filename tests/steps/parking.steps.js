@@ -43,6 +43,11 @@ When("I filter parking results by {string} and a terminal that has none", async 
   logger.info("Applied a parking filter pair that yields no results", result);
 });
 
+When("I type {string} in UK Parking search location field", async function (location) {
+  logger.info("Typing an uncommitted location into the UK parking search field", { location });
+  await UKParkingSearch.typeInUKParkingLocationField(this.page, location);
+});
+
 When("I navigate back to parking search via breadcrumb", async function () {
   logger.info("Navigating back to parking search via breadcrumb");
   await UKParkingResults.navigateBackToSearchViaBreadcrumb(this.page);
