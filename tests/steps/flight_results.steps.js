@@ -285,6 +285,17 @@ When("I extract the price from first pricing option", async function () {
   logger.info("Extracted pricing option price", { carrier: this.currentCarrier ?? null, price });
 });
 
+When("I extract the price from the main pricing option", async function () {
+  logger.info("Extracting the main price from the top of the pricing options drawer");
+  const flightResultsPage = getPageObject(this.page, FlightResultsPage);
+  const price = await flightResultsPage.getMainPricingOptionPriceValue();
+
+  if (!this.extractedPrices) this.extractedPrices = [];
+  this.extractedPrices.push(price);
+
+  logger.info("Extracted main pricing option price", { price });
+});
+
 When("I click to open first pricing options", async function () {
   logger.info("Clicking to open first pricing options");
   await FlightResults.clickToOpenPricingOptions(this.page);

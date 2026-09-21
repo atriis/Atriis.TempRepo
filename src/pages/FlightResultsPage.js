@@ -176,6 +176,10 @@ const SELECTORS = {
   PRICING_OPTIONS_OVERLAY_HEADING_TEXT: 'Pricing Options',
   PRICING_OPTIONS_TAB: '.pricing-options-tabs .el-tabs__item',
   PRICING_OPTIONS_CABIN_CLASS_TABS: '.cabin-class-tabs .el-tabs__item',
+  // "Price start from <app-price>" inside the ACTIVE cabin tab at the top of the classic
+  // pricing-options.vue drawer. The first .amount is the display-currency price; a second
+  // .amount (original currency, in brackets) only renders when the two currencies differ.
+  PRICING_OPTIONS_MAIN_PRICE: '.cabin-class-tabs .el-tabs__item.is-active .amount',
   PRICING_OPTIONS_CABIN_CLASS: '.leg-pricing-option .sub-class',
   PRICING_OPTIONS_BAGGAGE_CLASS: '.leg-details .baggage span',
   PRICING_OPTIONS_FARE_COMPONENT_TEXT: 'text=Fare component',
@@ -2300,6 +2304,22 @@ class FlightResultsPage {
     }
     const tab = this.getPricingOptionsTab(index);
     await expect(tab).toContainText('check_circle', { timeout });
+  }
+
+  /**
+   * Reads the main price at the top of the classic pricing options drawer: the
+   * "Price start from" amount on the ACTIVE cabin-class tab (pricing-options.vue
+   * renders options[0].avgPricePerPersonDisplayCurrency there).
+   *
+   * @param {number} timeout - Max wait time in ms (default: 60000)
+   * @returns {Promise<number|null>} The per-person display-currency price, or null if not found
+   */
+  async getMainPricingOptionPriceValue(timeout = 60000) {
+    const overlay = this.getPricingOptionsOverlay();
+    await overlay.waitFor({ state: 'visible', timeout });
+    const price = overlay.locator(SELECTORS.PRICING_OPTIONS_MAIN_PRICE).first();
+    await price.waitFor({ state: 'visible', timeout });
+    return extractNumber(overlay, SELECTORS.PRICING_OPTIONS_MAIN_PRICE, 0);
   }
 
   /**
