@@ -5,7 +5,7 @@
 # Owner: Bruna Santos
 
 @regression @transportation @parking @search
-Feature: 84977 UK Parking -  No autocomplete suggestions for a non-airport location
+Feature: 84977 UK Parking - No autocomplete suggestions for a non-airport location
 
   As a corporate traveler
   I want the UK parking location field to offer no suggestions for a place that is not a UK airport
