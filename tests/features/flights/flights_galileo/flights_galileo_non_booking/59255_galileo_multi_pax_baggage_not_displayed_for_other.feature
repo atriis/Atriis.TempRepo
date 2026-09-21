@@ -18,7 +18,7 @@ Feature: 59255 Galileo - Baggage not displayed for other traveler after saving f
     And I have added a random guest traveler
     When I search for a one way flight from "BRU" to "OTP"
     And flight results should be available
-    And I filter results by carrier "RO"
+    And I filter airline results by "LOT Polish Airlines" checkbox
     And I add the first flight to cart
     Then the booking status should be "Pending booking"
     When I click to edit the baggage extras section
