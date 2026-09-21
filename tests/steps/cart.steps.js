@@ -1597,6 +1597,15 @@ Then("the out of policy tooltip in cart should be {string}", async function (exp
   expect(actualText).toBe(expectedText);
 });
 
+Then("the out of policy violations in cart should include {string}", async function (expectedText) {
+  logger.info("Verifying OOP violations in cart include text", { expectedText });
+  const violations = await Cart.getOOPViolationsInCart(this.page);
+  const normalize = (s) => s.replace(/^\(\d+\)\s*/, '').replace(/\s+/g, ' ').trim();
+  const normalizedExpected = normalize(expectedText);
+  const found = violations.some((v) => normalize(v) === normalizedExpected);
+  expect(found).toBe(true);
+});
+
 Then("the CO2 emissions should be displayed in the trip overview", async function () {
   logger.info("Verifying CO2 emissions are displayed in trip overview");
   const result = await Cart.verifyCO2InTripOverview(this.page);

@@ -2535,6 +2535,27 @@ class CartPage {
   }
 
   /**
+   * Gets all OOP violation label texts, in display order. Unlike getOOPViolationLabelText()
+   * (first violation only), this returns every violation reason shown when the app renders
+   * more than one (each prefixed "(1) ", "(2) " etc. by the app in that case).
+   *
+   * @returns {Promise<string[]>}
+   */
+  async getOOPViolationLabelTexts() {
+    const labels = this.page.locator(SELECTORS.OOP_VIOLATION_LABEL);
+    try {
+      await labels.first().waitFor({ state: 'visible', timeout: 10000 });
+      const texts = await labels.allTextContents();
+      return texts.map((t) => t.replace(/\s+/g, ' ').trim());
+    } catch (err) {
+      throw new Error(
+        `[CartPage.getOOPViolationLabelTexts] OOP violation labels (.out-of-policy-label) were not visible within 10s. ` +
+        `Check that the OOP justification section is present on the page. Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
    * Gets the OOP justification section locator.
    *
    * @returns {Locator} Playwright locator for the justification section.

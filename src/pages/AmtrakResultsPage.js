@@ -3,6 +3,10 @@
  * Contains only UI-level interactions.
  */
 
+// Only the no-results empty state is borrowed: it is product-agnostic (app-no-results-search.vue)
+// and already owned by ResultsPage. ResultsPage does not require this file, so there is no cycle.
+const { SELECTORS: RESULTS_SELECTORS } = require("@pages/ResultsPage");
+
 const SELECTORS = {
   // amtrak-list.vue renders one amtrak-preview per result, so the Nth direct child of
   // .amtrak-list is the Nth result card. Scoping the share/fare-rules controls to that card
@@ -41,6 +45,53 @@ const SELECTORS = {
 class AmtrakResultsPage {
   constructor(page) {
     this.page = page;
+  }
+
+  /**
+   * Waits for the Amtrak search to settle into one of its two terminal states, whichever paints
+   * first: bookable result cards, or the "No results found" empty state.
+   *
+   * Why this exists: clickSearchButton() returns as soon as the click lands, so without this the
+   * next step races the supplier. The assertion steps then fail on their own element timeouts
+   * (CommonPage.waitForOOPVisible caps at 30s) even though the Cucumber step budget is 120s — so
+   * a slow-but-successful Amtrak search reads as "the OOP badge is missing" rather than "the
+   * search had not finished". Mirrors ResultsPage.waitForCarResultsOrNoResults.
+   *
+   * Returns the outcome rather than throwing on 'no-results': deciding what an empty search means
+   * is the DSL's job, and one scenario (wasToBos) legitimately expects no policy indicator.
+   *
+   * @param {number} [timeout=120000] - Max ms to wait for either state
+   * @returns {Promise<'results'|'no-results'>}
+   */
+  async waitForResultsOrNoResults(timeout = 120000) {
+    if (typeof timeout !== "number" || timeout < 0) {
+      throw new Error(`timeout must be a non-negative number, got ${timeout}`);
+    }
+
+    const resultsPromise = this.page
+      .locator(SELECTORS.FIRST_RESULT_CARD)
+      .first()
+      .waitFor({ state: "visible", timeout })
+      .then(() => "results");
+
+    const noResultsPromise = this.page
+      .locator(RESULTS_SELECTORS.NO_RESULTS_CONTAINER)
+      .first()
+      .waitFor({ state: "visible", timeout })
+      .then(() => "no-results");
+
+    const winner = await Promise.race([resultsPromise, noResultsPromise]).catch(() => null);
+
+    if (winner) {
+      return winner;
+    }
+
+    throw new Error(
+      "[AmtrakResultsPage.waitForResultsOrNoResults] The Amtrak search did not settle within " +
+        `${timeout}ms: neither result cards (${SELECTORS.FIRST_RESULT_CARD}) nor the no-results ` +
+        `state (${RESULTS_SELECTORS.NO_RESULTS_CONTAINER}) became visible. The results page is ` +
+        "still loading — treat this as an environment/performance problem, not a missing element.",
+    );
   }
 
   /**

@@ -115,6 +115,9 @@ const SELECTORS = {
   // otherwise be matched first by DOM order, causing clickTripType/selectMultiCityTrip to hang on a hidden element.
   TRIP_TYPE_RADIO_LABELS:
     ":is(.search-options-wrapper, .eu-rail-search-inputs, .amtrak-search-inputs, .uk-rail-search) > :nth-child(1) [role='radiogroup'] .el-radio__label:visible",
+  // Scoped specifically to Amtrak's search form to avoid the multi-provider
+  // container ambiguity in TRIP_TYPE_RADIO_LABELS (see clickAmtrakTripType()).
+  AMTRAK_TRIP_TYPE_RADIO_OPTIONS: ".amtrak-search-inputs .el-radio-group .el-radio",
 
   // Calendar (date picker)
   DATE_PICKER_PANEL: ".el-picker-panel:visible",
@@ -1864,6 +1867,55 @@ class SearchPage {
    */
   async selectRoundTrip() {
     await this.clickTripType(/round trip/i);
+  }
+
+  /**
+   * Clicks a trip type radio button by label text, scoped specifically to the Amtrak
+   * search form. The generic clickTripType() matches across multiple provider container
+   * classes (:is(.search-options-wrapper, .eu-rail-search-inputs, .amtrak-search-inputs,
+   * .uk-rail-search)) and can resolve to a hidden leftover radiogroup from another rail
+   * provider; scoping directly to .amtrak-search-inputs avoids that ambiguity.
+   *
+   * @param {string|RegExp} labelText
+   */
+  async clickAmtrakTripType(labelText) {
+    const options = this.page.locator(SELECTORS.AMTRAK_TRIP_TYPE_RADIO_OPTIONS);
+
+    // Ensure trip type options are present and visible before interacting
+    // Extended timeout for CI/CD environments where page loads slower
+    await options.first().waitFor({ state: "visible", timeout: 60000 });
+
+    // Fail fast if your base locator is wrong (helps debugging a lot)
+    const count = await options.count();
+    if (count === 0) {
+      throw new Error(
+        `Amtrak trip type options not found. Selector: ${SELECTORS.AMTRAK_TRIP_TYPE_RADIO_OPTIONS}`,
+      );
+    }
+
+    const target = options.filter({ hasText: labelText }).first();
+    const matches = await target.count();
+    if (matches === 0) {
+      throw new Error(
+        `Amtrak trip type option "${labelText}" not found under selector: ${SELECTORS.AMTRAK_TRIP_TYPE_RADIO_OPTIONS}`,
+      );
+    }
+
+    await target.click();
+  }
+
+  /**
+   * Selects the "One Way" trip type for Amtrak.
+   */
+  async selectAmtrakOneWayTrip() {
+    await this.clickAmtrakTripType(/one way/i);
+  }
+
+  /**
+   * Selects the "Round Trip" trip type for Amtrak.
+   */
+  async selectAmtrakRoundTrip() {
+    await this.clickAmtrakTripType(/round trip/i);
   }
 
   /**

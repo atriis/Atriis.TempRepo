@@ -155,8 +155,20 @@ Then("the out of policy indicator should not be visible in results", async funct
 Then("the out of policy tooltip in results should be {string}", async function (expectedText) {
   logger.info("Verifying OOP tooltip in results", { expectedText });
   const actualText = await Results.hoverAndGetOOPTooltipTextInResults(this.page);
-  const normalizedActual = actualText.replace(/\s+/g, ' ').trim();
-  const normalizedExpected = expectedText.replace(/\s+/g, ' ').trim();
+  const normalize = (s) => s.replace(/^[\s•\-*]+/, '').replace(/\s+/g, ' ').trim();
+  const normalizedActual = normalize(actualText);
+  const normalizedExpected = normalize(expectedText);
+  expect(normalizedActual).toBe(normalizedExpected);
+});
+
+Then("the out of policy tooltip in results for the return leg should be {string}", async function (expectedText) {
+  logger.info("Verifying OOP tooltip in results for the return leg", { expectedText });
+  // In a round trip's results, index 0 is the outbound leg's own OOP badge (already
+  // read by the plain "...should be {string}" step earlier); the return leg is index 1.
+  const actualText = await Results.hoverAndGetOOPTooltipTextInResults(this.page, 1);
+  const normalize = (s) => s.replace(/^[\s•\-*]+/, '').replace(/\s+/g, ' ').trim();
+  const normalizedActual = normalize(actualText);
+  const normalizedExpected = normalize(expectedText);
   expect(normalizedActual).toBe(normalizedExpected);
 });
 

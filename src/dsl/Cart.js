@@ -2358,7 +2358,7 @@ const Cart = {
     if (!page) {
       throw new Error('page is required');
     }
-    
+
     const commonPage = getPageObject(page, CommonPage);
     await commonPage.waitForOOPVisible();
     await commonPage.hoverOverOOPInfoIcon();
@@ -2457,6 +2457,22 @@ const Cart = {
         `displayed above the out-of-policy justification dropdown: ${err.message}`
       );
     }
+  },
+
+  /**
+   * Gets the list of Out of Policy violation reasons shown in the cart/trip overview.
+   * Unlike hoverAndGetOOPTooltipTextInCart(), this reads the always-visible violation
+   * list rendered by the oop-justification.vue component — no hover needed.
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @returns {Promise<string[]>} Trimmed violation texts, in display order
+   */
+  async getOOPViolationsInCart(page) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+    return await cartPage.getOOPViolationLabelTexts();
   },
 
   /**

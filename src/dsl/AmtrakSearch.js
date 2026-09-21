@@ -1,9 +1,42 @@
 const { getPageObject } = require("@utils/pageObjectCache");
 const { SearchPage } = require("@pages/SearchPage");
+const AmtrakResultsPage = require("@pages/AmtrakResultsPage");
 const amtrakRoutes = require("@data/amtrak.json");
 const { selectDatesByNthAvailable } = require("@utils/calendar.helper");
 const { resolveRoute } = require("@utils/route.helper");
 const { SEARCH_DEFAULTS } = require("@utils/search.constants");
+const logger = require("@utils/logger").child("AmtrakSearch");
+
+/**
+ * Blocks until the Amtrak search settles, so the assertion steps that follow never race the
+ * supplier. Both search actions share this: clickSearchButton() returns on the click, and the
+ * downstream element waits are shorter than a slow Amtrak search (CommonPage.waitForOOPVisible
+ * caps at 30s), which is what turned a slow search into a misleading "OOP indicator missing".
+ *
+ * A legitimately empty search is NOT a failure here — it is returned as the outcome. Scenarios
+ * asserting on results will still fail, but on their own assertion with the real reason visible
+ * in the log, and the "should not be visible" scenarios stay valid.
+ *
+ * @param {import('playwright').Page} page
+ * @param {string} method - calling method name, for the log line
+ * @param {number} [timeout]
+ * @returns {Promise<'results'|'no-results'>}
+ */
+async function waitForSearchOutcome(page, method, timeout) {
+  const amtrakResultsPage = getPageObject(page, AmtrakResultsPage);
+  const outcome = await amtrakResultsPage.waitForResultsOrNoResults(timeout);
+
+  if (outcome === "no-results") {
+    logger.warn(
+      `[AmtrakSearch.${method}] The search returned the "No results found" empty state — ` +
+      "no bookable Amtrak results for these criteria.",
+    );
+  } else {
+    logger.info(`[AmtrakSearch.${method}] Amtrak results rendered.`);
+  }
+
+  return outcome;
+}
 
 /**
  * Validates the arguments the two time-setting actions share. Both take the hour and minute as the
@@ -47,15 +80,22 @@ const AmtrakSearch = {
    *
    * - Uses default route from amtrak.json unless overridden
    * - Selects the 10th available departure date by default
+   * - Waits for the results page to settle before returning
    * @param {import('playwright').Page} page
    * @param {string|object} routeInput
    * @param {object} options
-   * @returns {Promise<object>} Search result metadata
+   * @param {number} [options.searchTimeout] - Max ms to wait for results or the no-results state
+   *   (defaults to AmtrakResultsPage.waitForResultsOrNoResults' own 120000)
+   * @returns {Promise<object>} Search result metadata, including `outcome`:
+   *   'results' | 'no-results'
    */
   async searchAmtrakOneWay(
     page,
     routeInput = amtrakRoutes.defaultRoute,
-    { departureIndex = SEARCH_DEFAULTS.RAIL.DEPARTURE_INDEX } = {},
+    {
+      departureIndex = SEARCH_DEFAULTS.RAIL.DEPARTURE_INDEX,
+      searchTimeout = undefined,
+    } = {},
   ) {
     // Resolve route (key or inline object)
     const { from, to } = resolveRoute(
@@ -68,7 +108,9 @@ const AmtrakSearch = {
 
     // Provider + trip type
     await AmtrakSearch.selectAmtrakSearch(page);
-    await searchPage.selectOneWayTrip();
+    // Amtrak-specific method (see SearchPage.clickAmtrakTripType) — the generic
+    // selectOneWayTrip() resolves ambiguously across rail providers for Amtrak.
+    await searchPage.selectAmtrakOneWayTrip();
 
     // Route selection
     await searchPage.fillInFromField(from);
@@ -86,7 +128,10 @@ const AmtrakSearch = {
 
     await searchPage.clickSearchButton();
 
-    return { searched: true, routeInput, from, to, departureIndex };
+    // Do not hand control back on the click alone — wait for results or the no-results state.
+    const outcome = await waitForSearchOutcome(page, "searchAmtrakOneWay", searchTimeout);
+
+    return { searched: true, routeInput, from, to, departureIndex, outcome };
   },
 
   /**
@@ -99,7 +144,10 @@ const AmtrakSearch = {
    * @param {object} options
    * @param {boolean} [options.clickSearch=true] - set false to leave the filled form on screen so
    *   the scenario can go on validating the search inputs before submitting
-   * @returns {Promise<object>} Search result metadata
+   * @param {number} [options.searchTimeout] - Max ms to wait for results or the no-results state
+   *   (defaults to AmtrakResultsPage.waitForResultsOrNoResults' own 120000)
+   * @returns {Promise<object>} Search result metadata, including `outcome`:
+   *   'results' | 'no-results' | null (null when clickSearch is false)
    */
   async searchAmtrakRoundTrip(
     page,
@@ -108,6 +156,7 @@ const AmtrakSearch = {
       departureIndex = SEARCH_DEFAULTS.RAIL.DEPARTURE_INDEX,
       returnIndex = SEARCH_DEFAULTS.RAIL.RETURN_INDEX,
       clickSearch = true,
+      searchTimeout = undefined,
     } = {},
   ) {
     // Resolve route (key or inline object)
@@ -121,7 +170,9 @@ const AmtrakSearch = {
 
     // Provider + trip type
     await AmtrakSearch.selectAmtrakSearch(page);
-    await searchPage.selectRoundTrip();
+    // Amtrak-specific method (see SearchPage.clickAmtrakTripType) — the generic
+    // selectRoundTrip() resolves ambiguously across rail providers for Amtrak.
+    await searchPage.selectAmtrakRoundTrip();
 
     // Departure flow: open the departure calendar explicitly (the Amtrak form does not focus its
     // date field when a station commits), then select the Nth available date. One month ahead, not
@@ -143,8 +194,12 @@ const AmtrakSearch = {
       endIndex: null,
     });
 
+    // Only waited for when the form was actually submitted — the clickSearch:false variant
+    // deliberately leaves the search form on screen, where no results page exists to wait for.
+    let outcome = null;
     if (clickSearch) {
       await searchPage.clickSearchButton();
+      outcome = await waitForSearchOutcome(page, "searchAmtrakRoundTrip", searchTimeout);
     }
 
     return {
@@ -154,6 +209,7 @@ const AmtrakSearch = {
       to,
       departureIndex,
       returnIndex,
+      outcome,
     };
   },
 

@@ -211,10 +211,13 @@ class CommonPage {
 
   /**
    * Gets the Out of Policy info icon locator.
+   * @param {number} [index=0] - Which OOP icon to target when multiple are on the
+   *   page (e.g. a round-trip "selected leg" summary plus a fresh results list) —
+   *   0 is the first/topmost, matching prior default behavior.
    * @returns {Locator} Playwright locator for the OOP info icon
    */
-  getOOPInfoIcon() {
-    return this.page.locator(SELECTORS.OOP_INFO).locator("span.info-icon", { hasText: "info" }).first();
+  getOOPInfoIcon(index = 0) {
+    return this.page.locator(SELECTORS.OOP_INFO).locator("span.info-icon", { hasText: "info" }).nth(index);
   }
 
   getShoppingCartIcon() {
@@ -299,16 +302,18 @@ class CommonPage {
   /**
    * Hovers over the Out of Policy info icon to reveal tooltip.
    * TODO: Move this to ResultsPage - this is specific to results page.
+   * @param {number} [index=0] - Which OOP icon to hover, see getOOPInfoIcon()
    */
-  async hoverOverOOPInfoIcon() {
-    await this.getOOPInfoIcon().hover();
+  async hoverOverOOPInfoIcon(index = 0) {
+    await this.getOOPInfoIcon(index).hover();
   }
 
   /**
    * Waits until the OOP tooltip is visible
+   * @param {number} [index=0] - Which OOP icon to wait for, see getOOPInfoIcon()
    */
-  async waitForOOPTooltipVisible() {
-    await this.getOOPInfoIcon().waitFor({ state: "visible", timeout: 30000 });
+  async waitForOOPTooltipVisible(index = 0) {
+    await this.getOOPInfoIcon(index).waitFor({ state: "visible", timeout: 30000 });
   }
 
   /**

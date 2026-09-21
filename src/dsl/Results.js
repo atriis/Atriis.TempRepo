@@ -449,15 +449,18 @@ const Results = {
    * @param {import('playwright').Page} page - Playwright page instance
    * @returns {Promise<string>} The OOP tooltip text
    */
-  async hoverAndGetOOPTooltipTextInResults(page) {
+  async hoverAndGetOOPTooltipTextInResults(page, index = 0) {
     if (!page) {
       throw new Error('page is required');
     }
-    
+    if (!Number.isInteger(index) || index < 0) {
+      throw new Error(`index must be a non-negative integer, got: ${typeof index} (${JSON.stringify(index)})`);
+    }
+
     const resultsPage = getPageObject(page, ResultsPage);
     const commonPage = getPageObject(page, CommonPage);
     await commonPage.waitForOOPVisible();
-    await commonPage.hoverOverOOPInfoIcon();
+    await commonPage.hoverOverOOPInfoIcon(index);
     return await commonPage.getOOPTooltipText();
   },
 
