@@ -12,17 +12,15 @@ Feature: 56765 Flights - Conflicting quote should appear on price check
   So that I am aware of overlapping bookings
 
   Scenario: Conflicting quote appears on price check after cancellation
-    Given I am logged in as "shani@testimcorpnl.com" booking a new trip
+    Given I am logged in as "brunasantosnl@testim.com" booking a new trip
     And I have added myself as the traveler
     And I search for a round trip flight from "LON" to "DOH"
-    And I fill in NL reference fields education and courses
     And I add the first flight to cart
     Then the booking status should be "Pending booking"
     And I close tab 2
     When I book a new trip
     And I have added myself as the traveler
     And I search for a round trip flight from "LON" to "DOH"
-    And I fill in NL reference fields education and courses
     And I add the first flight to cart
     Then the booking status should be "Pending booking"
     Then I successfully cancel the quote
