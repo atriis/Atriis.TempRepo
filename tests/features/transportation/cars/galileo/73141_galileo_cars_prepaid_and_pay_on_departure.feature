@@ -15,7 +15,6 @@ Feature: 73141 Galileo - Cars - PrePaid & Pay on Departure
     And I proceed to checkout
     And I wait for booking details in checkout
     And I complete the booking
-    When I click go to trip button
     Then the payment type should be "Pre paid"
     And I successfully cancel the trip
 
@@ -29,6 +28,5 @@ Feature: 73141 Galileo - Cars - PrePaid & Pay on Departure
     And I proceed to checkout
     And I wait for booking details in checkout
     And I complete the booking
-    When I click go to trip button
     Then the payment type should be "Pay On Departure"
     And I successfully cancel the trip
