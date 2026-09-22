@@ -21,6 +21,7 @@ Feature: 24488 - All reference fields at the checkout stage during online bookin
     And I click proceed on the reference fields popup
     And I add the first car to cart
     And the booking status should be "Pending booking"
+    And I fill in the OOP justification text "abc"
     And I proceed to checkout 
     And I wait for booking details in checkout
     Then the following checkout reference fields should be visible:
