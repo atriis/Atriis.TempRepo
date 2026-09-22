@@ -15,7 +15,7 @@ Feature: 37326 - Approval flow according to traveler - Guest, Copy settings from
   Scenario: Book a refundable hotel for a specific guest copying settings from my profile and send for approval
     Given I am logged in as "fabian@apflow.mx" booking a new trip
     And I have added a random guest traveler
-    When I search for a hotel in "Amsterdam Netherlands" for 1 night
+    When I search for a hotel in "London" for 1 night
     And I select the first hotel result
     And I add a refundable room to my cart
     Then the booking status should be "Pending booking"
