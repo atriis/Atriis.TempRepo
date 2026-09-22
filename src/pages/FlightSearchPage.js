@@ -834,11 +834,26 @@ class FlightSearchPage {
   }
 
   /**
-   * Types a pick-up location into the parallel car search inputs and confirms the autocomplete
-   * selection. Clicks the first suggestion when it appears, otherwise falls back to TAB to accept
-   * the highlighted match. Scoped to the parallel inputs list so it never types into the main
-   * car-tab pick-up field.
+   * Types a pick-up location into the parallel car search inputs and waits for the autocomplete
+   * selection to be applied to the form. Scoped to the parallel inputs list so it never types into
+   * the main car-tab pick-up field.
+   *
+   * What matters is the committed selection, not the typed text: `car-search-inputs.selectedItem`
+   * (bound to `@item-selected`) is the only thing that sets `pickUpLocationCode` and the `isEdited`
+   * flag, and `flightStore.setParallelCar` silently replaces the pick-up location with the flight's
+   * arrival airport whenever `isEdited` is false — so an uncommitted edit does not fail here, it
+   * surfaces much later as the wrong city in the parallel car loader and results header.
+   *
+   * Both commit paths are async server round-trips (clicking a suggestion can chain a Google place
+   * lookup; TAB makes the widget re-run the location search itself via `@keydown.tab` ->
+   * `autoFillField` and select its first result), so neither is complete when the click or the key
+   * press returns. The helper therefore waits for the committed value rather than a fixed pause:
+   * `car-autocomplete` re-renders the input from `modelValue.name` only once the model holds a real
+   * location, which reads as the full resolved name ("Madrid,Spain,(MAD)") rather than the typed
+   * fragment ("MAD").
+   *
    * @param {string} where - Car pick-up location to search for
+   * @throws {Error} If the selection is never applied to the pick-up field
    */
   async typeParallelCarDestination(where) {
     const pickupField = this.page.locator(SELECTORS.PARALLEL_CAR_PICKUP_FIELD);
@@ -851,14 +866,36 @@ class FlightSearchPage {
     await pickupField.fill(where);
 
     try {
-      await firstSuggestion.waitFor({ state: 'visible', timeout: 5000 });
+      // The suggestions come from a per-keystroke server search, so this has to tolerate a loaded
+      // CI runner — matches CarSearchPage.setCarSearchFormDestination on the same widget.
+      await firstSuggestion.waitFor({ state: 'visible', timeout: 15000 });
       await firstSuggestion.click();
     } catch {
+      // Suggestions never rendered — TAB makes the widget run the search itself and select its
+      // first result. The commit check below decides whether either path actually landed.
       await pressTab(this.page);
     }
 
-    // Small wait for the UI to process the blur event and apply the selection.
-    await this.page.waitForTimeout(300);
+    try {
+      await this.page.waitForFunction(
+        ([selector, typed]) => {
+          const value = document.querySelector(selector)?.value?.trim() ?? '';
+          // A committed location renders its full name, so it is strictly longer than the typed
+          // fragment; the typed text still sitting in the box means nothing was selected.
+          return value.length > typed.length && value.toUpperCase().includes(typed.toUpperCase());
+        },
+        [SELECTORS.PARALLEL_CAR_PICKUP_FIELD, where],
+        { timeout: 15000 },
+      );
+    } catch (err) {
+      const actual = await pickupField.inputValue().catch(() => '<unreadable>');
+      throw new Error(
+        `[FlightSearchPage.typeParallelCarDestination] The parallel car pick-up location was never committed ` +
+        `for "${where}" — the field still reads "${actual}". The autocomplete selection did not reach the ` +
+        `search form, so the app would keep isEdited=false and silently search the flight's arrival airport ` +
+        `instead. Original: ${err.message}`
+      );
+    }
   }
 
   /**
