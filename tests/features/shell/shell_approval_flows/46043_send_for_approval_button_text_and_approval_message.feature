@@ -15,7 +15,7 @@ Feature: 46043 - Send for approval button has the correct text and approval mess
   Scenario: Sending a flight trip for approval shows the correct button text and approval confirmation message
     Given I am logged in as "victor@approvalflow.com" booking a new trip
     And I have added myself as the traveler
-    When I search for a one way flight from "LIS" to "IST"
+    When I search for a one way flight from "ZRH" to "SIN"
     And I add the first flight to cart
     Then the booking status should be "Pending booking"
     When I add a credit card as payment method
