@@ -21,6 +21,7 @@ applyTo: '**/*.feature, **/payload_validation.steps.js, **/PayloadValidation.js,
 - ✅ Request-type inventory — prove a supplier call was **never sent at all**
 - ✅ Per-request entry counting — prove a supplier call was **batched**, not sent once per item
 - ✅ Repeated-block field reads — hand the product DSL what each occurrence of a block carries, so it can compare a screen against the supplier's own data
+- ✅ Nested block trees, per call — hand the product DSL a structure whose ids resolve within the reply they came from
 
 ## Supported Step Definitions
 
@@ -272,7 +273,7 @@ And the fare family descriptions should be batched in "*Fare_GetFareFamilyDescri
 
 Canonical example: `tests/features/flights/flights_amadeus/flights_amadeus_non_booking/84298_amadeus_fare_family_descriptions_chunked_beyond_cap.feature`
 
-### 8. Repeated-Block Field Pairs — Compare a Screen Against the Supplier's Own Data
+### 9. Repeated-Block Field Pairs — Compare a Screen Against the Supplier's Own Data
 
 Use when the expectation cannot be written in Gherkin because it depends on what the supplier sent, per item. ADO
 82771 is the case: the Amadeus EDIFACT fare family label must come from `familyInformation/description`, but a family
@@ -310,6 +311,46 @@ Then every brand card name on the "outbound" leg should match its fare family de
 
 Canonical example:
 `tests/features/flights/flights_amadeus/flights_amadeus_non_booking/84698_amadeus_edifact_fare_family_display_name_from_description.feature`
+
+### 10. Nested Block Trees — Judge a Screen Against What the Supplier Filed Per Item
+
+Use when the expectation depends on a structure, not a flat list of fields: an item whose meaning comes from ids it
+references elsewhere in the same reply. ADO 84752 is the case: an Amadeus NDC brand card must show the change,
+cancellation and seat rules the airline filed for that brand on that leg, and reaching them means walking
+`Offer` → `JourneyPriceClass` (brand per leg) → `FareComponent` → `Penalty` → `Detail`, plus
+`Service` → `ServiceDefinitionRef`, and resolving every id against the `PriceClassList`, `PaxJourneyList` and
+`ServiceDefinitionList` **of the same response**.
+
+This DSL supplies only the read — `collectXmlBlockTreesPerCall()`, which returns the named fields, attributes and
+nested blocks of each occurrence and attaches no meaning to them. The tags, the ids and the rule are product
+knowledge, so they live in the product DSL and its step file: `FlightResults.captureAmadeusNdcBrandOffers()` and
+`tests/steps/flight_nff.steps.js`.
+
+```gherkin
+# On the pricing options screen, after the brand cards render
+Then the brand card change and cancellation badges should match the penalties the airline filed
+And the brand card seat badge should match the seat service the airline granted
+```
+
+- **Per call, never flattened.** Ids are numbered per response — the same `PC1` is a different brand in the next
+  reply — so a tree is only resolvable against the call it came from. §8 (repeated-block field pairs) flattens
+  because a fare family's key is global; do not copy that here.
+- **Read the supplier payload, not the app's own response.** The app's `FlightPricingSelection` reply carries the
+  values it already derived, so a card rendered from a wrong derivation matches it perfectly. This is why TC 80994,
+  which cross-checks the same cards against that reply, cannot catch a parsing defect.
+- **Collect every occurrence, never the first.** A service lists the segments it applies to as repeated elements;
+  keeping only the first turns "free seat on all four segments" into "on one".
+- **Read the screen in full before judging it.** The pricing options screen opens on one cabin tab, so a read of
+  "every card" silently misses the other cabins' brands. Sweep the tabs first
+  (`FlightResults.readBrandCardsAcrossCabinTabs()`); a leg priced in a single cabin renders no tabs at all.
+- **Skip what the payload does not settle.** When the offers carrying a brand disagree about what was filed, there is
+  no way to know which one fed the card — skip that brand and log it. Then fail if nothing was left to check, so a
+  fully skipped run never reports as proof.
+- **Measure the mapping before asserting it.** On one trip, three brands whose cancellation badges differed on screen
+  carried byte-identical `Cancel` rows, so refundability is not derived from the filed penalties — only its total
+  absence is judgeable. An assertion built on an inferred mapping fails on correct screens.
+
+Canonical example: `tests/features/flights/flights_amadeus/flights_amadeus_non_booking/84752_amadeus_ndc_brand_card_rules_match_filed_penalties.feature`
 
 ## Scenario Identifiers (world context)
 

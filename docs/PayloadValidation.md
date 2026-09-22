@@ -521,6 +521,40 @@ Returns every payload of a type logged for the trip, untouched, for content this
 
 ---
 
+### 2.10.12 `collectXmlBlockTreesPerCall()` — read a nested block structure, per call
+
+Returns a nested read of every occurrence of the named blocks, one entry per logged call. Generic plumbing: it attaches no meaning to any tag. The product DSL that names the tags decides what they mean — see `FlightResults.captureAmadeusNdcBrandOffers()`, which uses it to guard **ADO 84752**.
+
+- **Signature:** `(world, requestType, blockSpecs, options)` — `options.source` defaults to `"response"`, `options.purpose` labels the fetch in the logs.
+- **`blockSpecs`** maps a tag name to what to read from each of its occurrences: `{ fields: [...], attributes: [...], blocks: { ChildTag: { ...same shape } } }`. Nested reads are scoped to their parent block; attributes are read off the block's own opening tag, so a child's attribute of the same name is never mistaken for the parent's.
+- **Returns** `{ perCall }`: one object per call, keyed by the top-level tag names, each holding an array of trees.
+- **Fields and attributes come back as arrays** of every occurrence in document order, never just the first. A block that repeats an element — a service listing the four segments it applies to — loses exactly the data being asked about when only the first value is kept.
+- **Per call, not flattened.** A response that numbers ids locally (an NDC price-class list numbered `PC1..PCn`) numbers them differently in the next response, so blocks read across calls can only be resolved against the ids of the call they came from. §2.10.11 flattens because a fare family's key is global; this one must not.
+- **No step of its own.** It is called from a product DSL, never from Gherkin.
+
+**The NDC brand use of it** — `FlightResults.captureAmadeusNdcBrandOffers()` calls it on `*AMA_TravelOfferPriceRQ*` responses, reading `PriceClass` (brand names), `PaxJourney` (which segments make a leg), `ServiceDefinition` (which service ids mean a seat) and `Offer` — and inside each offer, `JourneyPriceClass` (the brand of each leg), `FareComponent` with its nested `Penalty`/`Detail` (what change and cancellation rules were filed, per segment) and `Service`/`ServiceDefinitionRef` (which services are granted, per segment). It returns, per leg and brand, the distinct values every offer carrying that brand filed.
+
+**How the consumer judges it** (`FlightResults.verifyBrandCardRulesMatchNdcPenalties`, `verifyBrandCardSeatMatchesNdcServices` and `verifyBrandCardBaggageMatchesNdcAllowance`), per brand, never in bulk:
+
+| What the airline filed for the brand | Correct card | Assertion |
+|---|---|---|
+| no `Penalty` at all | "check fare rules" on both badges | fails on "Non-refundable" / "Changes not allowed" |
+| `ChangeFeeInd="true"` and one change amount > 0 | that amount | fails on a different amount or no amount |
+| `ChangeFeeInd="false"` and no change amount above zero | "Changes - fare difference only" | fails otherwise |
+| a seat service on every segment of the leg | free seat selection | fails on "seat not included" |
+| a checked allowance bound to this leg's journey | that many pieces (or "not included" for 0) | fails on the other leg's figure |
+| offers carrying the brand disagree | not judgeable | skipped and logged |
+
+The first row is the bug: the front end renders "no info" as "check fare rules", and rendering a prohibition instead tells a traveller a fare is locked when nothing is known about it.
+
+**Walk every cabin tab before reading the cards.** The pricing options screen opens on Economy, so a Business brand is never rendered and a check over "every card" quietly skips it - bug 84752 reported the same seat defect on Premium Flex and on Business Flex, and only the first is reachable without switching. `FlightResults.readBrandCardsAcrossCabinTabs()` does the sweep; a leg priced in a single cabin renders no tabs, which is not an error.
+
+**Read the supplier payload, not the app's own response.** The app's `FlightPricingSelection` reply carries the values it already derived, so a card rendered from a wrong derivation matches it perfectly. That is why 80994 (which cross-checks the same cards against that reply) cannot catch this, and why the oracle here is `AMA_TravelOfferPriceRQ`.
+
+**Not every badge is derivable from this payload.** On the same trip, three brands whose cancellation badges differed on screen carried byte-identical `Cancel` rows (`CancelFeeInd="false"`, amounts `0`), so refundability is not concluded from the filed penalties at all — only its total absence is. Measure before asserting a mapping; an assertion built on an inferred one fails on correct screens.
+
+---
+
 ## 3. Helper Functions (Internal)
 
 ### 3.1. Expression Parsers

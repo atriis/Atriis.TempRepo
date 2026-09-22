@@ -585,6 +585,20 @@ function extractXmlAttributeValues(xmlString) {
   return values;
 }
 
+// Reads named attributes off a block's opening tag only, so a nested child's attribute of the
+// same name is never mistaken for the parent's. Namespace prefixes on the attribute are ignored.
+function readXmlAttributes(blockXml, attributeNames) {
+  const openTag = (String(blockXml || "").match(/<[^>]*>/) || [""])[0];
+  const attributes = {};
+  for (const name of attributeNames) {
+    const match = openTag.match(
+      new RegExp(`\\s(?:[\\w.-]+:)?${escapeRegex(name)}\\s*=\\s*(["'])(.*?)\\1`, "i")
+    );
+    attributes[name] = match ? match[2].trim() : null;
+  }
+  return attributes;
+}
+
 // Collects every value stored under `keyName`, at any depth, in document order.
 function collectJsonValuesByKey(node, keyName, found = []) {
   if (Array.isArray(node)) {
@@ -2270,6 +2284,84 @@ const PayloadValidation = {
     });
 
     return { blocks };
+  },
+
+  /**
+   * Reads a nested XML structure out of every payload of a type logged for the trip, returning one
+   * entry per call. Per call and not flattened on purpose: a response that defines ids locally (an
+   * NDC price-class list numbered PC1..PCn) numbers them differently in the next response, so
+   * blocks read across calls can only be resolved against the ids of the call they came from.
+   *
+   * `blockSpecs` maps a tag name to what to read from each of its occurrences:
+   *   { fields: ["OfferID"], attributes: ["CancelFeeInd"], blocks: { Child: { ...same shape } } }
+   * Fields and attributes come back as arrays of every occurrence in document order, never just
+   * the first: a block that repeats an element - a service listing the four segments it applies to
+   * - loses exactly the data being asked about when only the first value is kept. Nested reads are
+   * scoped to their parent block; attributes are read off the block's own opening tag.
+   *
+   * Generic plumbing only: this attaches no meaning to any tag. The product DSL that names the tags
+   * owns that (see FlightResults.captureAmadeusNdcBrandOffers for the NDC offer use of this).
+   *
+   * @param {object} world
+   * @param {string} requestType - e.g. "*AMA_TravelOfferPriceRQ*"
+   * @param {object} blockSpecs - tag name -> { fields?, attributes?, blocks? }
+   * @param {{source?: string, purpose?: string}} [options]
+   * @returns {Promise<{perCall: Array<Record<string, object[]>>}>}
+   */
+  async collectXmlBlockTreesPerCall(world, requestType, blockSpecs, options = {}) {
+    assertWorld(world);
+    if (!blockSpecs || typeof blockSpecs !== "object" || Object.keys(blockSpecs).length === 0) {
+      throw new Error(
+        `[PayloadValidation.collectXmlBlockTreesPerCall] "blockSpecs" must be a non-empty object, got: ${blockSpecs}`
+      );
+    }
+
+    const { source = "response", purpose } = options;
+    const normalizedRequestType = normalizeRequestType(requestType);
+
+    await this.waitForRequestType(world, normalizedRequestType);
+
+    const result = await fetchAllRequestsForTrip(
+      world,
+      normalizedRequestType,
+      purpose || `collect ${Object.keys(blockSpecs).join(", ")} blocks`,
+      source
+    );
+
+    const readBlock = (blockXml, spec) => {
+      const tree = {};
+      for (const fieldName of spec.fields || []) {
+        tree[fieldName] = collectParameterValues(blockXml, fieldName).map((o) => o.value);
+      }
+      if (spec.attributes && spec.attributes.length > 0) {
+        Object.assign(tree, readXmlAttributes(blockXml, spec.attributes));
+      }
+      for (const [childTag, childSpec] of Object.entries(spec.blocks || {})) {
+        tree[childTag] = extractXmlBlocksByTag(blockXml, childTag)
+          .map((child) => readBlock(child, childSpec));
+      }
+      return tree;
+    };
+
+    const perCall = result.matches.map((match) => {
+      const call = {};
+      for (const [blockTag, spec] of Object.entries(blockSpecs)) {
+        call[blockTag] = extractXmlBlocksByTag(match.payload, blockTag)
+          .map((block) => readBlock(block, spec));
+      }
+      return call;
+    });
+
+    logger.info("Collected XML block trees per call", {
+      requestType: normalizedRequestType,
+      source,
+      calls: perCall.length,
+      blocksPerCall: perCall.map((call) =>
+        Object.entries(call).map(([tag, blocks]) => `${tag}:${blocks.length}`).join(" ")
+      ),
+    });
+
+    return { perCall };
   },
 
   /**

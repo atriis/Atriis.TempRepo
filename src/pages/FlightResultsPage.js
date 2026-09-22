@@ -5308,7 +5308,7 @@ async clickSelectForFareWithBaggagePricingOptions(baggageText) {
    * the DOM, it holds no business logic.
    *
    * @param {number} [timeout] - Max wait for the first brand card to appear.
-   * @returns {Promise<Array<{legIndex: number, cardIndex: number, brandName: string|null, featureTexts: string[]}>>}
+   * @returns {Promise<Array<{legIndex: number, cardIndex: number, brandName: string|null, priceText: string|null, featureTexts: string[]}>>}
    */
   async getPerLegBrandCardFeatureTexts(timeout = 30000) {
     const legs = this.page.locator(SELECTORS.NEW_FLOW_BRAND_LEG);
@@ -5337,10 +5337,20 @@ async clickSelectForFareWithBaggagePricingOptions(baggageText) {
           ? (await nameEl.first().innerText()).trim()
           : null;
         const rawFeatureTexts = await card.locator(SELECTORS.NEW_FLOW_BRAND_CARD_FEATURE_TEXT).allInnerTexts();
+        // The "Starting from" figure. Two cards on one leg can carry the same brand name and
+        // differ only in price, so the name alone does not identify which fare a card shows.
+        // The data-testid is absent on some builds, hence the class fallback.
+        const priceEl = card.locator(
+          `${SELECTORS.NEW_FLOW_BRAND_CARD_PRICE}, ${SELECTORS.NEW_FLOW_BRAND_CARD_FARE} .price-info .amount`
+        );
+        const priceText = (await priceEl.count()) > 0
+          ? (await priceEl.first().innerText()).replace(/\s+/g, ' ').trim()
+          : null;
         cardsByLeg.push({
           legIndex,
           cardIndex,
           brandName,
+          priceText,
           featureTexts: rawFeatureTexts.map((t) => t.trim()).filter((t) => t.length > 0),
         });
       }

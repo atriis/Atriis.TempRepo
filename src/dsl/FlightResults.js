@@ -428,6 +428,99 @@ function normalizeBrandName(name) {
   return (name || '').toString().trim().toUpperCase().replace(/\s+/g, ' ');
 }
 
+// The Amadeus NDC offer message that carries what the airline filed per brand. The trip logs it in
+// two flavours - "NDC Search Upsell" holds every brand combination of the itinerary, "Flight Price
+// (Brand Info)" prices one combination per rendered card - and both are read: which flavour fed a
+// given card is an implementation detail, and a brand whose flavours disagree is skipped anyway.
+const NDC_OFFER_REQUEST_TYPE = '*AMA_TravelOfferPriceRQ*';
+
+// Penalty details are filed per moment; "2" is before departure, which is what the brand card
+// quotes. The after-departure and no-show rows are filed alongside it and are not what is shown.
+const BEFORE_DEPARTURE = '2';
+
+// Penalty amounts are filed in minor units - 30000 is a fee of 300.00.
+const MINOR_UNITS_PER_UNIT = 100;
+
+/** First value of a collected field list, or null when the field was absent. */
+function first(values) {
+  return Array.isArray(values) && values.length > 0 ? values[0] : null;
+}
+
+/**
+ * The single value a set holds, or undefined when it holds none or several. Several means the
+ * offers carrying a brand disagree, and nothing can be concluded about what fed the card.
+ */
+function onlyValue(values) {
+  return values && values.size === 1 ? [...values][0] : undefined;
+}
+
+/**
+ * The facts filed for the fare a card shows, on the leg it belongs to.
+ *
+ * A brand name does not identify a fare: one leg can carry two cards both named "Light" whose
+ * filed data differs completely - the bug's own trip has Light at 569.74 with no penalties beside
+ * Light at 737.74 with them, and merging the two hides exactly the card under test. The price the
+ * card shows is what tells them apart; without it the records are merged, and the callers skip a
+ * fare whose records disagree rather than guess.
+ */
+function findFiledBrand(legs, card) {
+  const leg = legs[card.legIndex];
+  if (!leg) return null;
+  const wanted = normalizeBrandName(card.brandName);
+  const candidates = Object.values(leg.brands).filter((record) => normalizeBrandName(record.brandName) === wanted);
+  if (candidates.length === 0) return null;
+  if (candidates.length === 1) return candidates[0];
+
+  const shown = firstNumberIn(card.priceText);
+  const exact = shown === null
+    ? []
+    : candidates.filter((record) => Number(record.totalAmount) / MINOR_UNITS_PER_UNIT === shown);
+  return mergeFiledBrands(exact.length === 1 ? exact : candidates);
+}
+
+/** Folds several offers of one brand into a single record, keeping every distinct value seen. */
+function mergeFiledBrands(records) {
+  if (records.length === 1) return records[0];
+
+  const merged = {
+    brandName: records[0].brandName,
+    totalAmount: records.map((record) => record.totalAmount).join('/'),
+    offers: 0,
+    filedRules: new Set(),
+    changeFeeInd: new Set(),
+    changeAmounts: new Set(),
+    seatGranted: new Set(),
+    checkedPieces: new Set(),
+    spansTwoBrands: false,
+  };
+  for (const record of records) {
+    merged.offers += record.offers;
+    for (const field of ['filedRules', 'changeFeeInd', 'changeAmounts', 'seatGranted', 'checkedPieces']) {
+      for (const value of record[field]) merged[field].add(value);
+    }
+    if (record.spansTwoBrands) merged.spansTwoBrands = true;
+  }
+  return merged;
+}
+
+/**
+ * The first money amount in a rendered badge, or null when its grouping is ambiguous. Returning
+ * null skips only the numeric comparison, never the assertion that a fee is shown at all.
+ */
+function firstNumberIn(text) {
+  const raw = (String(text || '').match(/\d[\d.,]*/) || [null])[0];
+  if (raw === null) return null;
+  if (/^\d+$/.test(raw)) return Number(raw);
+  if (/^\d{1,3}(,\d{3})*(\.\d+)?$/.test(raw)) return Number(raw.replace(/,/g, ''));
+  if (/^\d+\.\d+$/.test(raw)) return Number(raw);
+  return null;
+}
+
+/** Whether a rendered seat badge says the seat selection is included at no charge. */
+function isFreeSeatText(text) {
+  return /free[\w\s]*seat/i.test(String(text || ''));
+}
+
 /**
  * FlightResults DSL
  *
@@ -6764,6 +6857,609 @@ async verifyFareComponentTextColorInPricingOptions(page, expectedColor, index = 
     ).toEqual([]);
 
     return { compared: expectedLegs.length, legs };
+  },
+
+  /**
+   * Reads what the airline actually filed for each brand of each leg, out of the Amadeus NDC offer
+   * payloads the trip logged.
+   *
+   * This is the oracle for bug 84752. It deliberately does not read the app's own
+   * FlightPricingSelection response: that response carries the values the app already derived, so a
+   * card rendered from a wrong derivation matches it perfectly. Only the supplier payload says what
+   * the airline filed, which is what the card is supposed to reflect.
+   *
+   * Facts are gathered per (leg, brand) across every offer that carries that brand on that leg, and
+   * kept as the distinct values seen rather than a single value. When the offers disagree there is
+   * no way to know which one fed the card, so the caller skips that brand instead of guessing -
+   * which keeps the check honest rather than green by luck.
+   *
+   * @param {object} world - Cucumber world (carries the trip id)
+   * @returns {Promise<{legs: Array<{legIndex: number, brands: object}>, callsRead: number}>}
+   */
+  async captureAmadeusNdcBrandOffers(world) {
+    if (!world) {
+      throw new Error('[FlightResults.captureAmadeusNdcBrandOffers] world is required');
+    }
+
+    const { perCall } = await PayloadValidation.collectXmlBlockTreesPerCall(
+      world,
+      NDC_OFFER_REQUEST_TYPE,
+      {
+        PriceClass: { fields: ['PriceClassID', 'Name'] },
+        PaxJourney: { fields: ['PaxJourneyID', 'PaxSegmentRefID'] },
+        ServiceDefinition: { fields: ['ServiceDefinitionID', 'Name', 'DescText'] },
+        // Read through the list element: an offer carries BaggageAllowance blocks of its own, and
+        // reading the tag at the top level would mix the definitions with the references to them.
+        BaggageAllowanceList: {
+          blocks: { BaggageAllowance: { fields: ['BaggageAllowanceID', 'TypeCode', 'TotalQty'] } },
+        },
+        Offer: {
+          fields: ['OfferID', 'TotalAmount'],
+          blocks: {
+            JourneyPriceClass: { fields: ['PaxJourneyRefID', 'PriceClassRefID'] },
+            BaggageAllowance: { fields: ['BaggageAllowanceRefID', 'PaxJourneyRefID'] },
+            FareComponent: {
+              fields: ['SegmentRefs'],
+              blocks: {
+                Penalty: {
+                  attributes: ['CancelFeeInd', 'ChangeFeeInd'],
+                  blocks: { Detail: { fields: ['Type', 'Application', 'CurrencyAmountValue'] } },
+                },
+              },
+            },
+            Service: {
+              blocks: { ServiceDefinitionRef: { fields: ['ServiceDefinitionRefID', 'PaxSegmentRefID'] } },
+            },
+          },
+        },
+      },
+      { source: 'response', purpose: 'read the brand rules the airline filed' }
+    );
+
+    const legs = [];
+    const legFor = (legIndex) => {
+      while (legs.length <= legIndex) legs.push({ legIndex: legs.length, brands: {} });
+      return legs[legIndex];
+    };
+
+    for (const call of perCall) {
+      // Ids are numbered per response, so every lookup below resolves within this call only.
+      const brandOfPriceClass = new Map(
+        call.PriceClass.map((pc) => [first(pc.PriceClassID), first(pc.Name)])
+      );
+      const segmentsOfJourney = new Map(
+        call.PaxJourney.map((journey) => [first(journey.PaxJourneyID), journey.PaxSegmentRefID])
+      );
+      const journeyOrder = call.PaxJourney.map((journey) => first(journey.PaxJourneyID));
+      const seatServiceIds = new Set(
+        call.ServiceDefinition
+          .filter((definition) => /seat/i.test(`${first(definition.Name)} ${first(definition.DescText)}`))
+          .map((definition) => first(definition.ServiceDefinitionID))
+      );
+      // Only piece-based checked allowances: a weight-based one (23KG) files no TotalQty and the
+      // card quotes it in kilos, which is a different comparison and not what this reads.
+      const checkedPiecesOfAllowance = new Map(
+        call.BaggageAllowanceList
+          .flatMap((list) => list.BaggageAllowance)
+          .filter((bag) => first(bag.TypeCode) === 'CheckedBag' && first(bag.TotalQty) !== null)
+          .map((bag) => [first(bag.BaggageAllowanceID), first(bag.TotalQty)])
+      );
+
+      for (const offer of call.Offer) {
+        const brandByJourney = new Map(
+          offer.JourneyPriceClass.map((entry) => [
+            first(entry.PaxJourneyRefID),
+            brandOfPriceClass.get(first(entry.PriceClassRefID)) || null,
+          ])
+        );
+        const brandsInOffer = new Set([...brandByJourney.values()].filter(Boolean));
+        const totalAmount = first(offer.TotalAmount);
+
+        for (const [journeyId, brandName] of brandByJourney) {
+          const legIndex = journeyOrder.indexOf(journeyId);
+          const segments = segmentsOfJourney.get(journeyId) || [];
+          if (legIndex < 0 || !brandName || segments.length === 0) continue;
+
+          // Only components wholly within this leg: one spanning both legs says nothing about
+          // either card on its own, and attributing it to one of them would invent a rule.
+          const components = offer.FareComponent.filter((component) =>
+            component.SegmentRefs.length > 0 &&
+            component.SegmentRefs.every((reference) => segments.includes(reference))
+          );
+          if (components.length === 0) continue;
+
+          const penalties = components.flatMap((component) => component.Penalty);
+          const changeDetails = penalties
+            .flatMap((penalty) => penalty.Detail)
+            .filter((detail) => /^change$/i.test(first(detail.Type)) && first(detail.Application) === BEFORE_DEPARTURE);
+
+          const seatSegments = offer.Service
+            .flatMap((service) => service.ServiceDefinitionRef)
+            .filter((reference) => seatServiceIds.has(first(reference.ServiceDefinitionRefID)))
+            .flatMap((reference) => reference.PaxSegmentRefID);
+
+          // Bound to this journey only: the QA section's case is an offer whose 2PC is bound to PJ1
+          // alone, where the outbound card must show 2PC and the return's own allowance must not.
+          const checkedPieces = offer.BaggageAllowance
+            .filter((reference) =>
+              reference.PaxJourneyRefID.includes(journeyId) &&
+              checkedPiecesOfAllowance.has(first(reference.BaggageAllowanceRefID))
+            )
+            .map((reference) => checkedPiecesOfAllowance.get(first(reference.BaggageAllowanceRefID)));
+
+          // Keyed by price, not by brand name alone: one leg can carry two cards with the same
+          // brand name and different fares - the bug's own trip has Light at 569.74 with no
+          // penalties filed beside Light at 737.74 with them. Merging those two hides the defect.
+          const key = `${brandName}|${totalAmount}`;
+          const brand = legFor(legIndex).brands[key] || {
+            brandName,
+            totalAmount,
+            offers: 0,
+            filedRules: new Set(),
+            changeFeeInd: new Set(),
+            changeAmounts: new Set(),
+            seatGranted: new Set(),
+            checkedPieces: new Set(),
+            spansTwoBrands: false,
+          };
+          brand.offers += 1;
+          brand.filedRules.add(penalties.length > 0);
+          for (const penalty of penalties) brand.changeFeeInd.add(penalty.ChangeFeeInd);
+          for (const detail of changeDetails) {
+            for (const amount of detail.CurrencyAmountValue) brand.changeAmounts.add(amount);
+          }
+          brand.seatGranted.add(segments.every((segment) => seatSegments.includes(segment)));
+          // One entry per offer, so an offer binding no checked allowance to this leg is recorded
+          // as such rather than silently leaving the brand looking like it files nothing.
+          brand.checkedPieces.add(checkedPieces.length === 1 ? checkedPieces[0] : null);
+          if (brandsInOffer.size > 1) brand.spansTwoBrands = true;
+          legFor(legIndex).brands[key] = brand;
+        }
+      }
+    }
+
+    logger.info('[NdcBrandOffers] Read the brand rules the airline filed', {
+      callsRead: perCall.length,
+      legs: legs.map((leg) => ({
+        legIndex: leg.legIndex,
+        brands: Object.values(leg.brands).map((brand) =>
+          `${brand.brandName} @${brand.totalAmount}: offers=${brand.offers} filedRules=[${[...brand.filedRules]}] ` +
+          `changeFeeInd=[${[...brand.changeFeeInd]}] changeAmounts=[${[...brand.changeAmounts]}] ` +
+          `seat=[${[...brand.seatGranted]}] checkedPieces=[${[...brand.checkedPieces]}]` +
+          `${brand.spansTwoBrands ? ' spansTwoBrands' : ''}`
+        ),
+      })),
+    });
+
+    // A healthy trip answers every offer call with at least one offer. When some come back with
+    // none, the airline did not price part of the screen - and the screen degrades with it, showing
+    // "check fare rules" where the one call that did answer filed a fee. Judging the cards against
+    // the surviving calls would then blame the product for the supplier's outage, so say what
+    // happened instead: this is an environment condition, not a defect in what is on screen.
+    const callsWithNoOffer = perCall.filter((call) => call.Offer.length === 0).length;
+    if (callsWithNoOffer > 0) {
+      throw new Error(
+        `[FlightResults.captureAmadeusNdcBrandOffers] ${callsWithNoOffer} of ${perCall.length} Amadeus NDC offer ` +
+        'responses carried no offer at all, so what the airline filed for this screen is only partly known and the ' +
+        'brand cards cannot be judged against it. This is a supplier/environment condition - the screen itself may ' +
+        'be rendering the incomplete data correctly. Re-run once the supplier answers in full.'
+      );
+    }
+
+    if (legs.length === 0) {
+      throw new Error(
+        '[FlightResults.captureAmadeusNdcBrandOffers] No brand offers were read from the Amadeus NDC offer payloads. ' +
+        'Either the trip logged no offer payload or its structure changed.'
+      );
+    }
+
+    return { legs, callsRead: perCall.length };
+  },
+
+  /**
+   * Reads every brand card of the pricing options screen, walking the cabin class tabs so the
+   * cards of every cabin are seen and not only the one the screen happens to open on.
+   *
+   * Without this the read is silently partial: the screen opens on Economy, so a Business brand is
+   * never rendered and a check over "every card" quietly skips it. Bug 84752 reported the same seat
+   * defect on Premium Flex and on Business Flex, and only the first is reachable without switching.
+   *
+   * A leg priced in a single cabin renders no tabs at all, which is not an error - the cards on
+   * screen are then already all of them.
+   *
+   * The return leg is read too. Its cards only render once an outbound brand is picked, so leaving
+   * it out means half the fares of a round trip are never judged - and the filed data differs per
+   * leg, which is the whole point of reading it per journey.
+   *
+   * @param {import('playwright').Page} page
+   * @returns {Promise<{cards: Array<object>, cabinsRead: string[], legsRead: number[]}>}
+   */
+  async readBrandCardsAcrossCabinTabs(page) {
+    if (!page) {
+      throw new Error('[FlightResults.readBrandCardsAcrossCabinTabs] page is required');
+    }
+
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    const cards = [];
+    const seen = new Set();
+    const cabinsRead = [];
+    const legsRead = [];
+
+    const sweepLeg = async (legIndex) => {
+      const tabNames = await flightResultsPage.getNewFlightFlowCabinClassTabNames(legIndex).catch(() => []);
+      for (const cabinName of tabNames.length > 0 ? tabNames : [null]) {
+        if (cabinName) {
+          await this.selectCabinClassTabNewFlightFlow(page, cabinName, legIndex);
+          cabinsRead.push(`L${legIndex} ${cabinName}`);
+        }
+        for (const card of await flightResultsPage.getPerLegBrandCardFeatureTexts()) {
+          // Price is part of the key: two cards on one leg can share a brand name and differ only
+          // in fare, and dropping one of them as a duplicate is dropping the card under test.
+          const key = `${card.legIndex}|${normalizeBrandName(card.brandName)}|${card.priceText}`;
+          if (seen.has(key)) continue;
+          seen.add(key);
+          cards.push({ ...card, cabinName });
+        }
+      }
+      if (!legsRead.includes(legIndex)) legsRead.push(legIndex);
+    };
+
+    await sweepLeg(0);
+
+    // Picking an outbound brand is what makes the return leg render, and which return fares are
+    // then offered depends on which outbound brand was picked. A caller that already picked one
+    // keeps its choice; otherwise the first card stands in. A one-way search has no second leg to
+    // wait for, so a timeout here is the end of the read, not a failure.
+    let inboundRendered = await flightResultsPage
+      .waitForNewFlightFlowBrandCards(INBOUND_LEG_INDEX, 5000)
+      .then(() => true)
+      .catch(() => false);
+    if (!inboundRendered) {
+      await this.selectOutboundFirstBrandCardNewFlightFlow(page);
+      inboundRendered = await flightResultsPage
+        .waitForNewFlightFlowBrandCards(INBOUND_LEG_INDEX, 60000)
+        .then(() => true)
+        .catch(() => false);
+    }
+    if (inboundRendered) {
+      await sweepLeg(INBOUND_LEG_INDEX);
+    } else {
+      logger.info('[NdcBrandOffers] No return leg rendered - reading the outbound only');
+    }
+
+    logger.info('[NdcBrandOffers] Read the brand cards of every cabin', {
+      legsRead,
+      cabinsRead,
+      cards: cards.map((card) => `L${card.legIndex} ${card.brandName} ${card.priceText}`),
+    });
+
+    return { cards, cabinsRead, legsRead };
+  },
+
+  /**
+   * Bug 84752: the change and cancellation badges on each brand card must reflect the penalties the
+   * airline filed for that brand on that leg.
+   *
+   * Three things are asserted, each only where the filed data is unambiguous:
+   *  - the airline filed no penalty at all -> the card must say "check fare rules", which is how the
+   *    front end renders "no info". Rendering "Non-refundable" / "Changes not allowed" there is the
+   *    reported defect, and it fails in the risky direction: it tells a traveller a fare is locked
+   *    when nothing is known about it.
+   *  - a change fee is filed -> the card must show that amount.
+   *  - changes are filed as free -> the card must say "fare difference only".
+   *
+   * @param {import('playwright').Page} page
+   * @param {object} world
+   * @returns {Promise<{cardsChecked: number, assertions: number}>}
+   */
+  async verifyBrandCardRulesMatchNdcPenalties(page, world) {
+    if (!page) {
+      throw new Error('[FlightResults.verifyBrandCardRulesMatchNdcPenalties] page is required');
+    }
+
+    const { cards, legsRead } = await this.readBrandCardsAcrossCabinTabs(page);
+    const { legs } = await this.captureAmadeusNdcBrandOffers(world);
+    if (cards.length === 0) {
+      throw new Error('[FlightResults.verifyBrandCardRulesMatchNdcPenalties] No brand cards were read from the UI.');
+    }
+
+    const mismatches = [];
+    const skipped = [];
+    let cardsChecked = 0;
+    let assertions = 0;
+
+    for (const card of cards) {
+      // Outbound only. The front end builds these two badges from the pricing option PACKAGE
+      // (extractRefundFeature/extractChangeFeature take nothing else), while seat and baggage are
+      // built per segment - so once an outbound brand is picked, the return cards quote the chosen
+      // combination's rule rather than the return leg's own. Measured: with Light picked outbound,
+      // the return Standard card reads its 300.00 where the airline filed 150 for that leg.
+      // Whether that is intended is a product question; asserting the leg's own figure there would
+      // be asserting a mapping nobody has stated.
+      if (card.legIndex !== 0) {
+        skipped.push(
+          `Leg ${card.legIndex} brand "${card.brandName}": change and cancellation badges are package-level, not per leg`
+        );
+        continue;
+      }
+
+      const brand = findFiledBrand(legs, card);
+      if (!brand) {
+        skipped.push(`leg ${card.legIndex} "${card.brandName}": no offer in the payload carries this brand on this leg`);
+        continue;
+      }
+
+      const { refundText, changeText } = splitFeatureTexts(card.featureTexts);
+      const observedRefund = classifyRefundText(refundText);
+      const observedChange = classifyChangeText(changeText);
+      const where = `Leg ${card.legIndex} brand "${card.brandName}"`;
+      cardsChecked++;
+
+      const filedRules = onlyValue(brand.filedRules);
+      if (filedRules === false) {
+        assertions++;
+        if (observedRefund !== RULE_CATEGORY.REFUND_CHECK_FARE_RULES || observedChange !== RULE_CATEGORY.CHANGE_CHECK_FARE_RULES) {
+          mismatches.push(
+            `${where}: the airline filed no penalty at all for this brand, so both badges must read ` +
+            `"check fare rules", but the card reads cancellation "${refundText}" and change "${changeText}".`
+          );
+        }
+        continue;
+      }
+      if (filedRules === undefined) {
+        skipped.push(`${where}: the ${brand.offers} offers carrying this brand disagree on whether rules were filed`);
+        continue;
+      }
+
+      const changeFeeInd = onlyValue(brand.changeFeeInd);
+      const changeAmount = onlyValue(brand.changeAmounts);
+
+      if (changeFeeInd === 'true' && changeAmount !== undefined && Number(changeAmount) > 0) {
+        assertions++;
+        const expectedFee = Number(changeAmount) / MINOR_UNITS_PER_UNIT;
+        const renderedFee = firstNumberIn(changeText);
+        if (observedChange !== RULE_CATEGORY.CHANGE_WITH_AMOUNT) {
+          mismatches.push(
+            `${where}: the airline filed a change fee of ${expectedFee}, so the card must show that fee, ` +
+            `but it reads "${changeText}".`
+          );
+        } else if (renderedFee !== null && renderedFee !== expectedFee) {
+          mismatches.push(
+            `${where}: the airline filed a change fee of ${expectedFee} but the card shows ${renderedFee} ("${changeText}").`
+          );
+        }
+        continue;
+      }
+
+      // brand.changeAmounts.size === 0 is "no change amount filed at all", which is not the same as
+      // onlyValue() returning undefined because the offers filed several different ones.
+      if (changeFeeInd === 'false' && (changeAmount === '0' || brand.changeAmounts.size === 0)) {
+        assertions++;
+        if (observedChange !== RULE_CATEGORY.CHANGE_FARE_DIFFERENCE_ONLY) {
+          mismatches.push(
+            `${where}: the airline filed changes as carrying no fee, so the card must read ` +
+            `"Changes - fare difference only", but it reads "${changeText}".`
+          );
+        }
+        continue;
+      }
+
+      skipped.push(`${where}: filed change data is not conclusive (ChangeFeeInd=[${[...brand.changeFeeInd]}], amounts=[${[...brand.changeAmounts]}])`);
+    }
+
+    if (skipped.length > 0) {
+      logger.warn('[NdcBrandOffers] Brand cards not cross-checked', { skipped });
+    }
+
+    // Thrown rather than asserted with expect(): these run under cucumber, and the custom message
+    // of a Playwright expect() is only rendered by Playwright's own runner - under cucumber it is
+    // dropped and the report shows a bare "Expected: 0 / Received: 3" with none of the detail.
+    if (mismatches.length > 0) {
+      throw new Error(
+        '[FlightResults.verifyBrandCardRulesMatchNdcPenalties] Each brand card must reflect the penalties the airline ' +
+        `filed for that brand and leg, but ${mismatches.length} did not:\n${mismatches.join('\n')}`
+      );
+    }
+
+    if (assertions === 0) {
+      throw new Error(
+        '[FlightResults.verifyBrandCardRulesMatchNdcPenalties] No brand card could be cross-checked against the filed ' +
+        `penalties, so nothing was proven. Skipped: ${skipped.join(' | ')}`
+      );
+    }
+
+    logger.info('[NdcBrandOffers] Brand card change and cancellation badges match the filed penalties', {
+      cardsChecked,
+      assertions,
+      legsRead,
+    });
+
+    return { cardsChecked, assertions, legsRead };
+  },
+
+  /**
+   * Bug 84752: a seat service the airline grants must be shown on the brand card, including when the
+   * offer that carries it spans two brand names.
+   *
+   * The reported defect was exactly that: for an offer priced across two brands the app could not
+   * resolve a single brand name and dropped the seat service, so a fare that includes free seat
+   * selection advertised "seat not included" - while the baggage of the same offer resolved fine.
+   *
+   * @param {import('playwright').Page} page
+   * @param {object} world
+   * @returns {Promise<{cardsChecked: number, cardsSpanningTwoBrands: number}>}
+   */
+  async verifyBrandCardSeatMatchesNdcServices(page, world) {
+    if (!page) {
+      throw new Error('[FlightResults.verifyBrandCardSeatMatchesNdcServices] page is required');
+    }
+
+    const { cards, legsRead } = await this.readBrandCardsAcrossCabinTabs(page);
+    const { legs } = await this.captureAmadeusNdcBrandOffers(world);
+    if (cards.length === 0) {
+      throw new Error('[FlightResults.verifyBrandCardSeatMatchesNdcServices] No brand cards were read from the UI.');
+    }
+
+    const mismatches = [];
+    const skipped = [];
+    let cardsChecked = 0;
+    let cardsSpanningTwoBrands = 0;
+
+    for (const card of cards) {
+      const brand = findFiledBrand(legs, card);
+      if (!brand) {
+        skipped.push(`leg ${card.legIndex} "${card.brandName}": no offer in the payload carries this brand on this leg`);
+        continue;
+      }
+
+      const seatGranted = onlyValue(brand.seatGranted);
+      const where = `Leg ${card.legIndex} brand "${card.brandName}"`;
+      if (seatGranted !== true) {
+        skipped.push(`${where}: the offers carrying this brand do not all grant a seat service on every segment of the leg`);
+        continue;
+      }
+
+      cardsChecked++;
+      if (brand.spansTwoBrands) cardsSpanningTwoBrands++;
+
+      const seatText = card.featureTexts.find((text) => /seat/i.test(text)) || null;
+      if (!isFreeSeatText(seatText)) {
+        mismatches.push(
+          `${where}: the airline grants a free seat service on every segment of this leg` +
+          `${brand.spansTwoBrands ? ' (carried by an offer that spans two brand names)' : ''}, ` +
+          `so the card must show free seat selection, but it reads "${seatText}".`
+        );
+      }
+    }
+
+    if (skipped.length > 0) {
+      logger.warn('[NdcBrandOffers] Brand cards not cross-checked for seat', { skipped });
+    }
+
+    if (mismatches.length > 0) {
+      throw new Error(
+        '[FlightResults.verifyBrandCardSeatMatchesNdcServices] A seat service the airline grants must be shown on the ' +
+        `brand card, but ${mismatches.length} card(s) hid it:\n${mismatches.join('\n')}`
+      );
+    }
+
+    if (cardsChecked === 0) {
+      throw new Error(
+        '[FlightResults.verifyBrandCardSeatMatchesNdcServices] No brand card on offer granted a seat service, so nothing ' +
+        `was proven. Skipped: ${skipped.join(' | ')}`
+      );
+    }
+
+    logger.info('[NdcBrandOffers] Brand cards show the seat service the airline grants', {
+      cardsChecked,
+      cardsSpanningTwoBrands,
+      legsRead,
+    });
+
+    return { cardsChecked, cardsSpanningTwoBrands, legsRead };
+  },
+
+  /**
+   * Bug 84752: the checked baggage badge on each brand card must reflect the allowance the airline
+   * bound to that leg.
+   *
+   * The binding is the point, not the number. An offer can bind 2 pieces to the outbound journey
+   * alone and a different allowance to the return; the outbound card must then show the outbound
+   * figure and the return's allowance must not leak into it. Reading the allowance per journey is
+   * what makes that checkable - a payload-wide read would find both and could not tell them apart.
+   *
+   * Baggage is the control the bug's own analysis leaned on: it resolved correctly inside the very
+   * offer whose seat service was dropped, which is what showed the offer had been matched at all.
+   * A regression here would remove that ground.
+   *
+   * @param {import('playwright').Page} page
+   * @param {object} world
+   * @returns {Promise<{cardsChecked: number, cabinsRead: string[]}>}
+   */
+  async verifyBrandCardBaggageMatchesNdcAllowance(page, world) {
+    if (!page) {
+      throw new Error('[FlightResults.verifyBrandCardBaggageMatchesNdcAllowance] page is required');
+    }
+
+    const { cards, cabinsRead, legsRead } = await this.readBrandCardsAcrossCabinTabs(page);
+    const { legs } = await this.captureAmadeusNdcBrandOffers(world);
+    if (cards.length === 0) {
+      throw new Error('[FlightResults.verifyBrandCardBaggageMatchesNdcAllowance] No brand cards were read from the UI.');
+    }
+
+    const mismatches = [];
+    const skipped = [];
+    let cardsChecked = 0;
+
+    for (const card of cards) {
+      const brand = findFiledBrand(legs, card);
+      const where = `Leg ${card.legIndex} brand "${card.brandName}"`;
+      if (!brand) {
+        skipped.push(`${where}: no offer in the payload carries this brand on this leg`);
+        continue;
+      }
+
+      const pieces = onlyValue(brand.checkedPieces);
+      if (pieces === undefined) {
+        skipped.push(`${where}: the ${brand.offers} offers carrying this brand bind different checked allowances to this leg`);
+        continue;
+      }
+      if (pieces === null) {
+        skipped.push(`${where}: no piece-based checked allowance is bound to this leg (a weight-based one is quoted in kilos)`);
+        continue;
+      }
+
+      const baggageText = card.featureTexts.find((text) => /^(checked|baggage)\b/i.test(text)) || null;
+      cardsChecked++;
+
+      if (Number(pieces) === 0) {
+        if (!/not included/i.test(String(baggageText))) {
+          mismatches.push(
+            `${where}: the airline bound a checked allowance of 0 pieces to this leg, so the card must say the ` +
+            `checked bag is not included, but it reads "${baggageText}".`
+          );
+        }
+        continue;
+      }
+
+      const shown = (String(baggageText).match(/(\d+)\s*PC\b/i) || [])[1];
+      if (shown === undefined) {
+        mismatches.push(
+          `${where}: the airline bound ${pieces} checked piece(s) to this leg, so the card must show that ` +
+          `allowance, but it reads "${baggageText}".`
+        );
+      } else if (Number(shown) !== Number(pieces)) {
+        mismatches.push(
+          `${where}: the airline bound ${pieces} checked piece(s) to this leg but the card shows ${shown} ("${baggageText}").`
+        );
+      }
+    }
+
+    if (skipped.length > 0) {
+      logger.warn('[NdcBrandOffers] Brand cards not cross-checked for baggage', { skipped });
+    }
+
+    if (mismatches.length > 0) {
+      throw new Error(
+        '[FlightResults.verifyBrandCardBaggageMatchesNdcAllowance] Each brand card must show the checked allowance the ' +
+        `airline bound to its leg, but ${mismatches.length} did not:\n${mismatches.join('\n')}`
+      );
+    }
+
+    if (cardsChecked === 0) {
+      throw new Error(
+        '[FlightResults.verifyBrandCardBaggageMatchesNdcAllowance] No brand card could be cross-checked against a bound ' +
+        `checked allowance, so nothing was proven. Skipped: ${skipped.join(' | ')}`
+      );
+    }
+
+    logger.info('[NdcBrandOffers] Brand cards show the checked allowance bound to their leg', {
+      cardsChecked,
+      cabinsRead,
+      legsRead,
+    });
+
+    return { cardsChecked, cabinsRead, legsRead };
   },
 }
 

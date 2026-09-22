@@ -386,3 +386,35 @@ Then("the change and cancellation rules for each brand card leg should match tha
     cardsChecked: result.cardsChecked,
   });
 });
+
+// ===== ADO Bug 84752 - Amadeus NDC change, cancellation and seat parsing =====
+
+Then(
+  "the brand card change and cancellation badges should match the penalties the airline filed",
+  { timeout: 300000 },
+  async function () {
+    logger.info("[NewFlightFlow] Cross-checking brand card rules against the filed NDC penalties");
+    const result = await FlightResults.verifyBrandCardRulesMatchNdcPenalties(this.page, this);
+    logger.info("[NewFlightFlow] Brand card rules verified against the supplier payload", result);
+  }
+);
+
+Then(
+  "the brand card seat badge should match the seat service the airline granted",
+  { timeout: 300000 },
+  async function () {
+    logger.info("[NewFlightFlow] Cross-checking brand card seat badge against the granted NDC seat service");
+    const result = await FlightResults.verifyBrandCardSeatMatchesNdcServices(this.page, this);
+    logger.info("[NewFlightFlow] Brand card seat badge verified against the supplier payload", result);
+  }
+);
+
+Then(
+  "the brand card checked baggage badge should match the allowance the airline bound to that leg",
+  { timeout: 300000 },
+  async function () {
+    logger.info("[NewFlightFlow] Cross-checking brand card baggage against the bound NDC allowance");
+    const result = await FlightResults.verifyBrandCardBaggageMatchesNdcAllowance(this.page, this);
+    logger.info("[NewFlightFlow] Brand card baggage verified against the supplier payload", result);
+  }
+);
