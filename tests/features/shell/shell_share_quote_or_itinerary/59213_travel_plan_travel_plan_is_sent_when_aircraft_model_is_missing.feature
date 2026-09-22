@@ -17,6 +17,7 @@ Feature: 59213 - Travel Plan - Travel plan is sent when aircraft model is missin
     Given I am logged in as "ypsilon@testim.com" booking a new trip
     And I have added myself as the traveler
     When I search for a round trip flight from "DUB" to "CDG"
+    And flight results should be available
     And I filter results by carrier "Aer Lingus"
     And I add the first result to trip
     Then the booking status should be "Pending booking"
