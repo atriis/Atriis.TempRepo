@@ -9,6 +9,51 @@ const { resolveLocation } = require("@utils/route.helper");
 const { SEARCH_DEFAULTS } = require("@utils/search.constants");
 const hotelLocations = require("@data/hotels.json");
 
+/** Results URL a submitted hotel search lands on. */
+const HOTEL_RESULTS_URL = /\/products\/hotels\/results/;
+
+/** Any popup that GATES a submitted search (reference fields, trip purpose, conflicting items). */
+const GATING_DIALOG = '.el-dialog:visible';
+
+/**
+ * Clicks Search and confirms the click actually submitted, re-clicking if it did not.
+ *
+ * A Search click that lands while the Element Plus date popper is closing or the traveller chips
+ * re-render is silently SWALLOWED: the button reports itself enabled, nothing submits, and the run
+ * sits on a fully filled-in search form. `waitAndClickSearchButton` only proves the button was
+ * enabled, so the swallow surfaces several steps later as an unrelated-looking failure ("the
+ * reference fields popup never opened"). Same shape as EvolviSearch.clickSearchUntilSubmitted.
+ *
+ * A submitted search produces exactly one of two observable outcomes: a gating popup opens over the
+ * form, or the page reaches the hotel results URL. Waiting for either costs a correctly-submitted
+ * search nothing — it returns as soon as the outcome appears.
+ *
+ * @param {import('playwright').Page} page
+ * @param {import('@pages/SearchPage').SearchPage} searchPage
+ * @param {object} [options]
+ * @param {number} [options.attempts=3] - How many times to click before giving up.
+ * @param {number} [options.timeout=15000] - How long to wait for an outcome after each click.
+ * @returns {Promise<void>}
+ * @throws {Error} If no click produced a popup or the results URL.
+ */
+async function clickSearchUntilSubmitted(page, searchPage, { attempts = 3, timeout = 15000 } = {}) {
+  for (let attempt = 1; attempt <= attempts; attempt++) {
+    await searchPage.waitAndClickSearchButton();
+
+    const deadline = Date.now() + timeout;
+    while (Date.now() < deadline) {
+      if (HOTEL_RESULTS_URL.test(page.url())) return;
+      if (await page.locator(GATING_DIALOG).first().isVisible().catch(() => false)) return;
+      await page.waitForTimeout(250);
+    }
+  }
+
+  throw new Error(
+    `Hotel search was never submitted: clicked Search ${attempts} times and the page neither opened ` +
+    `a popup nor reached the results URL (still on ${page.url()}). The click is being swallowed.`
+  );
+}
+
 /**
  * HotelSearch DSL
  *
@@ -305,7 +350,7 @@ const HotelSearch = {
     // results URL — a post-search popup may need handling first). Delegating keeps the two in sync.
     const result = await this.fillHotelSearchWithoutSearching(page, whereInput, options);
     const searchPage = getPageObject(page, SearchPage);
-    await searchPage.waitAndClickSearchButton();
+    await clickSearchUntilSubmitted(page, searchPage);
     return result;
   },
 
