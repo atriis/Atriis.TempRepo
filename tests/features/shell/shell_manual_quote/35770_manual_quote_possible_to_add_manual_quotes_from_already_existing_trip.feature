@@ -15,8 +15,6 @@ Feature: 35770 Manual Quote - Add manual quote to an already existing trip
     Given I am logged in as "camilacoelho@manualquotetravelpolicy.com" booking a new trip
     And I have added myself as the traveler
     When I search for a hotel in "LHR" for 1 night
-    And I wait to see view rates text in results page
-    When I sort hotel results by "Price"
     And I select the first hotel result
     And I add a refundable room to my cart
     Then the booking status should be "Pending booking"
