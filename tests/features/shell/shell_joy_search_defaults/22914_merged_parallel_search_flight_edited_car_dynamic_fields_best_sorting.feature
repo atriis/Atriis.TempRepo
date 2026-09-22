@@ -20,17 +20,15 @@ Feature: 22914 Shell - Parallel search flight with edited car, booker reference 
       | Soort reis/Type of trip |
       | Type of traveller       |
       | Location travel policy  |
-      | Location                |
+      | Personnel number        |
     And the reference fields should have the following values:
       | field                   | value     |
       | Soort reis/Type of trip | Select    |
       | Type of traveller       | Select    |
       | Location travel policy  | Caribbean |
-      | Location                | Select    |
     And the following reference fields should not be editable:
-      | Type of traveller      |
-      | Location travel policy |
-      | Location               |
+      | Type of traveller |
+      | Personnel number  |
     When clicking proceed should show a mandatory field validation error
     And I select the first available option for the "Soort reis/Type of trip" reference field
     And I click proceed on the reference fields popup
