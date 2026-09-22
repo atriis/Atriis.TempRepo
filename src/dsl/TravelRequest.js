@@ -349,13 +349,16 @@ const TravelRequest = {
    * @param {import('@playwright/test').Page} page
    */
   async verifySentToAgent(page) {
-    // Wait for either the "Sent to agent" text OR the Requests tab (reference form bypass path)
+    // Wait for either the "Sent to agent" text OR the Requests tab (reference form bypass path).
+    // 60s, not 30s: clickSendRequestButton now returns as soon as the form's submit loader appears,
+    // so the whole save + book + loadTrip round trip is waited out here. A multi-product request
+    // (flight + car + hotel) routinely takes longer than 30s from the click.
     await page.waitForFunction(
       () =>
         document.body.innerText.includes('Sent to agent') ||
         Array.from(document.querySelectorAll('[role="tab"]')).some((t) => t.textContent.trim() === 'Requests'),
       null,
-      { timeout: 30000 }
+      { timeout: 60000 }
     );
   },
 

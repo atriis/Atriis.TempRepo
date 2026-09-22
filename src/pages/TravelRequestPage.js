@@ -28,6 +28,14 @@ const SELECTORS = {
   // clicks via CommonPage.getSaveButton() — consolidate to one shared source of truth.
   REFERENCE_FORM_SAVE_BUTTON: "button:has-text('Save')",
 
+  // In-flight submit overlay of the travel-request form (request-assistance.vue:
+  // `<div v-if="isLoading" class="loader-screen">` inside .request-assistance-main).
+  // `isLoading` is flipped true ONLY inside sendRequest(), so this overlay appearing means the
+  // Send-request click registered and the save + book + loadTrip calls are running. It covers the
+  // "Send request" button, so a retry click while it is up can only time out on an intercepted
+  // pointer event — and would double-submit the request if it ever landed.
+  REQUEST_ASSISTANCE_SUBMIT_LOADER: ".request-assistance-main > .loader-screen",
+
   // ===== Request-assistance review form (request-assistance.vue) =====
   // Root container of the travel-request review form.
   REQUEST_ASSISTANCE_MAIN: ".request-assistance-main",
@@ -188,12 +196,14 @@ class TravelRequestPage {
    * Waits for the "Send request" button to be visible AND enabled, clicks it,
    * then confirms the click actually registered.
    *
-   * A registered click produces one of two UI signals (both mean "proceed"):
+   * A registered click produces one of three UI signals (all mean "proceed"):
    *  - the "Send request" button detaches (flows without reference questions submit directly), OR
    *  - the Trip Reference Form modal opens (its "Save" button becomes visible) so the DSL can
-   *    submit the mandatory reference answers next (see TravelRequest.sendFlightTravelRequest).
+   *    submit the mandatory reference answers next (see TravelRequest.sendFlightTravelRequest), OR
+   *  - the form's own submit loader appears — the reference form had nothing to ask, so sendRequest()
+   *    is already running its save/book calls behind an overlay while the button stays in the DOM.
    *
-   * If NEITHER signal appears within ~8s the click did not register (no modal is open, so a
+   * If NONE of the three appears the click did not register (nothing is overlaying the button, so a
    * single retry click is safe). If it still fails after the retry the form did not submit —
    * most likely a validation error such as an uncommitted airport field — and a descriptive
    * error is thrown instead of a naked downstream timeout.
@@ -214,32 +224,39 @@ class TravelRequestPage {
     if (await this._sendRequestClickRegistered(10000)) return;
 
     // No success signal yet. Only retry if the click genuinely did NOT register: the reference-form
-    // Save modal must be closed AND the Send request button still present. Retrying while the modal
-    // is open (a slow-but-successful submit) would double-submit the travel request or click into an
-    // overlay — a real cost risk for flight requests.
+    // Save modal must be closed, the submit loader must be down AND the Send request button still
+    // present. Retrying while either overlay is up (a slow-but-successful submit) would double-submit
+    // the travel request or click into an overlay — a real cost risk for flight requests.
     const referenceModalOpen = await this.page
       .locator(SELECTORS.REFERENCE_FORM_SAVE_BUTTON)
       .first()
       .isVisible()
       .catch(() => false);
+    const submitLoaderUp = await this.page
+      .locator(SELECTORS.REQUEST_ASSISTANCE_SUBMIT_LOADER)
+      .first()
+      .isVisible()
+      .catch(() => false);
     const buttonStillPresent = await button.isVisible().catch(() => false);
-    if (referenceModalOpen || !buttonStillPresent) return; // submit already in progress — do not re-click
+    if (referenceModalOpen || submitLoaderUp || !buttonStillPresent) return; // submit in progress — do not re-click
 
     await button.click({ timeout: 10000 });
     if (await this._sendRequestClickRegistered(10000)) return;
 
     throw new Error(
       "[TravelRequestPage.clickSendRequestButton] The travel-request form did not submit. " +
-        "WHAT: the 'Send request' button neither detached nor opened the Trip Reference Form " +
-        "(no 'Save' modal appeared). WHERE: travel-request review page. WHY: the form most likely " +
+        "WHAT: the 'Send request' button neither detached, nor opened the Trip Reference Form " +
+        "(no 'Save' modal appeared), nor raised the form's submit loader. WHERE: travel-request " +
+        "review page. WHY: the form most likely " +
         "has a validation error (e.g. an uncommitted airport field), preventing submission."
     );
   }
 
   /**
-   * Resolves true as soon as the Send-request click has registered — i.e. either the
-   * "Send request" button detaches OR the Trip Reference Form "Save" button appears — within
-   * `timeout` ms; resolves false if neither happens in time. Internal helper; adds no public API.
+   * Resolves true as soon as the Send-request click has registered — i.e. the "Send request"
+   * button detaches, the Trip Reference Form "Save" button appears, or the form's own submit
+   * loader covers the page — within `timeout` ms; resolves false if none happens in time.
+   * Internal helper; adds no public API.
    *
    * @param {number} timeout - Max time (ms) to wait for a confirmation signal.
    * @returns {Promise<boolean>}
@@ -255,9 +272,15 @@ class TravelRequestPage {
       .waitFor({ state: 'visible', timeout })
       .then(() => true)
       .catch(() => false);
+    const submitLoader = this.page
+      .locator(SELECTORS.REQUEST_ASSISTANCE_SUBMIT_LOADER)
+      .first()
+      .waitFor({ state: 'visible', timeout })
+      .then(() => true)
+      .catch(() => false);
 
-    // Whichever signal appears first wins; the loser's promise settles later and is caught.
-    return Promise.race([detached, referenceModal]);
+    // Whichever signal appears first wins; the losers' promises settle later and are caught.
+    return Promise.race([detached, referenceModal, submitLoader]);
   }
 
   /**
