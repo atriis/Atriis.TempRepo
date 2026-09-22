@@ -20,16 +20,22 @@ const WORKFLOW_DIR = path.join(REPO_ROOT, '.github', 'workflows');
 // Figures CI does not carry — edit these per report.
 // ---------------------------------------------------------------------------
 const DEFAULTS = {
-  passingRate: 77,
-  sprint: 18,
+  passingRate: 75,
+  sprint: 19,
   // Wall-clock for the WHOLE chain, not one leg: the four suites run in
   // sequence, so measure from the suite-flights start to the
   // suite-transportation end.
-  avgDuration: '5h',
+  avgDuration: '2h',
   highlights: [
-    { value: '17', label: 'Tests unblocked', hint: 'Previously blocked tests now running in the nightly chain' },
-    { value: '3',  label: 'New tests created', hint: 'Brand-new coverage written from scratch' },
-    { value: '17', label: 'Manual test cases automated', hint: 'Existed in the test plan, now automated' },
+    { value: '32',  label: 'New tests' },
+  ],
+  // Breakdown under the headline. Kept separate from the domain bars above,
+  // which count the whole suite, not what the sprint added.
+  newTestsByDomain: [
+    { name: 'Flights', value: 24 },
+    { name: 'Hotels', value: 2 },
+    { name: 'Transportation', value: 2 },
+    { name: 'Shell', value: 4 },
   ],
 };
 
@@ -227,10 +233,12 @@ function build(opts) {
   });
   // The bar track has to leave room for BOTH trailing columns — the count and
   // the share-of-total note — inside the left half, or the note runs into the
-  // right column. Last element ends at TRACK_X + TRACK_W + 1.95 = 6.7.
+  // right column. Last element ends at TRACK_X + TRACK_W + 1.35 = 6.6.
   const TRACK_X = LX + 1.65;
-  const TRACK_W = 2.7;
-  const maxTests = Math.max(...domains.map((d) => d.tests));
+  const TRACK_W = 3.2;
+  // Bars are share of the total, NOT share of the largest domain: the trailing
+  // note reads as a share of the total, so scaling to the max made a 41% bar
+  // fill the whole track. Full track = 100% of the daily run.
   domains.forEach((d, i) => {
     const ry = 3.15 + i * 0.80;
     slide.addText(d.name, {
@@ -242,7 +250,7 @@ function build(opts) {
       fill: { color: COLORS.graySoft }, line: { color: COLORS.graySoft, width: 0 }, rectRadius: 0.05,
     });
     slide.addShape(pptx.ShapeType.roundRect, {
-      x: TRACK_X, y: ry + 0.05, w: Math.max(0.06, (TRACK_W * d.tests) / maxTests), h: 0.26,
+      x: TRACK_X, y: ry + 0.05, w: Math.max(0.06, (TRACK_W * d.tests) / totalTests), h: 0.26,
       fill: { color: COLORS.accent }, line: { color: COLORS.accent, width: 0 }, rectRadius: 0.05,
     });
     slide.addText(String(d.tests), {
@@ -250,7 +258,7 @@ function build(opts) {
       fontSize: 12, bold: true, color: COLORS.ink, align: 'right', valign: 'middle', fontFace: FONT,
     });
     slide.addText(`${Math.round((d.tests / totalTests) * 100)}%`, {
-      x: TRACK_X + TRACK_W + 0.75, y: ry, w: 1.2, h: 0.36,
+      x: TRACK_X + TRACK_W + 0.75, y: ry, w: 0.6, h: 0.36,
       fontSize: 9, color: COLORS.sub, valign: 'middle', fontFace: FONT,
     });
   });
@@ -321,32 +329,44 @@ function build(opts) {
   );
 
   // === RIGHT BOTTOM: highlights ===
+  // CARD_Y leaves a clear band under the outcome legend and its note, so the
+  // card reads as its own block rather than a footnote to the doughnut.
+  const CARD_Y = 5.35;
+  const ROW_H = 0.46;
   slide.addShape(pptx.ShapeType.roundRect, {
-    x: RX, y: 5.05, w: 5.6, h: 1.75,
+    x: RX, y: CARD_Y, w: 5.6, h: 1.45,
     fill: { color: COLORS.graySoft }, line: { color: COLORS.border, width: 1 }, rectRadius: 0.1,
   });
   slide.addText(`Coverage added in Sprint ${opts.sprint}`, {
-    x: RX + 0.2, y: 5.12, w: 5.2, h: 0.3,
-    fontSize: 12, bold: true, color: COLORS.accent, fontFace: FONT,
+    x: RX + 0.2, y: CARD_Y + 0.08, w: 5.2, h: 0.34,
+    fontSize: 14, bold: true, color: COLORS.accent, fontFace: FONT,
   });
 
   DEFAULTS.highlights.forEach((h, i) => {
-    const hy = 5.46 + i * 0.42;
+    const hy = CARD_Y + 0.46 + i * ROW_H;
     slide.addText(h.value, {
-      x: RX + 0.2, y: hy, w: 0.5, h: 0.32,
-      fontSize: 17, bold: true, color: COLORS.green, align: 'right', valign: 'middle', fontFace: FONT,
+      x: RX + 0.2, y: hy, w: 0.5, h: 0.34,
+      fontSize: 20, bold: true, color: COLORS.green, align: 'right', valign: 'middle', fontFace: FONT,
     });
-    slide.addText(
-      [
-        { text: `${h.label}  `, options: { bold: true, color: COLORS.ink } },
-        { text: `— ${h.hint}`, options: { color: COLORS.sub } },
-      ],
-      {
-        x: RX + 0.8, y: hy, w: 4.7, h: 0.32,
-        fontSize: 9.5, valign: 'middle', fontFace: FONT,
-      }
-    );
+    slide.addText(h.label, {
+      x: RX + 0.85, y: hy, w: 4.6, h: 0.34,
+      fontSize: 11.5, bold: true, color: COLORS.ink, valign: 'middle', fontFace: FONT,
+    });
   });
+
+  // One line rather than a stacked row per domain: the card sits between the
+  // outcome legend and the footer, with no vertical room for four more rows.
+  slide.addText(
+    DEFAULTS.newTestsByDomain.flatMap((d, i) => [
+      ...(i ? [{ text: '   ·   ', options: { color: COLORS.border } }] : []),
+      { text: `${d.value} `, options: { bold: true, color: COLORS.green } },
+      { text: d.name, options: { color: COLORS.sub } },
+    ]),
+    {
+      x: RX + 0.85, y: CARD_Y + 0.46 + DEFAULTS.highlights.length * ROW_H, w: 4.6, h: 0.34,
+      fontSize: 11, valign: 'middle', fontFace: FONT,
+    }
+  );
 
   slide.addText(
     'Goal: build confidence — validate stability, analyse results, expand coverage.',
