@@ -8,7 +8,7 @@
 @transportation @rails @amtrak @regression
 Feature: 60544 Amtrak - Cart page share and validations
   As a corporate traveler
-  I want to validate the Amtrak cart page — share, extras, CO2, fare rules
+  I want to validate the Amtrak cart page — share, extras, fare rules
   So that I can confirm the cart contains correct content and sharing works
 
   Scenario: Amtrak cart validations including share, extras and fare rules
@@ -36,6 +36,6 @@ Feature: 60544 Amtrak - Cart page share and validations
     And the phone number field should be visible in the Amtrak cart extras
     Then the Amtrak summary title should contain "Amtrak Rail to"
     Then the fare rules should be accessible in the Amtrak cart and contain "Cancellations"
-    Then the CO2 emissions should be displayed in the trip overview
+    # Then the CO2 emissions should be displayed in the trip overview - According to Pedro, there is no CO2 for Amtrak
    
 
