@@ -22,7 +22,9 @@ const SELECTORS = {
   TRAVEL_POLICY_ITEM_NAME: "[ng-click='onTravelPolicyItemClicked(travelPolicy)'] .ng-binding",
   TRAVEL_POLICY_RULE_FIRST_ROW: "[data-ng-repeat*='travelPolicyRule in travelPolicyRules'] > :nth-child(1)",
 
-  // User first-name field shown after opening a user record
+  // User first-name field shown after opening a user record. Clicking a user row only dispatches
+  // AngularJS's onUserItemClicked — fetching and rendering the record takes about another second,
+  // so this field is what proves the click actually opened it.
   USER_FIRST_NAME_FIELD: "[data-ng-model='user.FirstName']",
 
   // Form of Payment tab inside admin user view (ng-class contains formOfPayment)
@@ -114,6 +116,15 @@ const SELECTORS = {
   ADMIN_USER_ROW_FIFTH_CELL: ":nth-child(5)",
   // First field label on the user detail form — reads "First Name:" when the record is open
   ADMIN_USER_DETAIL_FORM_FIRST_LABEL: "[user='selectedUser'] > :nth-child(1) > :nth-child(1) label",
+
+  // --- Dynamic Profile Fields group on the user detail form (test 36297) ---
+  // The group enters the DOM with the rest of the record, but carries
+  // data-ng-show="referenceViewMode!=ViewMode.Loading", so it keeps the ng-hide class — and every
+  // dynamic question inside it reads as hidden — until the reference fields finish loading, about
+  // two seconds after the record itself renders.
+  DYNAMIC_PROFILE_FIELDS_GROUP: ".admin-field-group[data-ng-show='referenceViewMode!=ViewMode.Loading']",
+  DYNAMIC_PROFILE_FIELDS_GROUP_READY:
+    ".admin-field-group[data-ng-show='referenceViewMode!=ViewMode.Loading']:not(.ng-hide)",
   // Per Diem section header label — reads "Per Diem"
   PER_DIEM_SECTION_LABEL: "[on='settings.isDisplayCorporatePerdiemIdInherited'] label",
   // Per Diem section container — scopes the select2 widget below (avoids fragile #s2id_autogen* ids)
@@ -562,11 +573,30 @@ class AdministrationPage {
       // The search guarantees the list is narrowed to matching users — no additional text filter needed.
       const nameCell = this.page.locator(SELECTORS.USER_ROW_NAME_CELL).first();
       await nameCell.waitFor({ state: 'visible', timeout: 30000 });
-      await nameCell.click({ timeout: 10000 });
+
+      // The click only fires AngularJS's onUserItemClicked — the record is fetched and rendered
+      // afterwards, so returning here would hand the caller the users list, not the open record.
+      // The ng-repeat also re-renders as the search filter settles, which can swallow the click
+      // outright, so an unopened record is retried once before giving up.
+      const firstName = this.page.locator(SELECTORS.USER_FIRST_NAME_FIELD).first();
+      let lastErr = null;
+      for (let attempts = 0; attempts < 2; attempts++) {
+        await nameCell.click({ timeout: 10000 });
+        try {
+          await firstName.waitFor({ state: 'visible', timeout: 20000 });
+          return;
+        } catch (err) {
+          lastErr = err;
+        }
+      }
+      throw new Error(
+        `the row was clicked twice but the user detail form never opened ` +
+        `(record marker: ${SELECTORS.USER_FIRST_NAME_FIELD}). Original: ${lastErr.message}`
+      );
     } catch (err) {
       throw new Error(
-        `[AdministrationPage.clickFirstUserRowWithName] Could not click first user name cell after searching for "${userName}" ` +
-        `(selector: ${SELECTORS.USER_ROW_NAME_CELL}). ` +
+        `[AdministrationPage.clickFirstUserRowWithName] Could not open the user record for "${userName}" ` +
+        `from the filtered users list (row selector: ${SELECTORS.USER_ROW_NAME_CELL}). ` +
         `The search may have returned no results or the user list did not render. ` +
         `Original: ${err.message}`
       );
@@ -969,17 +999,50 @@ class AdministrationPage {
   // --- First mandatory dynamic question ---
 
   /**
-   * Fills the first mandatory, fillable text field on the user-detail form with the given value.
-   * Mandatory dynamic questions are located dynamically (not by a fixed id): the form is scrolled
-   * so lazy sections render, then the first required text input/textarea is chosen.
+   * Waits for the Dynamic Profile Fields group to report ready (its own
+   * referenceViewMode!=ViewMode.Loading flag). Until it does the group is ng-hide'd, so every
+   * dynamic question inside it is in the DOM but hidden — which is how a slow reference-field load
+   * surfaced as "Visible dynamic-question fields seen: []". Loading them is a server round-trip, so
+   * allow a data-load timeout rather than a render tick.
+   */
+  async waitForDynamicProfileFieldsReady({ timeout = 60000 } = {}) {
+    try {
+      await this.page
+        .locator(SELECTORS.DYNAMIC_PROFILE_FIELDS_GROUP_READY)
+        .first()
+        .waitFor({ state: 'visible', timeout });
+    } catch (err) {
+      const present = await this.page
+        .locator(SELECTORS.DYNAMIC_PROFILE_FIELDS_GROUP)
+        .first()
+        .isVisible()
+        .catch(() => false);
+      throw new Error(
+        `[AdministrationPage.waitForDynamicProfileFieldsReady] The Dynamic Profile Fields group never ` +
+        `became ready (readiness selector: ${SELECTORS.DYNAMIC_PROFILE_FIELDS_GROUP_READY}; ` +
+        `the group is ${present ? 'present but still hidden' : 'not on the form at all'}). ` +
+        `The user record must be open, and this corporation must define dynamic profile fields. ` +
+        `Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Fills the first mandatory, fillable Dynamic Profile Field on the user-detail form with the given
+   * value. The field is located dynamically (not by a fixed id): the group is given time to report
+   * ready, the form is scrolled so lazy sections render, then the first required text
+   * input/textarea inside the Dynamic Profile Fields group is chosen. Scoping the scan to that group
+   * keeps it off the record's own required fields — First Name, Last Name, Email and Username are
+   * required too, and filling one of those with a random value would rename the test's user.
    *
    * @param {string} value - The value to type into the field
    */
   async fillFirstMandatoryUserField(value) {
     try {
+      await this.waitForDynamicProfileFieldsReady();
       await this.scrollAdminFormToBottom();
 
-      const found = await this.page.evaluate(() => {
+      const found = await this.page.evaluate((groupSel) => {
         const isVisible = (el) => !!(el.offsetWidth || el.offsetHeight || el.getClientRects().length);
         const isMandatory = (el) => {
           if (el.required || el.hasAttribute('required')) return true;
@@ -995,7 +1058,10 @@ class AdministrationPage {
           return false;
         };
 
-        const fields = Array.from(document.querySelectorAll("input[type='text'], input:not([type]), textarea"));
+        const group = document.querySelector(groupSel);
+        if (!group) return { firstMandatory: null, questionFields: [], groupFound: false };
+
+        const fields = Array.from(group.querySelectorAll("input[type='text'], input:not([type]), textarea"));
         const diag = [];
         let firstMandatory = null;
         for (const el of fields) {
@@ -1005,12 +1071,13 @@ class AdministrationPage {
           if (el.id && el.id.startsWith('question_')) diag.push(entry);
           if (mandatory && !firstMandatory && el.id) firstMandatory = entry;
         }
-        return { firstMandatory, questionFields: diag };
-      });
+        return { firstMandatory, questionFields: diag, groupFound: true };
+      }, SELECTORS.DYNAMIC_PROFILE_FIELDS_GROUP_READY);
 
       if (!found.firstMandatory || !found.firstMandatory.id) {
         throw new Error(
-          `No mandatory fillable field was found on the user-detail form. ` +
+          `No mandatory fillable field was found in the Dynamic Profile Fields group ` +
+          `(group ${found.groupFound ? 'was ready' : 'went back to hidden'}). ` +
           `Visible dynamic-question fields seen: ${JSON.stringify(found.questionFields)}.`
         );
       }
