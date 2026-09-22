@@ -15,7 +15,7 @@ Feature: 30585 - Checkout possible when an approved product with justification e
   Scenario: Book an OOP hotel with justification, add a flight, and cancel the trip
     Given I am logged in as "brunasantos@approval.com" booking a new trip
     And I have added myself as the traveler
-    When I search for a hotel in "London" for 1 night
+    When I initiate a hotel search in "London" for 1 night
     And I click proceed button if visible
     And I select the first hotel result
     And I add a refundable room to my cart
