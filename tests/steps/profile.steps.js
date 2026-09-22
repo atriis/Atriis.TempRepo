@@ -187,6 +187,19 @@ When("I open the form of payment tab in my profile", async function () {
   await Profile.openFormOfPaymentTab(this.page);
 });
 
+// AB#83252 expired-card indicator. Deliberately a separate step from the one below so the dot can be
+// asserted while a DIFFERENT tab is active — "visible regardless of which tab is active" is the
+// criterion, so this must run BEFORE "I open the form of payment tab in my profile".
+Then("a red dot indicator should be displayed on the {string} profile tab", async function (tabName) {
+  logger.info("Verifying the expired-card red dot on a profile tab", { tabName });
+  await Profile.verifyExpiredCardDotOnTab(this.page, tabName);
+});
+
+Then("the credit card {string} should be marked as {string} in the form of payment list", async function (cardName, expectedLabel) {
+  logger.info("Verifying a stored card carries the expired label", { cardName, expectedLabel });
+  await Profile.verifyCardMarkedExpired(this.page, cardName, expectedLabel);
+});
+
 When("I remove all existing credit cards from my profile", async function () {
   logger.info("Removing all existing credit cards to start from a clean state");
   await Profile.deleteAllCreditCards(this.page);

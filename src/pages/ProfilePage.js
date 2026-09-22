@@ -156,6 +156,31 @@ const SELECTORS = {
   FOP_CARD_ACTIONS_DROPDOWN: '.profile-form-of-payment .card-preview .actions-dropdown .expand-icon',
   FOP_DELETE_CARD_OPTION: '.share-popper .el-dropdown-menu__item:last-child p',
 
+  // AB#83252 expired-card indicators.
+  //
+  // Both match the app's data-testid FIRST and fall back to the styling class, the same shape as
+  // CartPage's SEAT_PRICE_LABEL. The fallback is not belt-and-braces — it is the half that actually
+  // fires against every deployed environment: Atriis.OBT's vite.config.ts installs a
+  // `removeDataTestId` Vue AST transform for every mode except development/loc/local-stg (ADR-002,
+  // "keep the production DOM clean"), so atriis-dev.app and atriis-stg.app serve markup with no
+  // data-testid at all. The testid half only pays off against a local `vite dev` server.
+  //
+  // The dot lives INSIDE the formOfPayment tab label (user-profile.vue), not inside the pane, which
+  // is why it is readable while another tab is active — the condition AB#83252 actually requires.
+  // Scoped under the tab's own id so a `.tab-alert-dot` on some other tab cannot satisfy it.
+  FOP_TAB_EXPIRED_CARD_DOT:
+    "[data-testid='user-profile.tabs.form-of-payment-expired-card-dot'], [id='tab-formOfPayment'] .tab-alert-dot",
+  // Scoped to a row, never used page-wide: profile-form-of-payment.vue renders one of these per
+  // expired card, so an unscoped match would report a sibling card's label as the named card's.
+  // `.app-label.expired` is the class pair the same element carries (`trip-planning` is the
+  // sibling "Default" label, so `.expired` is what separates them).
+  FOP_CARD_EXPIRED_TAG:
+    "[data-testid='user-profile.form-of-payment.expired-card-tag'], .app-label.expired",
+  // Row-relative twin of FOP_CARD_NAME_DISPLAY. That one is page-scoped ('.profile-form-of-payment
+  // .card-name') and resolves across every row at once, so it cannot be used to read ONE row's name
+  // — hence a second constant rather than a reuse. Only ever applied under a FOP_CARD_PREVIEW row.
+  FOP_CARD_NAME_IN_ROW: '.card-name',
+
   // Passports & Visas tab
   PASSPORTS_VISAS_TAB: "[id='tab-passportsAndVisas'] p",
   PASSPORT_VISA_FORM: '.passport-visa-form',
@@ -1850,6 +1875,70 @@ class ProfilePage {
         `The card may not have saved or the preview is not visible. Original: ${err.message}`
       );
     }
+  }
+
+  /**
+   * Waits for the AB#83252 expired-card red dot on the "Form of payment" tab label.
+   *
+   * Deliberately callable while ANOTHER tab is active — the dot is rendered in the tab's `#label`
+   * slot, outside the tab pane, so it is in the DOM from the moment the profile renders. Callers
+   * assert it BEFORE opening the Form of Payment tab; that ordering is the criterion under test.
+   *
+   * @param {number} timeout
+   * @returns {Promise<void>} resolves when the dot is visible, throws when it never appears
+   */
+  async waitForFormOfPaymentExpiredDot(timeout = 15000) {
+    const dot = this.page.locator(SELECTORS.FOP_TAB_EXPIRED_CARD_DOT);
+    try {
+      await dot.waitFor({ state: 'visible', timeout });
+    } catch (err) {
+      throw new Error(
+        `[ProfilePage.waitForFormOfPaymentExpiredDot] No expired-card dot on the Form of Payment tab ` +
+        `(selector: ${SELECTORS.FOP_TAB_EXPIRED_CARD_DOT}). user-profile.vue renders it behind ` +
+        `showExpiredCardIndicator -> hasExpiredCreditCard(), so either the profile holds no card with a ` +
+        `past expirationDate, or the indicator regressed. Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Reads the stored-card rows and reports, per row, its display name and whether it carries the
+   * AB#83252 "Expired" label — returning the whole list rather than a single boolean so the caller
+   * can say which cards it DID find when the named one is absent.
+   *
+   * @returns {Promise<Array<{ name: string, isExpired: boolean, expiredLabel: string|null }>>}
+   */
+  async getFormOfPaymentCardRows() {
+    const rows = this.page.locator(SELECTORS.FOP_CARD_PREVIEW);
+
+    try {
+      await rows.first().waitFor({ state: 'visible', timeout: 15000 });
+    } catch (err) {
+      throw new Error(
+        `[ProfilePage.getFormOfPaymentCardRows] No stored credit card rows rendered ` +
+        `(selector: ${SELECTORS.FOP_CARD_PREVIEW}). Ensure the Form of Payment tab is open and the ` +
+        `profile has at least one card on file. Original: ${err.message}`
+      );
+    }
+
+    const count = await rows.count();
+    const result = [];
+
+    for (let i = 0; i < count; i += 1) {
+      const row = rows.nth(i);
+      // `.card-name` is rendered twice per row — once in the desktop block, once in the mobile one,
+      // only one of which is in the DOM (v-if/v-else on isMobile). `.first()` is safe either way.
+      const name = ((await row.locator(SELECTORS.FOP_CARD_NAME_IN_ROW).first().textContent()) || '').trim();
+      const tag = row.locator(SELECTORS.FOP_CARD_EXPIRED_TAG).first();
+      const isExpired = (await tag.count()) > 0;
+      result.push({
+        name,
+        isExpired,
+        expiredLabel: isExpired ? ((await tag.textContent()) || '').trim() : null,
+      });
+    }
+
+    return result;
   }
 
   async clickDeleteOnLastCard() {

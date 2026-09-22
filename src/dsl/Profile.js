@@ -2862,6 +2862,104 @@ const Profile = {
    * Verifies the card display name (alias) shown in the profile FOP card preview.
    * Checks the .card-name element, which differs from the cardholder name (.card-holder-name).
    */
+  /**
+   * Verifies the AB#83252 red-dot indicator is shown on the "Form of payment" profile tab.
+   *
+   * Call this BEFORE opening that tab. The story's criterion is that the dot is "visible regardless
+   * of which tab is active" — asserting it only from inside the Form of Payment pane would pass even
+   * if the indicator rendered exclusively on the active tab, which is the defect it guards against.
+   *
+   * @param {import('playwright').Page} page - the profile page (new tab returned by navigateToProfile)
+   * @param {string} tabName - tab the dot is expected on, for the failure message. Only
+   *   "Form of payment" is implemented; any other name throws rather than passing vacuously.
+   */
+  async verifyExpiredCardDotOnTab(page, tabName = 'Form of payment') {
+    if (!page) {
+      throw new Error('[Profile.verifyExpiredCardDotOnTab] "page" is required.');
+    }
+    if (String(tabName).trim().toLowerCase() !== 'form of payment') {
+      throw new Error(
+        `[Profile.verifyExpiredCardDotOnTab] Only the "Form of payment" tab carries an expired-card dot ` +
+        `(AB#83252 scopes the indicator to the tab holding the card), got "${tabName}".`
+      );
+    }
+
+    logger.debug(`[Profile.verifyExpiredCardDotOnTab] Verifying the expired-card dot on the "${tabName}" tab`);
+
+    await getPageObject(page, ProfilePage).waitForFormOfPaymentExpiredDot();
+
+    logger.info(`[Profile.verifyExpiredCardDotOnTab] Expired-card dot is displayed on the "${tabName}" tab`);
+    return { tabName, dotDisplayed: true };
+  },
+
+  /**
+   * Verifies the stored credit card with the given display name carries the AB#83252 "Expired"
+   * label, and that no OTHER card on the profile is mislabelled as expired alongside it.
+   *
+   * The second half matters: the story requires the indicator to "reflect the expired card
+   * specifically", so a valid sibling card wearing the label is a real defect that a
+   * name-scoped-only assertion would walk straight past.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} cardName - the card's display name, e.g. "test-expired-fop"
+   * @param {string} expectedLabel - the label text expected on the row, e.g. "Expired"
+   */
+  async verifyCardMarkedExpired(page, cardName, expectedLabel = 'Expired') {
+    if (!page) {
+      throw new Error('[Profile.verifyCardMarkedExpired] "page" is required.');
+    }
+    if (!cardName || typeof cardName !== 'string') {
+      throw new Error(
+        `[Profile.verifyCardMarkedExpired] "cardName" must be a non-empty string, got: ${typeof cardName} ` +
+        `(${JSON.stringify(cardName)})`
+      );
+    }
+
+    logger.debug(`[Profile.verifyCardMarkedExpired] Verifying card "${cardName}" is labelled "${expectedLabel}"`);
+
+    const rows = await getPageObject(page, ProfilePage).getFormOfPaymentCardRows();
+    const target = rows.find((row) => row.name.toLowerCase() === cardName.toLowerCase());
+
+    if (!target) {
+      throw new Error(
+        `[Profile.verifyCardMarkedExpired] No stored card named "${cardName}" on this profile. ` +
+        `Cards found: ${rows.length ? rows.map((r) => `"${r.name}"`).join(', ') : '(none)'}. ` +
+        `This is a test-data precondition, not a product defect — the scenario needs that card on file.`
+      );
+    }
+
+    if (!target.isExpired) {
+      throw new Error(
+        `[Profile.verifyCardMarkedExpired] Card "${cardName}" carries no "${expectedLabel}" label. ` +
+        `profile-form-of-payment.vue renders it behind isCardExpired(form), so either the card's ` +
+        `expiration date is not in the past, or the per-card indicator regressed.`
+      );
+    }
+
+    if (target.expiredLabel.toLowerCase() !== expectedLabel.toLowerCase()) {
+      throw new Error(
+        `[Profile.verifyCardMarkedExpired] Card "${cardName}" is flagged, but its label reads ` +
+        `"${target.expiredLabel}" instead of "${expectedLabel}". The label is i18n copy ` +
+        `(selectCreditCard.cardExpired) and the language is persisted on the profile — check the ` +
+        `account is left in English before treating this as a product defect.`
+      );
+    }
+
+    // AB#83252: "a non-expired second card on the same profile must not itself trigger the indicator"
+    const wronglyFlagged = rows.filter((row) => row.isExpired && row.name.toLowerCase() !== cardName.toLowerCase());
+    if (wronglyFlagged.length) {
+      throw new Error(
+        `[Profile.verifyCardMarkedExpired] "${cardName}" is correctly labelled "${expectedLabel}", but so ` +
+        `${wronglyFlagged.length === 1 ? 'is' : 'are'} ${wronglyFlagged.map((r) => `"${r.name}"`).join(', ')}. ` +
+        `AB#83252 requires the indicator to reflect the expired card specifically. If those cards are also ` +
+        `genuinely expired this is a test-data problem, not a defect — the scenario needs exactly one.`
+      );
+    }
+
+    logger.info(`[Profile.verifyCardMarkedExpired] Card "${cardName}" is labelled "${target.expiredLabel}"`);
+    return { cardName: target.name, expiredLabel: target.expiredLabel, totalCards: rows.length };
+  },
+
   async verifyCardName(page, cardName) {
     if (!page) {
       throw new Error('[Profile.verifyCardName] "page" is required.');
