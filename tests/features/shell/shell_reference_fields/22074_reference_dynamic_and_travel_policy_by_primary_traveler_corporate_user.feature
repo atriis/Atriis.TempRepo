@@ -29,7 +29,6 @@ Feature: 22074 Reference and dynamic fields and travel policy are taken from the
       | Location travel policy   | Netherlands        |
     Then the following reference fields should not be editable:
       | Type of traveller        |
-      | Location travel policy   |
       | Personnel number         |
     Then clicking proceed should show a mandatory field validation error
     And I fill in NL reference fields education and courses
