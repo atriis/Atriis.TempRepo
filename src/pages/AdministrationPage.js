@@ -174,8 +174,16 @@ const SELECTORS = {
   DELETE_ROLE_DIALOG_TITLE: "#ui-id-2",
 
   // --- Per Diem Settings admin section (test 40136) ---
-  // Detail-panel header of the opened per diem — reads "General information"
-  PERDIEM_GENERAL_INFO_HEADER: ".selected-details-container > :nth-child(1) .admin-field-group-header",
+  // The per diem detail panel is one AngularJS view that swaps between a progress indicator and the
+  // edit form: the form carries data-ng-show="viewMode==ViewMode.Ready" and stays ng-hide'd (so every
+  // control inside it, including "Add another", is present but hidden) until the per diem loads. The
+  // view also flips BACK to Loading while it re-fetches, so readiness has to be re-checked before each
+  // interaction, not just once when the panel first opens.
+  PERDIEM_FORM_READY: "form[name='perdiemEditForm'][data-ng-show='viewMode==ViewMode.Ready']:not(.ng-hide)",
+  PERDIEM_FORM_LOADING: ".travel-policy-edit-container [data-ng-show='viewMode==ViewMode.Loading']:not(.ng-hide)",
+  // Detail-panel header of the opened per diem — reads "General information". Scoped to the per diem
+  // form so it cannot be satisfied by another admin panel's first field group.
+  PERDIEM_GENERAL_INFO_HEADER: "form[name='perdiemEditForm'] .selected-details-container > :nth-child(1) .admin-field-group-header",
   // "Add destination" link
   PERDIEM_ADD_DESTINATION: "[ng-click='onNewDestinationClicked()'] a",
   // Daily sum input on a destination row
@@ -1767,12 +1775,34 @@ class AdministrationPage {
   // --- Per Diem Settings admin section (test 40136) ---
 
   /**
+   * Waits for the per diem detail panel to report ready (its own viewMode==ViewMode.Ready flag).
+   * Until it does, the edit form is ng-hide'd and every control inside it resolves as hidden, which
+   * is how a slow per diem load surfaced in CI as 'locator resolved to hidden <a>Add another</a>'.
+   * Loading the per diem is a server round-trip, so allow a data-load timeout rather than a render tick.
+   */
+  async waitForPerDiemFormReady({ timeout = 60000 } = {}) {
+    try {
+      await this.page.locator(SELECTORS.PERDIEM_FORM_READY).first().waitFor({ state: 'visible', timeout });
+    } catch (err) {
+      const stillLoading = await this.page.locator(SELECTORS.PERDIEM_FORM_LOADING).first().isVisible().catch(() => false);
+      throw new Error(
+        `[AdministrationPage.waitForPerDiemFormReady] The per diem detail panel never became ready ` +
+        `(readiness selector: ${SELECTORS.PERDIEM_FORM_READY}; ` +
+        `progress indicator ${stillLoading ? 'still showing' : 'not showing'}). ` +
+        `The per diem may not have opened, or loading it took over ${timeout}ms. Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
    * Reads the general-information header of the opened per diem detail panel
    * (expected to read "General information").
    *
    * @returns {Promise<string>}
    */
   async getPerDiemGeneralInfoHeader() {
+    await this.waitForPerDiemFormReady();
+
     try {
       const header = this.page.locator(SELECTORS.PERDIEM_GENERAL_INFO_HEADER).first();
       await header.waitFor({ state: 'visible', timeout: 15000 });
@@ -1798,6 +1828,10 @@ class AdministrationPage {
   }
 
   async clickAddPerDiemDestination() {
+    // The panel can flip back to Loading after the general-information header was read, so re-gate
+    // here instead of trusting the earlier assertion.
+    await this.waitForPerDiemFormReady();
+
     try {
       const link = this.page.locator(SELECTORS.PERDIEM_ADD_DESTINATION).first();
       await link.waitFor({ state: 'visible', timeout: 15000 });
@@ -1892,6 +1926,9 @@ class AdministrationPage {
   }
 
   async clickSavePerDiem() {
+    // Saving follows a panel reload on the second pass, which hides the whole form while it loads.
+    await this.waitForPerDiemFormReady();
+
     try {
       const saveBtn = this.page.locator(SELECTORS.PERDIEM_SAVE_BTN).first();
       await saveBtn.waitFor({ state: 'visible', timeout: 15000 });
@@ -1906,6 +1943,9 @@ class AdministrationPage {
   }
 
   async clickRemovePerDiemDestination() {
+    // The save that precedes this re-fetches the per diem, hiding the form until it comes back.
+    await this.waitForPerDiemFormReady();
+
     try {
       const btn = this.page.locator(SELECTORS.PERDIEM_REMOVE_DESTINATION).first();
       await btn.waitFor({ state: 'visible', timeout: 15000 });
@@ -1928,6 +1968,9 @@ class AdministrationPage {
    * @returns {Promise<boolean>}
    */
   async isDestinationRowPresent({ settleTimeout = 5000 } = {}) {
+    // Only judge the row count once the panel has finished reloading after the save.
+    await this.waitForPerDiemFormReady();
+
     try {
       const rows = this.page.locator(SELECTORS.PERDIEM_DAILY_SUM);
       // Give AngularJS a moment to drop the row from the DOM after removal + save
