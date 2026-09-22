@@ -73,17 +73,33 @@ const Profile = {
     }
 
     const newProfilePage = await newPagePromise;
+    const targetPage = newProfilePage || page;
 
     if (newProfilePage) {
       logger.info("[Profile.navigateToProfile] Profile opened in a new tab");
-      await newProfilePage.waitForLoadState("domcontentloaded", { timeout: 30000 });
-      return newProfilePage;
+    } else {
+      // Fallback: profile opened in same tab
+      logger.info("[Profile.navigateToProfile] Profile opened in current tab (no new tab detected)");
     }
 
-    // Fallback: profile opened in same tab
-    logger.info("[Profile.navigateToProfile] Profile opened in current tab (no new tab detected)");
-    await page.waitForLoadState("domcontentloaded", { timeout: 30000 });
-    return page;
+    await targetPage.waitForLoadState("domcontentloaded", { timeout: 30000 });
+
+    // domcontentloaded only means the SPA shell is up. user-profile.vue renders its <el-tabs>
+    // behind `v-if="userProfile"`, so until the profile request resolves there is no
+    // `#tab-<name>` in the DOM at all — every tab-clicking step that follows would race that
+    // fetch on its own short timeout. Gate here so the step's contract is "the profile page is
+    // rendered", the same gate openTravelerProfileFromLastTravelerTag already uses.
+    try {
+      await getPageObject(targetPage, ProfilePage).waitForUserProfilePage();
+    } catch (err) {
+      throw new Error(
+        `[Profile.navigateToProfile] "My profile" was clicked but the profile page never rendered ` +
+        `(opened in ${newProfilePage ? "a new tab" : "the same tab"}, url: ${targetPage.url()}). ` +
+        `Original: ${err.message}`
+      );
+    }
+
+    return targetPage;
   },
 
   /**
