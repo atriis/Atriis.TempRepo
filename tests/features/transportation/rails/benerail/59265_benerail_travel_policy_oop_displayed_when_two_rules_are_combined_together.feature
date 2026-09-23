@@ -14,8 +14,8 @@ Feature: 59265 Benerail - OOP indicator displayed when two travel policy rules a
   Scenario: OOP indicator is visible in results when two policy rules are combined
     Given I am logged in as "bruninabenerail@oop.com" booking a new trip
     And I have added myself as the traveler
-    When I search for a one way Benerail train from "berlinhbfToBebmi"
+    When I search for a one way Benerail train from "bebmiToFrpno"
     And I click proceed button if visible
     And I wait for select text to be visible
     And I expand more options for the first result
-    Then the out of policy tooltip in more options results should be "Duration is greater than 3 hours and Class Of Service is first"
+    Then the out of policy tooltip in more options results should be "Duration is greater than 1 hours and Class Of Service is first"
