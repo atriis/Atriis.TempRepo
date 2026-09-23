@@ -8,7 +8,7 @@
 # Owner: Bruna Santos
 
 @regression @shell @travel-arranger
-Feature: Traveller cannot be added twice to the same trip
+Feature: 84959 Traveller cannot be added twice to the same trip
 
   As a booker
   I want the add-traveller autocomplete to refuse a traveller who is already on the trip
