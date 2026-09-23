@@ -17,11 +17,12 @@ Feature: 61590 Premier Inn - Book hotel for 2 travelers 2 nights
     Given I am logged in as "brunasantosnl@premierinn.com" booking a new trip
     And I have added myself as the traveler
     And I have added a random guest traveler
-    When I search for a hotel in "London" for 2 nights
+    When I search for a hotel in "LHR" for 2 nights
     And I select the first hotel result
     And I add a refundable room to my cart
     Then the cart should show 2 rooms badge
     And I fill credit card cvv if needed
+    And I fill in the OOP justification text "abc"
     When I extract the price at index 0 from "cart"
     When I proceed to checkout
     And I complete the booking
