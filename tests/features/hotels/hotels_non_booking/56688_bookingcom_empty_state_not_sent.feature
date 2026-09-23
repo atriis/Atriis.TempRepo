@@ -1,7 +1,7 @@
 ﻿# Test Name: 56688 Booking.com - Empty state is not being sent when passanger's location is a country that does not have a state
 # Description: 
 # Status: Active
-# Labels: Booking.com,Regression,hybrid,Hotel,2026 plan 2
+# Labels: Booking.com,Regression,Hotel,2026 plan 2
 # Owner: Bruna Santos
 # Created: 2025-01-13T07:39:11Z
 # Updated: 2025-06-23T07:37:33Z
