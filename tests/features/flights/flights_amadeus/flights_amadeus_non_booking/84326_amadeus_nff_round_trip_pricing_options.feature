@@ -8,7 +8,7 @@ Feature: 84326 Amadeus - Complete a round trip search and add to cart via pricin
   Scenario: 84326 Amadeus - Complete a round trip search and add to cart via pricing options with the new flight flow
     Given I am logged in as "corp.amadeus.nff@amsalem.com" booking a new trip
     And I have added myself as the traveler
-    When I search for a round trip flight from "LIS" to "LON"
+    When I search for a round trip flight from "ZRH" to "SIN"
     And flight results should be available
     Then the Select Flight button should be visible in results
     And the Add to trip and Pricing Options buttons should not be visible in results
