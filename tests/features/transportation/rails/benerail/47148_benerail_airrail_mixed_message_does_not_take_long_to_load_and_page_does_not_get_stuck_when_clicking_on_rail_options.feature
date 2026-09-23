@@ -12,9 +12,9 @@ Feature: 47148 Benerail - Air-Rail mixed message loads quickly and Rail Options 
   So that I can click Rail Options and see Benerail results without the page getting stuck
 
   Scenario: Air-Rail available message appears and Rail Options can be clicked without page freeze
-    Given I am logged in as "alvaresazevedo@travelpolicyhotel.com" booking a new trip
+    Given I am logged in as "automation@amadeus.am" booking a new trip
     And I have added myself as the traveler
-    When I search for a round trip flight from "VIE" to "MUC"
+    When I search for a round trip flight from "PAR" to "BRU"
     And I click proceed button if visible
     And I wait for add to trip text to be visible
     Then the rail banner should be visible in results
