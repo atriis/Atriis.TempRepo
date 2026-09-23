@@ -1,13 +1,13 @@
-# Test Name: HYBRID for 60144 Ratehawk - Special request information is being sent
+# Test Name: 60144 Ratehawk - Special request information is being sent
 # Description: 
 # Status: Active
-# Labels: Ratehawk Regression,Hotel,Full Purchase,hybrid,special request,progress page,2026 plan 2
+# Labels: Ratehawk Regression,Hotel,Full Purchase,special request,progress page,2026 plan 2
 # Owner: Bruna Santos
 # Created: 2025-03-28T07:43:53Z
 # Updated: 2025-05-27T09:02:57Z
 
 @regression @provider:ratehawk
-Feature: 60144 HYBRID Ratehawk - Special request information is sent to supplier
+Feature: 60144 Ratehawk - Special request information is sent to supplier
   As a corporate traveler using Ratehawk
   I want to add a special request to my hotel booking
   So that the special request information is transmitted to the hotel supplier
@@ -26,4 +26,6 @@ Feature: 60144 HYBRID Ratehawk - Special request information is sent to supplier
     When I proceed to checkout
     And I complete the booking
     Then the booking status should be "Confirmed"
+    When I capture the "request" payload for request type "finish-book" from Storage
+    Then the captured "request" payload for request type "finish-book" should contain "Please arrange for a quiet room".block("comment")
     Then I successfully cancel the trip
