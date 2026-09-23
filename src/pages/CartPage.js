@@ -10419,31 +10419,33 @@ class CartPage {
     return await iframeLocator.evaluate((iframe) => {
       const html = iframe.getAttribute('srcdoc') || '';
       const doc = new DOMParser().parseFromString(html, 'text/html');
-      const REFUND = /(?:(?:non|partially|fully)[-\s]*)?refundable/gi;
+      // Each policy states its status in its own vocabulary: cancellation is
+      // "Refundable" / "Non-Refundable", changes are "Changeable" / "Non-Changeable".
+      const statusPattern = (word) => new RegExp(`(?:(?:non|partially|fully)[-\\s]*)?${word}`, 'gi');
 
       // The policy label ("Cancellation" / "Changes") is embedded in the term
       // text itself, not in a separate label cell, and the two views lay the
       // policy out differently. Anchor on the innermost element that names the
-      // policy, climb to the block that also carries its refundability line,
-      // then pull the refundability status(es) out of that isolated block.
-      const refundStatusFor = (labelPattern) => {
+      // policy, climb to the block that also carries its status line, then pull
+      // the status(es) out of that isolated block.
+      const statusFor = (labelPattern, word) => {
         const matches = Array.from(doc.querySelectorAll('*'))
           .filter((el) => labelPattern.test(el.textContent || ''));
         if (!matches.length) return [];
         matches.sort((a, b) => (a.textContent || '').length - (b.textContent || '').length);
         let node = matches[0];
         for (let hops = 0; hops < 5 && node.parentElement; hops++) {
-          if (/refundable/i.test(node.textContent || '')) break;
+          if (new RegExp(word, 'i').test(node.textContent || '')) break;
           node = node.parentElement;
         }
-        const found = (node.textContent || '').match(REFUND) || [];
+        const found = (node.textContent || '').match(statusPattern(word)) || [];
         const normalized = found.map((s) => s.toLowerCase().replace(/[-\s]+/g, '-'));
         return Array.from(new Set(normalized)).sort();
       };
 
       return {
-        cancellation: refundStatusFor(/\bcancellation\b/i),
-        changes: refundStatusFor(/\bchanges?\b/i),
+        cancellation: statusFor(/\bcancellation\b/i, 'refundable'),
+        changes: statusFor(/\bchanges?\b/i, 'changeable'),
       };
     });
   }
