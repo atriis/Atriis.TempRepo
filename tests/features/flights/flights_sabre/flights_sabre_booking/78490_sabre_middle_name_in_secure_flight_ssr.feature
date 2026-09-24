@@ -6,7 +6,7 @@
 # Created: 2026-06-03T00:00:00Z
 # Updated: 2026-06-03T00:00:00Z
 
-@regression @flights @sabre @apis @payload @hybrid @cancel-by-process
+@regression @flights @sabre @apis @payload @cancel-by-process
 Feature: 78490 Sabre - Middle name is sent correctly in DB Secure Flight SSR GivenName field
   As a corporate traveler with a middle name in my profile
   I want my full given name (first + middle) to be sent in the DB Secure Flight SSR
