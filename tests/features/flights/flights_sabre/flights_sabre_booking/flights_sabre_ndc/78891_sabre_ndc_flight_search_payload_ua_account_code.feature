@@ -28,11 +28,11 @@ Feature: 78891 Sabre UA NDC - Corporate rate flight search returns results for F
     And I have added myself as the traveler
     When I search for a round trip flight from "EWR" to "LAX"
     Then flight results should be available
-    When I capture the "request" payload for request type "Sabre NDC Flight Search aaaaaa" from Storage
+    When I capture the "request" payload for request type "Sabre NDC Flight Search aaaaaa [UA]" from Storage
     # Asserted as a structure, not a loose key match: the account code has to sit in the plural
     # AccountCodes array under the UA qualifier. A regression to the deprecated singular
     # "AccountCode", or the code landing under a different carrier, fails here.
-    Then the captured "request" payload for request type "Sabre NDC Flight Search aaaaaa" should contain the JSON:
+    Then the captured "request" payload for request type "Sabre NDC Flight Search aaaaaa [UA]" should contain the JSON:
       """
       {
         "OTA_AirLowFareSearchRQ": {
