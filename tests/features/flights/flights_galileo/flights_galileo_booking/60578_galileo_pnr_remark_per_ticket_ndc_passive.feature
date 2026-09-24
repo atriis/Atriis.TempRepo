@@ -6,7 +6,7 @@
 # Updated: 2026-01-06T07:58:22Z
 
 @regression @galileo @flights @ndc @passive_pnr @multi_pax @hybrid
-Feature: 60578 Galileo - PNR remark sent per ticket NDC with passive segment
+Feature: 60578 HYBRID Galileo - PNR remark sent per ticket NDC with passive segment
 
   As a corporate traveler
   I want PNR remarks to be sent per ticket in NDC bookings with passive segments
