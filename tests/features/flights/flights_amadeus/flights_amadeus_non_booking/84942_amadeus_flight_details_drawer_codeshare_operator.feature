@@ -18,10 +18,14 @@
 # 84940 and 84941, so repeating them here would only cost runtime. The title stays as the proof
 # that the redesigned panel is the one open.
 #
-# REQUIRES the feature flag Atriis.App.OBT.IsNewFlightsBookingFlow to be enabled on the
-# environment under test: with it off the app serves the previous drawer and this test fails. The
-# flag is removed once the story reaches production. Nothing here reads or toggles it - the
-# assertions describe the finished behaviour.
+# REQUIRES the remote feature flag Atriis.App.OBT.IsFlightDetailsRedesignEnabled to be enabled
+# for the test user and agency on the environment under test. It is not in the OBT
+# feature-flags.<env>.json files: it is managed per user and agency in the internal Atriis app, so
+# the same build can serve the redesign in one environment and not in another. With it off the app
+# serves the previous drawer (no .flight-details--redesign root) and this test fails on the first
+# drawer assertion. The new flight flow flag (IsNewFlightsBookingFlow) is on in every environment's
+# build and needs nothing. Nothing here reads or toggles the flag - the assertions describe the
+# finished behaviour.
 #
 # Green against dev since 2026-09-17. Staging has had the flag on since 2026-09-18 but runs an
 # earlier build: the cart panel is still titled "More details" (#84772) and a codeshare still

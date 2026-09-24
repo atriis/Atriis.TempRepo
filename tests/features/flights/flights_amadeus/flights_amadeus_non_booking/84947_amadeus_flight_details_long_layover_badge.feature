@@ -15,9 +15,14 @@
 # Not every itinerary waits long enough, so the test opens the first result that does instead of
 # assuming the first result has one, and fails loudly if none of them do.
 #
-# REQUIRES the feature flag Atriis.App.OBT.IsNewFlightsBookingFlow to be enabled on the
-# environment under test: with it off the app serves the previous drawer and this test fails. The
-# flag is removed once the story reaches production.
+# REQUIRES the remote feature flag Atriis.App.OBT.IsFlightDetailsRedesignEnabled to be enabled
+# for the test user and agency on the environment under test. It is not in the OBT
+# feature-flags.<env>.json files: it is managed per user and agency in the internal Atriis app, so
+# the same build can serve the redesign in one environment and not in another. With it off the app
+# serves the previous drawer (no .flight-details--redesign root) and this test fails on the first
+# drawer assertion. The new flight flow flag (IsNewFlightsBookingFlow) is on in every environment's
+# build and needs nothing. Nothing here reads or toggles the flag - the assertions describe the
+# finished behaviour.
 
 @ado:84947
 @regression @flights @amadeus @flight-details @long-layover
