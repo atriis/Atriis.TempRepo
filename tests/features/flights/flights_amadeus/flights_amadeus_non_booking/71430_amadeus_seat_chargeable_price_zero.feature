@@ -13,12 +13,12 @@ Feature: 71430 Amadeus - Seat chargeable with price 0 prevents seat selection
   So that I am not charged unexpected amounts
 
   Scenario: Chargeable seat with price 0 shows restriction tooltip
-    Given I am logged in as "seatzero@corp.atpi" booking a new trip
+    Given I am logged in as "brunovieirancep@amsalembrunaautomation.com" booking a new trip
     And I have added myself as the traveler
-    When I search for a round trip flight from "DFW" to "EWR"
+    When I search for a round trip flight from "DFW" to "MIA"
     And flight results should be available
-    And I filter results by carrier "AA"
+    And I filter airline results by "American Airlines" checkbox
     And I add the first flight to cart
     Then the booking status should be "Pending booking"
-    When I click to edit extras at index 3
+    When I click seating in extras
     Then seat selection should be restricted with message "Chargeable seat selection not available"
