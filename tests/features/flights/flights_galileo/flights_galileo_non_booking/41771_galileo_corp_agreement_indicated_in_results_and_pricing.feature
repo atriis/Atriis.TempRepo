@@ -13,12 +13,11 @@ Feature: 41771 Galileo - Corp agreement indicated in results and pricing options
   So that I can identify negotiated rates
 
   Scenario: Corporate agreement indicator is visible in results and pricing options
-    Given I am logged in as "victorvinicius@gdggalileo.com" booking a new trip
+    Given I am logged in as "brunagalm29@brunaautomationgdg.com" booking a new trip
     And I have added myself as the traveler
-    And I click on the flight tab and uncheck Add hotel to this trip and Add car to this trip
-    When I search for a one way flight from "LAX" to "BOS"
+    When I search for a one way flight from "IST" to "LON"
     And flight results should be available
-    And I filter results by carrier "DL"
+    And I filter results by carrier "TK"
     Then the "Agreement" indicator should be visible in results
     And I click to open first pricing options
     And the "Agreement" indicator should be visible in pricing options
