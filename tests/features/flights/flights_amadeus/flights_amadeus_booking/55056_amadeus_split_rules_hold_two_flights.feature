@@ -16,6 +16,7 @@ Feature: 55056 Amadeus - Split rules applied correctly when holding 2 round trip
     Given I am logged in as "ruimariano@amadeus.com" booking a new trip
     And I have added a random guest traveler
     When I search for a round trip flight from "MAD" to "DOH"
+    And flight results should be available
     And I filter results by carrier "Qatar Airways"
     And I add the first flight to cart
     Then the booking status should be "Pending booking"
@@ -24,6 +25,7 @@ Feature: 55056 Amadeus - Split rules applied correctly when holding 2 round trip
     When I click to add a flight to my trip from cart
     When I edit the flight search from "ZRH" to "SIN"
     And flight results should be available
+    And I filter results by carrier "Swiss"
     And I add the first flight to cart
     # The first quote is already ON HOLD here, and the shared "booking status"
     # step reads the FIRST quote card - it would read that held quote, not the
