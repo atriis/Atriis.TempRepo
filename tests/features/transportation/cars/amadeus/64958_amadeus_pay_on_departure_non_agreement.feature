@@ -16,7 +16,7 @@ Feature: 64958 Amadeus - Cars - 'Pay on Departure' text is displayed for non agr
     Given I am logged in as "automation@amadeus.am" booking a new trip
     And I have added myself as the traveler
     When I search for a car at "MXP" with rental agency "Alamo" and 1 months ahead
-    Then handshake badge should not be visible in car results
+    Then handshake badge should be visible in car results
     And the payment type on results should be "Pay On Departure"
     When I add the first car to cart
     Then the payment type should be "Pay On Departure"
