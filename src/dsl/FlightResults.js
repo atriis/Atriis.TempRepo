@@ -2625,7 +2625,7 @@ async clickToOpenFareRulesFromResultsModal(page) {
   const flightResultsPage = getPageObject(page, FlightResultsPage);
 
   // Try flight details drawer first, then pricing options overlay
-  const flightDetailsDrawer = page.locator("[aria-label='Flight details']");
+  const flightDetailsDrawer = page.locator("[aria-label='Flight details' i]");
   const isFlightDetailsOpen = await flightDetailsDrawer.isVisible().catch(() => false);
 
   if (isFlightDetailsOpen) {

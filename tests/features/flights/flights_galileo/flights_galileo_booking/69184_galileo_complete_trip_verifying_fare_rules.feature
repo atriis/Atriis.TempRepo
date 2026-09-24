@@ -13,7 +13,7 @@ Feature: 69184 Galileo - Complete trip booking verifying fare rules
   So that I can review cancellation and change policies
 
   Scenario: Fare rules displayed in results, pricing options, flight details, cart and after hold
-    Given I am logged in as "bsgalileoflight@galileoflight.com" booking a new trip
+    Given I am logged in as "brunagalm29@brunaautomationgdg.com" booking a new trip
     And I have added a random guest traveler
     When I search for a round trip flight from "LON" to "DOH"
     # Checkbox, not the search box: that one also matches a codeshare's "Operated by" label, and
