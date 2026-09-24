@@ -21,9 +21,9 @@ Feature: 54519 Galileo - FF number correctly utilized for multiple pax
     And the traveler name "Shawn Craig" should be visible in the travelers list
     When I search for a one way flight from "ORD" to "LAS"
     And flight results should be available
-    And I filter results by carrier "UA"
+    And I filter results by carrier "AA"
     And I add the first flight to cart
     Then the booking status should be "Pending Booking"
     When I click frequent flyer in extras
-    Then the FQTV should show "UA - 1234567" for "James Root"
-    Then the FQTV should show "UA-******010" for "Shawn Craig"
+    Then the FQTV should show "AA - 1234567" for "James Root"
+    Then the FQTV should show "AA-******010" for "Shawn Craig"
