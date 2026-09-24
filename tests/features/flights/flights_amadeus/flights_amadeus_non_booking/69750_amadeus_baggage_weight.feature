@@ -7,7 +7,7 @@
 # Updated: 2025-12-10T08:51:21Z
 
 @regression @flights @amadeus @baggage @light-ticketing @hybrid
-Feature: 69750 Amadeus - Baggage weight sent in AddMultiElement
+Feature: 69750 HYBRID Amadeus - Baggage weight sent in AddMultiElement
   As a corporate traveler
   I want baggage weight information to be correctly sent when booking
   So that my baggage preferences are properly recorded
