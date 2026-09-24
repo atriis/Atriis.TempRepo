@@ -6,7 +6,7 @@
 # Updated: 2025-12-16T09:02:17Z
 
 @regression @flights @sabre @separate-tickets @by-schedule @hybrid
-Feature: 45750 Sabre - Separate tickets by schedule booking
+Feature: 45750 HYBRID Sabre - Separate tickets - SegmentSelect Number="1" is not being sent twice
   As a corporate traveler
   I want to book separate ticket flights by schedule with different carriers
   So that the booking processes correctly without duplicate segment selection
