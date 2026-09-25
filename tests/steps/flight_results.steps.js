@@ -445,6 +445,12 @@ When('I select the second fare from pricing options', async function () {
   await FlightResults.selectPricingOptionInModalByIndex(this.page, 1);
 });
 
+// Avoids the cheapest fare, which the supplier may not really have available.
+When('I select the third fare from pricing options', async function () {
+  logger.info("Selecting third fare from pricing options");
+  await FlightResults.selectPricingOptionCardByIndex(this.page, 2);
+});
+
 When('I select {string} fare from pricing options top section', async function (cabinName) {
   logger.info('Selecting cabin class from pricing options top section', { cabinName });
   await FlightResults.selectCabinClassFromPricingOptionsTop(this.page, cabinName);

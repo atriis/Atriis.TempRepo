@@ -3493,6 +3493,30 @@ const Cart = {
   },
 
   /**
+   * Verifies one quote card shows the expected payment type (e.g. "Paid by TMC"), addressed by
+   * its 1-based position in the cart.
+   *
+   * @param {import('playwright').Page} page
+   * @param {number} position - 1-based quote position
+   * @param {string} expectedType - e.g. "Paid by TMC"
+   */
+  async verifyQuotePaymentTypeByPosition(page, position, expectedType) {
+    if (!page) throw new Error('page is required');
+    if (typeof expectedType !== 'string' || !expectedType.trim()) {
+      throw new Error('expectedType must be a non-empty string, got: ' + expectedType);
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+    await cartPage.waitForQuoteCardByPosition(position);
+    const card = cartPage.getQuoteCardByPosition(position);
+
+    // Scoped to one card: the page-wide verifyPaymentType would pass for quote 2 off quote 1's label.
+    await expect(card).toContainText(new RegExp(escapeRegex(expectedType.trim()).replace(/\\? /g, '\\s*'), 'i'), { timeout: 30000 });
+    logger.info('Quote payment type verified', { position, expectedType });
+    return { verified: true, position, expectedType };
+  },
+
+  /**
    * Verifies one quote's status badge, addressed by its 1-based position in the cart.
    * Use this (not verifyBookingStatus) when several quotes carry DIFFERENT statuses at the
    * same time - verifyBookingStatus only ever reads the first card.

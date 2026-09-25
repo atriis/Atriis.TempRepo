@@ -2137,6 +2137,13 @@ Then("quote {int} status should be {string}", async function (position, expected
   await Cart.verifyQuoteStatusByPosition(this.page, position, expectedStatus);
 });
 
+// Per-quote counterpart of "the payment type should be {string}" (page-wide, so it cannot tell
+// which quote carries the label once more than one quote is paid).
+Then("quote {int} payment type should be {string}", async function (position, expectedType) {
+  logger.info("Verifying quote payment type by position", { position, expectedType });
+  await Cart.verifyQuotePaymentTypeByPosition(this.page, position, expectedType);
+});
+
 Then("the last quote status should be {string}", async function (expectedStatus) {
   logger.info("Verifying last quote status", { expectedStatus });
   await Cart.verifyLastQuoteStatus(this.page, expectedStatus);

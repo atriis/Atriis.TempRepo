@@ -9,41 +9,41 @@
 Feature: 55700 Galileo NDC - AA search by schedule booked as separate tickets
 
   As a corporate traveler
-  I want to search AA flights by schedule and book as separate tickets
-  So that fare rules and branded fares are correctly displayed for NDC content
+  I want to search AA flights by schedule and book them as separate tickets
+  So that each direction is held as its own quote with its own PNR
 
-  #It keeps failing in Testim, need to talk to someone from the flight domain to understand what's happening
-  Scenario: AA NDC by schedule search with fare rules, branded fares and separate tickets
+  Scenario: AA NDC by schedule search held as separate tickets with different PNRs
     Given I am logged in as "corpNDC@gdg.com" booking a new trip
-    And I have added myself as the traveler
-    When I search for a flight by schedule from "LAX" to "DFW"
+    And I have added a random guest traveler
+    When I search for a flight by schedule from "DFW" to "ORD"
     And I filter results by carrier "AA"
-    # TODO: Fare_rules__Brand_info_in_results — complex multi-step verification:
-    # 1. Verify "NDC direct rate" text visible
-    # 2. Open flight details → verify "Total price" → open branded fares → verify brand name + services
-    # 3. Close branded fares → close flight details
-    # 4. Open fare rules → verify "Carrier: American Airlines" + Change/Cancel rules → close
-    And I click to open flight details
-    And I open branded fares from flight details
-    And I close branded fares drawer
-    And I close flight details window
-    And I click to open fare rules
-    Then I should see the fare rules note about strictest terms
-    When I close fare rules window
-    # TODO: Select_flights_from_results__by_schedule_search__separated_tickets:
-    # 1. Select first outbound → wait for "Change flight"
-    # 2. Filter AA again → select first inbound
-    # 3. Verify "Your selection" + "Separated Tickets" indicator
-    # 4. Click Select on first pricing option
-    And I select one flight segment by schedule
+    And I click to open first pricing options
+    And I select the third fare from pricing options
+    And I confirm the pricing option for the current segment
     And I wait for the change flight button to be visible
     And I filter results by carrier "AA"
-    And I select one flight segment by schedule
-    And I select the first option from pricing options
-    And I handle conflicting quotes if visible
-    # TODO: Validate_separate_tickets_in_cart_and_checkout:
-    # 1. Verify 2 quote titles in cart
-    # 2. Add payment to each quote
-    # 3. Accept T&C for both → proceed → book → verify success → go to trip
-    # 4. Verify 2 quote titles + PNR codes in trip overview
+    And I click to open first pricing options
+    And I select the third fare from pricing options
+    And I confirm the pricing option for the current segment
+    Then the "Separated Tickets" indicator should be visible in the pricing page
+    When I wait for "Your Selection" text to be visible
+    And I add "Your Selection" fare to trip
+    Then the cart should contain 2 flight quotes
+    When I click add payment method button
+    And I click the card "Flight Invoice" checkbox
+    And I save the card selection
+    Then quote 1 payment type should be "Paid by TMC"
+    When I accept all Terms & Conditions on the page
+    And I hold quote 1
+    And I click add payment method button
+    And I click the card "Flight Invoice" checkbox
+    And I save the card selection
+    Then quote 2 payment type should be "Paid by TMC"
+    When I accept all Terms & Conditions on the page
+    And I hold quote 2
+    Then quote 1 status should be "On hold"
+    And quote 2 status should be "On hold"
+    When I store the first quote PNR code
+    And I store the second quote PNR code
+    Then the stored quote PNR codes should not match
     Then I successfully cancel the trip

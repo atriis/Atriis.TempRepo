@@ -4092,6 +4092,29 @@ async verifyFareComponentTextColorInPricingOptions(page, expectedColor, index = 
   },
 
   /**
+   * Selects the pricing-option card at the given zero-based position by clicking its own
+   * Select button. Works in the by-schedule drawer (no leg tabs), unlike
+   * selectPricingOptionInModalByIndex.
+   *
+   * @param {import('playwright').Page} page
+   * @param {number} index - Zero-based card position
+   * @returns {Promise<{ selected: true, index: number }>}
+   */
+  async selectPricingOptionCardByIndex(page, index) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+    if (!Number.isInteger(index) || index < 0) {
+      throw new Error(`index must be a non-negative integer, got: ${index}`);
+    }
+
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    await flightResultsPage.clickSelectButtonInPricingOptionCardByIndex(index);
+
+    return { selected: true, index };
+  },
+
+  /**
    * Selects the first pricing-option card in the open modal whose visible text
    * contains the given substring by clicking its Select button.
    *

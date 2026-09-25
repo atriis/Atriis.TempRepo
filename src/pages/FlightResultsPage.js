@@ -1920,6 +1920,27 @@ class FlightResultsPage {
   }
 
   /**
+   * Waits for and clicks the Select button inside the pricing-option card at the given
+   * zero-based position. Card-scoped (like the by-text variant), so it never hits the
+   * by-schedule drawer's bottom "Select" confirm button, and it does not wait for a leg-tab
+   * check - the by-schedule drawer has no leg tabs.
+   *
+   * @param {number} index - Zero-based card position.
+   */
+  async clickSelectButtonInPricingOptionCardByIndex(index) {
+    const card = this.getPricingOptionsCards().nth(index);
+    await card.waitFor({ state: 'visible', timeout: 60000 });
+    await card.scrollIntoViewIfNeeded().catch(() => {});
+    const selectButton = card.locator(SELECTORS.PRICING_OPTIONS_SELECT_BUTTON);
+    await selectButton.waitFor({ state: 'visible', timeout: 15000 });
+    await selectButton.click();
+    // Single-leg drawer: the chosen card's button flips to "Unselect" once the selection registers.
+    await selectButton
+      .filter({ hasText: SELECTORS.PRICING_OPTIONS_UNSELECT_BUTTON_TEXT })
+      .waitFor({ state: 'visible', timeout: 30000 });
+  }
+
+  /**
    * Waits for and clicks the Select button inside the first pricing-option card
    * whose visible text contains the given substring.
    *
