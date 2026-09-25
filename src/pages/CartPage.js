@@ -90,6 +90,9 @@ const SELECTORS = {
   // Same cart CTA as Proceed to Checkout, but relabelled "Send For Approvals" when the
   // user's trip requires pre-booking approval (trip-cart.vue: isPreBookingNeeded).
   SEND_FOR_APPROVAL_BUTTON: ".btn-container:has-text('Send For Approvals')",
+  // The cart CTA matched by position, not by label (trip-summary.vue `.btn-container` > app-btn),
+  // so its text can be read whichever label it currently carries.
+  CART_CHECKOUT_CTA_BUTTON: ".trip-summary-container .btn-container button.btn",
   QUOTE_STATUS_LABEL: ".app-label--quote",
   QUOTE_CARD_STATUS_LABEL: '.quote-payment-card .app-label--quote',
   QUOTE_PAYMENT_CARD: '.quote-payment-card',
@@ -3530,6 +3533,22 @@ class CartPage {
    */
   async clickSendForApproval() {
     await this.page.locator(SELECTORS.SEND_FOR_APPROVAL_BUTTON).click();
+  }
+
+  /**
+   * Reads the cart CTA's current label — "Proceed to Checkout", or "Send For Approvals" when the
+   * trip requires pre-booking approval (trip-cart.vue: isPreBookingNeeded). Scoped to the visible
+   * instance because the mobile and desktop summaries each render a copy of the CTA.
+   *
+   * @returns {Promise<string>} The label with whitespace normalized
+   */
+  async getCheckoutButtonText() {
+    const button = this.page
+      .locator(SELECTORS.CART_CHECKOUT_CTA_BUTTON)
+      .filter({ visible: true })
+      .first();
+    await button.waitFor({ state: 'visible', timeout: 45000 });
+    return normalizeText(await button.innerText());
   }
 
   /**

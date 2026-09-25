@@ -3080,6 +3080,35 @@ const Cart = {
   },
 
   /**
+   * Verifies the cart CTA displays the expected label (test 85351). A pre-booking-approval
+   * user's CTA reads "Send For Approvals" instead of "Proceed to Checkout" — including when the
+   * corporate's approval flow has pre-booking enabled with no approval steps. Asserts an exact
+   * match (case-insensitive, whitespace normalized) so the test pins the label rather than just
+   * finding some button.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} expectedText - label the cart CTA is expected to display
+   * @returns {Promise<{ text: string }>}
+   */
+  async verifyCheckoutButtonText(page, expectedText) {
+    if (!page) throw new Error('page is required');
+    if (typeof expectedText !== 'string' || !expectedText.trim())
+      throw new Error(`"expectedText" must be a non-empty string, got: ${typeof expectedText}`);
+
+    const cartPage = getPageObject(page, CartPage);
+    const actual = await cartPage.getCheckoutButtonText();
+    const expectedNormalized = normalizeText(expectedText);
+    if (actual.toLowerCase() !== expectedNormalized.toLowerCase()) {
+      throw new Error(
+        `[Cart.verifyCheckoutButtonText] Expected the cart checkout button to display ` +
+        `"${expectedNormalized}", but it read "${actual}".`
+      );
+    }
+    logger.info('Cart checkout button text verified', { expected: expectedNormalized, actual });
+    return { text: actual };
+  },
+
+  /**
    *
    * @param {import('playwright').Page} page - Playwright page instance
    * @param {number} index - Zero-based index of the fare rules button (default: 0)

@@ -151,6 +151,11 @@ When("I click the send for approval button", { timeout: CHECKOUT_STEP_TIMEOUT_MS
   await Cart.clickSendForApproval(this.page);
 });
 
+Then("the cart checkout button should display the text {string}", async function (expectedText) {
+  logger.info("Verifying the cart checkout button text", { expectedText });
+  await Cart.verifyCheckoutButtonText(this.page, expectedText);
+});
+
 async function holdTripFromCart(world, { expectMergedQuote = false } = {}) {
   const scenarioTags = Array.isArray(world.scenarioTags) ? world.scenarioTags : [];
   const bookingContext = {
