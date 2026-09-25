@@ -1,4 +1,4 @@
-# Test Name: 80294 Amadeus - Origin-Destination MU - published rates - multi city - complete trip - multi PAX - Non-separated tickets
+﻿# Test Name: 80294 Amadeus - Origin-Destination MU - published rates - multi city - complete trip - multi PAX - Non-separated tickets
 # Status: Draft
 # Labels: Regression,Flights,Amadeus,Regular Markup,2026 plan 2
 
@@ -10,18 +10,20 @@ Feature: 80294 Amadeus - Origin-Destination MU applied on multi city complete tr
   So that the origin-destination markup (UK -> US) is included in the published fare price and the cart total
 
   @priority:high
-  Scenario: Origin-Destination MU (UK->US) included in published fare pricing and cart for LON-LAS-AMS-BER complete trip, 2 PAX
+  Scenario: Origin-Destination MU (UK->US) included in published fare pricing and cart for LON-CHI-DUB-LON complete trip, 2 PAX
     Given I am logged in as "full.reg.mu9.corp@amadeus.com" booking a new trip
     And I have added myself as the traveler
     And I have added a random guest traveler
 
-    # Multi-city complete trip: LON -> LAS (UK->US, MU applies) -> AMS -> BER
-    When I search for a multi-city flight with legs "LON-LAS, LAS-AMS, AMS-BER"
+    # MU under test: GB -> US, published fares, 50% of the base fare (LON -> CHI leg).
+    # Avoid NYC: a priority-1 line LON -> NYC (50% of the whole fare) would win over it.
+    When I search for a multi-city flight with legs "LON-CHI, CHI-DUB, DUB-LON"
     And flight results should be available
 
-    # Validate on the published fare: markup = 50% of the base fare, and wholePrice + markup = displayed price.
-    When I open pricing options for the first result with a published fare
-    Then the origin-destination markup should be "50" percent of the base fare on the published fare
+    # A one-way package fare carries the MU on the GB -> US leg's base only, so only a
+    # whole-trip fare can be checked against the trip base.
+    When I open pricing options for the first result with a published whole-trip fare
+    Then the origin-destination markup should be "50" percent of the base fare on the published whole-trip fare
 
     # Select the published fare for each of the 3 legs
     And I select the published fare from pricing options

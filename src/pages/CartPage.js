@@ -357,6 +357,8 @@ const SELECTORS = {
   FLIGHT_DETAILS_DRAWER_CABIN_CHIP:
     '.flight-details-bottom-bar .text-background:has(span.material-symbols-outlined:text-is("flight_class")) p',
   FLIGHT_CART_MORE_DETAILS_DRAWER: "[aria-label='More details']",
+  // The flight card's drawer, retitled "Flight Details" (AB#84760), no longer carries aria-label "More details".
+  FLIGHT_CART_FLIGHT_DETAILS_DRAWER: ".app-drawer.flight-details-drawer:visible",
   FLIGHT_CART_MORE_DETAILS_PRICE_TEXT: /\$\s*\d[\d,]*(?:\.\d+)?/,
   // Fare-rules button scoped inside the open More Details drawer. Manual quotes
   // must NOT show this button — the assertion in Cart.verifyFareRulesLinkNotVisibleInMoreDetails
@@ -9115,7 +9117,7 @@ class CartPage {
   }
 
   /**
-   * Reads the total price displayed in the flight cart "More details" drawer.
+   * Reads the total price displayed in the flight cart "Flight Details" drawer.
    * Uses text-anchored matching (drawer DOM has no .app-footer wrapper).
    * The drawer must already be open (via clickFlightDetailsButton).
    * @param {object} options
@@ -9123,7 +9125,7 @@ class CartPage {
    * @returns {Promise<number>} The total price as a numeric value
    */
   async getFlightCartMoreDetailsTotalPrice({ timeout = 15000 } = {}) {
-    const drawer = this.page.locator(SELECTORS.FLIGHT_CART_MORE_DETAILS_DRAWER).first();
+    const drawer = this.page.locator(SELECTORS.FLIGHT_CART_FLIGHT_DETAILS_DRAWER).first();
     await drawer.waitFor({ state: 'visible', timeout });
     const priceEl = drawer.getByText(SELECTORS.FLIGHT_CART_MORE_DETAILS_PRICE_TEXT).last();
     await priceEl.waitFor({ state: 'visible', timeout });

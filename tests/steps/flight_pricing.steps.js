@@ -125,6 +125,14 @@ When('I open pricing options for the first result with a published fare', async 
   logger.info('Opened pricing options for the first result with a published fare', { resultIndex, attempts });
 });
 
+// Side effect: stores the winning flightPricing response; only whole-trip published fares count (see isPublishedFare).
+When("I open pricing options for the first result with a published whole-trip fare", async function () {
+  const { responsePromise, resultIndex, attempts } = await FlightPricing.openFirstResultWithPublishedFare(this.page, { wholeTripFareOnly: true });
+  this.lastInterceptedResponsePromise = responsePromise;
+  this.flightPricingResponsePromise = responsePromise;
+  logger.info("Opened pricing options for the first result with a published whole-trip fare", { resultIndex, attempts });
+});
+
 Then('the markup in the flight pricing response should be {string} per pax configured in {string}', async function (expectedMarkup, configuredCurrency) {
   logger.info('Validating markup in flightPricing response against configured currency', { expectedMarkup, configuredCurrency });
   const result = await FlightPricing.validatePricingResponseMarkup(
@@ -157,6 +165,16 @@ Then('the origin-destination markup should be {string} percent of the base fare 
   );
   this.publishedMuInclusivePrice = result.muInclusivePerPax;
   logger.info('Origin-destination MU validated on published fare', result);
+});
+
+// Side effect: stores publishedMuInclusivePrice for the fare-selection and cart steps.
+Then("the origin-destination markup should be {string} percent of the base fare on the published whole-trip fare", async function (percent) {
+  logger.info("Validating origin-destination MU on the published whole-trip fare", { percent });
+  const result = await FlightPricing.validateOriginDestinationMarkup(
+    this.page, this.lastInterceptedResponsePromise ?? this.flightPricingResponsePromise, percent, { wholeTripFareOnly: true },
+  );
+  this.publishedMuInclusivePrice = result.muInclusivePerPax;
+  logger.info("Origin-destination MU validated on published whole-trip fare", result);
 });
 
 // Same published-fare check as the percent-of-base variant below, but the configured percentage is

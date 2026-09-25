@@ -10,7 +10,7 @@ const { CartPage } = require("@pages/CartPage");
 const { CheckoutPage } = require("@pages/CheckoutPage");
 const { getPageObject } = require("@utils/pageObjectCache");
 const tripStatus = require("@data/tripStatus.json");
-const { getTravelerCount } = require("../support/scenarioState");
+const { getTravelerCount, getSelfAndGuestTravelerCount } = require("../support/scenarioState");
 const logger = require("@utils/logger").child("Cart");
 const {
   expectNumbersToBeEqualWithTolerance,
@@ -1448,16 +1448,7 @@ Then('the cart total price should be the last extracted price multiplied by the 
     throw new Error('No extracted price stored. Run a price-extraction step before comparing with cart total price.');
   }
 
-  // selectedTravelerCount (read from the UI at setup) can under-read due to a render race in the shared
-  // add-guest step; derive it reliably as primary (1) + tracked guests, keeping the higher of the two.
-  const trackedCount = 1 + (this.guestTravelerCount ?? 0);
-  const travelerCount = Math.max(Number(this.selectedTravelerCount) || 0, trackedCount);
-  if (!Number.isInteger(travelerCount) || travelerCount < 1) {
-    throw new Error(
-      `Could not determine a valid traveler count — make sure the traveler-adding steps ran first ` +
-      `(selectedTravelerCount=${this.selectedTravelerCount}, guestTravelerCount=${this.guestTravelerCount}).`,
-    );
-  }
+  const travelerCount = getSelfAndGuestTravelerCount(this);
 
   const extractedPrice = this.extractedPrices[this.extractedPrices.length - 1];
   const expectedPrice = extractedPrice * travelerCount;
@@ -1491,8 +1482,7 @@ Then('the price breakdown total should equal the published fare price multiplied
     throw new Error("priceBreakdownTotal is not set — run 'I extract the price from price breakdown' before this check.");
   }
 
-  const trackedCount = 1 + (this.guestTravelerCount ?? 0);
-  const travelerCount = Math.max(Number(this.selectedTravelerCount) || 0, trackedCount);
+  const travelerCount = getSelfAndGuestTravelerCount(this);
   const expectedPrice = this.publishedMuInclusivePrice * travelerCount;
 
   logger.info('Comparing price breakdown total with published MU-inclusive per-pax price x selected travelers', {
@@ -1516,16 +1506,7 @@ Then('the cart total price should equal the published fare price multiplied by t
     throw new Error('publishedMuInclusivePrice is not set — run "the origin-destination markup should be ... on the published fare" step before this check.');
   }
 
-  // Same under-read race as the percentage-tolerance step above: derive the count as
-  // primary (1) + tracked guests and keep the higher of the two.
-  const trackedCount = 1 + (this.guestTravelerCount ?? 0);
-  const travelerCount = Math.max(Number(this.selectedTravelerCount) || 0, trackedCount);
-  if (!Number.isInteger(travelerCount) || travelerCount < 1) {
-    throw new Error(
-      `Could not determine a valid traveler count — make sure the traveler-adding steps ran first ` +
-      `(selectedTravelerCount=${this.selectedTravelerCount}, guestTravelerCount=${this.guestTravelerCount}).`,
-    );
-  }
+  const travelerCount = getSelfAndGuestTravelerCount(this);
 
   const expectedPrice = this.publishedMuInclusivePrice * travelerCount;
   const cartTotalPrice = await Cart.extractCartTotalPrice(this.page);
@@ -1648,12 +1629,7 @@ Then('the flight price breakdown should match the totals for {int} travelers', a
 });
 
 Then('the flight price breakdown should match the totals for the selected travelers', async function () {
-  const travelerCount = this.selectedTravelerCount;
-  if (!Number.isInteger(travelerCount) || travelerCount < 1) {
-    throw new Error(
-      `selectedTravelerCount must be a positive integer — make sure traveler-adding steps ran first. Got: ${travelerCount}`,
-    );
-  }
+  const travelerCount = getSelfAndGuestTravelerCount(this);
 
   logger.info('Verifying flight price breakdown totals for selected travelers', {
     travelerCount,

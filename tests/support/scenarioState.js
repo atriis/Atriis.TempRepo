@@ -16,6 +16,15 @@ function getTravelerCount(world) {
   return 1;
 }
 
+/**
+ * Traveler count for a scenario that added itself plus guests: the UI-read selectedTravelerCount can
+ * under-read (render race in the add-guest step), so it is floored at self (1) + tracked guests.
+ * Use getTravelerCount instead when the scenario may add guests without adding itself.
+ */
+function getSelfAndGuestTravelerCount(world) {
+  return Math.max(Number(world.selectedTravelerCount) || 0, 1 + (world.guestTravelerCount ?? 0));
+}
+
 function getStoredFlightNumbers(world) {
   const storedFlightNumbers = Array.isArray(world.storedFlightNumbers)
     ? world.storedFlightNumbers.filter((flightNumber) => typeof flightNumber === "string" && flightNumber.trim())
@@ -77,6 +86,7 @@ function getPricePerNightAndTotal(world) {
 
 module.exports = {
   getTravelerCount,
+  getSelfAndGuestTravelerCount,
   getStoredFlightNumbers,
   getGsaAllowance,
   getHotelListScrollOffsetAtSelection,

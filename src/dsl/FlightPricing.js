@@ -40,6 +40,19 @@ function findResultByCarrier(results, carrierCode) {
 }
 
 /**
+ * True for a published fare (markup > 0). `wholeTripFareOnly` also requires isOneWayPackage === false:
+ * a one-way package prices each leg on its own base, so its MU is not a percentage of the trip basePrice.
+ *
+ * @param {object} result - one flightPricing result.
+ * @param {{ wholeTripFareOnly?: boolean }} [options]
+ * @returns {boolean}
+ */
+function isPublishedFare(result, { wholeTripFareOnly = false } = {}) {
+  if (!(Number(result.markup) > 0)) return false;
+  return !wholeTripFareOnly || result.isOneWayPackage === false;
+}
+
+/**
  * FlightPricing DSL
  *
  * High-level actions related to flight pricing and fare selection.
@@ -295,9 +308,10 @@ const FlightPricing = {
    * @param {import('@playwright/test').Page} page
    * @param {object} [options]
    * @param {number} [options.maxResults=6] - Max number of results to open before giving up.
+   * @param {boolean} [options.wholeTripFareOnly=false] - Only whole-trip published fares. See isPublishedFare.
    * @returns {Promise<{responsePromise: Promise<import('@playwright/test').Response>, resultIndex: number, attempts: Array}>}
    */
-  async openFirstResultWithPublishedFare(page, { maxResults = 6 } = {}) {
+  async openFirstResultWithPublishedFare(page, { maxResults = 6, wholeTripFareOnly = false } = {}) {
     if (!page) throw new Error('page is required');
 
     const flightResultsPage = getPageObject(page, FlightResultsPage);
@@ -326,9 +340,9 @@ const FlightPricing = {
       }
 
       const results = body && Array.isArray(body.results) ? body.results : [];
-      const hasPublished = results.some((r) => Number(r.markup) > 0);
+      const hasPublished = results.some((r) => isPublishedFare(r, { wholeTripFareOnly }));
       attempts.push({ index: i, resultCount: results.length, hasPublished });
-      logger.info('Scanned result for a published (MU) fare', { index: i, resultCount: results.length, hasPublished });
+      logger.info("Scanned result for a published (MU) fare", { index: i, resultCount: results.length, hasPublished, wholeTripFareOnly });
 
       if (hasPublished) {
         return { responsePromise, resultIndex: i, attempts };
@@ -340,7 +354,7 @@ const FlightPricing = {
     }
 
     throw new Error(
-      `No result with a published fare (markup > 0) found in the first ${limit} result(s). ` +
+      `No result with a published fare (markup > 0${wholeTripFareOnly ? ", priced for the whole trip" : ""}) found in the first ${limit} result(s). ` +
       `The origin-destination MU should apply to a published UK->US fare. Scanned: ${JSON.stringify(attempts)}`,
     );
   },
@@ -475,15 +489,17 @@ const FlightPricing = {
    * @param {import('@playwright/test').Page} page
    * @param {Promise<import('@playwright/test').Response>} responsePromise - from startCapturingPricingResponse.
    * @param {string} markupPercent - Expected MU as a percentage of the base fare (e.g. "50").
+   * @param {object} [options]
+   * @param {boolean} [options.wholeTripFareOnly=false] - Only whole-trip published fares. See isPublishedFare.
    * @returns {Promise<{muInclusivePerPax: number, markup: number, basePrice: number, wholePrice: number, currency: string}>}
    */
-  async validateOriginDestinationMarkup(page, responsePromise, markupPercent) {
+  async validateOriginDestinationMarkup(page, responsePromise, markupPercent, { wholeTripFareOnly = false } = {}) {
     if (!page) throw new Error('page is required');
     if (!responsePromise) throw new Error('responsePromise is required — call startCapturingPricingResponse before the pricing action');
     if (typeof markupPercent !== 'string') throw new Error(`markupPercent must be a string, got: ${typeof markupPercent}`);
 
     // Pick the first result with a non-zero markup (the published fare).
-    const published = await this.findPublishedFare(responsePromise);
+    const published = await this.findPublishedFare(responsePromise, { wholeTripFareOnly });
 
     const markup = Number(published.markup);
     const basePrice = Number(published.basePrice);
@@ -656,15 +672,22 @@ const FlightPricing = {
    * the markup-validation methods so the response-shape guard lives in one place.
    *
    * @param {Promise<import('@playwright/test').Response>} responsePromise - from startCapturingPricingResponse.
+   * @param {{ wholeTripFareOnly?: boolean }} [options] - See isPublishedFare.
    */
-  async findPublishedFare(responsePromise) {
+  async findPublishedFare(responsePromise, { wholeTripFareOnly = false } = {}) {
     if (!responsePromise) throw new Error('responsePromise is required — call startCapturingPricingResponse before the pricing action');
     const body = await readJson(responsePromise);
     const results = body && Array.isArray(body.results) ? body.results : Array.isArray(body) ? body : null;
     if (!results || results.length === 0) {
       throw new Error('flightPricing response body has no results array');
     }
-    const published = results.find((r) => Number(r.markup) > 0);
+    const published = results.find((r) => isPublishedFare(r, { wholeTripFareOnly }));
+    if (!published && wholeTripFareOnly && results.some((r) => isPublishedFare(r))) {
+      throw new Error(
+        `No published fare priced for the whole trip (isOneWayPackage=false) in the flightPricing response (got ${results.length} result(s)); ` +
+        "every published fare is a one-way package, where the MU is a percentage of the qualifying segment's base, not of the trip base.",
+      );
+    }
     if (!published) {
       throw new Error(
         `No fare with a management markup was found in the flightPricing response (got ${results.length} result(s), all markup=0). ` +
