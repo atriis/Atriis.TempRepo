@@ -15,11 +15,10 @@ Feature: 57930 Ypsilon - Booking with virtual card (VCC)
   Scenario: Book a flight using virtual card (VCC)
     Given I am logged in as "renatarosa@ypsilonspecifictestclub.com" booking a new trip
     And I have added myself as the traveler
-    When I search for a one way flight from "LHR" to "DUB"
+    When I search for a one way flight from "PAR" to "DUB"
     And I add the first flight to cart
     Then the booking status should be "Pending booking"
     Then the payment type should be "Paid by TMC"
-    And I fill in the OOP justification text "Out of policy justification"
     And I proceed to checkout
     When I complete the booking with Ypsilon credit card verification
     Then the booking status should be "Ticketing Complete"
