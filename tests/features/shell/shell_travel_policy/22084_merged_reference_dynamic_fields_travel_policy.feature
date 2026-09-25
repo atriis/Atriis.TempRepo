@@ -17,7 +17,7 @@ Feature: 22084 Travel Policy - Reference fields, dynamic fields and financial re
     Given I am logged in as "Shani@Testimcorpnl.com" booking a new trip
     And I have added a guest traveler "Israel" "Israeli" with user group "Post Addis Ababa"
     And I have added traveler by name "Shani Cohen"
-    When I initiate a hotel search in "London" for 1 night
+    When I initiate a hotel search in "London, UK" for 1 night
     Then the reference fields popup should show the following labels:
       | Type of Trip             |
       | Type of traveller        |
