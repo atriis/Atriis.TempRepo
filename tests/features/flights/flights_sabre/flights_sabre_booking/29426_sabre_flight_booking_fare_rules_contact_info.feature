@@ -12,7 +12,7 @@ Feature: 29426 Sabre - Flight booking with fare rules and contact info verificat
   So that I can confirm terms are available and contact info appears for the booker
 
   Scenario: Sabre flight booking with fare rules in results, cart and checkout plus contact info
-    Given I am logged in as "sabre@testim.com" booking a new trip
+    Given I am logged in as "brunasabre@clubcorp.com" booking a new trip
     And I have added myself as the traveler
     When I search for a one way flight from "JFK" to "DFW"
     And I click to open fare rules
@@ -44,7 +44,7 @@ Feature: 29426 Sabre - Flight booking with fare rules and contact info verificat
     And I close fare rules window
     And I close price breakdown modal
     And I proceed to checkout
-    Then the contact email on checkout should contain "@testim"
+    Then the contact email on checkout should contain "@atriis"
     Then the contact telephone on checkout should contain numbers
     And I complete the booking
     Then the quote destination should contain "Flight to"
