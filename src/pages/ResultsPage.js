@@ -53,7 +53,7 @@ const SELECTORS = {
   CONFLICT_MODAL_PROCEED: '.conflicting-quotes-dialog .btn:has-text("Proceed")',
   CONFLICT_MODAL_TRIP_LINK: '.conflicting-quotes-dialog .cart-link',
   EDIT_SEARCH_BUTTON_NAME: /^Edit(?: search)?$/i,
-  SHARE_BAR_CLOSE_BUTTON: '.share-bar span.material-symbols-outlined.is-clickable',
+  SHARE_BAR_CLOSE_BUTTON: '.share-bar button.exit-share-mode',
 };
 
 const AIRLINE_FILTER_ALIASES = {

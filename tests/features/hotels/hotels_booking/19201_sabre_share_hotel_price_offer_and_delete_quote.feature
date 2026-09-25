@@ -18,7 +18,6 @@ Feature: 19201 MERGED Sabre hotel E2E + send hotel price offer from results page
     And I have added myself as the traveler
     When I search for a hotel in "Paris France" for 1 night
     And I wait to see view rates text in results page
-    When I sort hotel results by "Price"
     And I enter share mode on hotel results
     And I select the first hotel result
     And I click on the 1 share button in results page
