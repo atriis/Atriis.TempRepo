@@ -244,18 +244,28 @@ jobs:
         if: always()
         run: npm install allure@3
 
+      # Single-file mode (see .github/allure/allurerc.mjs): screenshots and data
+      # are inlined into index.html, which is then copied to a domain-named file
+      # and uploaded unzipped, so the summary link downloads a report that opens
+      # straight from disk.
       - name: Generate Allure Report
         if: always()
         shell: bash
+        env:
+          DOMAIN: ${{ inputs.domain }}
         run: |
           if [ -d "allure-results" ] && [ "$(find allure-results -name '*.json' -type f 2>/dev/null | wc -l)" -gt 0 ]; then
-            npx allure generate ./allure-results -o allure-report
+            node .github/allure/keep-failure-screenshots.cjs allure-results
+            npx allure generate ./allure-results -o allure-report --config .github/allure/allurerc.mjs --report-name "${DOMAIN} Test Report"
             [ -f "allure-report/index.html" ] && echo "Allure report generated successfully" || echo "Allure report produced no index.html"
           else
             echo "No Allure result files found — skipping report generation"
             mkdir -p allure-report
             echo "<html><body><h1>No Allure results available</h1></body></html>" > allure-report/index.html
           fi
+          slug=$(echo "$DOMAIN" | tr '[:upper:]' '[:lower:]' | tr -c 'a-z0-9-\n' '-')
+          if [ -f "allure-report/index.html" ]; then cp allure-report/index.html "allure-report-${slug}.html"; fi
+          echo "ALLURE_REPORT_FILE=allure-report-${slug}.html" >> "$GITHUB_ENV"
 
       - name: Generate Cucumber HTML Report
         if: always()
@@ -428,12 +438,16 @@ jobs:
           retention-days: 30
           if-no-files-found: ignore
 
+      # archive: false uploads the one HTML file unzipped; the artifact takes
+      # the file's name and `name` is ignored.
       - name: Upload Allure Report
+        id: allure-upload
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: allure-report
-          path: allure-report/
+          path: ${{ env.ALLURE_REPORT_FILE || 'allure-report/index.html' }}
+          archive: false
           retention-days: 30
           if-no-files-found: ignore
 
@@ -452,9 +466,14 @@ jobs:
         shell: bash
         env:
           DOMAIN: ${{ inputs.domain }}
+          ALLURE_URL: ${{ steps.allure-upload.outputs.artifact-url }}
         run: |
           echo "## ${DOMAIN} — Test Execution Summary" >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
+          if [ -n "$ALLURE_URL" ]; then
+            echo "📊 **[Download Allure report](${ALLURE_URL})** — one HTML file with screenshots; open it in your browser." >> "$GITHUB_STEP_SUMMARY"
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+          fi
           if [ -f "cucumber-html-report/summary.json" ]; then
             node -e "
               const s = JSON.parse(require('fs').readFileSync('cucumber-html-report/summary.json', 'utf8'));

@@ -468,7 +468,8 @@ jobs:
         shell: bash
         run: |
           if [ -d "allure-results" ] && [ "$(find allure-results -name '*.json' -type f 2>/dev/null | wc -l)" -gt 0 ]; then
-            npx allure generate ./allure-results -o allure-report
+            node .github/allure/keep-failure-screenshots.cjs allure-results
+            npx allure generate ./allure-results -o allure-report --config .github/allure/allurerc.mjs
             if [ -f "allure-report/index.html" ]; then
               echo " Allure report generated successfully"
             else
@@ -479,6 +480,9 @@ jobs:
             mkdir -p allure-report
             echo "<html><body><h1>No Allure results available</h1><p>No test jobs produced Allure result files for this run.</p></body></html>" > allure-report/index.html
           fi
+          # Single-file report (.github/allure/allurerc.mjs), uploaded unzipped
+          # under this name so the summary link downloads one openable file.
+          if [ -f "allure-report/index.html" ]; then cp allure-report/index.html allure-report.html; fi
 
       - name: Generate Cucumber HTML Report
         if: always()
@@ -570,12 +574,16 @@ jobs:
           retention-days: 30
           if-no-files-found: ignore
 
+      # archive: false uploads the one HTML file unzipped; the artifact takes
+      # the file's name and `name` is ignored.
       - name: Upload Allure Report
+        id: allure-upload
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: allure-report
-          path: allure-report/
+          path: allure-report.html
+          archive: false
           retention-days: 30
           if-no-files-found: ignore
 
@@ -592,6 +600,8 @@ jobs:
       - name: Post Reports Summary
         if: always()
         shell: bash
+        env:
+          ALLURE_URL: ${{ steps.allure-upload.outputs.artifact-url }}
         run: |
           echo "##  Test Execution Summary" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
@@ -620,7 +630,11 @@ jobs:
           echo "| Report | How to View |" >> $GITHUB_STEP_SUMMARY
           echo "|--------|------------|" >> $GITHUB_STEP_SUMMARY
           echo "|  **Cucumber HTML** | Download **cucumber-html-report** artifact  open \`index.html\` |" >> $GITHUB_STEP_SUMMARY
-          echo "|  **Allure Report** | Download **allure-report** artifact  run \`npx allure open allure-report\` |" >> $GITHUB_STEP_SUMMARY
+          if [ -n "$ALLURE_URL" ]; then
+            echo "| 📊 **Allure Report** | [Download allure-report.html](${ALLURE_URL}) → open it in your browser (screenshots included) |" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "|  **Allure Report** | Not uploaded for this run |" >> $GITHUB_STEP_SUMMARY
+          fi
 
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Job Results" >> $GITHUB_STEP_SUMMARY
