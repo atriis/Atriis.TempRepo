@@ -1,15 +1,9 @@
 # Source: ADO Bug #84865 - NFF Galileo multi-city by schedule: the last leg's First cabin fares
-# appear in no combination. Held here until that is fixed: the assertion is correct and the failure
-# it reports is real, measured on trips 3862496, 3862505 and 3862541.
+# appeared in no combination row (fixed by TMC2 PR 26652).
 #
-# What it guards is the invariant the #83337 fix installed: a fare is reachable if ANY combination
-# row carries it. That is the one check that covers every leg - which fares a leg displays is
-# filtered by the fare picked before it, but a fare present in no row at all is lost, not filtered.
-#
-# Measured on JFK-LAX-ORD-DFW-JFK, the circuit the bug was found on: 104 rows, and the last leg at
-# 4/6 - FIRST (2139046) and FIRST FLEXIBLE (2139045) in no row. Rotating those same four markets
-# moved the loss to whichever leg ended up last, so it follows the position rather than the market.
-# The circuit below avoids LAX-ORD, which failed to price separately about one run in four.
+# Guards the #83337 invariant: a fare is reachable if ANY combination row carries it. A fare missing
+# from one leg's screen is filtered by the earlier pick; a fare in no row at all is lost.
+# The circuit avoids LAX-ORD, which failed to price separately about one run in four.
 
 # ADO Test Case ID: 84915
 @ado:84915

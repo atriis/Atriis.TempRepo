@@ -5,7 +5,7 @@
 #
 # Only the first leg is judged: which fares a later leg displays is filtered by the fare already
 # picked before it, and those rules are in the product's matrix rather than in any payload this suite
-# reads. The cross-leg check that covers every leg is held in flights_galileo_blocked, on bug 84865.
+# reads. The cross-leg check that covers every leg is TC 84915, next to this file.
 
 # ADO Test Case ID: 84859
 @ado:84859
