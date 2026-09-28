@@ -376,6 +376,15 @@ class RoomLevelResultsPage {
   }
 
   /**
+   * Gets the text of the first "Provided by" label in room level results.
+   * @returns {Promise<string>} The trimmed label text
+   */
+  async getProviderLabelText() {
+    const text = await this.page.locator(SELECTORS.PROVIDER_LABEL).first().innerText();
+    return text.trim();
+  }
+
+  /**
    * Enables the "Refundable" filter.
    * Waits until the checkbox state is confirmed.
    */

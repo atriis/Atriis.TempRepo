@@ -9619,9 +9619,9 @@ const Cart = {
   },
 
   /**
-   * Verifies the "Provided by" label is visible in the cart hotel preview.
+   * Verifies the "Provided by" label is visible in the cart hotel preview and contains "Provided by" (case-insensitive).
    * @param {import('playwright').Page} page
-   * @throws {Error} If the label is not visible
+   * @throws {Error} If the label is not visible or its text does not contain "Provided by"
    */
   async verifyProviderLabelInCart(page) {
     if (!page) throw new Error('page is required');
@@ -9629,6 +9629,10 @@ const Cart = {
     const isVisible = await cartPage.isProviderLabelVisible();
     if (!isVisible) {
       throw new Error('"Provided by" label is not visible in the cart hotel preview');
+    }
+    const labelText = await cartPage.getProviderLabelText();
+    if (!labelText.toLowerCase().includes('provided by')) {
+      throw new Error(`Provider label in the cart hotel preview does not contain "Provided by". Actual text: "${labelText}"`);
     }
   },
 

@@ -1026,9 +1026,9 @@ const RoomLevelResults = {
   },
 
   /**
-   * Verifies the "Provided by" label is visible in room level results.
+   * Verifies the "Provided by" label is visible in room level results and contains "Provided by" (case-insensitive).
    * @param {import('playwright').Page} page
-   * @throws {Error} If the label is not visible
+   * @throws {Error} If the label is not visible or its text does not contain "Provided by"
    */
   async verifyProviderLabelVisible(page) {
     if (!page) throw new Error('page parameter is required');
@@ -1036,6 +1036,10 @@ const RoomLevelResults = {
     const isVisible = await roomLevelResultsPage.isProviderLabelVisible();
     if (!isVisible) {
       throw new Error('"Provided by" label is not visible in room level results');
+    }
+    const labelText = await roomLevelResultsPage.getProviderLabelText();
+    if (!labelText.toLowerCase().includes('provided by')) {
+      throw new Error(`Provider label in room level results does not contain "Provided by". Actual text: "${labelText}"`);
     }
   },
 

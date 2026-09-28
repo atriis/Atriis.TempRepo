@@ -1957,6 +1957,15 @@ class CartPage {
   }
 
   /**
+   * Gets the text of the first "Provided by" label in the cart hotel preview.
+   * @returns {Promise<string>} The trimmed label text
+   */
+  async getProviderLabelText() {
+    const text = await this.page.locator(SELECTORS.PROVIDER_LABEL).first().innerText();
+    return text.trim();
+  }
+
+  /**
    * Gets the hotel quote price from the cart (the price shown on the hotel card).
    * @param {number} timeout - Maximum wait time in ms
    * @returns {Promise<number>} The price as a numeric value
