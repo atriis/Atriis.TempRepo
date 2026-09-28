@@ -368,6 +368,11 @@ Then("handshake badge should be visible in room level results", async function (
   await RoomLevelResults.verifyHandshakeBadgeVisible(this.page);
 });
 
+Then("hovering over the {string} agreement in room level results should show {string} in the tooltip", async function (labelText, tooltipText) {
+  logger.info("Verifying agreement tooltip text in room level results", { labelText, tooltipText });
+  await RoomLevelResults.verifyAgreementTooltip(this.page, labelText, tooltipText);
+});
+
 Then("agreement badge should be visible on all rooms in room level results", async function () {
   logger.info("Verifying every room in room level results has the agreement badge");
   await RoomLevelResults.verifyAgreementBadgeOnAllRooms(this.page);

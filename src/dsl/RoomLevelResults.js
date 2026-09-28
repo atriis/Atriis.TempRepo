@@ -668,6 +668,27 @@ const RoomLevelResults = {
   },
 
   /**
+   * Hovers over an agreement label on the first room card that carries it and verifies the tooltip
+   * contains the expected text.
+   * @param {import('playwright').Page} page
+   * @param {string} labelText - Agreement label to hover over (e.g. "Agency rate")
+   * @param {string} tooltipText - Text the tooltip should contain (case-insensitive)
+   */
+  async verifyAgreementTooltip(page, labelText, tooltipText) {
+    if (!page) throw new Error('page is required');
+    if (!labelText || typeof labelText !== 'string') throw new Error(`labelText must be a non-empty string, got: ${typeof labelText}`);
+    if (!tooltipText || typeof tooltipText !== 'string') throw new Error(`tooltipText must be a non-empty string, got: ${typeof tooltipText}`);
+    const p = getPageObject(page, RoomLevelResultsPage);
+    const actualTooltip = await p.hoverAgreementLabelAndGetTooltip(labelText);
+    if (!actualTooltip.toLowerCase().includes(tooltipText.toLowerCase())) {
+      throw new Error(
+        `The "${labelText}" agreement tooltip in room level results ("${actualTooltip}") ` +
+        `does not contain "${tooltipText}"`
+      );
+    }
+  },
+
+  /**
    * Verifies that every room card in the room list carries the agreement badge (handshake icon) —
    * i.e. there is no room without it.
    * @param {import('playwright').Page} page

@@ -92,8 +92,12 @@ const SELECTORS = {
   ROOM_FILTER_SUMMARY_TAG: (text) => `.room-filter-summary .el-tag:has-text("${text}")`,
   // Agreement badge (handshake icon) in room results — target the icon, not the wrapper section
   AGREEMENT_BADGE: '.ticket-agreement .agreement-img',
-  // Room card containers in the flat room list, used for per-room scans
-  ROOM_CARD: '.room-list__cards .room-preview',
+  // Agreement label span (exact text match, e.g. "Agency rate"), relative to ROOM_CARD so the
+  // hotel-info header above the rooms, which renders the same ticket-agreements component, is never matched.
+  ROOM_CARD_AGREEMENT_LABEL: (text) => `.ticket-agreement span:text-is("${text}")`,
+  // Tooltip content shown on hover over the agreement label (Element Plus renders the popper at
+  // body level). :visible skips poppers left in the DOM by earlier hovers.
+  AGREEMENT_TOOLTIP_DESCRIPTION: '.el-popper.is-light:visible .agreement-tooltip__description',
   // "Provided by" label inside room-preview (hotel-provided-by.vue)
   PROVIDER_LABEL: '.room-list .provider-label',
   // Hotel name heading (h1) at the top of the room level page - the first piece of
@@ -983,6 +987,36 @@ class RoomLevelResultsPage {
     } catch {
       return false;
     }
+  }
+
+  /**
+   * Hovers over an agreement label in the first room card that carries it and returns the tooltip
+   * description text.
+   * @param {string} labelText - Agreement label text to hover over (e.g. "Agency rate")
+   * @param {object} [options]
+   * @param {number} [options.timeout=30000] - How long to wait for the label (room list loading)
+   * @returns {Promise<string>} The tooltip description text
+   */
+  async hoverAgreementLabelAndGetTooltip(labelText, { timeout = 30000 } = {}) {
+    const span = this.page.locator(SELECTORS.ROOM_CARD).locator(SELECTORS.ROOM_CARD_AGREEMENT_LABEL(labelText)).first();
+    await span.waitFor({ state: 'visible', timeout });
+    await span.scrollIntoViewIfNeeded();
+    await span.hover();
+    // Wait for El-Plus tooltip portal to render (open-delay 200ms + render)
+    const tooltipDesc = this.page.locator(SELECTORS.AGREEMENT_TOOLTIP_DESCRIPTION).first();
+    try {
+      await tooltipDesc.waitFor({ state: 'visible', timeout: 5000 });
+    } catch {
+      // Retry: a single hover can lose the race with El-Plus mounting the popper. Move away and give
+      // the tooltip time to close (no DOM signal to wait on) so the re-hover fires a fresh pointer-enter.
+      await this.page.mouse.move(0, 0);
+      await this.page.waitForTimeout(300);
+      await span.hover();
+      await tooltipDesc.waitFor({ state: 'visible', timeout: 5000 });
+    }
+    const descText = await tooltipDesc.textContent();
+    if (!descText) throw new Error(`Agreement tooltip description not found in DOM after hovering over "${labelText}" in room level results`);
+    return descText.trim();
   }
 
   /**
