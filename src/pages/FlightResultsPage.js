@@ -348,8 +348,11 @@ const SELECTORS = {
   MARINE_FARE_ANCHOR_ICON: 'span.material-symbols-outlined:has-text("anchor")',
 
   // Advisory icons in flight preview segment (flight-preview-segment.vue)
-  // Orange material icons for train/bus transportation advisories
-  ADVISORY_ICON_ORANGE: '.flight-info-container span.material-symbols-outlined.orange',
+  // Orange material icons for train/bus transportation advisories. The stop-over advisory
+  // (airline_stops) is also orange, so the icon glyph pins it to rail/bus (FlightAdvisoriesIconNames).
+  ADVISORY_ICON_ORANGE:
+    '.flight-info-container span.material-symbols-outlined.orange:text-is("directions_railway"), ' +
+    '.flight-info-container span.material-symbols-outlined.orange:text-is("directions_bus")',
 
   // Stopover indicator icon (EDIFACT/GDS flights marketed as non-stop that have hidden stops)
   // Tooltip-trigger material icons — hover each to find "Stop over" tooltip
@@ -4189,7 +4192,7 @@ async clickSelectForFareWithBaggagePricingOptions(baggageText) {
   // ===== ADVISORY ICONS =====
 
   /**
-   * Hovers over the first orange advisory icon in flight results to trigger the tooltip.
+   * Hovers over the first rail/bus advisory icon in flight results to trigger the tooltip.
    * @param {number} timeout - Max wait time in ms (default: 10000)
    */
   async hoverAdvisoryIcon(timeout = 10000) {
