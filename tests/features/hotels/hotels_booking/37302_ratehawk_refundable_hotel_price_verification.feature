@@ -17,9 +17,15 @@ Feature: 37302 Ratehawk - Book refundable hotel with price verification
     Given I am logged in as "lidi@ratehawk.com" booking a new trip
     And I have added myself as the traveler
     When I search for a hotel in "123 Champs-elysees" for 1 night
+    And I wait to see view rates text in results page
+    When I open the more details drawer for the 1 hotel result
+    Then I should see the heading "Overview"
+    And I close the open drawer
     And I select the first hotel result
     And I wait for the first add to trip button to be visible in room level results
     And I filter room results by refundable
+    When I check terms and conditions in room level
+    Then terms and conditions are displayed
     And I extract the price from room level results
     And I add the first available room to my cart
     Then the booking status should be "Pending booking"
@@ -34,5 +40,7 @@ Feature: 37302 Ratehawk - Book refundable hotel with price verification
     When I proceed to checkout
     And I complete the booking
     Then the booking status should be "Confirmed"
+    When I extract the hotel quote price from cart
+    Then the price in cart should match the room level price
     Then I successfully cancel the trip
 

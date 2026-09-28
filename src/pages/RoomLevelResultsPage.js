@@ -485,7 +485,7 @@ class RoomLevelResultsPage {
       throw new Error(`Could not parse room-level price from text: "${priceText}"`);
     }
 
-    return Math.round(parsedPrice);
+    return parsedPrice;
   }
 
   /**

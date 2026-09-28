@@ -239,7 +239,9 @@ const RoomLevelResults = {
     }
 
     const difference = Math.abs(hotelLevelPrice - roomLevelPrice);
-    const tolerance = 0.01;
+    // The hotel card shows the price rounded to a whole number (hotel-preview.vue), while the room
+    // price keeps its decimals, so the two can differ by up to 0.5 on the same rate.
+    const tolerance = 1;
 
     if (difference > tolerance) {
       throw new Error(`Expected hotel-level price ${hotelLevelPrice} to match room-level price ${roomLevelPrice} within tolerance ${tolerance}`);
