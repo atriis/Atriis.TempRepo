@@ -83,6 +83,16 @@ Then("I should select {string} radio button", async function (label) {
   await EvolviSearch.selectSplitTicketType(this.page, label);
 });
 
+When("I select {int} as the Evolvi maximum number of splits", async function (splitCount) {
+  logger.info("Selecting the Evolvi SplitTix split count", { splitCount });
+  await EvolviSearch.selectMaxSplits(this.page, splitCount);
+});
+
+Then("the Evolvi maximum number of splits should show {string}", async function (expectedLabel) {
+  logger.info("Verifying the Evolvi SplitTix split count shown in the search form", { expectedLabel });
+  await EvolviSearch.expectMaxSplitsSelected(this.page, expectedLabel);
+});
+
 // The split-type tooltip documents both split types at once, so both of this scenario's message
 // checks read the same tooltip — the radio label in the phrase names where the icon sits, not which
 // half of the tooltip is asserted.

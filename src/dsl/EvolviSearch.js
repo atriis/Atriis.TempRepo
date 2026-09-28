@@ -33,6 +33,14 @@ const logger = require("@utils/logger").child("EvolviSearch");
  */
 async function clickSearchUntilSubmitted(searchPage, evolviSearchPage, { attempts = 3 } = {}) {
   for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    // A SplitTix search can hold the form on screen past isSearchFormGone's window and then submit
+    // anyway (seen at ~17s on 57201). Re-check before clicking again, or the repeat click waits on a
+    // Search button that left with the form.
+    if (attempt > 1 && (await evolviSearchPage.isSearchFormGone(10000))) {
+      logger.info("The UK Rail search submitted late, without a repeat click", { attempts: attempt - 1 });
+      return { attempts: attempt - 1 };
+    }
+
     await searchPage.waitAndClickSearchButton();
 
     if (await evolviSearchPage.isSearchFormGone()) {
@@ -301,6 +309,55 @@ const EvolviSearch = {
     await evolviSearchPage.selectSplitTicketTypeRadio(label);
 
     return { selected: label };
+  },
+
+  /**
+   * Picks the SplitTix maximum number of splits in Advanced search. The chosen value is what the
+   * search sends to Evolvi as MaxSplits in otaRailAvail.
+   *
+   * @param {import('playwright').Page} page
+   * @param {number} splitCount - 1, 2 or 3
+   */
+  async selectMaxSplits(page, splitCount) {
+    if (!page) throw new Error('[EvolviSearch.selectMaxSplits] "page" is required.');
+    if (!Number.isInteger(splitCount) || splitCount < 1 || splitCount > 3) {
+      throw new Error(
+        `[EvolviSearch.selectMaxSplits] "splitCount" must be 1, 2 or 3 (the options the UK Rail form offers), got: ${splitCount}`,
+      );
+    }
+    const evolviSearchPage = getPageObject(page, EvolviSearchPage);
+
+    logger.info("[EvolviSearch.selectMaxSplits] Selecting the SplitTix split count", { splitCount });
+    await evolviSearchPage.selectSplitCountOption(splitCount);
+
+    return { splitCount };
+  },
+
+  /**
+   * Asserts the SplitTix "split max" select in Advanced search shows the expected option label.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} expectedLabel - e.g. "2 split max"
+   * @returns {Promise<string>} The label that was read
+   */
+  async expectMaxSplitsSelected(page, expectedLabel) {
+    if (!page) throw new Error('[EvolviSearch.expectMaxSplitsSelected] "page" is required.');
+    if (!expectedLabel || typeof expectedLabel !== "string") {
+      throw new Error(
+        `[EvolviSearch.expectMaxSplitsSelected] "expectedLabel" must be a non-empty string, got: ${expectedLabel}`,
+      );
+    }
+    const evolviSearchPage = getPageObject(page, EvolviSearchPage);
+
+    const selectedLabel = await evolviSearchPage.getSplitCountSelectedLabel();
+    logger.info("[EvolviSearch.expectMaxSplitsSelected] Read the SplitTix split count", { selectedLabel });
+
+    expect(
+      selectedLabel.toLowerCase(),
+      "The SplitTix split count select in UK Rail Advanced search should show the selected split count.",
+    ).toBe(expectedLabel.toLowerCase());
+
+    return selectedLabel;
   },
 
   /**

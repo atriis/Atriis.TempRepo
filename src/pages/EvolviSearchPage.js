@@ -92,6 +92,15 @@ const SELECTORS = {
   // popper-class of its own, so the only way to tell it apart from the app-tooltip popper above
   // is to exclude that one.
   SPLIT_TICKET_TYPE_TOOLTIP: ".el-popper.is-light:visible:not(.app-tooltip)",
+  // The SplitTix "split max" app-select inside Advanced search (railInfo.splitTixMaxSplits), rendered
+  // only while "Request Split Ticket" is ticked. app-select.vue lets `data-track` fall through to its
+  // root <section>, so that attribute addresses it directly.
+  SPLIT_COUNT_SELECT: `${SEARCH_FORM} section.app-select[data-track='evolvi-search-split-count']`,
+  // The label el-select shows for the current value (same shape as CarResultsPage.CAR_SORT_SELECTED_LABEL).
+  SPLIT_COUNT_SELECTED_LABEL:
+    `${SEARCH_FORM} section.app-select[data-track='evolvi-search-split-count'] .el-select__placeholder`,
+  // app-select poppers are teleported to <body>, so the open option list is not under SEARCH_FORM.
+  SPLIT_COUNT_OPTION: ".app-select-popper:visible .el-select-dropdown__item",
 
   SEARCH_FORM,
   // Rail-card selects live in the SECOND .app-column of `.extra-details-container` — one per
@@ -338,6 +347,63 @@ class EvolviSearchPage {
       await tooltip.waitFor({ state: "visible", timeout });
     }
     return ((await tooltip.innerText()) ?? "").replace(/\s+/g, " ").trim();
+  }
+
+  /**
+   * Opens the SplitTix "split max" select inside Advanced search and picks the option for a split
+   * count.
+   *
+   * The options are built as `${n} ${$t('ukRail.splitMax')}` (evolvi-search-inputs.ts), so the
+   * option is matched on its leading number rather than the translated suffix — that keeps the
+   * lookup working whatever language the account runs in.
+   *
+   * @param {number} splitCount - 1, 2 or 3
+   * @param {number} [timeout=30000]
+   */
+  async selectSplitCountOption(splitCount, timeout = 30000) {
+    if (!Number.isInteger(splitCount) || splitCount < 1) {
+      throw new Error(
+        `[EvolviSearchPage.selectSplitCountOption] "splitCount" must be a positive integer, got: ${splitCount}`,
+      );
+    }
+    const select = this.page.locator(SELECTORS.SPLIT_COUNT_SELECT).first();
+    try {
+      await select.waitFor({ state: "visible", timeout });
+    } catch (err) {
+      throw new Error(
+        "[EvolviSearchPage.selectSplitCountOption] The split count select never became visible. It only " +
+          'renders inside an expanded Advanced search while the "Request Split Ticket" checkbox is ticked. ' +
+          `Original: ${err.message}`,
+      );
+    }
+    await select.scrollIntoViewIfNeeded().catch(() => {});
+    await select.click();
+
+    const option = this.page
+      .locator(SELECTORS.SPLIT_COUNT_OPTION)
+      .filter({ hasText: new RegExp(`^\\s*${splitCount}\\s`) })
+      .first();
+    try {
+      await option.waitFor({ state: "visible", timeout: 10000 });
+    } catch (err) {
+      throw new Error(
+        `[EvolviSearchPage.selectSplitCountOption] No "${splitCount} split max" option in the split count ` +
+          `select (option: ${SELECTORS.SPLIT_COUNT_OPTION}). Original: ${err.message}`,
+      );
+    }
+    await option.click();
+  }
+
+  /**
+   * Returns the label the SplitTix "split max" select currently shows, whitespace-normalised.
+   *
+   * @param {number} [timeout=10000]
+   * @returns {Promise<string>} e.g. "2 split max"
+   */
+  async getSplitCountSelectedLabel(timeout = 10000) {
+    const label = this.page.locator(SELECTORS.SPLIT_COUNT_SELECTED_LABEL).first();
+    await label.waitFor({ state: "visible", timeout });
+    return normalizeText(await label.innerText());
   }
 
   /**
