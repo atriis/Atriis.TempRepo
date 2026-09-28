@@ -4163,8 +4163,11 @@ Then("the trip total to pay should not be zero", async function () {
 
 // ===== FINANCIAL REFERENCE (TRIP OVERVIEW) STEPS =====
 
-When("I open the financial reference details from the trip overview", async function () {
-  logger.info("Opening the financial reference details from the quote actions dropdown in the trip overview");
+// Both wordings open the same "Trip reference form" dialog and only wait for it to render — no Edit
+// button is required, so the read-only wording suits a view-only form (e.g. an in-approval trip,
+// whose footer carries only "Close") whose answers are then asserted.
+When(/^I open the (?:financial reference details|read-only trip reference form) from the trip overview$/, async function () {
+  logger.info("Opening the trip reference form (read-only) from the trip actions menu in the trip overview");
   await Cart.openFinancialReferenceDetailsFromTripOverview(this.page);
 });
 
@@ -4181,8 +4184,9 @@ Then("the financial reference field in the trip overview should show {string}", 
   await Cart.verifyFinancialReferenceFieldDescriptionInTripOverview(this.page, expectedText);
 });
 
-When("I close the financial reference dialog in the trip overview", async function () {
-  logger.info("Closing the financial reference dialog in the trip overview");
+// The financial reference details and the Trip reference form are the same reference-form dialog.
+When(/^I close the (?:financial reference dialog|trip reference form) in the trip overview$/, async function () {
+  logger.info("Closing the trip reference form dialog in the trip overview");
   await Cart.closeFinancialReferenceDialogInTripOverview(this.page);
 });
 // ===== Compensation / Climate Contribution  =====
