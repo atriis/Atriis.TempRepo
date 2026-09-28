@@ -13,7 +13,7 @@ Feature: 55440 Flights - Seat map from results
   So that I can preview seat availability before adding to cart
 
   Scenario: Seat map is accessible from search results
-    Given I am logged in as "anthonydubu@amadeus.com" booking a new trip
+    Given I am logged in as "brunaauto@amadeusgds.com" booking a new trip
     And I have added myself as the traveler
     When I search for a round trip flight from "LON" to "NYC"
     And I wait for add to trip text to be visible
