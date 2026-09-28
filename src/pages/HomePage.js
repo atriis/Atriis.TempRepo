@@ -46,6 +46,16 @@ const SELECTORS = {
   // stack); this suite runs desktop headless. :visible restricts the count to the active pane, as
   // el-tabs keeps inactive panes in the DOM but hidden.
   TRIP_CARD: '.trip-tabs-container .trip-list-home .trip-preview-home:visible',
+  // "Awaiting my approval" tab header — pane name "awaiting-approval" → #tab-awaiting-approval (same
+  // #tab-<name> convention as UPCOMING_TRIPS_TAB). Only rendered when the approver has pending trips.
+  AWAITING_APPROVAL_TAB: '#tab-awaiting-approval',
+  // Trip id label inside a single TRIP_CARD (always scoped via TRIP_CARD, never used on its own).
+  TRIP_CARD_ID: '.trip-id',
+  // "More details" link inside a TRIP_CARD — opens the trip cart. Deliberately NOT the card's inline
+  // approve button ([data-testid='trip.card.approve-btn']), which approves and hides the trip for ~61s.
+  TRIP_CARD_LINK: 'a.more-details-link',
+  // "Show more" button at the foot of the active trip-monitor pane — lists further trips.
+  SHOW_MORE_TRIPS_BUTTON: '.trip-tabs-container .el-tab-pane:visible button.btn:has-text("Show more")',
 
   // Document expiry warning stack (AB#65307). One `document-expiry-alerts` component is mounted
   // app-wide in logged-in-page.vue but renders on two surfaces only: the homepage, showing the
@@ -351,6 +361,132 @@ class HomePage {
    */
   async selectUpcomingTripsTab(timeout = 15000) {
     return this._selectTripMonitorTab(SELECTORS.UPCOMING_TRIPS_TAB, "My upcoming trips", timeout);
+  }
+
+  /**
+   * Selects the "Awaiting my approval" tab on the homepage trip-monitor panel, if present. The tab is
+   * only rendered when the approver has trips awaiting approval, so absence returns false.
+   * @param {number} [timeout=10000]
+   * @returns {Promise<boolean>} true if the tab was present and selected
+   */
+  async selectAwaitingApprovalTab(timeout = 10000) {
+    return this._selectTripMonitorTab(SELECTORS.AWAITING_APPROVAL_TAB, "Awaiting my approval", timeout);
+  }
+
+  /**
+   * Clicks the "Show more" button of the active trip-monitor pane when it is shown. The button only
+   * renders when the pane holds more trips than its first page, so absence returns false.
+   * @param {number} [timeout=3000]
+   * @returns {Promise<boolean>} true if the button was present and clicked
+   */
+  async clickShowMoreTripsIfPresent(timeout = 3000) {
+    const button = this.page.locator(SELECTORS.SHOW_MORE_TRIPS_BUTTON).first();
+    try {
+      await button.waitFor({ state: "visible", timeout });
+    } catch {
+      // No "Show more" button — every trip in the pane is already listed.
+      return false;
+    }
+    try {
+      await button.click({ timeout: 10000 });
+      return true;
+    } catch (err) {
+      throw new Error(
+        `[HomePage.clickShowMoreTripsIfPresent] Found the "Show more" button of the active trip-monitor pane ` +
+          `but could not click it (${SELECTORS.SHOW_MORE_TRIPS_BUTTON}). Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Locates the trip card in the active trip-monitor pane whose trip id label equals `tripId`
+   * exactly (anchored, so trip 123 never matches 1234).
+   * @param {string|number} tripId
+   * @returns {import('@playwright/test').Locator}
+   */
+  getTripCardById(tripId) {
+    const id = String(tripId ?? "").trim();
+    if (!/^\d+$/.test(id)) {
+      throw new Error(
+        `[HomePage.getTripCardById] "tripId" must be a numeric trip id, got: ${JSON.stringify(tripId)}`
+      );
+    }
+    return this.page
+      .locator(SELECTORS.TRIP_CARD)
+      .filter({ has: this.page.locator(SELECTORS.TRIP_CARD_ID, { hasText: new RegExp(`^\\s*${id}\\s*$`) }) })
+      .first();
+  }
+
+  /**
+   * Returns whether the trip card for `tripId` is visible in the active trip-monitor pane. Never
+   * throws — a missing card (or invalid id) is reported as false so the caller owns the assertion.
+   * @param {string|number} tripId
+   * @param {number} [timeout=5000]
+   * @returns {Promise<boolean>}
+   */
+  async isTripCardVisible(tripId, timeout = 5000) {
+    try {
+      await this.getTripCardById(tripId).waitFor({ state: "visible", timeout });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Opens the trip whose card carries `tripId` via the card's "More details" link. Never uses the
+   * card's inline approve button, which approves the trip and hides it from the list.
+   * @param {string|number} tripId
+   */
+  async clickTripCardById(tripId) {
+    const link = this.getTripCardById(tripId).locator(SELECTORS.TRIP_CARD_LINK).first();
+    try {
+      await link.waitFor({ state: "visible", timeout: 10000 });
+      await link.click({ timeout: 10000 });
+    } catch (err) {
+      throw new Error(
+        `[HomePage.clickTripCardById] Could not click the "More details" link (${SELECTORS.TRIP_CARD_LINK}) on the ` +
+          `homepage trip card for trip ${tripId}. The card may have left the active pane or rendered without the link. ` +
+          `Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Reloads the homepage so the trip-monitor panel re-fetches its lists.
+   * @param {number} [timeout=30000]
+   */
+  async reloadHomepage(timeout = 30000) {
+    try {
+      await this.page.reload({ waitUntil: "domcontentloaded", timeout });
+    } catch (err) {
+      throw new Error(
+        `[HomePage.reloadHomepage] Reloading the homepage did not reach DOMContentLoaded within ${timeout}ms. ` +
+          `Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Waits for the browser to land on the cart of `tripId` (/trips/<id>/cart).
+   * @param {string|number} tripId
+   * @param {number} [timeout=30000]
+   */
+  async waitForTripCartUrl(tripId, timeout = 30000) {
+    if (!/^\d+$/.test(String(tripId ?? "").trim())) {
+      throw new Error(
+        `[HomePage.waitForTripCartUrl] "tripId" must be a numeric trip id, got: ${JSON.stringify(tripId)}`
+      );
+    }
+    try {
+      await this.page.waitForURL(new RegExp(`/trips/${tripId}/cart`), { timeout });
+    } catch (err) {
+      throw new Error(
+        `[HomePage.waitForTripCartUrl] The browser did not navigate to /trips/${tripId}/cart within ${timeout}ms ` +
+          `(current URL: ${this.page.url()}). Opening the trip from the homepage card may have failed. ` +
+          `Original: ${err.message}`
+      );
+    }
   }
 
   /**

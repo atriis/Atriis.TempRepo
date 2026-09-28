@@ -326,6 +326,17 @@ When("I click the all trips button on the homepage", async function () {
   await Homepage.clickAllTripsFromHomepage(this.page);
 });
 
+// Timeout covers Homepage.openAwaitingApprovalTripWhenListed's 300000ms poll budget plus opening the trip.
+When("I open the trip awaiting my approval from the homepage", { timeout: 420000 }, async function () {
+  if (!this.tripId) {
+    throw new Error(
+      "No trip number on the World. The trip id must be captured during 'I am logged in ... booking a new trip' before this step."
+    );
+  }
+  logger.info('Opening the scenario trip from the homepage "Awaiting my approval" tab', { tripId: this.tripId });
+  await Homepage.openAwaitingApprovalTripWhenListed(this.page, String(this.tripId));
+});
+
 Then("the default product picture should be displayed on the quick link card", async function () {
   logger.info("Verifying default picture is displayed on quick link card");
   const src = await Homepage.getQuickLinkCardImageSrc(this.page);

@@ -349,6 +349,11 @@ Then("the trip overview approvers should be:", async function (dataTable) {
   await Cart.verifyApproversAre(this.page, expectedApprovers);
 });
 
+Then("the approval history should list {int} approvals each with an approved on date", async function (expectedCount) {
+  logger.info("Verifying the approval history entries in the approvals dialog", { expectedCount });
+  await Cart.verifyApprovalHistoryApprovedOnEntries(this.page, expectedCount);
+});
+
 When("I click the share quote button", async function () {
   logger.info("Clicking share quote button");
   await Cart.clickShareQuoteAndWaitForSubjectField(this.page);
@@ -2443,6 +2448,17 @@ When("I navigate to trip {int}", async function (tripId) {
   await Cart.navigateToTrip(this.page, tripId);
 });
 
+When("I navigate to the scenario trip", async function () {
+  if (!this.tripId) {
+    throw new Error(
+      "No trip number on the World. The trip id must be captured during 'I am logged in ... booking a new trip' before this step."
+    );
+  }
+  const tripId = Number(this.tripId);
+  logger.info("Navigating to the scenario trip", { tripId });
+  await Cart.navigateToTrip(this.page, tripId);
+});
+
 // ========================================
 // LOCKED TRIP (test 55667)
 // ========================================
@@ -4295,6 +4311,11 @@ Then("the trip approval bar should show {string} with {string} and {string} butt
   logger.info("Verifying the trip approval bar is displayed", { expectedTitle, declineLabel, approveLabel });
   // Read this.page at call time: opening a trip may have moved the scenario to a new tab.
   await Cart.verifyTripApprovalBarDisplayed(this.page, expectedTitle, declineLabel, approveLabel);
+});
+
+When("I approve the trip from the approvals bar", { timeout: CHECKOUT_STEP_TIMEOUT_MS }, async function () {
+  logger.info("Approving the trip from the approvals bar");
+  await Cart.approveTripFromApprovalsBar(this.page);
 });
 
 // ===== EVOLVI MANDATORY CART FIELDS =====

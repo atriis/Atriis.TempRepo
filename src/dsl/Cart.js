@@ -518,6 +518,36 @@ const Cart = {
   },
 
   /**
+   * Approves the opened trip from its approvals bar and waits for the decision to be accepted
+   * (the bar's Decline/Approve buttons are removed). Mutates real approval state — use only in
+   * scenarios that create their own trip. Never approves from the homepage trip card.
+   *
+   * @param {import('playwright').Page} page
+   * @returns {Promise<{approved: true}>}
+   */
+  async approveTripFromApprovalsBar(page) {
+    if (!page) throw new Error('[Cart.approveTripFromApprovalsBar] "page" is required.');
+
+    const cartPage = getPageObject(page, CartPage);
+    logger.info('Approving the trip from the approvals bar');
+
+    try {
+      await cartPage.waitForApprovalsBar();
+      logger.debug('[Cart.approveTripFromApprovalsBar] Clicking "Approve" on the approvals bar');
+      await cartPage.clickApprovalsBarButton('Approve');
+      await cartPage.waitForApprovalsBarActionsHidden();
+    } catch (err) {
+      throw new Error(
+        `[Cart.approveTripFromApprovalsBar] Failed to approve the trip from its approvals bar. The opened trip may not ` +
+        `be awaiting this user's approval, or the approval request was rejected. Original: ${err.message}`
+      );
+    }
+
+    logger.info('Trip approved from the approvals bar');
+    return { approved: true };
+  },
+
+  /**
    * STRICT cancel flow with an explicit pre-cancellation wait.
    *
    * @param {import('playwright').Page} page
@@ -15367,6 +15397,59 @@ const Cart = {
     }
 
     await cartPage.closeApprovalsDialog();
+  },
+
+  /**
+   * Verifies the open approvals dialog's "Approval history" lists exactly `expectedCount` entries,
+   * each titled "Approved on <date time>", then closes the dialog. The dialog must already be open
+   * (see viewApproversInTripOverview). The date part is matched locale-tolerantly; the count is exact.
+   *
+   * @param {import('playwright').Page} page
+   * @param {number} expectedCount - Expected number of approval history entries
+   * @returns {Promise<{count: number, titles: string[]}>}
+   */
+  async verifyApprovalHistoryApprovedOnEntries(page, expectedCount) {
+    if (!page) throw new Error('[Cart.verifyApprovalHistoryApprovedOnEntries] "page" is required.');
+    if (!Number.isInteger(expectedCount) || expectedCount <= 0) {
+      throw new Error(
+        `[Cart.verifyApprovalHistoryApprovedOnEntries] "expectedCount" must be a positive integer, got: ${expectedCount}`
+      );
+    }
+
+    logger.debug('[Cart.verifyApprovalHistoryApprovedOnEntries] Reading approval history entries', { expectedCount });
+    const cartPage = getPageObject(page, CartPage);
+    let titles;
+    let itemCount;
+    try {
+      titles = await cartPage.getApprovalHistoryTitles();
+      itemCount = await cartPage.getApprovalHistoryItemCount();
+    } catch (err) {
+      await cartPage.closeApprovalsDialog().catch(() => {});
+      throw new Error(
+        `[Cart.verifyApprovalHistoryApprovedOnEntries] Could not read the approval history (expected ${expectedCount} ` +
+        `"Approved on" entries). Earlier approvals were likely dropped when the trip changed after approval. ` +
+        `Original: ${err.message}`
+      );
+    }
+
+    // 'dd MMM yy - HH:mm' renders day-first ("16 Jul 26") or, in US locale, month-first ("Jul 16, 26").
+    // Case-insensitive: the header renders the i18n "Approved on" capitalized ("Approved On").
+    const approvedOnPattern = /^Approved on (\d{1,2} [A-Za-z]{3,} \d{2}|[A-Za-z]{3,} \d{1,2}, \d{2}) - \d{2}:\d{2}$/i;
+    const malformed = titles.filter((title) => !approvedOnPattern.test(title));
+
+    if (itemCount !== expectedCount || titles.length !== expectedCount || malformed.length > 0) {
+      await cartPage.closeApprovalsDialog().catch(() => {});
+      throw new Error(
+        `[Cart.verifyApprovalHistoryApprovedOnEntries] Approval history mismatch. Expected ${expectedCount} entries ` +
+        `titled "Approved on <date time>", got ${itemCount} item(s) with titles ${JSON.stringify(titles)}` +
+        (malformed.length > 0 ? `; not matching ${approvedOnPattern}: ${JSON.stringify(malformed)}` : '') +
+        `. Each approval of the trip should stay in the history after the trip is changed and re-approved.`
+      );
+    }
+
+    await cartPage.closeApprovalsDialog();
+    logger.info('Approval history lists every approval with its date', { count: itemCount, titles });
+    return { count: itemCount, titles };
   },
 
   /**

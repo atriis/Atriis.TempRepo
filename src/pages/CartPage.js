@@ -963,6 +963,10 @@ const SELECTORS = {
   APPROVALS_DIALOG: '.el-dialog.approvals-dialog',
   APPROVALS_DIALOG_APPROVER_NAME: '.approvals-dialog .approver-name',
   APPROVALS_DIALOG_CLOSE_BUTTON: '.approvals-dialog .el-dialog__headerbtn',
+  // "Approval history" section — one el-collapse-item per past approval, titled "Approved on <date>".
+  APPROVALS_DIALOG_HISTORY_ITEM: '.approvals-dialog .approval-history-container .el-collapse-item',
+  APPROVALS_DIALOG_HISTORY_ITEM_TITLE:
+    '.approvals-dialog .approval-history-container .el-collapse-item__header .small-title',
 
   // Manual approval controls inside the approvals dialog (trip-approval-steps.vue).
   // "Modify" toggles isModifyApprovalMode, which is what reveals "Skip all"; "Save"
@@ -986,6 +990,9 @@ const SELECTORS = {
   // `.btn-container`, and each label is preceded by a material-symbols icon span
   // ('close_small' / 'check_small') — so callers must filter by SUBSTRING, never exact text.
   APPROVALS_BAR_ACTION_BUTTON: '.approvals-bar .btn-container button.btn',
+  // The Decline/Approve button container itself — removed once the decision is accepted, so its
+  // disappearance is the "approval went through" signal.
+  APPROVALS_BAR_ACTIONS: '.approvals-bar .btn-container',
 
   // ===== Additional items section (trip-cart.vue) =====
   // The cart's "Additional items" section is where on-demand products (Stay Safe, the
@@ -4093,6 +4100,36 @@ class CartPage {
     const approverNames = await this.waitForApproverNamesReady('getApproverNames', timeout);
     const names = await approverNames.allInnerTexts();
     return names.map((name) => name.trim()).filter((name) => name.length > 0);
+  }
+
+  /**
+   * Counts the "Approval history" collapse items in the open approvals dialog.
+   * @returns {Promise<number>}
+   */
+  async getApprovalHistoryItemCount() {
+    return this.page.locator(SELECTORS.APPROVALS_DIALOG_HISTORY_ITEM).count();
+  }
+
+  /**
+   * Reads the whitespace-normalised titles ("Approved on <date>") of the "Approval history"
+   * collapse items in the open approvals dialog. Throws when no history item renders — an
+   * empty history is exactly the defect these scenarios guard against.
+   * @param {number} [timeout=15000]
+   * @returns {Promise<string[]>}
+   */
+  async getApprovalHistoryTitles({ timeout = 15000 } = {}) {
+    const titles = this.page.locator(SELECTORS.APPROVALS_DIALOG_HISTORY_ITEM_TITLE);
+    try {
+      await titles.first().waitFor({ state: 'visible', timeout });
+    } catch (err) {
+      throw new Error(
+        `[CartPage.getApprovalHistoryTitles] No "Approval history" entry appeared in the approvals dialog after ${timeout}ms ` +
+        `(${SELECTORS.APPROVALS_DIALOG_HISTORY_ITEM_TITLE}). The history section is missing or empty — past approvals were not kept. ` +
+        `Original: ${err.message}`
+      );
+    }
+    const texts = await titles.allInnerTexts();
+    return texts.map((s) => s.replace(/\s+/g, ' ').trim());
   }
 
   /**
@@ -14814,6 +14851,43 @@ class CartPage {
       );
     }
     return bar;
+  }
+
+  /**
+   * Clicks an approvals-bar action button by its visible label ("Decline" / "Approve").
+   *
+   * @param {string} label - Visible button label, e.g. "Approve"
+   */
+  async clickApprovalsBarButton(label) {
+    const button = this.getApprovalsBarButton(label);
+    try {
+      await button.click({ timeout: 10000 });
+    } catch (err) {
+      throw new Error(
+        `[CartPage.clickApprovalsBarButton] Could not click the "${label}" button on the trip approvals bar ` +
+        `(${SELECTORS.APPROVALS_BAR_ACTION_BUTTON}). The bar may not be shown for this user or the button is disabled. ` +
+        `Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Waits for the approvals-bar action buttons to disappear — the real signal that an
+   * Approve/Decline decision was accepted by the server.
+   *
+   * @param {{ timeout?: number }} [options]
+   * @param {number} [options.timeout=60000] - Max wait for the buttons to be removed (ms)
+   */
+  async waitForApprovalsBarActionsHidden({ timeout = 60000 } = {}) {
+    try {
+      await this.page.locator(SELECTORS.APPROVALS_BAR_ACTIONS).first().waitFor({ state: 'hidden', timeout });
+    } catch (err) {
+      throw new Error(
+        `[CartPage.waitForApprovalsBarActionsHidden] The approvals-bar action buttons (${SELECTORS.APPROVALS_BAR_ACTIONS}) ` +
+        `were still shown ${timeout}ms after the decision. The approval may have failed (check for an error toast). ` +
+        `Original: ${err.message}`
+      );
+    }
   }
 
   /**

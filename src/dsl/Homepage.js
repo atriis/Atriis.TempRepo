@@ -1,3 +1,4 @@
+const { expect } = require("@playwright/test");
 const { getPageObject } = require("@utils/pageObjectCache");
 const LoginPage = require("@pages/LoginPage");
 const { HomePage } = require("@pages/HomePage");
@@ -453,6 +454,96 @@ const Homepage = {
         `The trip-monitor tabs may not have rendered for this user. Original: ${err.message}`
       );
     }
+  },
+
+  /**
+   * Polls the homepage "Awaiting my approval" tab until the given trip is listed, then opens it via
+   * its card's "More details" link and waits for the trip cart.
+   *
+   * A freshly sent-for-approval trip reaches the approver's list asynchronously, so the homepage is
+   * reloaded between attempts (every `pollIntervalMs`) until the card shows or `timeoutMs` elapses.
+   * The trip is never approved from the card — the inline approve button hides the trip for ~61s.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} tripId - the trip id captured when the scenario created the trip
+   * @param {{ pollIntervalMs?: number, timeoutMs?: number }} [options]
+   * @returns {Promise<{ opened: true, tripId: string, attempts: number }>}
+   */
+  async openAwaitingApprovalTripWhenListed(page, tripId, { pollIntervalMs = 15000, timeoutMs = 300000 } = {}) {
+    if (!page) throw new Error('[Homepage.openAwaitingApprovalTripWhenListed] page is required');
+    const id = String(tripId ?? '').trim();
+    if (!id) {
+      throw new Error(
+        `[Homepage.openAwaitingApprovalTripWhenListed] "tripId" must be a non-empty string, got: ${JSON.stringify(tripId)}`
+      );
+    }
+    for (const [name, value] of Object.entries({ pollIntervalMs, timeoutMs })) {
+      if (!Number.isInteger(value) || value <= 0) {
+        throw new Error(
+          `[Homepage.openAwaitingApprovalTripWhenListed] "${name}" must be a positive integer, got: ${value}`
+        );
+      }
+    }
+
+    logger.info('Waiting for the trip to be listed under the homepage "Awaiting my approval" tab', {
+      tripId: id,
+      pollIntervalMs,
+      timeoutMs,
+    });
+    const loginPage = getPageObject(page, LoginPage);
+    const homePage = getPageObject(page, HomePage);
+    const startedAt = Date.now();
+    let attempts = 0;
+
+    try {
+      await expect
+        .poll(
+          async () => {
+            attempts++;
+            // expect.poll propagates a thrown callback instead of retrying it, so every transient
+            // failure (reload mid-render, tab not yet rendered) is swallowed and reported as "not yet".
+            try {
+              if (attempts > 1) {
+                logger.debug('Trip not listed yet — reloading the homepage', { tripId: id, attempts });
+                await homePage.reloadHomepage();
+              }
+              // Cookie banner can re-appear on the homepage and intercept the tab click.
+              await loginPage.acceptCookiesIfPresent(5000);
+              if (!(await homePage.selectAwaitingApprovalTab())) return false;
+              await homePage.clickShowMoreTripsIfPresent();
+              return await homePage.isTripCardVisible(id);
+            } catch {
+              return false;
+            }
+          },
+          {
+            message: `Trip ${id} should be listed under the homepage "Awaiting my approval" tab`,
+            intervals: [pollIntervalMs],
+            timeout: timeoutMs,
+          }
+        )
+        .toBe(true);
+    } catch (err) {
+      throw new Error(
+        `[Homepage.openAwaitingApprovalTripWhenListed] Trip ${id} was not listed under the homepage "Awaiting my approval" ` +
+        `tab after ${attempts} attempt(s) over ${Date.now() - startedAt}ms. The trip may not have reached this approver yet ` +
+        `(send-for-approval failed, or the approval chain routes it to another user). Original: ${err.message}`
+      );
+    }
+
+    try {
+      logger.debug('Opening the trip from its homepage card', { tripId: id, attempts });
+      await homePage.clickTripCardById(id);
+      await homePage.waitForTripCartUrl(id);
+    } catch (err) {
+      throw new Error(
+        `[Homepage.openAwaitingApprovalTripWhenListed] Trip ${id} was listed under "Awaiting my approval" but could not ` +
+        `be opened from its homepage card. Original: ${err.message}`
+      );
+    }
+
+    logger.info('Opened the trip awaiting approval from the homepage', { tripId: id, attempts });
+    return { opened: true, tripId: id, attempts };
   },
 
   /**
