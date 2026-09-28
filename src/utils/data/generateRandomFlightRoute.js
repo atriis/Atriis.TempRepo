@@ -66,7 +66,8 @@ function generateRandomFlightRoute(region) {
 /**
  * Returns up to `count` distinct routes for one supplier from flightSupplierRoutes.json, in random
  * order - the first is the route to search, the rest are fallbacks for when it returns no results.
- * The supplier name is matched ignoring case, so "Lufthansa NDC" and "lufthansa ndc" are the same.
+ * The supplier name is matched ignoring case, so "Lufthansa NDC" and "lufthansa ndc" are the same,
+ * and against the supplier's optional "aliases" (e.g. "BA NDC" for "British Airways NDC").
  *
  * @param {string} supplier - supplier name as keyed in flightSupplierRoutes.json, e.g. "Lufthansa NDC"
  * @param {string} [region] - e.g. "europe" or "intercontinental"; all regions when omitted, throws when unknown
@@ -75,8 +76,9 @@ function generateRandomFlightRoute(region) {
  */
 function generateRandomSupplierFlightRoutes(supplier, region, count = 1) {
   const suppliers = flightSupplierRoutes.suppliers || {};
-  const supplierKey = Object.keys(suppliers).find(
-    (name) => name.toLowerCase() === String(supplier || "").trim().toLowerCase(),
+  const wanted = String(supplier || "").trim().toLowerCase();
+  const supplierKey = Object.keys(suppliers).find((name) =>
+    [name, ...(suppliers[name].aliases || [])].some((alias) => alias.toLowerCase() === wanted),
   );
 
   if (!supplierKey) {

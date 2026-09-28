@@ -390,8 +390,8 @@ const FlightSearch = {
    *
    * @param {import('playwright').Page} page
    * @param {Object} options
-   * @param {string} options.supplier - supplier keyed in flightSupplierRoutes.json, e.g. "Lufthansa NDC"
-   * @param {string} [options.region] - "europe" or "intercontinental" ("transcontinental" is accepted); any region when omitted
+   * @param {string} options.supplier - supplier keyed in flightSupplierRoutes.json, or one of its aliases, e.g. "Lufthansa NDC" / "LH NDC"
+   * @param {string} [options.region] - a region the supplier has, e.g. "europe", "us" or "intercontinental" ("transcontinental" is accepted); any region when omitted
    * @param {string} options.tripType - "oneWay" or "roundTrip"
    * @param {string} options.searchType - "completeTrip" or "bySchedule"
    * @param {number} [options.departureDaysFromNow] - default SEARCH_DEFAULTS.FLIGHT.SUPPLIER_ROUTE_DEPARTURE_DAYS_FROM_NOW

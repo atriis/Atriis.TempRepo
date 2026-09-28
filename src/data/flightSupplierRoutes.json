@@ -1,6 +1,7 @@
 {
   "suppliers": {
     "Lufthansa NDC": {
+      "aliases": ["LH NDC"],
       "routes": {
         "europe": {
           "mucToFra": { "from": "MUC", "to": "FRA" },
@@ -21,6 +22,130 @@
           "seaToFra": { "from": "SEA", "to": "FRA" },
           "fraToSin": { "from": "FRA", "to": "SIN" },
           "sinToFra": { "from": "SIN", "to": "FRA" }
+        }
+      }
+    },
+    "British Airways NDC": {
+      "aliases": ["BA NDC", "British NDC"],
+      "routes": {
+        "europe": {
+          "lonToMad": { "from": "LON", "to": "MAD" },
+          "madToLon": { "from": "MAD", "to": "LON" },
+          "lonToLis": { "from": "LON", "to": "LIS" },
+          "lisToLon": { "from": "LIS", "to": "LON" },
+          "lonToZrh": { "from": "LON", "to": "ZRH" },
+          "zrhToLon": { "from": "ZRH", "to": "LON" },
+          "lonToAms": { "from": "LON", "to": "AMS" },
+          "amsToLon": { "from": "AMS", "to": "LON" },
+          "lonToPar": { "from": "LON", "to": "PAR" },
+          "parToLon": { "from": "PAR", "to": "LON" },
+          "lonToWaw": { "from": "LON", "to": "WAW" },
+          "wawToLon": { "from": "WAW", "to": "LON" }
+        },
+        "intercontinental": {
+          "lonToSin": { "from": "LON", "to": "SIN" },
+          "sinToLon": { "from": "SIN", "to": "LON" },
+          "lonToLax": { "from": "LON", "to": "LAX" },
+          "laxToLon": { "from": "LAX", "to": "LON" },
+          "lonToPhl": { "from": "LON", "to": "PHL" },
+          "phlToLon": { "from": "PHL", "to": "LON" },
+          "lonToNyc": { "from": "LON", "to": "NYC" },
+          "nycToLon": { "from": "NYC", "to": "LON" }
+        }
+      }
+    },
+    "AFKL NDC": {
+      "routes": {
+        "europe": {
+          "amsToPar": { "from": "AMS", "to": "PAR" },
+          "parToAms": { "from": "PAR", "to": "AMS" },
+          "parToLon": { "from": "PAR", "to": "LON" },
+          "lonToPar": { "from": "LON", "to": "PAR" },
+          "lisToAms": { "from": "LIS", "to": "AMS" },
+          "amsToLis": { "from": "AMS", "to": "LIS" }
+        },
+        "intercontinental": {
+          "gruToAms": { "from": "GRU", "to": "AMS" },
+          "amsToGru": { "from": "AMS", "to": "GRU" },
+          "gruToPar": { "from": "GRU", "to": "PAR" },
+          "parToGru": { "from": "PAR", "to": "GRU" },
+          "parToNyc": { "from": "PAR", "to": "NYC" },
+          "nycToPar": { "from": "NYC", "to": "PAR" },
+          "parToMia": { "from": "PAR", "to": "MIA" },
+          "miaToPar": { "from": "MIA", "to": "PAR" }
+        }
+      }
+    },
+    "Iberia NDC": {
+      "aliases": ["IB NDC"],
+      "routes": {
+        "europe": {
+          "lonToMad": { "from": "LON", "to": "MAD" },
+          "madToLon": { "from": "MAD", "to": "LON" },
+          "bcnToLon": { "from": "BCN", "to": "LON" },
+          "lonToBcn": { "from": "LON", "to": "BCN" },
+          "lisToMad": { "from": "LIS", "to": "MAD" },
+          "madToLis": { "from": "MAD", "to": "LIS" }
+        },
+        "intercontinental": {
+          "lonToMex": { "from": "LON", "to": "MEX" },
+          "mexToLon": { "from": "MEX", "to": "LON" },
+          "mexToBog": { "from": "MEX", "to": "BOG" },
+          "bogToMex": { "from": "BOG", "to": "MEX" },
+          "madToMia": { "from": "MAD", "to": "MIA" },
+          "miaToMad": { "from": "MIA", "to": "MAD" },
+          "nycToMad": { "from": "NYC", "to": "MAD" },
+          "madToNyc": { "from": "MAD", "to": "NYC" }
+        }
+      }
+    },
+    "United NDC": {
+      "aliases": ["UA NDC"],
+      "routes": {
+        "us": {
+          "nycToSfo": { "from": "NYC", "to": "SFO" },
+          "sfoToNyc": { "from": "SFO", "to": "NYC" },
+          "nycToLax": { "from": "NYC", "to": "LAX" },
+          "laxToNyc": { "from": "LAX", "to": "NYC" },
+          "ordToSfo": { "from": "ORD", "to": "SFO" },
+          "sfoToOrd": { "from": "SFO", "to": "ORD" },
+          "iadToSfo": { "from": "IAD", "to": "SFO" },
+          "sfoToIad": { "from": "SFO", "to": "IAD" },
+          "nycToLas": { "from": "NYC", "to": "LAS" },
+          "lasToNyc": { "from": "LAS", "to": "NYC" },
+          "iahToMia": { "from": "IAH", "to": "MIA" },
+          "miaToIah": { "from": "MIA", "to": "IAH" }
+        },
+        "intercontinental": {
+          "lonToNyc": { "from": "LON", "to": "NYC" },
+          "nycToLon": { "from": "NYC", "to": "LON" },
+          "nycToPar": { "from": "NYC", "to": "PAR" },
+          "parToNyc": { "from": "PAR", "to": "NYC" },
+          "nycToFra": { "from": "NYC", "to": "FRA" },
+          "fraToNyc": { "from": "FRA", "to": "NYC" }
+        }
+      }
+    },
+    "American Airlines NDC": {
+      "aliases": ["AA NDC"],
+      "routes": {
+        "us": {
+          "nycToLax": { "from": "NYC", "to": "LAX" },
+          "laxToNyc": { "from": "LAX", "to": "NYC" },
+          "dfwToNyc": { "from": "DFW", "to": "NYC" },
+          "nycToDfw": { "from": "NYC", "to": "DFW" },
+          "dfwToLas": { "from": "DFW", "to": "LAS" },
+          "lasToDfw": { "from": "LAS", "to": "DFW" },
+          "dfwToPhl": { "from": "DFW", "to": "PHL" },
+          "mcoToPhl": { "from": "MCO", "to": "PHL" }
+        },
+        "intercontinental": {
+          "dfwToLon": { "from": "DFW", "to": "LON" },
+          "lonToDfw": { "from": "LON", "to": "DFW" },
+          "nycToLon": { "from": "NYC", "to": "LON" },
+          "lonToNyc": { "from": "LON", "to": "NYC" },
+          "dfwToGru": { "from": "DFW", "to": "GRU" },
+          "gruToDfw": { "from": "GRU", "to": "DFW" }
         }
       }
     }
