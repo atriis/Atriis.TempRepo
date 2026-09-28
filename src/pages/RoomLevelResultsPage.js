@@ -240,7 +240,7 @@ class RoomLevelResultsPage {
 
   /**
    * Extracts the number of nights from the price details suffix in the first room.
-   * Format usually: "1 Room · 3 Nights"
+   * Format usually: "1 Room / 3 nights"
    * @returns {Promise<number>} The number of nights
    */
   async getNightsCount() {
@@ -250,8 +250,8 @@ class RoomLevelResultsPage {
     
     for (let i = 0; i < count; i++) {
         const text = await locators.nth(i).innerText();
-        // Match "3 Nights" or "3 Night"
-        const match = text.match(/(\d+)\s+Night/);
+        // Match "3 nights" or "1 night" in any casing
+        const match = text.match(/(\d+)\s+night/i);
         if (match) {
             return parseInt(match[1], 10);
         }
