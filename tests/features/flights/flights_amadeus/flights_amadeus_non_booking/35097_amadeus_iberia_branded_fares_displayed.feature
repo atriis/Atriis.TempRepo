@@ -11,7 +11,7 @@ Feature: 35097 Amadeus - Iberia branded fares are being displayed
   So that I can see branded fare information including ancillaries
 
   Scenario: Iberia branded fares and ancillaries are displayed in cart
-    Given I am logged in as "ruimendes@amadeus.com" booking a new trip
+    Given I am logged in as "brunaauto@amadeusgds.com" booking a new trip
     And I have added myself as the traveler
     When I search for a one way flight from "LON" to "MAD"
     And flight results should be available
