@@ -149,6 +149,13 @@ Then('the markup in the flight pricing response for carrier {string} should be {
   logger.info('Markup validation complete', result);
 });
 
+Then("the flight pricing request should send {string} as {string}", async function (field, expectedJson) {
+  logger.info("Validating a field of the flightPricing request body", { field, expectedJson });
+  await FlightPricing.verifyPricingRequestField(
+    this.page, this.lastInterceptedResponsePromise ?? this.flightPricingResponsePromise, field, expectedJson,
+  );
+});
+
 Then('the markup in the flight pricing response should be {string}', async function (expectedMarkup) {
   logger.info('Validating markup value in flightPricing response (no currency check)', { expectedMarkup });
   const result = await FlightPricing.validatePricingResponseMarkup(

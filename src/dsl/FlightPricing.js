@@ -726,6 +726,50 @@ const FlightPricing = {
     return { tab0: tab0Text, tab1: tab1Text };
   },
 
+  /**
+   * Asserts a top-level field of the flightPricing REQUEST body the page posted, compared as JSON.
+   * Reads the body off the intercepted response's request, so it needs no extra capture.
+   *
+   * Example: field "searchedCabins", expectedJson '["Y"]' (AB#85367 — the per-leg cabin floor
+   * is only fed when the page sends this field).
+   *
+   * @param {import('playwright').Page} page
+   * @param {Promise<import('playwright').Response>} responsePromise - from startCapturingPricingResponse
+   * @param {string} field - Top-level request body field name.
+   * @param {string} expectedJson - Expected value as JSON text.
+   * @returns {Promise<{field: string, actual: *}>}
+   */
+  async verifyPricingRequestField(page, responsePromise, field, expectedJson) {
+    if (!page) throw new Error("page is required");
+    if (!responsePromise) throw new Error("responsePromise is required — call startCapturingPricingResponse before the pricing action");
+    if (!field || typeof field !== "string") throw new Error(`field must be a non-empty string, got: ${typeof field}`);
+    if (typeof expectedJson !== "string") throw new Error(`expectedJson must be a string, got: ${typeof expectedJson}`);
+
+    let expected;
+    try {
+      expected = JSON.parse(expectedJson);
+    } catch (error) {
+      throw new Error(`expectedJson is not valid JSON: ${expectedJson}. Original: ${error.message}`);
+    }
+
+    const response = await responsePromise;
+    let body;
+    try {
+      body = response.request().postDataJSON();
+    } catch (error) {
+      throw new Error(`flightPricing request body is not valid JSON, so "${field}" cannot be read. Original: ${error.message}`);
+    }
+    if (!body || typeof body !== "object") {
+      throw new Error("flightPricing request carried no JSON body");
+    }
+
+    const actual = body[field];
+    logger.info("Checking flightPricing request field", { field, actual, expected });
+    expect(actual, `flightPricing request "${field}" (request keys: ${Object.keys(body).join(", ")})`).toEqual(expected);
+
+    return { field, actual };
+  },
+
 };
 
 module.exports = FlightPricing;
