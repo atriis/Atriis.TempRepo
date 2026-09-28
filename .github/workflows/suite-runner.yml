@@ -47,7 +47,7 @@ env:
 jobs:
   test:
     name: '[${{ inputs.domain }}] ${{ matrix.suite_name }}'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: ${{ matrix.job_timeout_minutes }}
     strategy:
       fail-fast: false
@@ -119,7 +119,7 @@ jobs:
 
   report:
     name: '[${{ inputs.domain }}] Report'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     needs: test
     # Report whenever the matrix actually ran (pass or fail). Skip only if the

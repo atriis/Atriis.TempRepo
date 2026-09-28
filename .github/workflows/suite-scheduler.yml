@@ -52,7 +52,7 @@ concurrency:
 jobs:
   dispatch:
     name: Dispatch all domain suites at 10:00 and 21:10 Lisbon
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
       - name: Start every domain suite if this slot is 10:00 or 21:10 in Lisbon

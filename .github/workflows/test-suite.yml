@@ -37,7 +37,7 @@ concurrency:
 jobs:
   test-non-booking:
     name: '[Non-Booking] ${{ matrix.suite_name }}'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 65
     strategy:
       fail-fast: false
@@ -212,7 +212,7 @@ jobs:
 
   test-booking:
     name: '[Booking] ${{ matrix.suite_name }}'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: ${{ matrix.job_timeout_minutes || 90 }}
     strategy:
       fail-fast: false
@@ -330,7 +330,7 @@ jobs:
 
   report:
     name: Test Report
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     needs: [test-non-booking, test-booking]
     if: always()
