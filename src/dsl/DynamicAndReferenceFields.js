@@ -1419,6 +1419,106 @@ const DynamicAndReferenceFields = {
   },
 
   /**
+   * Verifies a reference-fields popup with the given title (e.g. "New trip reference fields", the
+   * search-stage popup) is open. Polls the visible dialog titles because the popup opens a beat after
+   * the triggering search click.
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @param {string} expectedTitle - The popup title
+   * @returns {Promise<void>}
+   */
+  async verifyReferenceFieldsPopupDisplayed(page, expectedTitle) {
+    if (!page) throw new Error('[DynamicAndReferenceFields.verifyReferenceFieldsPopupDisplayed] "page" is required.');
+    if (!expectedTitle || typeof expectedTitle !== 'string') {
+      throw new Error(
+        `[DynamicAndReferenceFields.verifyReferenceFieldsPopupDisplayed] "expectedTitle" must be a non-empty ` +
+        `string, got: ${typeof expectedTitle} (${expectedTitle})`
+      );
+    }
+    const commonPage = getPageObject(page, CommonPage);
+    const wanted = expectedTitle.trim().toLowerCase();
+    let titles = [];
+    await expect
+      .poll(
+        async () => {
+          titles = await commonPage.getVisibleDialogTitles();
+          return titles.some((t) => t.toLowerCase() === wanted);
+        },
+        { timeout: 30000 }
+      )
+      .toBe(true)
+      .catch(() => {
+        throw new Error(
+          `[DynamicAndReferenceFields.verifyReferenceFieldsPopupDisplayed] Expected the "${expectedTitle}" popup ` +
+          `to be displayed, but the visible dialogs were: ${titles.length ? titles.join(', ') : '(none)'}`
+        );
+      });
+  },
+
+  /**
+   * Opens the single reference-field dropdown under test (the first visible one) and leaves its option
+   * panel open for the following option-order assertions.
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @returns {Promise<void>}
+   */
+  async openReferenceFieldDropdown(page) {
+    if (!page) throw new Error('[DynamicAndReferenceFields.openReferenceFieldDropdown] "page" is required.');
+    const dynamicFieldsPage = getPageObject(page, DynamicAndReferenceFieldsPage);
+    await dynamicFieldsPage.openFirstReferenceFieldDropdown();
+  },
+
+  /**
+   * Reads the option labels of the open reference-field dropdown in display order, polling until the
+   * panel has rendered at least one option. Throws when the panel stays empty — an order assertion on
+   * an empty list would pass vacuously.
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @returns {Promise<string[]>}
+   */
+  async _readOpenReferenceFieldDropdownOptions(page) {
+    const dynamicFieldsPage = getPageObject(page, DynamicAndReferenceFieldsPage);
+    let options = [];
+    await expect
+      .poll(async () => {
+        options = await dynamicFieldsPage.getOpenDropdownOptionTexts();
+        return options.length;
+      }, { timeout: 10000 })
+      .toBeGreaterThan(0)
+      .catch(() => {
+        throw new Error(
+          '[DynamicAndReferenceFields._readOpenReferenceFieldDropdownOptions] The reference-field dropdown ' +
+          'shows no options. It may not be open — run "I open the reference field dropdown" first.'
+        );
+      });
+    return options;
+  },
+
+  /**
+   * Verifies the open reference-field dropdown lists its options in alphabetical order
+   * (case-insensitive, locale-aware), regardless of the order they were configured in admin.
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @returns {Promise<void>}
+   */
+  async verifyReferenceFieldDropdownOptionsSortedAlphabetically(page) {
+    if (!page) throw new Error('[DynamicAndReferenceFields.verifyReferenceFieldDropdownOptionsSortedAlphabetically] "page" is required.');
+    const options = await this._readOpenReferenceFieldDropdownOptions(page);
+    expect(
+      options.length,
+      '[DynamicAndReferenceFields.verifyReferenceFieldDropdownOptionsSortedAlphabetically] Need at least two ' +
+      `dropdown options to verify their order, got: ${JSON.stringify(options)}`
+    ).toBeGreaterThan(1);
+    const sorted = [...options].sort((a, b) => a.localeCompare(b, 'en', { sensitivity: 'base' }));
+    logger.info('Reference-field dropdown options', { options });
+    expect(
+      options,
+      '[DynamicAndReferenceFields.verifyReferenceFieldDropdownOptionsSortedAlphabetically] Dropdown options are ' +
+      `not sorted alphabetically. Displayed: ${JSON.stringify(options)}, expected: ${JSON.stringify(sorted)}`
+    ).toEqual(sorted);
+  },
+
+  /**
    * Verifies that a reference-questions section with the given title is displayed at checkout — e.g.
    * the "Travellers Reference Questions" section that groups each traveller's dynamic/reference fields.
    *

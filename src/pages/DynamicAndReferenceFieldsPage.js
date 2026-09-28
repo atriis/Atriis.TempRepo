@@ -1228,13 +1228,39 @@ class DynamicAndReferenceFieldsPage {
 
   /**
    * Opens the first VISIBLE reference-field dropdown (a `.input-dropdown` container holding an
-   * `.el-select`) and types filterText into it to narrow the option list. The el-select is filterable
-   * (input-dropdown.vue sets `filterable`), so typing shows only options whose label matches — the
-   * behaviour the "dropdown is filterable by typing" test exercises. Leaves the dropdown OPEN so the
-   * following assert/select steps can act on the filtered list.
+   * `.el-select`) by clicking it, leaving its option panel OPEN for the caller to read or type into.
    *
    * Scenarios that use this drive a single reference-field dropdown ("THE reference field dropdown"
    * — no field name in the step), so the first visible dropdown container is the field under test.
+   *
+   * @param {object} [options]
+   * @param {number} [options.timeout=15000]
+   * @returns {Promise<void>}
+   */
+  async openFirstReferenceFieldDropdown({ timeout = 15000 } = {}) {
+    const container = this.page
+      .locator(SELECTORS.FIELD_DROPDOWN_CONTAINER)
+      .filter({ has: this.page.locator(SELECTORS.EL_SELECT), visible: true })
+      .first();
+    try {
+      await container.waitFor({ state: 'visible', timeout });
+      await container.scrollIntoViewIfNeeded();
+      await container.locator(SELECTORS.EL_SELECT).first().click({ timeout: 5000 });
+    } catch (err) {
+      throw new Error(
+        `[DynamicAndReferenceFieldsPage.openFirstReferenceFieldDropdown] Could not open a reference-field ` +
+        `dropdown (selector: ${SELECTORS.FIELD_DROPDOWN_CONTAINER}). No visible dropdown was found, or it did ` +
+        `not open. Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Opens the first visible reference-field dropdown (openFirstReferenceFieldDropdown) and types
+   * filterText into it to narrow the option list. The el-select is filterable (input-dropdown.vue sets
+   * `filterable`), so typing shows only options whose label matches — the behaviour the "dropdown is
+   * filterable by typing" test exercises. Leaves the dropdown OPEN so the following assert/select steps
+   * can act on the filtered list.
    *
    * @param {string} filterText - Text to type to filter the dropdown options (e.g. "dulux")
    * @param {object} [options]
@@ -1247,24 +1273,10 @@ class DynamicAndReferenceFieldsPage {
         `[DynamicAndReferenceFieldsPage.filterReferenceFieldDropdown] "filterText" must be a non-empty string, got: ${typeof filterText} (${filterText})`
       );
     }
-    const container = this.page
-      .locator(SELECTORS.FIELD_DROPDOWN_CONTAINER)
-      .filter({ has: this.page.locator(SELECTORS.EL_SELECT), visible: true })
-      .first();
-    try {
-      await container.waitFor({ state: 'visible', timeout });
-      await container.scrollIntoViewIfNeeded();
-      await container.locator(SELECTORS.EL_SELECT).first().click({ timeout: 5000 });
-      // Element Plus focuses the filter input when a filterable el-select opens, so keyboard input
-      // types into it and narrows the list — mirrors selectReferenceFieldDropdownOnly's filter flow.
-      await this.page.keyboard.type(filterText, { delay: 30 });
-    } catch (err) {
-      throw new Error(
-        `[DynamicAndReferenceFieldsPage.filterReferenceFieldDropdown] Could not open a reference-field dropdown ` +
-        `(selector: ${SELECTORS.FIELD_DROPDOWN_CONTAINER}) and type "${filterText}" to filter it. No visible ` +
-        `filterable dropdown was found, or it did not open. Original: ${err.message}`
-      );
-    }
+    await this.openFirstReferenceFieldDropdown({ timeout });
+    // Element Plus focuses the filter input when a filterable el-select opens, so keyboard input
+    // types into it and narrows the list — mirrors selectReferenceFieldDropdownOnly's filter flow.
+    await this.page.keyboard.type(filterText, { delay: 30 });
   }
 
   /**

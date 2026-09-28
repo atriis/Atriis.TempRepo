@@ -317,6 +317,25 @@ When("I select the reference field dropdown option {string}", async function (op
   await DynamicAndReferenceFields.selectReferenceFieldDropdownOption(this.page, optionText);
 });
 
+// Asserts a reference-fields popup with this title is open, e.g. the search-stage "New trip reference
+// fields" popup that opens on top of the results after a search (test 85483).
+Then("the {string} popup should be displayed", async function (popupTitle) {
+  logger.info(`Verifying the "${popupTitle}" popup is displayed`);
+  await DynamicAndReferenceFields.verifyReferenceFieldsPopupDisplayed(this.page, popupTitle);
+});
+
+// Opens the single reference-field dropdown under test and leaves it open for the option-order
+// assertions below — the "dropdown answers are sorted alphabetically" flow (test 85483).
+When("I open the reference field dropdown", async function () {
+  logger.info("Opening the reference field dropdown");
+  await DynamicAndReferenceFields.openReferenceFieldDropdown(this.page);
+});
+
+Then("the reference field dropdown options should be sorted alphabetically", async function () {
+  logger.info("Verifying the reference field dropdown options are sorted alphabetically");
+  await DynamicAndReferenceFields.verifyReferenceFieldDropdownOptionsSortedAlphabetically(this.page);
+});
+
 // Types text into a reference field (identified by its label) and commits the FIRST resulting option.
 // Handles both reference-field widgets — an el-select dropdown (type-to-filter → first filtered item)
 // and an autocomplete text field (type → first fetched suggestion) — so it drives the parent dropdown
