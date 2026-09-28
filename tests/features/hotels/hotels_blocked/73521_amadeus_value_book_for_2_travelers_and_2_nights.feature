@@ -7,6 +7,7 @@
 # Updated: 2026-02-09T12:35:42Z
 
 @regression @provider:amadeus_value_hotel
+#Blocked by supplier - no results found for Amadeus Value search
 Feature: 73521 Amadeus Value - Book hotel for 2 travelers 2 nights
   As a travel arranger
   I want to book a hotel for 2 travelers for 2 nights

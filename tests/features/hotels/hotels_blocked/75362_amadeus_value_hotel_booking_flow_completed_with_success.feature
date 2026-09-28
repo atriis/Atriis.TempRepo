@@ -1,4 +1,5 @@
 @regression @provider:expedia @provider:sabre @provider:amadeus @provider:premierinn
+#Blocked by supplier - no results found for Amadeus Value search
 Feature: 75362 Amadeus Value Hotel E2E Booking
   As a travel arranger
   I want to book a hotel for 2 travelers for 2 nights
