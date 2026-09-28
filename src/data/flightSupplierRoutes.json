@@ -1,0 +1,28 @@
+{
+  "suppliers": {
+    "Lufthansa NDC": {
+      "routes": {
+        "europe": {
+          "mucToFra": { "from": "MUC", "to": "FRA" },
+          "fraToMuc": { "from": "FRA", "to": "MUC" },
+          "fraToZrh": { "from": "FRA", "to": "ZRH" },
+          "zrhToFra": { "from": "ZRH", "to": "FRA" },
+          "fraToPar": { "from": "FRA", "to": "PAR" },
+          "parToFra": { "from": "PAR", "to": "FRA" },
+          "lonToPar": { "from": "LON", "to": "PAR" },
+          "parToLon": { "from": "PAR", "to": "LON" },
+          "fraToBud": { "from": "FRA", "to": "BUD" },
+          "budToFra": { "from": "BUD", "to": "FRA" }
+        },
+        "intercontinental": {
+          "fraToMia": { "from": "FRA", "to": "MIA" },
+          "miaToFra": { "from": "MIA", "to": "FRA" },
+          "fraToSea": { "from": "FRA", "to": "SEA" },
+          "seaToFra": { "from": "SEA", "to": "FRA" },
+          "fraToSin": { "from": "FRA", "to": "SIN" },
+          "sinToFra": { "from": "SIN", "to": "FRA" }
+        }
+      }
+    }
+  }
+}

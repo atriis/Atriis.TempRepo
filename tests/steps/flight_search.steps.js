@@ -235,6 +235,50 @@ When("I search for a random one way flight in {string}", async function (region)
   await FlightSearch.searchOneWayRandomFlight(this.page, region);
 });
 
+// The supplier only picks the city pair from flightSupplierRoutes.json - the logged-in user's
+// configuration still decides which supplier answers the search. The region ('europe',
+// 'intercontinental') is optional: without it the pair comes from any of the supplier's regions.
+// A route with no results is swapped for up to 3 others, so the step budget covers 4 searches
+// of ~170s each (fill + the 120s results wait). Dates: one way +35 days, round trip +35/+40.
+// By schedule is always a round trip, so its return leg is the outbound reversed.
+const SUPPLIER_ROUTE_SEARCH_TIMEOUT_MS = 4 * 170000;
+
+async function searchRandomSupplierFlight(world, { supplier, region = "", tripType, searchType }) {
+  logger.info("Searching for random flight from supplier routes", { supplier, region, tripType, searchType });
+  const { from, to, routesTried } = await FlightSearch.searchRandomSupplierFlight(world.page, {
+    supplier,
+    region,
+    tripType,
+    searchType,
+  });
+  logger.info("Supplier route search settled", { from, to, routesTried });
+  world.searchedLegs = tripType === "oneWay" ? [`${from}-${to}`] : [`${from}-${to}`, `${to}-${from}`];
+}
+
+When("I search for a random one way flight city pair using {string} supplier", { timeout: SUPPLIER_ROUTE_SEARCH_TIMEOUT_MS }, async function (supplier) {
+  await searchRandomSupplierFlight(this, { supplier, tripType: "oneWay", searchType: "completeTrip" });
+});
+
+When("I search for a random one way flight city pair in {string} using {string} supplier", { timeout: SUPPLIER_ROUTE_SEARCH_TIMEOUT_MS }, async function (region, supplier) {
+  await searchRandomSupplierFlight(this, { supplier, region, tripType: "oneWay", searchType: "completeTrip" });
+});
+
+When("I search for a random round trip flight city pair using {string} supplier", { timeout: SUPPLIER_ROUTE_SEARCH_TIMEOUT_MS }, async function (supplier) {
+  await searchRandomSupplierFlight(this, { supplier, tripType: "roundTrip", searchType: "completeTrip" });
+});
+
+When("I search for a random round trip flight city pair in {string} using {string} supplier", { timeout: SUPPLIER_ROUTE_SEARCH_TIMEOUT_MS }, async function (region, supplier) {
+  await searchRandomSupplierFlight(this, { supplier, region, tripType: "roundTrip", searchType: "completeTrip" });
+});
+
+When("I search for a random flight by schedule city pair using {string} supplier", { timeout: SUPPLIER_ROUTE_SEARCH_TIMEOUT_MS }, async function (supplier) {
+  await searchRandomSupplierFlight(this, { supplier, tripType: "roundTrip", searchType: "bySchedule" });
+});
+
+When("I search for a random flight by schedule city pair in {string} using {string} supplier", { timeout: SUPPLIER_ROUTE_SEARCH_TIMEOUT_MS }, async function (region, supplier) {
+  await searchRandomSupplierFlight(this, { supplier, region, tripType: "roundTrip", searchType: "bySchedule" });
+});
+
 When("I search for a random round trip flight", async function () {
   logger.info('Searching for random round trip flight');
   await FlightSearch.searchRoundTripRandomFlight(this.page);

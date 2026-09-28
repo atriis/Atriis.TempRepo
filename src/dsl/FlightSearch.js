@@ -16,7 +16,10 @@ const {
 } = require("@utils/calendar.helper");
 const { resolveRoute } = require("@utils/route.helper");
 const { SEARCH_DEFAULTS } = require("@utils/search.constants");
-const { generateRandomFlightRoute } = require("@utils/data/generateRandomFlightRoute");
+const {
+  generateRandomFlightRoute,
+  generateRandomSupplierFlightRoutes,
+} = require("@utils/data/generateRandomFlightRoute");
 const { getPageObject } = require("@utils/pageObjectCache");
 const logger = require("@utils/logger").child("FlightSearch-DSL");
 
@@ -375,6 +378,91 @@ const FlightSearch = {
       departureDaysFromNow,
       returnDaysFromNow,
     });
+  },
+
+  /**
+   * Searches a random city pair from one supplier's routes in flightSupplierRoutes.json. When a route
+   * returns "No results found", the city pair is swapped in the edit-search drawer (dates, trip type
+   * and search type are kept) and up to `alternateRoutes` other routes are tried, never repeating one.
+   *
+   * The supplier only picks the city pair - the logged-in user's configuration still decides which
+   * supplier answers the search.
+   *
+   * @param {import('playwright').Page} page
+   * @param {Object} options
+   * @param {string} options.supplier - supplier keyed in flightSupplierRoutes.json, e.g. "Lufthansa NDC"
+   * @param {string} [options.region] - "europe" or "intercontinental" ("transcontinental" is accepted); any region when omitted
+   * @param {string} options.tripType - "oneWay" or "roundTrip"
+   * @param {string} options.searchType - "completeTrip" or "bySchedule"
+   * @param {number} [options.departureDaysFromNow] - default SEARCH_DEFAULTS.FLIGHT.SUPPLIER_ROUTE_DEPARTURE_DAYS_FROM_NOW
+   * @param {number} [options.returnDaysFromNow] - default SEARCH_DEFAULTS.FLIGHT.SUPPLIER_ROUTE_RETURN_DAYS_FROM_NOW
+   * @param {number} [options.alternateRoutes=3] - other routes to try after the first returns no results
+   * @throws {Error} when every route tried returned no results
+   * @returns {Promise<{searched: true, from: string, to: string, tripType: string, searchType: string, routesTried: string[]}>}
+   */
+  async searchRandomSupplierFlight(
+    page,
+    {
+      supplier,
+      region = "",
+      tripType,
+      searchType,
+      departureDaysFromNow = SEARCH_DEFAULTS.FLIGHT.SUPPLIER_ROUTE_DEPARTURE_DAYS_FROM_NOW,
+      returnDaysFromNow = SEARCH_DEFAULTS.FLIGHT.SUPPLIER_ROUTE_RETURN_DAYS_FROM_NOW,
+      alternateRoutes = 3,
+    } = {},
+  ) {
+    if (!page) throw new Error("page is required");
+
+    const regionKey = region === "transcontinental" ? "intercontinental" : region;
+    const routes = generateRandomSupplierFlightRoutes(supplier, regionKey, alternateRoutes + 1);
+    const resultsPage = getPageObject(page, ResultsPage);
+    const routesTried = [];
+
+    for (const [attempt, { from, to }] of routes.entries()) {
+      routesTried.push(`${from}-${to}`);
+      logger.info(`Searching ${supplier} route ${attempt + 1}/${routes.length}`, { from, to, tripType, searchType });
+
+      if (attempt === 0) {
+        await this.searchFlight(page, { from, to }, { searchType, tripType, departureDaysFromNow, returnDaysFromNow });
+      } else {
+        // Opens the drawer from the no-results panel and keeps the dates, trip type and search type
+        await this.editFlightSearch(page, from, to);
+        // The previous route's empty state is still on screen until the new search starts - reading
+        // it now would mark this route as empty before it was searched.
+        await resultsPage.getNoResultsContainer().waitFor({ state: "hidden", timeout: 30000 }).catch(() => {});
+      }
+
+      if (await this._waitForFlightResultsOrNoResults(page) !== "noResults") {
+        return { searched: true, from, to, tripType, searchType, routesTried };
+      }
+
+      logger.warn(`No results for ${supplier} route ${from}-${to}`, { attempt: attempt + 1, of: routes.length });
+    }
+
+    throw new Error(
+      `[FlightSearch.searchRandomSupplierFlight] No flight results for any of the ${routesTried.length} ` +
+      `${supplier} routes tried (${tripType}, ${searchType}): ${routesTried.join(", ")}.`,
+    );
+  },
+
+  /**
+   * Waits for the search to settle on either flight result cards or the "No results found" panel.
+   * Returns "results", "noResults", or null when neither appeared in time (still loading, or the
+   * search never left the form) - the caller's results check then reports the real cause.
+   *
+   * @param {import('playwright').Page} page
+   * @param {number} [timeout=120000] - matches verifyFlightResultsAvailable's budget
+   * @returns {Promise<"results"|"noResults"|null>}
+   */
+  async _waitForFlightResultsOrNoResults(page, timeout = 120000) {
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    const resultsPage = getPageObject(page, ResultsPage);
+
+    return Promise.any([
+      flightResultsPage.waitForFlightResults(timeout).then(() => "results"),
+      resultsPage.waitForNoResults(timeout).then(() => "noResults"),
+    ]).catch(() => null);
   },
 
   /**

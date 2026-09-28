@@ -53,6 +53,10 @@ const SEARCH_DEFAULTS = {
     RETURN_DAYS_FROM_NOW: 50,             // Round-trip inbound: today + 50 days
     ONE_WAY_DEPARTURE_DAYS_FROM_NOW: 50,  // One-way departure: today + 50 days
 
+    // Random supplier-route searches (flightSupplierRoutes.json): one way, round trip and by schedule
+    SUPPLIER_ROUTE_DEPARTURE_DAYS_FROM_NOW: 35,  // Outbound / one-way departure: today + 35 days
+    SUPPLIER_ROUTE_RETURN_DAYS_FROM_NOW: 40,     // Round-trip / by-schedule inbound: today + 40 days
+
     DEPARTURE_INDEX: 4,  // Selects the 5th available date
     RETURN_INDEX: 11,    // Selects the 12th available date
   },
