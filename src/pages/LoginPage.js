@@ -40,6 +40,15 @@ const SELECTORS = {
   // Subtitle paragraph under the login screen's "Welcome back" heading, inside the same
   // ".welcome" wrapper the logout confirmation uses. Text-agnostic for the reason above.
   LOGIN_SUBTITLE: ".welcome p",
+
+  // ===== 90-day password expiry screen =====
+  // Staging forces a password change every 90 days. The credentials are still accepted, but the
+  // session is parked on a "you are required to change your password every 90 days" form instead of
+  // the homepage. Served by the legacy auth site (not in Atriis.App), read off a CI trace.
+  // Anchored on the form's hidden IsExpiredPassword flag rather than the visible "New Password"
+  // field: the same form also serves the welcome-reset flow (IsWelcomeResetPassword), and the
+  // heading wording is localized.
+  EXPIRED_PASSWORD_FLAG: 'input#IsExpiredPassword[value="true" i]',
 };
 
 /**
@@ -239,6 +248,15 @@ class LoginPage {
       timeout,
       "getLoginSubtitle"
     );
+  }
+
+  /**
+   * Whether the session is parked on the 90-day "change your password" screen.
+   * Instant check, never throws — meant for diagnosing a login that did not reach the homepage.
+   * @returns {Promise<boolean>}
+   */
+  async isPasswordExpiredScreenDisplayed() {
+    return (await this.page.locator(SELECTORS.EXPIRED_PASSWORD_FLAG).count().catch(() => 0)) > 0;
   }
 
   /**

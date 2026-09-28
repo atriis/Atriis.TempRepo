@@ -66,7 +66,21 @@ async function performLogin(page, email) {
   // Banner may re-appear on the post-login domain — dismiss if present.
   await loginPage.acceptCookiesIfPresent();
 
-  await menuPage.waitForLogoutIcon();
+  try {
+    await menuPage.waitForLogoutIcon();
+  } catch (error) {
+    // An expired password is accepted but parks the session on a change-password form, which
+    // otherwise surfaces only as an opaque avatar timeout.
+    if (await loginPage.isPasswordExpiredScreenDisplayed()) {
+      throw new Error(
+        `[App.performLogin] Login as "${email}" landed on the 90-day "change your password" screen ` +
+        `instead of the homepage: the account's password has expired on this environment. Rotate ` +
+        `the password for "${email}" — every scenario using this user fails until it is changed. ` +
+        `Original: ${error.message}`
+      );
+    }
+    throw error;
+  }
 }
 
 async function createSession(email) {
