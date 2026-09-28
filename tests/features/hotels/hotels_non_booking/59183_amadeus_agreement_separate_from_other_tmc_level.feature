@@ -9,17 +9,16 @@
 @regression @provider:amadeus
 Feature: 59183 Amadeus - Hotel - Room level results are displayed when agreement is configured with "Separate from other agreement" checked
   As a corporate traveler
-  I want to filter by agreement hotels and see room level results displayed properly
-  So that I can book from the company's negotiated hotel agreements
- 
- #Add validation to check that handshake badge is for corporate agreement
+  I want to get hotels and room results with agreement even if the agreement is configured with "Separate from other agreement" checked
+
   @priority:medium
   Scenario: Room level results are displayed when agreement is configured with "Separate from other agreement" checked
-    Given I am logged in as "suzanavond@amadeusdub.com" booking a new trip
+    Given I am logged in as "separate@fromtmc.com" booking a new trip
     And I have added myself as the traveler
-    When I search for a hotel in "London, UK" for 1 night
+    When I search for a hotel in "Mexico city" for 1 night
     And I wait to see view rates text in results page
     Then handshake badge should be visible in hotel level results
+    And hovering over the "Agency rate" agreement should show "WTT" in the tooltip
     And I select the first hotel result
     When I wait for the first add to trip button to be visible in room level results
-    Then the "amadeus" supplier logo should be visible in hotel results
+    Then hovering over the "Agency rate" agreement in room level results should show "WTT" in the tooltip
