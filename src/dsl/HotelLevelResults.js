@@ -208,6 +208,22 @@ const HotelLevelResults = {
   },
 
   /**
+   * Verifies that each of the first N hotel cards shows the corporate preferred badge.
+   * @param {import('playwright').Page} page
+   * @param {number} count - Number of top hotel cards to check
+   * @throws {Error} If any of those cards is missing the badge
+   */
+  async verifyCorporatePreferredBadgeOnFirstHotels(page, count) {
+    if (!page) throw new Error('page is required');
+    if (typeof count !== 'number' || count < 1) throw new Error('count must be >= 1, got: ' + count);
+    const hotelLevelResultsPage = getPageObject(page, HotelLevelResultsPage);
+    for (let index = 1; index <= count; index++) {
+      const isVisible = await hotelLevelResultsPage.isCorporatePreferredBadgeVisibleAtIndex(index);
+      if (!isVisible) throw new Error(`Hotel at position ${index} does not show the corporate preferred badge`);
+    }
+  },
+
+  /**
    * Verifies that a hotel loyalty programme badge for the given chain is displayed in hotel
    * level results.
    *
@@ -1075,26 +1091,28 @@ const HotelLevelResults = {
   },
 
   /**
-   * Verifies that at least one hotel name in results matches the given regex pattern.
+   * Verifies that each of the first N hotel names matches the given regex pattern.
    *
    * @param {import('playwright').Page} page
-   * @param {RegExp|string} pattern - Regex pattern to match against hotel names
-   * @returns {Promise<{matched: boolean, names: string[]}>}
+   * @param {number} count - Number of top hotel cards to check
+   * @param {RegExp|string} pattern - Regex pattern each name must match
+   * @returns {Promise<string[]>} The names of the checked hotels
    */
-  async verifyHotelNamesMatchPattern(page, pattern) {
+  async verifyFirstHotelNamesMatchPattern(page, count, pattern) {
     if (!page) throw new Error('page is required');
+    if (typeof count !== 'number' || count < 1) throw new Error('count must be >= 1, got: ' + count);
     if (!pattern) throw new Error('pattern is required');
 
     const regex = typeof pattern === 'string' ? new RegExp(pattern) : pattern;
     const hotelLevelResultsPage = getPageObject(page, HotelLevelResultsPage);
-    const names = await hotelLevelResultsPage.getAllHotelNames();
-
-    const matchingNames = names.filter(name => regex.test(name));
-    if (matchingNames.length === 0) {
-      throw new Error(`No hotel names match pattern ${regex}. Found: ${names.join(', ')}`);
+    const names = [];
+    for (let index = 1; index <= count; index++) {
+      names.push(await hotelLevelResultsPage.getHotelNameAtIndex(index));
     }
 
-    return { matched: true, names: matchingNames };
+    const mismatched = names.filter(name => !regex.test(name));
+    expect(mismatched, `Expected the first ${count} hotels to match ${regex}, but found: ${names.join(', ')}`).toEqual([]);
+    return names;
   },
 
   /**

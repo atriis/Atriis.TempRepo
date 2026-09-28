@@ -319,15 +319,15 @@ Then("the hotel search check-out date should match the departure date of the inb
   await HotelLevelResults.verifyHotelCheckOutDateMatchesFlight(this.page, this.inboundFirstFlightDepartureDate);
 });
 
-Then("preferred hotels should be displayed in results", async function () {
-  logger.info("Verifying preferred hotels are displayed (corporate preferred badge)");
-  await HotelLevelResults.verifyCorporatePreferredBadge(this.page);
+Then("the first {int} hotels should have the corporate preferred badge", async function (count) {
+  logger.info("Verifying corporate preferred badge on the first hotels", { count });
+  await HotelLevelResults.verifyCorporatePreferredBadgeOnFirstHotels(this.page, count);
 });
 
-Then(/^the hotel results should include hotels matching \/(.*)\/$/,  async function (patternStr) {
-  logger.info("Verifying hotel names match pattern", { pattern: patternStr });
-  const result = await HotelLevelResults.verifyHotelNamesMatchPattern(this.page, new RegExp(patternStr));
-  logger.info("Matching hotels found", { names: result.names });
+Then(/^the first (\d+) hotels should match \/(.*)\/$/, async function (countStr, patternStr) {
+  logger.info("Verifying the first hotel names match pattern", { count: countStr, pattern: patternStr });
+  const names = await HotelLevelResults.verifyFirstHotelNamesMatchPattern(this.page, Number(countStr), new RegExp(patternStr));
+  logger.info("First hotels matched", { names });
 });
 
 Then("the hotel at position {int} should be {string}", async function (index, expectedName) {
@@ -338,16 +338,6 @@ Then("the hotel at position {int} should be {string}", async function (index, ex
 Then("the hotel at position {int} should be highlighted", async function (index) {
   logger.info("Verifying hotel at position is highlighted", { index });
   await HotelLevelResults.verifyHotelHighlightedAtIndex(this.page, index);
-});
-
-Then("the hotel at position {int} should preferably be {string}", async function (index, expectedName) {
-  logger.info("Soft-checking hotel name at position (non-blocking)", { index, expectedName });
-  try {
-    await HotelLevelResults.verifyHotelNameAtIndex(this.page, index, expectedName);
-    logger.info("Preferred hotel confirmed at position", { index, expectedName });
-  } catch (error) {
-    logger.warn(`Hotel at position ${index} is not "${expectedName}" â€” this is acceptable as hotel ordering may vary`);
-  }
 });
 
 When("I filter hotel results by max price {int}", async function (maxPrice) {

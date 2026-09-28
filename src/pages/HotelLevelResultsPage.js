@@ -247,6 +247,29 @@ class HotelLevelResultsPage {
     }
   }
 
+  /**
+   * Checks if the hotel card at a specific 1-based index shows the corporate preferred badge.
+   * @param {number} index - 1-based hotel card index
+   * @returns {Promise<boolean>} True if the card carries the badge
+   */
+  async isCorporatePreferredBadgeVisibleAtIndex(index) {
+    if (typeof index !== 'number' || index < 1) {
+      throw new Error('index must be >= 1, got: ' + index);
+    }
+    const badge = this.page
+      .locator(SELECTORS.HOTEL_CARD)
+      .nth(index - 1)
+      .locator(SELECTORS.CORPORATE_PREFERRED_BADGE)
+      .filter({ hasText: SELECTORS.CORPORATE_PREFERRED_BADGE_TEXT })
+      .first();
+    try {
+      await badge.waitFor({ state: 'visible', timeout: 15000 });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
   async isMemberBadgeVisible() {
     const badge = this.page.locator(SELECTORS.MEMBER_BADGE).first();
     try {
@@ -1116,17 +1139,6 @@ class HotelLevelResultsPage {
     await card.waitFor({ state: 'visible', timeout: 30000 });
     const classAttr = (await card.getAttribute('class')) || '';
     return classAttr.split(/\s+/).includes(SELECTORS.HOTEL_CARD_HIGHLIGHT_CLASS);
-  }
-
-  /**
-   * Gets all visible hotel names from results.
-   * @returns {Promise<string[]>} Array of hotel name strings
-   */
-  async getAllHotelNames() {
-    const names = this.page.locator(SELECTORS.HOTEL_NAME);
-    await names.first().waitFor({ state: 'visible', timeout: 30000 });
-    const allNames = await names.allTextContents();
-    return allNames.map(n => n.trim());
   }
 
   /**

@@ -17,6 +17,5 @@ Feature: 54541 General - Hotel search by Point of Interest shows preferred hotel
     Given I am logged in as "poicorp@club.com" booking a new trip
     When I search for a hotel by point of interest
     And I wait to see view rates text in results page
-    Then preferred hotels should be displayed in results
-    And the hotel results should include hotels matching /(Beverly Hills Marriott)|(The Tangerine - A Burbank Hote)/
-    And the hotel at position 2 should preferably be "The Tangerine - A Burbank Hotel"
+    Then the first 2 hotels should have the corporate preferred badge
+    And the first 2 hotels should match /(Beverly Hills Marriott)|(The Tangerine)/

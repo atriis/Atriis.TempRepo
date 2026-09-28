@@ -14764,7 +14764,7 @@ window.STEP_DATA = {
     },
     {
       "type": "Then",
-      "text": "preferred hotels should be displayed in results",
+      "text": "the first {int} hotels should have the corporate preferred badge",
       "file": "hotel_level_results.steps.js",
       "product": "Hotels",
       "dsl": [
@@ -14783,15 +14783,6 @@ window.STEP_DATA = {
     {
       "type": "Then",
       "text": "the hotel at position {int} should be highlighted",
-      "file": "hotel_level_results.steps.js",
-      "product": "Hotels",
-      "dsl": [
-        "HotelLevelResults"
-      ]
-    },
-    {
-      "type": "Then",
-      "text": "the hotel at position {int} should preferably be {string}",
       "file": "hotel_level_results.steps.js",
       "product": "Hotels",
       "dsl": [
