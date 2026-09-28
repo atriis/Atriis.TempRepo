@@ -15,25 +15,25 @@ Feature: 69750 HYBRID Amadeus - Baggage weight sent in AddMultiElement
   Scenario: Add baggage and hold Ryanair low-cost flight
     Given I am logged in as "lucasmoreira@amadeuslowcost.com" booking a new trip
     And I have added myself as the traveler
-    When I search for a one way flight from "STN" to "RAK"
+    When I search for a one way flight from "LON" to "DUB"
     And flight results should be available
-    And I filter results by carrier "RK"
+    And I filter results by carrier "FR"
     And I add the first flight to cart
-    Then the booking status should be "Pending booking"
-    When I click add payment method button
-    And I select card 1 and save
-    And I fill credit card cvv if needed
-    When I click to edit extras at index 1
+    And the booking status should be "Pending booking"
+    And I click to edit the baggage extras section
     And I wait for the save button
     And I click number of baggage
-    And I click dropdown option "EXCESS BAGGAGE REQUEST"
+    And I click dropdown option "ABAG"
     And I click the save button
+    And the booking status should be "Pending booking"
     Then the baggage green icon should be visible
-    And I click to edit extras at index 1
-    Then the baggage option "EXCESS BAGGAGE REQUEST" should be saved
+    And I click to edit the baggage extras section
+    Then the baggage option "ABAG" should be saved
     And I click the save button
-    Then the booking status should be "Pending booking"
+    And the booking status should be "Pending booking"
     When I fill credit card cvv if needed
     And I proceed to checkout
+    And I wait for booking details in checkout
+    And I click "Don't share the contact details with airlines" checkbox in checkout
     And I complete the booking
     Then I successfully cancel the trip
