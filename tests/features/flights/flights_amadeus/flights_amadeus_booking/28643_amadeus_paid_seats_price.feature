@@ -13,7 +13,7 @@ Feature: 28643 Amadeus - Paid seats price calculation and booking
   So that the total cost is correct after adding seat charges
 
   Scenario: Select paid seats, validate price, and book flight
-    Given I am logged in as "ruimariano@amadeus.com" booking a new trip
+    Given I am logged in as "brunaauto@amadeusgds.com" booking a new trip
     And I have added a random guest traveler
     When I search for a one way flight from "LON" to "AMS"
     And flight results should be available
@@ -21,10 +21,9 @@ Feature: 28643 Amadeus - Paid seats price calculation and booking
     And I click to open first pricing options
     And I select the first option from pricing options
     And I add to trip from pricing options
-    And I handle conflicting quotes if visible
     Then the booking status should be "Pending booking"
     When I extract the price at index 3 from "cart"
-    When I click to edit extras at index 4
+    When I click seating in extras
     And I click add seats in extras
     And I wait for the seat map to load
     And I select the first available flight seat
