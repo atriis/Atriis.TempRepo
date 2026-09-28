@@ -1,5 +1,5 @@
 # Test Name: 37135 MERGED: PREMIER INN E2E flow
-# Description: 
+# Description:
 # Status: Active
 # Labels: CR7,No Amadeus Hotel Book,Hotel,Full Purchase,Extras,merge,Premier Inn Regression,Pre Prod,Daily Hotels,progress page,Giata,2026 plan 1
 # Owner: Bruna Santos
@@ -7,13 +7,11 @@
 # Updated: 2025-09-29T04:07:52Z
 
 @regression @provider:premierinn
-Feature: 37135 Premier Inn - Book hotel with CVV and Extras
-  As a corporate traveler booking a Premier Inn hotel
-  I want to complete a booking with CVV verification and add Premier Inn extras
-  So that I can include additional services like breakfast with my stay
+Feature: 37135 Premier Inn - Book hotel
+  As a corporate user I want to book a Premier Inn hotel
 
   @priority:critical
-  Scenario: Premier Inn hotel booked with CVV and extras, then cancelled
+  Scenario: Premier Inn hotel booked, then cancelled
     Given I am logged in as "perry@mien.com" booking a new trip
     And I have added myself as the traveler
     When I search for a hotel in "London, UK" for 1 night
