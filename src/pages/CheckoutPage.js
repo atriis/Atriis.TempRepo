@@ -20,6 +20,9 @@ const YPSILON_3DS_SUBMIT_CONFIRM_TIMEOUT = 15000;
 
 const SELECTORS = {
   BOOKING_DETAILS_HEADING: "h1.mb-5",
+  // cart-skeleton.vue — trip-reference-form.vue renders it in place of the whole form (contact
+  // details, reference fields, trip summary) while isLoading, which starts true on mount.
+  CART_SKELETON: ".skeletons-container",
   // The app label is backend-driven i18n and ships in both US and UK spelling ("Finalize"/"Finalise"),
   // so every finalize locator lists both variants — :has-text is a substring match, and the two
   // spellings share no common substring that covers them.
@@ -157,6 +160,35 @@ class CheckoutPage {
    */
   getBookingErrorDialog() {
     return this.page.locator(SELECTORS.BOOKING_ERROR_DIALOG).first();
+  }
+
+  /**
+   * Waits until the checkout page has routed in and finished its initial load.
+   *
+   * The "Booking details" heading renders immediately, but the form below it sits behind
+   * cart-skeleton until userinfo → tripinit → quotes have all landed, which on staging routinely
+   * takes 15s+ after "Proceed to Checkout". Anchoring on the route first keeps the skeleton check
+   * from passing on the cart page before the checkout view has even mounted.
+   *
+   * @param {{ timeout?: number }} [options]
+   * @throws {Error} If the checkout route never loads or the skeleton never clears
+   * @returns {Promise<void>}
+   */
+  async waitForCheckoutContentLoaded({ timeout = 60000 } = {}) {
+    const deadline = Date.now() + timeout;
+    try {
+      await this.page.waitForURL(/\/trips\/\d+\/reference-form/, { timeout, waitUntil: 'commit' });
+      await this.page.locator(SELECTORS.CART_SKELETON).first().waitFor({
+        state: 'hidden',
+        timeout: Math.max(deadline - Date.now(), 1000),
+      });
+    } catch (error) {
+      throw new Error(
+        `[CheckoutPage.waitForCheckoutContentLoaded] Checkout did not finish loading within ${timeout}ms ` +
+        `(url: ${this.page.url()}). Still on the cart, or the form is stuck behind its skeleton. ` +
+        `Original: ${error.message}`
+      );
+    }
   }
 
   /**

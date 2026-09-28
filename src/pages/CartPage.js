@@ -77,6 +77,8 @@ const SELECTORS = {
   TERMS_CHECKBOX: ".quote-terms-checkbox .el-checkbox__inner",
   TERMS_CHECKBOX_INPUT: ".quote-terms-checkbox .el-checkbox__input",
   PROCEED_TO_CHECKOUT_BUTTON: ".btn-container:has-text('Proceed to Checkout')",
+  // cart-skeleton.vue — trip-cart.vue swaps every quote card for it while loadData() runs.
+  CART_SKELETON: ".skeletons-container",
   // The native <button class="btn"> rendered by app-btn behind the cart CTA (trip-summary #btn
   // slot). Used for the disabled-state check: app-btn binds `:disabled="isCheckoutDisabled"`, so
   // for a look-but-not-book role the element carries the native `disabled` attribute.
@@ -5303,6 +5305,38 @@ class CartPage {
         throw error;
       }
       await this.getSaveButton().click();
+    }
+  }
+
+  /**
+   * Waits for a flight baggage save to land and for the cart to finish re-rendering after it.
+   *
+   * flight-baggage.ts save(): POST /flightBaggage → tripStore/loadQuotes → close() → emits
+   * reloadQuotes, which trip-cart.vue handles with loadData() (isLoading → cart-skeleton). The
+   * panel's Save button only disappears on close(), and loadData() flips isLoading in that same
+   * tick, so "Save hidden, then skeleton hidden" spans the whole save. Without it, the next cart
+   * assertion reads the pre-save DOM, then the one after it times out behind the skeleton.
+   *
+   * @param {{ timeout?: number }} [options]
+   * @throws {Error} If the panel never closes or the cart stays on its skeleton
+   * @returns {Promise<void>}
+   */
+  async waitForBaggageSaveAndCartReload({ timeout = 60000 } = {}) {
+    const deadline = Date.now() + timeout;
+    try {
+      // exact: the OOP block this save can reveal carries a "Save justification" button, which
+      // getSaveButton()'s substring match would keep visible forever.
+      await this.page.getByRole('button', { name: 'Save', exact: true }).waitFor({ state: 'hidden', timeout });
+      await this.page.locator(SELECTORS.CART_SKELETON).first().waitFor({
+        state: 'hidden',
+        timeout: Math.max(deadline - Date.now(), 1000),
+      });
+    } catch (error) {
+      throw new Error(
+        `[CartPage.waitForBaggageSaveAndCartReload] The baggage save did not settle within ${timeout}ms: ` +
+        `either the panel stayed open (save failed — check for an error toast) or the cart is still ` +
+        `behind its skeleton. Original: ${error.message}`
+      );
     }
   }
 

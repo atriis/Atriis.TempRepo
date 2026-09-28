@@ -19,9 +19,12 @@ Feature: 82620 AFKL NDC - Baggage added in Extras survives ticketing in Flight D
     And flight results should be available
     And I filter results by carrier "KLM"
 
-    # 0PC leaves no baggage in the fare, so anything seen later comes from Extras
-    And I select the fare with baggage "0PC" from the first result offering it
-    And I add to trip from pricing options
+    # 0PC leaves no baggage in the fare, so anything seen later comes from Extras.
+    # The new flight flow shows a 0PC fare as "Checked bag not included" on its brand card.
+    And I select the first flight result in new flight flow
+    And I select the outbound brand card without checked baggage from pricing options new flight flow
+    And I select the inbound brand card without checked baggage from pricing options new flight flow
+    And I add to cart from pricing options new flight flow
     Then the booking status should be "Pending booking"
 
     When I open flight details in cart
@@ -40,7 +43,9 @@ Feature: 82620 AFKL NDC - Baggage added in Extras survives ticketing in Flight D
     Then the added baggage should be displayed in flight details
     And I close flight details window
 
-    When I fill credit card cvv if needed
+    # This user's policy flags the KLM fares out of policy, which blocks checkout until justified
+    When I fill in the OOP justification text "abc"
+    And I fill credit card cvv if needed
     And I proceed to checkout
     And I complete the booking
     Then the booking status should be "Ticketing Complete"

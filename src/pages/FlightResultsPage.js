@@ -5214,6 +5214,34 @@ async clickSelectForFareWithBaggagePricingOptions(baggageText) {
    */
   async getBrandCardFeatureRows(fareName, timeout = 30000) {
     const card = await this.findBrandCardByFareName(fareName, 'getBrandCardFeatureRows', timeout);
+    return this.readBrandCardFeatureRows(card);
+  }
+
+  /**
+   * Reads the feature rows of every brand card in one leg, in card order, so a caller can pick a
+   * card by what it includes rather than by position or fare name (fare names repeat across legs).
+   *
+   * @param {number} legIndex - Zero-based leg index (0=outbound, 1=inbound)
+   * @returns {Promise<Array<{name: string|null, features: Array<{text: string, icon: string, iconClasses: string, textClasses: string}>}>>}
+   */
+  async getLegBrandCardFeatureRows(legIndex = 0) {
+    const cards = this.getNewFlightFlowBrandCards(legIndex);
+    const count = await cards.count();
+    const result = [];
+
+    for (let i = 0; i < count; i++) {
+      const card = cards.nth(i);
+      const nameEl = card.locator(SELECTORS.BRAND_NAME);
+      result.push({
+        name: (await nameEl.count()) > 0 ? (await nameEl.first().innerText()).trim() : null,
+        features: await this.readBrandCardFeatureRows(card),
+      });
+    }
+
+    return result;
+  }
+
+  async readBrandCardFeatureRows(card) {
     const rows = card.locator(SELECTORS.NEW_FLOW_BRAND_CARD_FEATURE_ROW);
     const rowCount = await rows.count();
     const features = [];

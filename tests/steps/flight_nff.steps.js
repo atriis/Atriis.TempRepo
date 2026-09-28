@@ -31,6 +31,14 @@ When("I select the outbound brand card named {string} from pricing options new f
   await FlightResults.selectOutboundBrandCardByNameNewFlightFlow(this.page, brandName);
 });
 
+When("I select the {word} brand card without checked baggage from pricing options new flight flow", async function (legName) {
+  const legIndex = { outbound: 0, inbound: 1 }[legName];
+  if (legIndex === undefined) throw new Error(`Unknown leg "${legName}" — expected "outbound" or "inbound"`);
+  logger.info("[NewFlightFlow] Selecting brand card without checked baggage", { legName });
+  const result = await FlightResults.selectBrandCardWithoutCheckedBaggageNewFlightFlow(this.page, legIndex);
+  logger.info("[NewFlightFlow] Selected brand card without checked baggage", result);
+});
+
 When("I select the inbound first option from pricing options new flight flow", async function () {
   logger.info("[NewFlightFlow] Selecting first inbound brand card");
   await FlightResults.selectInboundFirstBrandCardNewFlightFlow(this.page);

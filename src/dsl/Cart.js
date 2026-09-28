@@ -11600,6 +11600,7 @@ const Cart = {
     await cartPage.selectFirstAvailableBaggageOptionForSegment(1);
 
     await cartPage.clickSaveButton();
+    await cartPage.waitForBaggageSaveAndCartReload();
 
     return { added: true, segmentCount: 2 };
   },

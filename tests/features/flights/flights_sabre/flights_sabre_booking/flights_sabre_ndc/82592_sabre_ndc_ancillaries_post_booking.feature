@@ -19,8 +19,11 @@ Feature: 82592 Sabre NDC - Ancillaries post booking before ticketing
     When I search for a one way flight from "LIS" to "LHR"
     And I filter results by carrier "TP"
     Then the "NDC Direct Rate" indicator should be visible in results
-    When I add the first flight to cart
-    And I accept Terms & Conditions
+    When I select the first flight result in new flight flow
+    And I select the outbound first option from pricing options new flight flow
+    And I add to cart from pricing options new flight flow
+    Then the booking status should be "Pending booking"
+    When I accept Terms & Conditions
     And I hold the trip
     Then the booking status should be "ON HOLD"
     When I click the extras arrow button

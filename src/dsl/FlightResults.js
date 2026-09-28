@@ -5686,6 +5686,48 @@ async verifyFareComponentTextColorInPricingOptions(page, expectedColor, index = 
 
     return { fareName, expectedText, featureTexts, icon: feature.icon, iconClasses: feature.iconClasses };
   },
+
+  /**
+   * Selects the first brand card on a leg whose fare carries no checked baggage — the new flight
+   * flow's rendering of a 0PC fare. _flight-brand-builder.logic.ts gives a not-included allowance the
+   * text "Checked bag not included" with a `close` icon; the icon is checked too, since a card with no
+   * supplier baggage data reads "Baggage - No Info" and must not stand in for a confirmed 0PC.
+   *
+   * @param {import('playwright').Page} page
+   * @param {number} legIndex - Zero-based leg index (0=outbound, 1=inbound)
+   * @returns {Promise<{ legIndex: number, index: number, brandName: string|null }>}
+   */
+  async selectBrandCardWithoutCheckedBaggageNewFlightFlow(page, legIndex) {
+    if (!page) throw new Error('[FlightResults.selectBrandCardWithoutCheckedBaggageNewFlightFlow] "page" is required.');
+    if (!Number.isInteger(legIndex) || legIndex < 0) {
+      throw new Error(`[FlightResults.selectBrandCardWithoutCheckedBaggageNewFlightFlow] "legIndex" must be a non-negative integer, got: ${legIndex}`);
+    }
+
+    const NO_CHECKED_BAGGAGE_TEXT = 'Checked bag not included';
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    await flightResultsPage.waitForNewFlightFlowBrandCards(legIndex);
+    await flightResultsPage.waitForLegBrandCardsToSettle(legIndex);
+
+    const cards = await flightResultsPage.getLegBrandCardFeatureRows(legIndex);
+    const index = cards.findIndex((card) =>
+      card.features.some((f) => f.text === NO_CHECKED_BAGGAGE_TEXT && f.icon === 'close'),
+    );
+
+    if (index === -1) {
+      const baggageRows = cards.map((card) => ({
+        name: card.name,
+        baggage: card.features.filter((f) => /bag/i.test(f.text)).map((f) => `${f.text} (${f.icon})`),
+      }));
+      throw new Error(
+        `[FlightResults.selectBrandCardWithoutCheckedBaggageNewFlightFlow] No brand card on leg ${legIndex} shows ` +
+        `"${NO_CHECKED_BAGGAGE_TEXT}". Cards: ${JSON.stringify(baggageRows)}`
+      );
+    }
+
+    await flightResultsPage.clickNewFlightFlowBrandCard(legIndex, index);
+    return { legIndex, index, brandName: cards[index].name };
+  },
+
   async selectInboundBrandMatchingOutboundRules(page, timeout = 30000) {
     if (!page) throw new Error('[FlightResults.selectInboundBrandMatchingOutboundRules] "page" is required.');
     logger.info('[NewFlightFlow] Selecting inbound brand card with same cancellation and change rules as outbound');

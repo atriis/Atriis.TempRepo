@@ -510,7 +510,7 @@ When("I select a paid baggage option", async function () {
   await Cart.selectFirstPaidBaggageOption(this.page);
 });
 
-When("I add baggage for outbound and return segments", async function () {
+When("I add baggage for outbound and return segments", { timeout: BAGGAGE_EXTRAS_STEP_TIMEOUT_MS }, async function () {
   logger.info("Adding baggage for outbound and return segments");
   await Cart.addBaggageForAllSegments(this.page);
 });

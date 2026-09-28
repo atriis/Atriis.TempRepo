@@ -383,7 +383,7 @@ const Checkout = {
     const { expect } = require("@playwright/test");
     const checkoutPage = getPageObject(page, CheckoutPage);
 
-    await checkoutPage.waitForBookingDetailsText();
+    await checkoutPage.waitForCheckoutContentLoaded();
 
     const isChecked = await checkoutPage.isContactDetailsCheckboxChecked();
     expect(isChecked, 'Expected contact details checkbox to be unchecked by default').toBe(false);
