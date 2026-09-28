@@ -12,7 +12,7 @@ Feature: 46669 Flights - Reset stop filter when no results found
   So that I still see available flights
 
   Scenario: Stop filter is reset when no results found according to search criteria
-    Given I am logged in as "resetFilter@nl.gov" booking a new trip
+    Given I am logged in as "brunaauto@amadeusgds.com" booking a new trip
     And I have added myself as the traveler
     When I search for a round trip flight from "BOI" to "LEJ"
     Then the alert "No results found according to your search criteria, search parameters have been reset" should be displayed
