@@ -8,6 +8,7 @@ const LoginPage = require("@pages/LoginPage");
 // above: SearchPage.js exports { SearchPage, SELECTORS }, so the bare module object is not a
 // constructor and getPageObject rejects it.
 const { SearchPage } = require("@pages/SearchPage");
+const { sortAlphabetically } = require("@utils/text");
 const logger = require("@utils/logger").child("Profile");
 const {
   parseDateValue,
@@ -2568,6 +2569,62 @@ const Profile = {
 
     logger.info(`[Profile.verifyPersonalDetailsTabActive] Personal Details tab confirmed active — field label "${label}" contains "${expectedLabel}"`);
     return { label };
+  },
+
+  /**
+   * Opens a Personal Details dropdown by its field label and leaves it open.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} fieldLabel - e.g. "Default language for emails"
+   * @returns {Promise<void>}
+   */
+  async openPersonalDetailsDropdown(page, fieldLabel) {
+    if (!page) throw new Error('[Profile.openPersonalDetailsDropdown] "page" is required.');
+    if (!fieldLabel || typeof fieldLabel !== 'string') {
+      throw new Error(
+        `[Profile.openPersonalDetailsDropdown] "fieldLabel" must be a non-empty string, got: ${JSON.stringify(fieldLabel)}`
+      );
+    }
+    logger.debug('[Profile.openPersonalDetailsDropdown] Opening Personal Details dropdown', { fieldLabel });
+    const profilePage = getPageObject(page, ProfilePage);
+    await profilePage.openPersonalDetailsDropdownByLabel(fieldLabel);
+  },
+
+  /**
+   * Verifies the open Personal Details dropdown lists its options in alphabetical order
+   * (case-insensitive, locale-aware). Polls until the panel has rendered options, and needs at least
+   * two — an order assertion on zero or one option would pass vacuously.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} fieldLabel - The dropdown's field label, used in failure messages
+   * @returns {Promise<{options: string[]}>}
+   */
+  async verifyPersonalDetailsDropdownSortedAlphabetically(page, fieldLabel) {
+    if (!page) throw new Error('[Profile.verifyPersonalDetailsDropdownSortedAlphabetically] "page" is required.');
+    const profilePage = getPageObject(page, ProfilePage);
+
+    let options = [];
+    await expect
+      .poll(async () => {
+        options = await profilePage.getOpenSelectDropdownOptionTexts();
+        return options.length;
+      }, { timeout: 10000 })
+      .toBeGreaterThan(1)
+      .catch(() => {
+        throw new Error(
+          `[Profile.verifyPersonalDetailsDropdownSortedAlphabetically] The "${fieldLabel}" dropdown shows fewer than two ` +
+          `options (${JSON.stringify(options)}). It may not be open — run "I open the "${fieldLabel}" dropdown in my profile" first.`
+        );
+      });
+
+    const sorted = sortAlphabetically(options);
+    logger.info('[Profile.verifyPersonalDetailsDropdownSortedAlphabetically] Dropdown options', { fieldLabel, options });
+    expect(
+      options,
+      `[Profile.verifyPersonalDetailsDropdownSortedAlphabetically] "${fieldLabel}" options are not sorted alphabetically. ` +
+      `Displayed: ${JSON.stringify(options)}, expected: ${JSON.stringify(sorted)}`
+    ).toEqual(sorted);
+    return { options };
   },
 
   async openPersonalDetailsTab(page) {

@@ -138,6 +138,17 @@ function extractDateTokens(text) {
   return tokens ? tokens.map((token) => token.replace(/\s+/g, " ").trim()) : [];
 }
 
+/**
+ * Returns a copy of the given strings in alphabetical order (case- and accent-insensitive,
+ * English locale). Shared by the "dropdown options are sorted alphabetically" checks.
+ *
+ * @param {string[]} values - Strings to sort
+ * @returns {string[]} A new, sorted array
+ */
+function sortAlphabetically(values) {
+  return [...values].sort((a, b) => a.localeCompare(b, "en", { sensitivity: "base" }));
+}
+
 // escapeRegExp is an alias for escapeRegex (used by page objects)
 const escapeRegExp = escapeRegex;
 
@@ -151,4 +162,5 @@ module.exports = {
   buildFlexibleAddressRegex,
   caseInsensitiveContains,
   extractDateTokens,
+  sortAlphabetically,
 };

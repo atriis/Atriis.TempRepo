@@ -4,6 +4,7 @@ const DynamicAndReferenceFieldsPage = require("@pages/DynamicAndReferenceFieldsP
 const { CommonPage } = require("@pages/CommonPage");
 const { CheckoutPage } = require("@pages/CheckoutPage");
 const { TravelRequestPage } = require("@pages/TravelRequestPage");
+const { sortAlphabetically } = require("@utils/text");
 const logger = require("@utils/logger").child("DynamicAndReferenceFields-DSL");
 
 /**
@@ -1509,7 +1510,7 @@ const DynamicAndReferenceFields = {
       '[DynamicAndReferenceFields.verifyReferenceFieldDropdownOptionsSortedAlphabetically] Need at least two ' +
       `dropdown options to verify their order, got: ${JSON.stringify(options)}`
     ).toBeGreaterThan(1);
-    const sorted = [...options].sort((a, b) => a.localeCompare(b, 'en', { sensitivity: 'base' }));
+    const sorted = sortAlphabetically(options);
     logger.info('Reference-field dropdown options', { options });
     expect(
       options,

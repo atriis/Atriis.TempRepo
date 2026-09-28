@@ -88,6 +88,9 @@ const SELECTORS = {
   // them. Held as label text for the same reason SEAT_TYPE_LABEL is: the .field.app-column +
   // label.label:text-is() pattern below is what scopes it.
   TIME_FORMAT_LABEL: 'Time format',
+  // The open el-select option panel. Every closed el-select keeps its dropdown in the DOM, so the
+  // :visible filter is what limits a read to the one the test just opened.
+  OPEN_SELECT_DROPDOWN_ITEM: '.el-select-dropdown:visible .el-select-dropdown__item',
 
   // Personal Details — name inputs (Title is the first label in the first field)
   // TODO: replace with data-testid once added to personal-details-form.vue — :nth-child(1) is fragile if field order changes
@@ -1551,6 +1554,41 @@ class ProfilePage {
         `The button may be hidden, disabled, or the form did not load. Original: ${err.message}`
       );
     }
+  }
+
+  /**
+   * Opens a Personal Details el-select dropdown identified by its field label, e.g.
+   * "Default language for emails" (personal-details-form.vue renders it as an app-select under a
+   * `label.label` inside its own .field.app-column). Leaves the dropdown open for the option reads.
+   *
+   * @param {string} labelText - The field label as rendered
+   * @returns {Promise<void>}
+   */
+  async openPersonalDetailsDropdownByLabel(labelText) {
+    try {
+      const field = this.page.locator(SELECTORS.PERSONAL_DETAILS_FORM)
+        .locator('.field.app-column')
+        .filter({ has: this.page.locator(`label.label:text-is("${labelText}")`) });
+      const select = field.locator('.el-select').first();
+      await select.waitFor({ state: 'visible', timeout: 15000 });
+      await select.scrollIntoViewIfNeeded();
+      await select.click({ timeout: 10000 });
+    } catch (err) {
+      throw new Error(
+        `[ProfilePage.openPersonalDetailsDropdownByLabel] Could not open the "${labelText}" dropdown in Personal Details. ` +
+        `The form may not be loaded, the label text differs, or the field is disabled. Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Reads the option labels of the currently open el-select dropdown, in display order.
+   *
+   * @returns {Promise<string[]>} Trimmed, non-empty option labels
+   */
+  async getOpenSelectDropdownOptionTexts() {
+    const texts = await this.page.locator(SELECTORS.OPEN_SELECT_DROPDOWN_ITEM).allInnerTexts();
+    return texts.map((t) => t.trim()).filter(Boolean);
   }
 
   async clickBackupApproverDropdown() {

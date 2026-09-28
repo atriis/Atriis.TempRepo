@@ -317,6 +317,17 @@ When("I save the personal details", async function () {
   await Profile.savePersonalDetails(this.page);
 });
 
+// Leaves the dropdown open so the following order assertion reads its options (test 85524).
+When("I open the {string} dropdown in my profile", async function (fieldLabel) {
+  logger.info("Opening Personal Details dropdown", { fieldLabel });
+  await Profile.openPersonalDetailsDropdown(this.page, fieldLabel);
+});
+
+Then("the {string} dropdown options in my profile should be sorted alphabetically", async function (fieldLabel) {
+  logger.info("Verifying Personal Details dropdown options are sorted alphabetically", { fieldLabel });
+  await Profile.verifyPersonalDetailsDropdownSortedAlphabetically(this.page, fieldLabel);
+});
+
 // --- Travel Preferences steps ---
 
 Then("the Personal Details tab should be active showing the {string} field label", async function (fieldName) {
