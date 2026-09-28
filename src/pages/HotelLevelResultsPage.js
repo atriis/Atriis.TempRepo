@@ -10,7 +10,10 @@ const { getScrollOffsetFromTop } = require("@utils/dom");
 
 const SELECTORS = {
   MEMBER_BADGE: ".expedia-membership-badge-container, .booking-com-membership-badge-container",
-  CORPORATE_PREFERRED_BADGE: ".badge-wrapper .app-badge",  // Badge shown when hotel.tags includes 'preferred'
+  // Badge shown when hotel.tags includes 'preferred'. The same .app-badge also carries
+  // "Agency Recommended", loyalty and member badges, so it is narrowed by its label.
+  CORPORATE_PREFERRED_BADGE: ".badge-wrapper .app-badge",
+  CORPORATE_PREFERRED_BADGE_TEXT: /corporate preferred/i,
   HOTEL_PRICE_AMOUNT: '.hotel-preview .hotel-price .amount',
   VIEW_ON_MAP_BUTTON: '.view-map-btn',
   MAP_CONTAINER: '.map-container',
@@ -232,7 +235,10 @@ class HotelLevelResultsPage {
    * @returns {Promise<boolean>} True if badge is visible
    */
   async isCorporatePreferredBadgeVisible() {
-    const badge = this.page.locator(SELECTORS.CORPORATE_PREFERRED_BADGE).first();
+    const badge = this.page
+      .locator(SELECTORS.CORPORATE_PREFERRED_BADGE)
+      .filter({ hasText: SELECTORS.CORPORATE_PREFERRED_BADGE_TEXT })
+      .first();
     try {
       await badge.waitFor({ state: 'visible', timeout: 15000 });
       return true;

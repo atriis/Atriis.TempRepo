@@ -14458,7 +14458,7 @@ window.STEP_DATA = {
     },
     {
       "type": "Then",
-      "text": "the corporate rates badge should be visible on hotel level results",
+      "text": "the corporate preferred badge should be visible on hotel level results",
       "file": "hotel_level_results.steps.js",
       "product": "Hotels",
       "dsl": [

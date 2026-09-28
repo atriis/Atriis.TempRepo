@@ -195,6 +195,8 @@ const HotelLevelResults = {
 
   /**
    * Verifies the corporate preferred badge is visible on hotel level results.
+   * Matches on the "Corporate preferred" label, so other badges (Agency Recommended,
+   * loyalty, member deals) do not satisfy it.
    * @param {import('playwright').Page} page
    * @throws {Error} If the badge is not visible
    */

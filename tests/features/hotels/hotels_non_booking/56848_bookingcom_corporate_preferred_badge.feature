@@ -19,5 +19,5 @@ Feature: 56848 Booking.com - Hotel is marked as 'Corporate Preferred' according 
     When I search for a hotel in "Springhill Suites Pittsburgh Mt. Lebanon" for 1 night
     And I wait to see view rates text in results page
     And I filter hotel results by hotel name "Springhill Suites Pittsburgh Mt. Lebanon" or "Springhill Suites Pittsburgh Southside Works"
-    Then the corporate rates badge should be visible on hotel level results
+    Then the corporate preferred badge should be visible on hotel level results
     

@@ -127,7 +127,7 @@ Then("I should see a tag with the text {string} in hotel level results", async f
   await HotelLevelResults.verifyMemberBadgeTagText(this.page, tagText);
 });
 
-Then("the corporate rates badge should be visible on hotel level results", async function () {
+Then("the corporate preferred badge should be visible on hotel level results", async function () {
   logger.info("Verifying corporate preferred badge is visible on hotel level results");
   await HotelLevelResults.verifyCorporatePreferredBadge(this.page);
 });
