@@ -265,19 +265,70 @@ The catalog is validated on first load; any violation throws `DbQueryError(POLIC
 
 ## 7. Steps — `tests/steps/db_queries.steps.js`
 
+### 7.1 Run
+
 ```gherkin
 When I run the DB query "{name}"
 When I run the DB query "{name}" with:
   | param | value |
-Then the DB result should have {int} row(s)
-Then the DB result column "{col}" should be "{value}"
-Then the DB result column "{col}" should contain "{value}"
-And I store the DB result column "{col}" as "{worldKey}"
 ```
 
+- Same step for reads and writes; reads never snapshot or register a restore.
 - DataTable is a two-column `rowsHash()` (param → value).
-- Column steps read row 0 of `world.dbLastResult`; missing result or column → clear error. Expected values also resolve `{placeholders}`.
-- `store` writes the string value to `world[worldKey]`, usable later as `{worldKey}` in queries and payload steps.
+
+### 7.2 Validate the last result (`world.dbLastResult`)
+
+```gherkin
+Then the DB result should have {int} row(s)
+Then the DB result should have at least {int} row(s)
+
+Then the DB result column "{col}" should {op} "{value}"
+Then the DB result row {int} column "{col}" should {op} "{value}"
+Then every DB result row column "{col}" should {op} "{value}"
+Then any DB result row column "{col}" should {op} "{value}"
+Then the DB result column "{col}" should {unaryOp}
+
+Then the DB result should contain rows:
+  | colA | colB |
+  | v1   | v2   |
+```
+
+- `{op}`: `be`, `not be`, `contain`, `not contain`, `be greater than`, `be less than`. `{unaryOp}`: `be empty`, `not be empty`. Implemented as one step per shape with the operator captured by a regex alternation, dispatched to a single `compare(actual, op, expected)` function in the DSL.
+- `the DB result column …` = row 1. `row {int}` is **1-based**. Out-of-range row, missing column, or no prior query → clear error.
+- `every` fails on an empty result (no vacuous pass); `any` fails if no row matches.
+- `should contain rows`: unordered; each expected row must match a distinct actual row on the listed columns only; unlisted columns are ignored.
+
+### 7.3 Wait for async backend updates
+
+```gherkin
+Then the DB query "{name}" column "{col}" should become "{value}" within {int} seconds
+Then the DB query "{name}" column "{col}" should become "{value}" within {int} seconds with:
+  | param | value |
+```
+
+- Re-runs the query every 3 s until row 1's column equals the value or the timeout passes; the last result is kept in `world.dbLastResult`. On timeout the error shows the last seen value.
+- **Read queries only**: a write query name → `POLICY` error.
+
+### 7.4 Store
+
+```gherkin
+And I store the DB result column "{col}" as "{worldKey}"
+And I store the DB result row {int} column "{col}" as "{worldKey}"
+```
+
+- Writes the normalized string value to `world[worldKey]`, usable later as `{worldKey}` in queries, DB assertions and payload steps.
+
+### 7.5 Value normalization and comparison
+
+- Actual values are normalized to strings: `null`/`undefined` → `""`; numbers without trailing `.0` (`Decimal` `1.00` → `1`); booleans → `true`/`false`; `Date` → ISO-8601 UTC.
+- Expected values resolve `{placeholders}` first (same rules as §6 step 3).
+- `be`/`not be`: exact string match after normalization. `contain`/`not contain`: case-sensitive substring.
+- `greater than`/`less than`: if both sides are numeric → numeric compare; else if both parse as dates → date compare; else `POLICY` error (no silent string compare).
+- Relative dates in expected values: `now`, `now+Nm`, `now-Nm`, `now+Nh`, `now+Nd` (e.g. `expires should be less than "now"`).
+- Failure message: query name, params, operator, expected vs actual, and the result rows rendered as a compact table (max 20 rows).
+
+### 7.6 Common
+
 - All steps wrapped by `runDbStep(world, stepName, meta, action)` honouring `DB_QUERIES_ENABLED`.
 
 ## 8. Errors and logging
@@ -288,7 +339,7 @@ And I store the DB result column "{col}" as "{worldKey}"
 
 ## 9. Testing
 
-- **Unit** (`npm run test:unit` → `node --test tests/unit/`): policy loading and each validation rule, override validation, placeholder resolution, type coercion, restore param merge. Uses in-memory catalogs; no DB.
+- **Unit** (`npm run test:unit` → `node --test tests/unit/`): policy loading and each validation rule, override validation, placeholder resolution, type coercion, restore param merge; value normalization, every `compare` operator (incl. numeric vs date vs error), relative dates, `every`/`any`/`contain rows` matching. Uses in-memory catalogs; no DB.
 - **Connectivity** (`npm run db:check`): validates `src/config/dbQueries.json` offline, then connects with the configured auth mode and runs `SELECT 1`; `--query <name> --param k=v` optionally runs a catalog read query. Exit code non-zero on failure.
 - **Smoke** (`tests/features/db/db_queries_smoke.feature`, tag `@db`): runs a read-only catalog query and asserts a row count, exercising step → DSL → client → DB.
 
