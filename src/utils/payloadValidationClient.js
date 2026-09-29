@@ -23,6 +23,9 @@ const DEFAULT_LOOKUP_RETRY_MS = 3000;
 // The internal API rate-limits bursts: downloads are spaced, and a 429 is given one longer pause.
 const BULK_DOWNLOAD_SPACING_MS = 250;
 const RATE_LIMIT_BACKOFF_MS = 5000;
+// The list endpoint pages at 200 entries; 20 pages covers any single trip seen so far.
+const MAX_LIST_PAGES = 20;
+const LIST_PAGE_SPACING_MS = 250;
 
 /**
  * Timeout wrapper to prevent indefinite iteration in asynchronous flows.
@@ -396,10 +399,26 @@ async function fetchPayloadFromStorage({ source, requestType, tripId, transactio
     });
   }
 
+  // The endpoint pages at 200 entries and hands back a continuationToken. A busy trip (a flight plus
+  // a mirrored hotel passive and its remark calls) runs past one page, and the rows past it are not
+  // the oldest ones: page order follows the table's RowKey, not the timestamp. Reading only page 1
+  // silently hid the whole hotel passive of trip 3901797 (#85676), so follow the token to the end.
   async function listTripEntries(includeAuth, operationName) {
-    const listUrl = new URL("/api/distributor-requests", baseUrl);
-    listUrl.searchParams.set("tripId", tripIdString);
-    return await fetchJson(listUrl.toString(), remainingTimeoutMs(operationName), operationName, token, includeAuth);
+    const allEntries = [];
+    let continuationToken = null;
+    for (let page = 0; page < MAX_LIST_PAGES; page++) {
+      if (page > 0) await sleepWithinBudget(LIST_PAGE_SPACING_MS, operationName);
+      const listUrl = new URL("/api/distributor-requests", baseUrl);
+      listUrl.searchParams.set("tripId", tripIdString);
+      if (continuationToken) listUrl.searchParams.set("continuationToken", continuationToken);
+      const body = await fetchJson(listUrl.toString(), remainingTimeoutMs(operationName), operationName, token, includeAuth);
+      if (Array.isArray(body)) return body;
+      const entries = body?.entries ?? body?.Entries ?? [];
+      allEntries.push(...entries);
+      continuationToken = body?.continuationToken ?? body?.ContinuationToken ?? null;
+      if (!continuationToken) break;
+    }
+    return { entries: allEntries };
   }
 
   async function queryEntries(criteria) {
