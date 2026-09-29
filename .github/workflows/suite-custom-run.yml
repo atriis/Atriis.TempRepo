@@ -1,14 +1,21 @@
 name: Suite - Custom Run
-run-name: 'Suite - Custom Run · ${{ github.ref_name }} · ${{ inputs.test_path }}'
+run-name: 'Suite - Custom Run · ${{ github.ref_name }}'
 
-# Manual-only: run any hand-picked set of tests in CI, on any branch, without
-# editing a workflow file. Start it from Actions → "Suite - Custom Run" → "Run
-# workflow": pick the branch under "Use workflow from", then fill in test_path.
+# Manual-only: run a hand-picked set of tests in CI from a branch.
 #
-# test_path works exactly like a suite leg's test_path: a SPACE-SEPARATED list of
-# .feature files and/or folders, passed as-is to `npx cucumber-js <test_path>`.
-# A branch is only needed when the tests themselves are new or changed; tests
-# already on main can be run by dispatching on main.
+# ---------------------------------------------------------------------------
+# HOW TO USE IT
+# ---------------------------------------------------------------------------
+#   1. Create a branch from main.
+#   2. On that branch, set `test_path` in the matrix below to the tests to run:
+#      a SPACE-SEPARATED list of .feature files and/or folders, exactly like a
+#      suite leg's test_path (suite-runner.yml passes it as-is to
+#      `npx cucumber-js <test_path>`). NEVER leave it empty: cucumber-js with no
+#      path falls back to its default glob and runs the ENTIRE repo.
+#   3. Commit and push the branch.
+#   4. Actions → "Suite - Custom Run" → "Run workflow", and pick the branch
+#      under "Use workflow from".
+#   5. Do NOT merge the test_path change into main. Delete the branch when done.
 #
 # Not dispatched by suite-scheduler.yml and has no nightly rerun hand-off.
 # Concurrency is per branch, so custom runs on different branches do not queue
@@ -19,10 +26,6 @@ run-name: 'Suite - Custom Run · ${{ github.ref_name }} · ${{ inputs.test_path 
 on:
   workflow_dispatch:
     inputs:
-      test_path:
-        description: '.feature files and/or folders, space-separated (e.g. tests/features/shell/shell_per_diem/)'
-        required: true
-        type: string
       parallel:
         description: 'Cucumber workers (keep at 1 for booking tests — bookings are real)'
         required: false
@@ -53,6 +56,9 @@ jobs:
       domain: Custom Run
       history-workflow: suite-custom-run.yml
       expected-suites: custom-run
+      # On main, test_path holds a single non-booking test as a harmless example.
+      # Replace it on your branch (see HOW TO USE IT above).
+      #
       # 200/190 minutes match the booking legs: a leg that times out uploads NO
       # results at all, so a custom run of a whole folder must not be cut short.
       matrix: |
@@ -61,7 +67,7 @@ jobs:
             {
               "suite_id": "custom-run",
               "suite_name": "Custom Run",
-              "test_path": "${{ inputs.test_path }}",
+              "test_path": "tests/features/shell/shell_homepage/65552_upcoming_trips_per_persona.feature",
               "parallel": ${{ inputs.parallel }}, "retry": ${{ inputs.retry }}, "job_timeout_minutes": 200, "step_timeout_minutes": 190
             }
           ]
