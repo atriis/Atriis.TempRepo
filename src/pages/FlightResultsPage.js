@@ -4832,6 +4832,44 @@ async clickSelectForFareWithBaggagePricingOptions(baggageText) {
   }
 
   /**
+   * Clicks a leg's carousel ">" arrow until the carousel reaches its last card.
+   * The arrow sits on top of the last visible card, so a card under it can't be clicked until scrolled.
+   * @param {number} legIndex - Zero-based leg index (0=outbound, 1=inbound)
+   * @param {number} maxClicks - Safety cap so a stuck carousel can't loop forever
+   * @returns {Promise<number>} How many times the arrow was clicked
+   */
+  async scrollNewFlightFlowBrandCardsToEnd(legIndex = 0, maxClicks = 10) {
+    const arrow = this.page
+      .locator(SELECTORS.NEW_FLOW_BRAND_LEG)
+      .nth(legIndex)
+      .locator(SELECTORS.NEW_FLOW_CAROUSEL_NEXT_ARROW)
+      .first();
+
+    // No arrow → the cards already fit on screen; a disabled arrow → already at the last card
+    const isArrowActive = async () =>
+      (await arrow.count()) > 0 &&
+      !((await arrow.getAttribute('class')) || '').includes(SELECTORS.NEW_FLOW_CAROUSEL_ARROW_DISABLED_CLASS);
+
+    let clicks = 0;
+    try {
+      while (clicks < maxClicks) {
+        if (!(await isArrowActive())) break;
+        await arrow.click({ timeout: 5000 });
+        clicks++;
+        // Let the carousel finish its slide before re-reading the arrow state
+        await this.page.waitForTimeout(500);
+      }
+    } catch (err) {
+      throw new Error(
+        `[FlightResultsPage.scrollNewFlightFlowBrandCardsToEnd] Could not scroll the brand cards of leg ${legIndex} ` +
+        `after ${clicks} arrow click(s). The carousel arrow may have moved or been covered. ` +
+        `Original: ${err.message}`
+      );
+    }
+    return clicks;
+  }
+
+  /**
    * Returns the cabin-class tab labels rendered above a leg's brand cards, in display order.
    * The tabs are derived from the cabin classes the leg actually offers, so a leg priced in a
    * single cabin renders none at all.

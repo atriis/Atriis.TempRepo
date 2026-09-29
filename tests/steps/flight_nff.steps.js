@@ -31,6 +31,11 @@ When("I select the outbound brand card named {string} from pricing options new f
   await FlightResults.selectOutboundBrandCardByNameNewFlightFlow(this.page, brandName);
 });
 
+When("I scroll the outbound brand cards to the end in pricing options new flight flow", async function () {
+  logger.info("[NewFlightFlow] Scrolling outbound brand cards to the end");
+  await FlightResults.scrollOutboundBrandCardsToEndNewFlightFlow(this.page);
+});
+
 When("I select the {word} brand card without checked baggage from pricing options new flight flow", async function (legName) {
   const legIndex = { outbound: 0, inbound: 1 }[legName];
   if (legIndex === undefined) throw new Error(`Unknown leg "${legName}" — expected "outbound" or "inbound"`);

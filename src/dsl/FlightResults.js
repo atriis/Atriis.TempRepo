@@ -4921,6 +4921,28 @@ async verifyFareComponentTextColorInPricingOptions(page, expectedColor, index = 
   },
 
   /**
+   * Scrolls the outbound brand-card carousel to its last card in the new flight flow.
+   *
+   * The carousel's ">" arrow sits on top of the last visible card and swallows clicks
+   * meant for it, so a card under the arrow must be scrolled clear before selecting it.
+   *
+   * @param {import('playwright').Page} page
+   */
+  async scrollOutboundBrandCardsToEndNewFlightFlow(page) {
+    if (!page) {
+      throw new Error('[FlightResults.scrollOutboundBrandCardsToEndNewFlightFlow] "page" is required.');
+    }
+
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    await flightResultsPage.waitForNewFlightFlowBrandCards(0);
+    logger.debug('[NewFlightFlow] Scrolling outbound brand cards to the end');
+    const clicks = await flightResultsPage.scrollNewFlightFlowBrandCardsToEnd(0);
+    logger.info('[NewFlightFlow] Scrolled outbound brand cards', { arrowClicks: clicks });
+
+    return { leg: 'outbound', arrowClicks: clicks };
+  },
+
+  /**
    * Selects the first pricing option (brand card) for the inbound leg in the new flight flow.
    */
   async selectInboundFirstBrandCardNewFlightFlow(page) {
