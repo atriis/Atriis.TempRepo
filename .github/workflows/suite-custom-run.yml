@@ -1,0 +1,68 @@
+name: Suite - Custom Run
+run-name: 'Suite - Custom Run · ${{ github.ref_name }} · ${{ inputs.test_path }}'
+
+# Manual-only: run any hand-picked set of tests in CI, on any branch, without
+# editing a workflow file. Start it from Actions → "Suite - Custom Run" → "Run
+# workflow": pick the branch under "Use workflow from", then fill in test_path.
+#
+# test_path works exactly like a suite leg's test_path: a SPACE-SEPARATED list of
+# .feature files and/or folders, passed as-is to `npx cucumber-js <test_path>`.
+# A branch is only needed when the tests themselves are new or changed; tests
+# already on main can be run by dispatching on main.
+#
+# Not dispatched by suite-scheduler.yml and has no nightly rerun hand-off.
+# Concurrency is per branch, so custom runs on different branches do not queue
+# behind each other or behind the nightly domain suites. They DO share the
+# staging environment and test accounts with those runs: booking tests started
+# alongside another booking run (or the 21:00 Portugal-time nightly) can collide.
+
+on:
+  workflow_dispatch:
+    inputs:
+      test_path:
+        description: '.feature files and/or folders, space-separated (e.g. tests/features/shell/shell_per_diem/)'
+        required: true
+        type: string
+      parallel:
+        description: 'Cucumber workers (keep at 1 for booking tests — bookings are real)'
+        required: false
+        type: choice
+        default: '1'
+        options: ['1', '2', '3', '4']
+      retry:
+        description: 'Retries per scenario'
+        required: false
+        type: choice
+        default: '1'
+        options: ['0', '1', '2', '3']
+
+permissions:
+  contents: read
+  actions: read
+  checks: write
+
+concurrency:
+  group: suite-custom-run-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  suite:
+    uses: ./.github/workflows/suite-runner.yml
+    secrets: inherit
+    with:
+      domain: Custom Run
+      history-workflow: suite-custom-run.yml
+      expected-suites: custom-run
+      # 200/190 minutes match the booking legs: a leg that times out uploads NO
+      # results at all, so a custom run of a whole folder must not be cut short.
+      matrix: |
+        {
+          "include": [
+            {
+              "suite_id": "custom-run",
+              "suite_name": "Custom Run",
+              "test_path": "${{ inputs.test_path }}",
+              "parallel": ${{ inputs.parallel }}, "retry": ${{ inputs.retry }}, "job_timeout_minutes": 200, "step_timeout_minutes": 190
+            }
+          ]
+        }
