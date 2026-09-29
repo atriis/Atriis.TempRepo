@@ -18,6 +18,19 @@ const WRITE_KEYWORDS = /\b(UPDATE|INSERT|DELETE|MERGE|INTO)\b/i;
 const PARAM_REFERENCE = /(?<!@)@(\w+)/g;
 const PLACEHOLDER = /\{(\w+)\}/;
 
+// Text of the outermost statement: string literals blanked (their parens could unbalance the
+// scan), then parenthesised groups removed innermost-first, so a WHERE inside a sub-select or
+// function call does not count as the statement's own WHERE.
+function outerStatementText(text) {
+  let outer = text.replace(/'(?:[^']|'')*'/g, "''");
+  let previous;
+  do {
+    previous = outer;
+    outer = outer.replace(/\([^()]*\)/g, " ");
+  } while (outer !== previous);
+  return outer;
+}
+
 const BUILT_IN_RULES = [
   {
     name: "single statement",
@@ -27,7 +40,11 @@ const BUILT_IN_RULES = [
   { name: "no EXEC", violates: (text) => /\b(EXEC|EXECUTE|sp_executesql)\b/i.test(text) },
   {
     name: "UPDATE/DELETE need WHERE",
-    violates: (text) => /\b(UPDATE|DELETE)\b/i.test(text) && !/\bWHERE\b/i.test(text),
+    violates: (text) => /\b(UPDATE|DELETE)\b/i.test(text) && !/\bWHERE\b/i.test(outerStatementText(text)),
+  },
+  {
+    name: "starts with SELECT, WITH, UPDATE, INSERT, DELETE or MERGE",
+    violates: (text) => !/^\s*(SELECT|WITH|UPDATE|INSERT|DELETE|MERGE)\b/i.test(text),
   },
 ];
 
@@ -193,7 +210,7 @@ function loadCatalog(catalogPath = DEFAULT_CATALOG_PATH) {
   let parsed;
   try {
     // Windows editors save JSON with a BOM, which JSON.parse rejects.
-    parsed = JSON.parse(fs.readFileSync(catalogPath, "utf8").replace(/^﻿/, ""));
+    parsed = JSON.parse(fs.readFileSync(catalogPath, "utf8").replace(new RegExp("^" + String.fromCharCode(0xFEFF)), ""));
   } catch (error) {
     throw policyError(`Could not read DB query catalog ${catalogPath}: ${error.message}`, { cause: error });
   }

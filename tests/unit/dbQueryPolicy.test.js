@@ -67,7 +67,15 @@ test("built-in rules cannot be switched off", () => {
   expectInvalid({ bad: { ...READ, sql: "SELECT 1 AS a /* x */ WHERE 1 = @tripId" } }, 'built-in rule "no SQL comments"');
   expectInvalid({ bad: { ...READ, sql: "EXEC sp_who @tripId" } }, 'built-in rule "no EXEC"');
   expectInvalid({ bad: { ...WRITE, sql: "UPDATE Quotes SET Expires = DATEADD(MINUTE, @minutes, @tripId)" } }, 'built-in rule "UPDATE/DELETE need WHERE"');
+  expectInvalid({ bad: { ...READ, sql: "sp_who2 @tripId" } }, 'built-in rule "starts with SELECT, WITH, UPDATE, INSERT, DELETE or MERGE"');
+  expectInvalid(
+    { bad: { ...WRITE, sql: "UPDATE Quotes SET Expires = (SELECT MAX(Expires) FROM Quotes q WHERE q.TripId = @tripId AND q.Id > @minutes)" } },
+    'built-in rule "UPDATE/DELETE need WHERE"'
+  );
   assert.doesNotThrow(() => policy.validateCatalog(catalogWith({ ok: { ...READ, sql: `${READ.sql};` } })));
+  assert.doesNotThrow(() =>
+    policy.validateCatalog(catalogWith({ ok: { ...WRITE, sql: "UPDATE Quotes SET Expires = DATEADD(MINUTE, @minutes, GETDATE()) WHERE Id IN (SELECT Id FROM Quotes WHERE TripId = @tripId)" } }))
+  );
 });
 
 test("params must be declared, used and of a supported type", () => {
@@ -169,7 +177,7 @@ test("checkSnapshotColumns requires exactly the restore params", () => {
 
 test("loadCatalog tolerates a UTF-8 BOM and reports unreadable files", () => {
   const file = path.join(os.tmpdir(), `dbQueries-${process.pid}-${Date.now()}.json`);
-  fs.writeFileSync(file, "﻿" + JSON.stringify(catalogWith()), "utf8");
+  fs.writeFileSync(file, String.fromCharCode(0xFEFF) + JSON.stringify(catalogWith()), "utf8");
   try {
     assert.ok(policy.loadCatalog(file).queries.read);
   } finally {
