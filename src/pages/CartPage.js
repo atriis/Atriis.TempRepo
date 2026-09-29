@@ -1669,20 +1669,33 @@ const SELECTORS = {
   // Flight "Contact details for the airline" extras row (flight-contact-sharing-consent.vue, AB#84706).
   // While unanswered on a mandatory quote the row is an Error validation, so Hold flight stays disabled.
   // Scoped to `:visible` because the quote card can render a hidden responsive duplicate.
-  // The row's own Add / Edit / View toggle by testid: a class chain would also match the
-  // "Add traveller" button extras-layout.vue renders first in the same .extra__btns.
+  // Each selector below also carries a testid-free fallback: the OBT vite build strips every
+  // data-testid outside dev mode (removeDataTestId), so deployed environments such as
+  // atriis-dev.app render none of them (seen on bug 85279).
+  // The row's own Add / Edit / View toggle: by testid, or as the toggle that carries an aria-label.
+  // A bare class chain would also match the "Add traveller" button extras-layout.vue renders first
+  // in the same .extra__btns, and that button has no aria-label.
   FLIGHT_CONTACT_CONSENT_OPEN_BUTTON:
     '.flight-contact-sharing-consent:visible :is([data-testid="trip.extras-layout.add-btn"], ' +
-    '[data-testid="trip.extras-layout.edit-btn"], [data-testid="trip.extras-layout.view-btn"])',
+    '[data-testid="trip.extras-layout.edit-btn"], [data-testid="trip.extras-layout.view-btn"]), ' +
+    '.flight-contact-sharing-consent:visible .extra__btns button.extra-toggle-btn[aria-label]',
   // el-checkbox renders a <label class="el-checkbox"> that carries the data-testid and the
-  // is-checked / is-disabled state classes; mandatory mode ticks and disables it.
-  FLIGHT_CONTACT_CONSENT_AGREE_CHECKBOX: '.flight-contact-sharing-consent:visible [data-testid="flight.contact-sharing-consent.agree-checkbox"]',
+  // is-checked / is-disabled state classes; mandatory mode ticks and disables it. It is the only
+  // el-checkbox directly inside the consent fieldset.
+  FLIGHT_CONTACT_CONSENT_AGREE_CHECKBOX:
+    '.flight-contact-sharing-consent:visible [data-testid="flight.contact-sharing-consent.agree-checkbox"], ' +
+    '.flight-contact-sharing-consent:visible fieldset.consent-fieldset > label.el-checkbox',
   // Element Plus forwards non-class attrs to the native <input>, so the testid may sit on the input
-  // itself or on its wrapper depending on the version — match both.
+  // itself or on its wrapper depending on the version — match both. Without testids, the input's
+  // id is `contact-sharing-consent-<quote>-email`.
   FLIGHT_CONTACT_CONSENT_EMAIL_INPUT:
     '.flight-contact-sharing-consent:visible input[data-testid="flight.contact-sharing-consent.email-input"], ' +
-    '.flight-contact-sharing-consent:visible [data-testid="flight.contact-sharing-consent.email-input"] input',
-  FLIGHT_CONTACT_CONSENT_SAVE_BUTTON: '.flight-contact-sharing-consent:visible [data-testid="flight.contact-sharing-consent.save-btn"]',
+    '.flight-contact-sharing-consent:visible [data-testid="flight.contact-sharing-consent.email-input"] input, ' +
+    '.flight-contact-sharing-consent:visible input[id^="contact-sharing-consent-"][id$="-email"]',
+  // Save is the only primary button in the panel: Cancel and "save for all" use the default style.
+  FLIGHT_CONTACT_CONSENT_SAVE_BUTTON:
+    '.flight-contact-sharing-consent:visible [data-testid="flight.contact-sharing-consent.save-btn"], ' +
+    '.flight-contact-sharing-consent:visible .btns > button.btn--primary',
   // Green check_circle extras-layout.vue renders on the collapsed row once the validation is OK.
   FLIGHT_CONTACT_CONSENT_SUCCESS_ICON: '.flight-contact-sharing-consent:visible .extra .success-icon.green',
   // "Please add the required extras" notice — extras-collapse.vue renders it as the first <p> of
