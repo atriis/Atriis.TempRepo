@@ -120,7 +120,7 @@ test("a snapshot above maxRows rolls back before writing", async () => {
 
 test("a write whose rowsAffected differs from the snapshot rolls back and registers nothing", async () => {
   const client = withFake((sqlText) =>
-    sqlText === Q.expire.snapshot ? { rows: [{ id: 1, expires: ORIGINAL_1 }], rowsAffected: 1 } : { rows: [], rowsAffected: 2 }
+    sqlText === Q.expire.snapshot ? { rows: [{ id: 1, expires: ORIGINAL_1 }], rowsAffected: 1 } : { rows: [], rowsAffected: 2 },
   );
   const world = { tripId: "42" };
   await assert.rejects(DbQueries.runQuery(world, "expire"), errorWith("ROW_LIMIT", "snapshot had 1"));
@@ -247,7 +247,7 @@ test("waitForColumn times out showing the last value, and refuses writes and lon
   withFake(() => ({ rows: [{ status: "PENDING" }], rowsAffected: 1 }));
   await assert.rejects(
     DbQueries.waitForColumn({ tripId: "1" }, { name: "readStatus", column: "status", expected: "DONE", seconds: 1, intervalMs: 200 }),
-    /did not become "DONE" within 1s; last seen "PENDING"/
+    /did not become "DONE" within 1s; last seen "PENDING"/,
   );
   await assert.rejects(DbQueries.waitForColumn({ tripId: "1" }, { name: "expire", column: "x", expected: "y", seconds: 1 }), errorWith("POLICY", "only read queries can be polled"));
   await assert.rejects(DbQueries.waitForColumn({ tripId: "1" }, { name: "readStatus", column: "status", expected: "y", seconds: 601 }), errorWith("POLICY", "between 1 and 600"));

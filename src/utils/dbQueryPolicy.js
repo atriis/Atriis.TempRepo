@@ -71,11 +71,11 @@ function validateStatements(query, forbiddenRegexes) {
   const statements = [["sql", query.sql]];
   if (query.snapshot !== undefined) {
     if (typeof query.snapshot !== "string" || !query.snapshot.trim()) {
-      problems.push('"snapshot" must be a read-only SELECT');
+      problems.push("\"snapshot\" must be a read-only SELECT");
     } else {
       statements.push(["snapshot", query.snapshot]);
       if (!/^\s*SELECT\b/i.test(query.snapshot) || WRITE_KEYWORDS.test(query.snapshot)) {
-        problems.push('"snapshot" must be a read-only SELECT');
+        problems.push("\"snapshot\" must be a read-only SELECT");
       }
     }
   }
@@ -103,7 +103,7 @@ function validateParams(query) {
     if (!used.has(param)) problems.push(`param "${param}" is declared but not used in "sql"`);
     if (!definition || !SUPPORTED_TYPES.includes(definition.type)) {
       problems.push(
-        `param "${param}" has unsupported type ${JSON.stringify(definition?.type)}; supported: ${SUPPORTED_TYPES.join(", ")}`
+        `param "${param}" has unsupported type ${JSON.stringify(definition?.type)}; supported: ${SUPPORTED_TYPES.join(", ")}`,
       );
     }
     if (definition && definition.default !== undefined && typeof definition.default !== "string") {
@@ -120,31 +120,31 @@ function validateRestoreStrategy(query, queries) {
   const hasNoRestore = query.noRestore !== undefined;
 
   if (!isWriteQuery(query)) {
-    if (query.restoreOnly) problems.push('"restoreOnly" queries must be writes');
+    if (query.restoreOnly) problems.push("\"restoreOnly\" queries must be writes");
     if (hasSnapshot || hasRestore || hasNoRestore) {
-      problems.push('read queries must not declare "snapshot", "restore" or "noRestore"');
+      problems.push("read queries must not declare \"snapshot\", \"restore\" or \"noRestore\"");
     }
     return problems;
   }
 
   if (!Number.isInteger(query.maxRows) || query.maxRows < 1) {
-    problems.push('write queries must declare "maxRows" as a positive integer');
+    problems.push("write queries must declare \"maxRows\" as a positive integer");
   }
 
   if (query.restoreOnly === true) {
     if (hasSnapshot || hasRestore || hasNoRestore) {
-      problems.push('"restoreOnly" queries must not declare "snapshot", "restore" or "noRestore"');
+      problems.push("\"restoreOnly\" queries must not declare \"snapshot\", \"restore\" or \"noRestore\"");
     }
     return problems;
   }
 
   if (hasNoRestore && !(typeof query.noRestore === "string" && query.noRestore.trim())) {
-    problems.push('"noRestore" must be a non-empty reason');
+    problems.push("\"noRestore\" must be a non-empty reason");
   }
   if (hasNoRestore && (hasSnapshot || hasRestore)) {
-    problems.push('"noRestore" is mutually exclusive with "snapshot"/"restore"');
+    problems.push("\"noRestore\" is mutually exclusive with \"snapshot\"/\"restore\"");
   } else if (!hasNoRestore && !(hasSnapshot && hasRestore)) {
-    problems.push('write queries must declare both "snapshot" and "restore", or a "noRestore" reason');
+    problems.push("write queries must declare both \"snapshot\" and \"restore\", or a \"noRestore\" reason");
   }
 
   if (hasRestore) {
@@ -160,10 +160,10 @@ function validateRestoreStrategy(query, queries) {
 function validateQuery(query, queries, forbiddenRegexes) {
   if (!query || typeof query !== "object" || Array.isArray(query)) return ["entry must be an object"];
   const problems = [];
-  if (typeof query.description !== "string" || !query.description.trim()) problems.push('"description" is required');
-  if (typeof query.sql !== "string" || !query.sql.trim()) return [...problems, '"sql" is required'];
+  if (typeof query.description !== "string" || !query.description.trim()) problems.push("\"description\" is required");
+  if (typeof query.sql !== "string" || !query.sql.trim()) return [...problems, "\"sql\" is required"];
   if (!query.params || typeof query.params !== "object" || Array.isArray(query.params)) {
-    return [...problems, '"params" must be an object (use {} for none)'];
+    return [...problems, "\"params\" must be an object (use {} for none)"];
   }
   return [
     ...problems,
@@ -181,7 +181,7 @@ function validateCatalog(catalog) {
 
   const forbidden = catalog.forbidden ?? [];
   const forbiddenRegexes = [];
-  if (!Array.isArray(forbidden)) problems.push('"forbidden" must be an array of regex strings');
+  if (!Array.isArray(forbidden)) problems.push("\"forbidden\" must be an array of regex strings");
   for (const pattern of Array.isArray(forbidden) ? forbidden : []) {
     try {
       forbiddenRegexes.push(new RegExp(pattern, "i"));
@@ -192,7 +192,7 @@ function validateCatalog(catalog) {
 
   const queries = catalog.queries;
   if (!queries || typeof queries !== "object" || Array.isArray(queries) || !Object.keys(queries).length) {
-    problems.push('"queries" must be a non-empty object');
+    problems.push("\"queries\" must be a non-empty object");
   } else {
     for (const [name, query] of Object.entries(queries)) {
       for (const problem of validateQuery(query, queries, forbiddenRegexes)) problems.push(`query "${name}": ${problem}`);
@@ -250,7 +250,7 @@ function resolveQuery(catalog, name, { allowRestoreOnly = false } = {}) {
     const suggestions = closestNames(String(name), runnable);
     throw policyError(
       `Unknown DB query "${name}".${suggestions.length ? ` Did you mean: ${suggestions.join(", ")}?` : ""} ` +
-        "Only queries in src/config/dbQueries.json can run."
+        "Only queries in src/config/dbQueries.json can run.",
     );
   }
   const query = queries[name];
@@ -283,7 +283,7 @@ function buildParams(queryName, query, overrides = {}, world = {}, { fromSnapsho
   const unknown = Object.keys(overrides).filter((key) => !Object.hasOwn(query.params, key));
   if (unknown.length) {
     throw policyError(
-      `DB query "${queryName}" has no param(s) ${unknown.join(", ")}. Declared: ${declared.join(", ") || "(none)"}`
+      `DB query "${queryName}" has no param(s) ${unknown.join(", ")}. Declared: ${declared.join(", ") || "(none)"}`,
     );
   }
 
@@ -293,7 +293,7 @@ function buildParams(queryName, query, overrides = {}, world = {}, { fromSnapsho
     if (raw === undefined) {
       throw policyError(
         `DB query "${queryName}" param "${param}" has no value: ` +
-          (fromSnapshot ? "the snapshot row does not carry it" : "give it in the step table")
+          (fromSnapshot ? "the snapshot row does not carry it" : "give it in the step table"),
       );
     }
 
@@ -305,7 +305,7 @@ function buildParams(queryName, query, overrides = {}, world = {}, { fromSnapsho
           `DB query "${queryName}" param "${param}" references {${unresolved}}, which has no value in this scenario` +
             (unresolved === "tripNumber"
               ? " (no trip id recorded yet: open or create a trip first, or pass tripId in the step table)"
-              : "")
+              : ""),
         );
       }
       if (raw === "" && (definition.required || !TEXT_TYPES.includes(definition.type))) {
@@ -324,7 +324,7 @@ function checkSnapshotColumns(queryName, snapshotRows, restoreName, restoreQuery
   if (actual.join(",") !== expected.join(",")) {
     throw policyError(
       `DB query "${queryName}" snapshot returns columns [${actual.join(", ")}] but restore query "${restoreName}" ` +
-        `expects exactly [${expected.join(", ")}]: alias the snapshot columns to the restore params`
+        `expects exactly [${expected.join(", ")}]: alias the snapshot columns to the restore params`,
     );
   }
 }

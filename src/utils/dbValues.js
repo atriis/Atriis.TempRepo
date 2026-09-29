@@ -48,44 +48,44 @@ function coerceParam(name, type, raw, now = new Date()) {
   if (raw === null) return null;
 
   switch (type) {
-    case "Int":
-    case "BigInt": {
-      const text = String(raw).trim();
-      if (!INTEGER_TEXT.test(text)) throw fail("expected an integer");
-      if (type === "BigInt") return text; // beyond Number.MAX_SAFE_INTEGER; mssql accepts the string
-      const number = Number(text);
-      if (number < INT_MIN || number > INT_MAX) throw fail("out of Int range");
-      return number;
-    }
-    case "Decimal": {
-      if (typeof raw === "number" && Number.isFinite(raw)) return raw;
-      const text = String(raw).trim();
-      if (!DECIMAL_TEXT.test(text)) throw fail("expected a decimal number");
-      return Number(text);
-    }
-    case "Bit": {
-      if (typeof raw === "boolean") return raw;
-      const text = String(raw).trim().toLowerCase();
-      if (text === "1" || text === "true") return true;
-      if (text === "0" || text === "false") return false;
-      throw fail("expected true/false/1/0");
-    }
-    case "DateTime2": {
-      if (raw instanceof Date) return raw;
-      const date = parseDateText(raw, now);
-      if (!date) throw fail("expected an ISO-8601 date or now±N(m|h|d)");
-      return date;
-    }
-    case "UniqueIdentifier": {
-      const text = String(raw).trim();
-      if (!GUID_TEXT.test(text)) throw fail("expected a GUID");
-      return text;
-    }
-    case "NVarChar":
-    case "VarChar":
-      return String(raw);
-    default:
-      throw new DbQueryError("POLICY", `Param "${name}": unsupported type "${type}". Supported: ${SUPPORTED_TYPES.join(", ")}`);
+  case "Int":
+  case "BigInt": {
+    const text = String(raw).trim();
+    if (!INTEGER_TEXT.test(text)) throw fail("expected an integer");
+    if (type === "BigInt") return text; // beyond Number.MAX_SAFE_INTEGER; mssql accepts the string
+    const number = Number(text);
+    if (number < INT_MIN || number > INT_MAX) throw fail("out of Int range");
+    return number;
+  }
+  case "Decimal": {
+    if (typeof raw === "number" && Number.isFinite(raw)) return raw;
+    const text = String(raw).trim();
+    if (!DECIMAL_TEXT.test(text)) throw fail("expected a decimal number");
+    return Number(text);
+  }
+  case "Bit": {
+    if (typeof raw === "boolean") return raw;
+    const text = String(raw).trim().toLowerCase();
+    if (text === "1" || text === "true") return true;
+    if (text === "0" || text === "false") return false;
+    throw fail("expected true/false/1/0");
+  }
+  case "DateTime2": {
+    if (raw instanceof Date) return raw;
+    const date = parseDateText(raw, now);
+    if (!date) throw fail("expected an ISO-8601 date or now±N(m|h|d)");
+    return date;
+  }
+  case "UniqueIdentifier": {
+    const text = String(raw).trim();
+    if (!GUID_TEXT.test(text)) throw fail("expected a GUID");
+    return text;
+  }
+  case "NVarChar":
+  case "VarChar":
+    return String(raw);
+  default:
+    throw new DbQueryError("POLICY", `Param "${name}": unsupported type "${type}". Supported: ${SUPPORTED_TYPES.join(", ")}`);
   }
 }
 
@@ -113,7 +113,7 @@ function orderOf(actualRaw, actual, expected, now) {
 
   throw new DbQueryError(
     "POLICY",
-    `Cannot order-compare "${actual}" with "${expected}": both sides must be numbers or both dates`
+    `Cannot order-compare "${actual}" with "${expected}": both sides must be numbers or both dates`,
   );
 }
 
@@ -121,23 +121,23 @@ function compare(actualRaw, op, expected, now = new Date()) {
   const actual = normalizeValue(actualRaw);
   const expectedText = String(expected);
   switch (op) {
-    case "be":
-      return actual === expectedText;
-    case "not be":
-      return actual !== expectedText;
-    case "contain":
-      return actual.includes(expectedText);
-    case "not contain":
-      return !actual.includes(expectedText);
-    case "be greater than":
-      return orderOf(actualRaw, actual, expectedText, now) > 0;
-    case "be less than":
-      return orderOf(actualRaw, actual, expectedText, now) < 0;
-    default:
-      throw new DbQueryError(
-        "POLICY",
-        `Unknown DB comparison operator "${op}". Valid: ${COMPARISON_OPERATORS.join(", ")}`
-      );
+  case "be":
+    return actual === expectedText;
+  case "not be":
+    return actual !== expectedText;
+  case "contain":
+    return actual.includes(expectedText);
+  case "not contain":
+    return !actual.includes(expectedText);
+  case "be greater than":
+    return orderOf(actualRaw, actual, expectedText, now) > 0;
+  case "be less than":
+    return orderOf(actualRaw, actual, expectedText, now) < 0;
+  default:
+    throw new DbQueryError(
+      "POLICY",
+      `Unknown DB comparison operator "${op}". Valid: ${COMPARISON_OPERATORS.join(", ")}`,
+    );
   }
 }
 

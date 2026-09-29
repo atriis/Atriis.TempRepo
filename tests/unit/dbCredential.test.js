@@ -30,16 +30,16 @@ test("config.db defaults: enabled, 30s timeout, empty strings", () => {
 test("requireDbSettings names the mode and every missing variable", () => {
   assert.throws(
     () => credential.requireDbSettings({ ...BASE, authentication: "service-principal", tenantId: TENANT, clientId: "c", clientSecret: "" }),
-    errorWith("CONFIG", "DB_AUTHENTICATION=service-principal requires DB_CLIENT_SECRET")
+    errorWith("CONFIG", "DB_AUTHENTICATION=service-principal requires DB_CLIENT_SECRET"),
   );
   assert.throws(
     () => credential.requireDbSettings({ authentication: "azure-cli" }),
-    errorWith("CONFIG", "DB_AUTHENTICATION=azure-cli requires DB_SERVER_NAME, DB_DATABASE_NAME")
+    errorWith("CONFIG", "DB_AUTHENTICATION=azure-cli requires DB_SERVER_NAME, DB_DATABASE_NAME"),
   );
   assert.throws(() => credential.requireDbSettings({ ...BASE, authentication: "entra-mfa" }), errorWith("CONFIG", "requires DB_USER_NAME"));
   assert.throws(
     () => credential.requireDbSettings({ ...BASE, authentication: "password" }),
-    errorWith("CONFIG", "DB_AUTHENTICATION must be one of entra-mfa, service-principal, azure-cli")
+    errorWith("CONFIG", "DB_AUTHENTICATION must be one of entra-mfa, service-principal, azure-cli"),
   );
   assert.equal(credential.requireDbSettings({ ...BASE, authentication: "azure-cli" }), "azure-cli");
 });
@@ -48,7 +48,7 @@ test("createCredential maps each mode to its @azure/identity credential", () => 
   assert.ok(credential.createCredential({ ...BASE, authentication: "azure-cli" }) instanceof AzureCliCredential);
   assert.ok(
     credential.createCredential({ ...BASE, authentication: "service-principal", tenantId: TENANT, clientId: "c", clientSecret: "s" }) instanceof
-      ClientSecretCredential
+      ClientSecretCredential,
   );
   assert.ok(credential.createCredential({ ...BASE, authentication: "entra-mfa", userName: "me@corp.com" }) instanceof InteractiveBrowserCredential);
 });

@@ -61,52 +61,52 @@ test("an invalid forbidden regex is reported", () => {
 });
 
 test("built-in rules cannot be switched off", () => {
-  expectInvalid({ bad: { ...READ, sql: "SELECT 1 AS a WHERE 1 = @tripId; SELECT 2" } }, 'built-in rule "single statement"');
-  expectInvalid({ bad: { ...READ, sql: "SELECT 1 AS a WHERE 1 = @tripId\nGO" } }, 'built-in rule "single statement"');
-  expectInvalid({ bad: { ...READ, sql: "SELECT 1 AS a WHERE 1 = @tripId -- hidden" } }, 'built-in rule "no SQL comments"');
-  expectInvalid({ bad: { ...READ, sql: "SELECT 1 AS a /* x */ WHERE 1 = @tripId" } }, 'built-in rule "no SQL comments"');
-  expectInvalid({ bad: { ...READ, sql: "EXEC sp_who @tripId" } }, 'built-in rule "no EXEC"');
-  expectInvalid({ bad: { ...WRITE, sql: "UPDATE Quotes SET Expires = DATEADD(MINUTE, @minutes, @tripId)" } }, 'built-in rule "UPDATE/DELETE need WHERE"');
-  expectInvalid({ bad: { ...READ, sql: "sp_who2 @tripId" } }, 'built-in rule "starts with SELECT, WITH, UPDATE, INSERT, DELETE or MERGE"');
+  expectInvalid({ bad: { ...READ, sql: "SELECT 1 AS a WHERE 1 = @tripId; SELECT 2" } }, "built-in rule \"single statement\"");
+  expectInvalid({ bad: { ...READ, sql: "SELECT 1 AS a WHERE 1 = @tripId\nGO" } }, "built-in rule \"single statement\"");
+  expectInvalid({ bad: { ...READ, sql: "SELECT 1 AS a WHERE 1 = @tripId -- hidden" } }, "built-in rule \"no SQL comments\"");
+  expectInvalid({ bad: { ...READ, sql: "SELECT 1 AS a /* x */ WHERE 1 = @tripId" } }, "built-in rule \"no SQL comments\"");
+  expectInvalid({ bad: { ...READ, sql: "EXEC sp_who @tripId" } }, "built-in rule \"no EXEC\"");
+  expectInvalid({ bad: { ...WRITE, sql: "UPDATE Quotes SET Expires = DATEADD(MINUTE, @minutes, @tripId)" } }, "built-in rule \"UPDATE/DELETE need WHERE\"");
+  expectInvalid({ bad: { ...READ, sql: "sp_who2 @tripId" } }, "built-in rule \"starts with SELECT, WITH, UPDATE, INSERT, DELETE or MERGE\"");
   expectInvalid(
     { bad: { ...WRITE, sql: "UPDATE Quotes SET Expires = (SELECT MAX(Expires) FROM Quotes q WHERE q.TripId = @tripId AND q.Id > @minutes)" } },
-    'built-in rule "UPDATE/DELETE need WHERE"'
+    "built-in rule \"UPDATE/DELETE need WHERE\"",
   );
   assert.doesNotThrow(() => policy.validateCatalog(catalogWith({ ok: { ...READ, sql: `${READ.sql};` } })));
   assert.doesNotThrow(() =>
-    policy.validateCatalog(catalogWith({ ok: { ...WRITE, sql: "UPDATE Quotes SET Expires = DATEADD(MINUTE, @minutes, GETDATE()) WHERE Id IN (SELECT Id FROM Quotes WHERE TripId = @tripId)" } }))
+    policy.validateCatalog(catalogWith({ ok: { ...WRITE, sql: "UPDATE Quotes SET Expires = DATEADD(MINUTE, @minutes, GETDATE()) WHERE Id IN (SELECT Id FROM Quotes WHERE TripId = @tripId)" } })),
   );
 });
 
 test("params must be declared, used and of a supported type", () => {
   expectInvalid({ bad: { ...READ, sql: "SELECT 1 AS a WHERE TripId = @tripId AND Id = @quoteId" } }, "uses @quoteId, which is not declared");
-  expectInvalid({ bad: { ...READ, params: { ...READ.params, unused: { type: "Int", default: "1" } } } }, 'param "unused" is declared but not used');
-  expectInvalid({ bad: { ...READ, params: { tripId: { type: "Money" } } } }, 'unsupported type "Money"');
+  expectInvalid({ bad: { ...READ, params: { ...READ.params, unused: { type: "Int", default: "1" } } } }, "param \"unused\" is declared but not used");
+  expectInvalid({ bad: { ...READ, params: { tripId: { type: "Money" } } } }, "unsupported type \"Money\"");
   expectInvalid({ bad: { ...READ, params: { tripId: { type: "Int", default: 5 } } } }, "default must be a string");
 });
 
 test("writes need maxRows and exactly one restore strategy", () => {
   const { maxRows, ...noMax } = WRITE;
-  expectInvalid({ bad: noMax }, '"maxRows" as a positive integer');
+  expectInvalid({ bad: noMax }, "\"maxRows\" as a positive integer");
   const { snapshot, restore, ...bare } = WRITE;
-  expectInvalid({ bad: bare }, 'both "snapshot" and "restore", or a "noRestore" reason');
+  expectInvalid({ bad: bare }, "both \"snapshot\" and \"restore\", or a \"noRestore\" reason");
   expectInvalid({ bad: { ...WRITE, noRestore: "disposable" } }, "mutually exclusive");
-  expectInvalid({ bad: { ...bare, noRestore: "  " } }, '"noRestore" must be a non-empty reason');
+  expectInvalid({ bad: { ...bare, noRestore: "  " } }, "\"noRestore\" must be a non-empty reason");
   assert.doesNotThrow(() => policy.validateCatalog(catalogWith({ ok: { ...bare, noRestore: "log rows are disposable" } })));
 });
 
 test("restore must point at an existing restoreOnly query", () => {
-  expectInvalid({ bad: { ...WRITE, restore: "missing" } }, 'references unknown query "missing"');
-  expectInvalid({ bad: { ...WRITE, restore: "write" } }, 'must be marked "restoreOnly": true');
+  expectInvalid({ bad: { ...WRITE, restore: "missing" } }, "references unknown query \"missing\"");
+  expectInvalid({ bad: { ...WRITE, restore: "write" } }, "must be marked \"restoreOnly\": true");
 });
 
 test("snapshot must be a read-only SELECT", () => {
-  expectInvalid({ bad: { ...WRITE, snapshot: "UPDATE Quotes SET Id = Id WHERE TripId = @tripId" } }, '"snapshot" must be a read-only SELECT');
+  expectInvalid({ bad: { ...WRITE, snapshot: "UPDATE Quotes SET Id = Id WHERE TripId = @tripId" } }, "\"snapshot\" must be a read-only SELECT");
 });
 
 test("reads cannot carry restore fields, SELECT INTO counts as a write", () => {
   expectInvalid({ bad: { ...READ, restore: "restoreExpires" } }, "read queries must not declare");
-  expectInvalid({ bad: { ...READ, sql: "SELECT Id INTO Backup FROM Quotes WHERE TripId = @tripId" } }, '"maxRows" as a positive integer');
+  expectInvalid({ bad: { ...READ, sql: "SELECT Id INTO Backup FROM Quotes WHERE TripId = @tripId" } }, "\"maxRows\" as a positive integer");
   assert.equal(policy.isWriteSql("SELECT Id INTO Backup FROM Quotes"), true);
   assert.equal(policy.isWriteSql("SELECT UpdatedAt FROM Quotes"), false);
 });
@@ -137,21 +137,21 @@ test("buildParams layers default, override and world placeholders, then coerces"
 });
 
 test("buildParams rejects unknown overrides", () => {
-  assert.throws(() => policy.buildParams("read", READ, { tripID: "1" }, {}), policyError('no param(s) tripID. Declared: tripId'));
+  assert.throws(() => policy.buildParams("read", READ, { tripID: "1" }, {}), policyError("no param(s) tripID. Declared: tripId"));
 });
 
 test("buildParams names the param when {tripNumber} has no trip yet", () => {
   assert.throws(
     () => policy.buildParams("read", READ, {}, {}),
-    policyError('param "tripId" references {tripNumber}, which has no value in this scenario (no trip id recorded yet')
+    policyError("param \"tripId\" references {tripNumber}, which has no value in this scenario (no trip id recorded yet"),
   );
   assert.throws(() => policy.buildParams("read", READ, { tripId: "{nothing}" }, { nothing: { an: "object" } }), policyError("{nothing}"));
 });
 
 test("buildParams rejects empty required and non-text values", () => {
   const query = { ...READ, params: { tripId: { type: "Int" } } };
-  assert.throws(() => policy.buildParams("q", query, {}, {}), policyError('param "tripId" has no value: give it in the step table'));
-  assert.throws(() => policy.buildParams("read", READ, { tripId: "" }, {}), policyError('param "tripId" is empty'));
+  assert.throws(() => policy.buildParams("q", query, {}, {}), policyError("param \"tripId\" has no value: give it in the step table"));
+  assert.throws(() => policy.buildParams("read", READ, { tripId: "" }, {}), policyError("param \"tripId\" is empty"));
   const text = { ...READ, params: { tripId: { type: "NVarChar" } } };
   assert.deepEqual(policy.buildParams("q", text, { tripId: "" }, {}), { tripId: "" });
 });
@@ -163,7 +163,7 @@ test("buildParams fromSnapshot keeps NULL originals and needs every restore para
   assert.equal(policy.buildParams("restoreExpires", RESTORE, { id: 5, expires: original }, {}, { fromSnapshot: true }).expires, original);
   assert.throws(
     () => policy.buildParams("restoreExpires", RESTORE, { id: 5 }, {}, { fromSnapshot: true }),
-    policyError("the snapshot row does not carry it")
+    policyError("the snapshot row does not carry it"),
   );
 });
 
@@ -171,7 +171,7 @@ test("checkSnapshotColumns requires exactly the restore params", () => {
   assert.doesNotThrow(() => policy.checkSnapshotColumns("write", [{ id: 1, expires: null }], "restoreExpires", RESTORE));
   assert.throws(
     () => policy.checkSnapshotColumns("write", [{ Id: 1, expires: null }], "restoreExpires", RESTORE),
-    policyError("alias the snapshot columns to the restore params")
+    policyError("alias the snapshot columns to the restore params"),
   );
 });
 

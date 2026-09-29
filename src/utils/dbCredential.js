@@ -40,14 +40,14 @@ function requireDbSettings(db = config.db) {
 function createCredential(db = config.db) {
   const mode = requireDbSettings(db);
   switch (mode) {
-    case "entra-mfa":
-      return new InteractiveBrowserCredential({ loginHint: db.userName, ...(db.tenantId && { tenantId: db.tenantId }) });
-    case "service-principal":
-      return new ClientSecretCredential(db.tenantId, db.clientId, db.clientSecret);
-    case "azure-cli":
-      return new AzureCliCredential();
-    default:
-      throw new DbQueryError("CONFIG", `Unhandled DB_AUTHENTICATION "${mode}"`);
+  case "entra-mfa":
+    return new InteractiveBrowserCredential({ loginHint: db.userName, ...(db.tenantId && { tenantId: db.tenantId }) });
+  case "service-principal":
+    return new ClientSecretCredential(db.tenantId, db.clientId, db.clientSecret);
+  case "azure-cli":
+    return new AzureCliCredential();
+  default:
+    throw new DbQueryError("CONFIG", `Unhandled DB_AUTHENTICATION "${mode}"`);
   }
 }
 

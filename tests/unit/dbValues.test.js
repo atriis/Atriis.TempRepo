@@ -77,7 +77,7 @@ test("compare: ordering never falls back to string comparison", () => {
 test("coerceParam converts Gherkin strings and snapshot values to typed values", () => {
   assert.equal(values.coerceParam("id", "Int", "42"), 42);
   assert.equal(values.coerceParam("id", "Int", 42), 42);
-  assert.throws(() => values.coerceParam("id", "Int", "4.2"), isPolicyError('Param "id" (Int): expected an integer'));
+  assert.throws(() => values.coerceParam("id", "Int", "4.2"), isPolicyError("Param \"id\" (Int): expected an integer"));
   assert.throws(() => values.coerceParam("id", "Int", "3000000000"), isPolicyError("out of Int range"));
   assert.equal(values.coerceParam("id", "BigInt", "9007199254740993"), "9007199254740993");
   assert.equal(values.coerceParam("price", "Decimal", "12.34"), 12.34);
@@ -94,7 +94,7 @@ test("coerceParam converts Gherkin strings and snapshot values to typed values",
   assert.throws(() => values.coerceParam("guid", "UniqueIdentifier", "nope"), isPolicyError("expected a GUID"));
   assert.equal(values.coerceParam("name", "NVarChar", 5), "5");
   assert.equal(values.coerceParam("expires", "DateTime2", null), null);
-  assert.throws(() => values.coerceParam("x", "Money", "1"), isPolicyError('unsupported type "Money"'));
+  assert.throws(() => values.coerceParam("x", "Money", "1"), isPolicyError("unsupported type \"Money\""));
 });
 
 test("containsRows matches each expected row to a distinct actual row", () => {

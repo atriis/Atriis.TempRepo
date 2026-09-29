@@ -35,13 +35,13 @@ function assertionFailure(result, detail) {
       `Params: ${JSON.stringify(loggableParams(result.params))}`,
       `Rows (${result.rows.length}):`,
       formatRowsTable(result.rows),
-    ].join("\n")
+    ].join("\n"),
   );
 }
 
 function getLastResult(world) {
   if (!world.dbLastResult) {
-    throw new DbQueryError("POLICY", 'No DB query has run in this scenario yet: add a "When I run the DB query ..." step first');
+    throw new DbQueryError("POLICY", "No DB query has run in this scenario yet: add a \"When I run the DB query ...\" step first");
   }
   return world.dbLastResult;
 }
@@ -89,7 +89,7 @@ async function runWrite(catalog, name, query, params, transaction) {
   if (snapshotRows && rowsAffected !== snapshotRows.length) {
     throw new DbQueryError(
       "ROW_LIMIT",
-      `DB query "${name}" affected ${rowsAffected} rows but its snapshot had ${snapshotRows.length}: the restore would not match`
+      `DB query "${name}" affected ${rowsAffected} rows but its snapshot had ${snapshotRows.length}: the restore would not match`,
     );
   }
   const restores = snapshotRows ? snapshotRows.map((row) => ({ query: query.restore, params: { ...row } })) : [];
@@ -167,7 +167,7 @@ const DbQueries = {
         "RESTORE",
         `${failures.length} of ${pending.length} DB restore(s) failed; the DB may still hold this scenario's changes:\n` +
           failures.map((failure) => `  - ${failure.query} ${JSON.stringify(failure.params)}: ${failure.error}`).join("\n"),
-        { failures }
+        { failures },
       );
     }
     return { restored };
@@ -257,7 +257,7 @@ const DbQueries = {
       throw new DbQueryError("POLICY", "DB result contain-rows step needs at least one expected row");
     }
     const resolved = expectedRows.map((row) =>
-      Object.fromEntries(Object.entries(row).map(([column, value]) => [column, resolveExpected(world, value)]))
+      Object.fromEntries(Object.entries(row).map(([column, value]) => [column, resolveExpected(world, value)])),
     );
     if (result.rows.length) {
       for (const column of Object.keys(resolved[0])) assertColumn(result, result.rows[0], column);

@@ -14,25 +14,25 @@ let connecting = null;
 
 function toSqlType(type) {
   switch (type) {
-    case "Int":
-      return sql.Int;
-    case "BigInt":
-      return sql.BigInt;
-    case "Bit":
-      return sql.Bit;
-    case "NVarChar":
-      return sql.NVarChar(sql.MAX);
-    case "VarChar":
-      return sql.VarChar(sql.MAX);
-    case "DateTime2":
-      return sql.DateTime2(7);
+  case "Int":
+    return sql.Int;
+  case "BigInt":
+    return sql.BigInt;
+  case "Bit":
+    return sql.Bit;
+  case "NVarChar":
+    return sql.NVarChar(sql.MAX);
+  case "VarChar":
+    return sql.VarChar(sql.MAX);
+  case "DateTime2":
+    return sql.DateTime2(7);
     // Bare sql.Decimal is decimal(18,0): it would round a restored 123.45 to 123.
-    case "Decimal":
-      return sql.Decimal(38, 10);
-    case "UniqueIdentifier":
-      return sql.UniqueIdentifier;
-    default:
-      throw new DbQueryError("POLICY", `Unsupported DB param type "${type}"`);
+  case "Decimal":
+    return sql.Decimal(38, 10);
+  case "UniqueIdentifier":
+    return sql.UniqueIdentifier;
+  default:
+    throw new DbQueryError("POLICY", `Unsupported DB param type "${type}"`);
   }
 }
 

@@ -9,7 +9,7 @@ const CONNECTING_STEP_TIMEOUT_MS = 5 * 60 * 1000;
 // Polling waits up to DbQueries.MAX_POLL_SECONDS on top of a possible first connection.
 const POLLING_STEP_TIMEOUT_MS = (DbQueries.MAX_POLL_SECONDS + 5 * 60) * 1000;
 
-const QUOTED = '"([^"]*)"';
+const QUOTED = "\"([^\"]*)\"";
 const OPERATOR = "(be|not be|contain|not contain|be greater than|be less than)";
 
 // Same switch PayloadValidation has: DB_QUERIES_ENABLED=false turns every DB step into a logged no-op.
@@ -43,7 +43,7 @@ Then(new RegExp(`^the DB result column ${QUOTED} should ${OPERATOR} ${QUOTED}$`)
 
 Then(new RegExp(`^the DB result row (\\d+) column ${QUOTED} should ${OPERATOR} ${QUOTED}$`), async function (row, column, op, expected) {
   await runDbStep(this, "expectColumn", { row, column, op, expected }, () =>
-    DbQueries.expectColumn(this, { row: Number(row), column, op, expected })
+    DbQueries.expectColumn(this, { row: Number(row), column, op, expected }),
   );
 });
 
@@ -68,9 +68,9 @@ Then(
   { timeout: POLLING_STEP_TIMEOUT_MS },
   async function (name, column, expected, seconds) {
     await runDbStep(this, "waitForColumn", { name, column, expected, seconds }, () =>
-      DbQueries.waitForColumn(this, { name, column, expected, seconds })
+      DbQueries.waitForColumn(this, { name, column, expected, seconds }),
     );
-  }
+  },
 );
 
 Then(
@@ -78,9 +78,9 @@ Then(
   { timeout: POLLING_STEP_TIMEOUT_MS },
   async function (name, column, expected, seconds, dataTable) {
     await runDbStep(this, "waitForColumn", { name, column, expected, seconds }, () =>
-      DbQueries.waitForColumn(this, { name, column, expected, seconds, overrides: DbQueries.overridesFromTable(dataTable.raw()) })
+      DbQueries.waitForColumn(this, { name, column, expected, seconds, overrides: DbQueries.overridesFromTable(dataTable.raw()) }),
     );
-  }
+  },
 );
 
 When("I store the DB result column {string} as {string}", async function (column, worldKey) {
