@@ -1000,6 +1000,13 @@ When("I click fare rules for the third flight leg", async function () {
   await FlightResults.clickFareRulesLegTab(this.page, 2);
 });
 
+Then("the fare rules leg tabs should be {string}", async function (expectedTabs) {
+  const expectedLabels = expectedTabs.split(",").map((label) => label.trim()).filter(Boolean);
+  logger.info("Verifying fare rules leg tabs", { expectedLabels });
+  const result = await FlightResults.verifyFareRulesLegTabs(this.page, expectedLabels);
+  logger.info("Fare rules leg tabs verified", result);
+});
+
 // Text the drawer renders in place of the rules when the supplier returned none.
 const NO_FARE_RULES_TEXT = 'No rules were found';
 

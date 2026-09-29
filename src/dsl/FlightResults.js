@@ -3063,6 +3063,44 @@ async clickToOpenFareRulesFromResultsModal(page) {
     await flightResultsPage.waitForFareRulesNote();
   },
 
+  /**
+   * Verifies the open fare rules drawer shows exactly the expected leg tabs, in order.
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @param {string[]} expectedLabels - Tab routes in journey order (e.g. ["LIS - BOS", "BOS - LIS"])
+   * @returns {Promise<{expectedLabels: string[], actualLabels: string[]}>}
+   */
+  async verifyFareRulesLegTabs(page, expectedLabels) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+    if (!Array.isArray(expectedLabels) || expectedLabels.length === 0) {
+      throw new Error(`expectedLabels must be a non-empty array, got: ${JSON.stringify(expectedLabels)}`);
+    }
+
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+
+    // The tabs are built from the same response as the rules body, so wait for the body first;
+    // reading the tabs earlier can catch a drawer that has not filled in all its legs yet.
+    await flightResultsPage.waitForFareRulesNote();
+    const actualLabels = await flightResultsPage.getFareRulesLegTabLabels();
+
+    const normalize = (label) => label.replace(/\s*-\s*/g, ' - ').trim().toUpperCase();
+    const matches =
+      actualLabels.length === expectedLabels.length &&
+      actualLabels.every((label, index) => normalize(label) === normalize(expectedLabels[index]));
+
+    if (!matches) {
+      throw new Error(
+        `[FlightResults.verifyFareRulesLegTabs] Fare rules drawer leg tabs do not match. ` +
+        `Expected ${expectedLabels.length} tab(s): ${expectedLabels.join(' | ')}; ` +
+        `got ${actualLabels.length}: ${actualLabels.join(' | ') || '(none)'}`
+      );
+    }
+
+    return { expectedLabels, actualLabels };
+  },
+
 /**
  * Checks if the green circle icon is displayed in the pricing options modal.
  * Returns visibility status for validation in step definitions.

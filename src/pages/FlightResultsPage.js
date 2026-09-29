@@ -2584,6 +2584,30 @@ class FlightResultsPage {
     await this.getFareRulesLegTab(index).click();
   }
 
+  /**
+   * Reads the route labels of every leg tab in the open fare rules drawer (e.g. "LIS - BOS").
+   *
+   * @param {number} timeout - Max wait for the first tab in ms (default: 30000)
+   * @returns {Promise<string[]>}
+   */
+  async getFareRulesLegTabLabels(timeout = 30000) {
+    const tabs = this.page.locator(SELECTORS.FARE_RULES_LEG_TAB);
+
+    try {
+      await tabs.first().waitFor({ state: 'visible', timeout });
+    } catch (err) {
+      throw new Error(
+        `[FlightResultsPage.getFareRulesLegTabLabels] No leg tabs rendered in the fare rules drawer within ${timeout}ms. ` +
+        `The drawer may not be open, or the fare rules response may not have loaded. ` +
+        `Original: ${err.message}`
+      );
+    }
+
+    return (await tabs.allInnerTexts())
+      .map((text) => text.replace(/\s+/g, ' ').trim())
+      .filter(Boolean);
+  }
+
   // ===== FLIGHT DETAILS INTERACTIONS =====
 
   /**
