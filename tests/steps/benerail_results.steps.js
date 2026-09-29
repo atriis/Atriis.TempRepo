@@ -397,6 +397,47 @@ When("I close the Benerail journey details panel", async function () {
   await BenerailResults.closeJourneyDetailsPanel(this.page);
 });
 
+// --- Train information: results vs cart vs itinerary email ---
+// Leg keyword → quote card segment index (the cart lists the outbound leg first, the return second).
+const BENERAIL_LEG_INDEXES = { outbound: 0, inbound: 1 };
+
+function requireBenerailLeg(leg) {
+  if (!(leg in BENERAIL_LEG_INDEXES)) {
+    throw new Error(`[benerail_results.steps] Unknown journey "${leg}" — expected "outbound" or "inbound"`);
+  }
+  return BENERAIL_LEG_INDEXES[leg];
+}
+
+function requireResultsTrainInformation(world, leg) {
+  const expected = world.benerailResultsTrainInformation?.[leg];
+  if (!expected) {
+    throw new Error(
+      `[benerail_results.steps] No ${leg} train information was extracted from the results page — expected ` +
+      `'I extract all train information from the "${leg}" journey details in results' to have run first`,
+    );
+  }
+  return expected;
+}
+
+When("I extract all train information from the {string} journey details in results", async function (leg) {
+  requireBenerailLeg(leg);
+  const trainInformation = await BenerailResults.extractJourneyDetailsTrainInformation(this.page);
+  logger.info("Extracted Benerail train information from the results journey details", { leg, trainInformation });
+  this.benerailResultsTrainInformation = { ...this.benerailResultsTrainInformation, [leg]: trainInformation };
+});
+
+When("I click the cart journey details button for the {string} journey", async function (leg) {
+  logger.info("Opening the Benerail cart journey details", { leg });
+  await Cart.openEuRailJourneyDetails(this.page, requireBenerailLeg(leg));
+});
+
+Then("all {string} train information from cart should match the results", async function (leg) {
+  const expected = requireResultsTrainInformation(this, leg);
+  const actual = await BenerailResults.extractJourneyDetailsTrainInformation(this.page);
+  logger.info("Verifying the Benerail cart train information matches the results", { leg, expected, actual });
+  BenerailResults.verifyTrainInformationMatches(expected, actual, `${leg} journey: cart vs results`);
+});
+
 Then("the traveler should still be visible in the Benerail cart", async function () {
   throw new Error("TODO: implement 'the traveler should still be visible in the Benerail cart' — after adding quote to cart, assert traveler is displayed in the cart header/traveler section (see test 44941)");
 });

@@ -535,6 +535,11 @@ const SELECTORS = {
   // mutually exclusive guard: a <p> gated on `!(isMobile && isBeneMooveRail)` and a <span> gated on
   // `isBeneMooveRail && isMobile`. On the desktop viewport the suite runs at, only the <p> mounts.
   EU_RAIL_QUOTE_SEGMENT_CLASS: '.rail-class',
+  // The quote card's Journey Details dialog: appended to <body>, and it mounts the same
+  // eu-rail-journey-details component as the results card, so it is read with
+  // BenerailResultsPage.getJourneyDetailsTrainInformation (same selector as its
+  // JOURNEY_DETAILS_DIALOG). :visible because the fare rules dialog shares the el-dialog.
+  EU_RAIL_JOURNEY_DETAILS_DIALOG: '.el-dialog:has(.eu-rail-journey-details):visible',
 
   // "Mobile Barcode" button on a BOOKED rail quote card. eu-rail-quote-card.vue renders it in its
   // #booking-confirm-voucher slot, which base-quote-card.vue forwards to booking-confirm-layout.vue's
@@ -9845,7 +9850,6 @@ class CartPage {
    */
   async addExternalShareRecipient(email) {
     const chips = this.page.locator(SELECTORS.SHARE_RECIPIENT_CHIPS).filter({ visible: true });
-    const chipsBefore = await chips.count();
 
     const input = this.page.locator(SELECTORS.SHARE_RECIPIENT_INPUT).filter({ visible: true }).first();
     await input.waitFor({ state: 'visible', timeout: 30_000 });
@@ -9874,6 +9878,9 @@ class CartPage {
           `passes the component's email validation. Original: ${err.message}`
       );
     }
+    // Counted only now: the dialog renders its form before created() seeds the booker chip
+    // (addExistingPassengers runs after loadData), so a count taken on open can miss it.
+    const chipsBefore = await chips.count();
     await suggestion.click();
 
     // The chip is a trip-traveler-tag whose label is the address; long addresses are truncated
@@ -10212,6 +10219,35 @@ class CartPage {
     }
 
     return ((await railClass.textContent()) ?? '').replace(/\s+/g, ' ').trim();
+  }
+
+  /**
+   * Opens the Journey Details dialog of one leg of the EU rail (Benerail) quote card. Each leg's
+   * `.ticket-title` block has its own "Journey Details" app-btn (eu-rail-quote-card.vue's
+   * setJourneyDetailsVisible(true, segmentIdx)).
+   * @param {number} segmentIndex - Zero-based leg index: 0 = outbound, 1 = return.
+   * @param {object} [options]
+   * @param {number} [options.timeout=30000]
+   */
+  async openEuRailQuoteSegmentJourneyDetails(segmentIndex, { timeout = 30000 } = {}) {
+    if (!Number.isInteger(segmentIndex) || segmentIndex < 0) {
+      throw new Error(
+        `[CartPage.openEuRailQuoteSegmentJourneyDetails] "segmentIndex" must be a non-negative integer, got: ${segmentIndex}`,
+      );
+    }
+
+    const segments = this.page.locator(SELECTORS.EU_RAIL_QUOTE_SEGMENT);
+    await segments.first().waitFor({ state: 'visible', timeout });
+    const segmentCount = await segments.count();
+    if (segmentIndex >= segmentCount) {
+      throw new Error(
+        `[CartPage.openEuRailQuoteSegmentJourneyDetails] Requested leg index ${segmentIndex} but the rail ` +
+        `quote card in the cart renders only ${segmentCount} leg(s) — index 1 requires a round trip.`,
+      );
+    }
+
+    await segments.nth(segmentIndex).getByRole('button', { name: 'Journey Details' }).click({ timeout });
+    await this.page.locator(SELECTORS.EU_RAIL_JOURNEY_DETAILS_DIALOG).waitFor({ state: 'visible', timeout });
   }
 
   /**

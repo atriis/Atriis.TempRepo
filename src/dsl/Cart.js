@@ -8519,6 +8519,30 @@ const Cart = {
     }
   },
 
+  /**
+   * Opens the Journey Details dialog of one leg of the EU rail (Benerail) quote card in the cart.
+   * The dialog is read and closed with the BenerailResults journey details methods — it is the
+   * same component the results page mounts.
+   * @param {import('playwright').Page} page
+   * @param {number} [segmentIndex=0] - Zero-based leg index: 0 = outbound, 1 = return.
+   */
+  async openEuRailJourneyDetails(page, segmentIndex = 0) {
+    if (!page) {
+      throw new Error('[Cart.openEuRailJourneyDetails] "page" is required.');
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+    try {
+      await cartPage.openEuRailQuoteSegmentJourneyDetails(segmentIndex);
+    } catch (error) {
+      throw new Error(
+        `[Cart.openEuRailJourneyDetails] Could not open the Journey Details of rail quote leg ` +
+        `${segmentIndex} in the cart. Original: ${error.message}`,
+      );
+    }
+    return { opened: true, segmentIndex };
+  },
+
   // ===== EU RAIL (BENERAIL) MOBILE BARCODE =====
 
   /**

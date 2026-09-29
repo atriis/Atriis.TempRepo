@@ -1,6 +1,7 @@
 const { expect } = require("@playwright/test");
 const { getPageObject } = require("@utils/pageObjectCache");
 const { toNumber } = require("@utils/numbers");
+const { normalizeText } = require("@utils/text");
 const { ResultsPage } = require("@pages/ResultsPage");
 const { BenerailResultsPage } = require("@pages/BenerailResultsPage");
 const Results = require("./Results");
@@ -410,6 +411,144 @@ const BenerailResults = {
     const benerailResultsPage = getPageObject(page, BenerailResultsPage);
     await benerailResultsPage.closeJourneyDetailsDialog();
     return { closed: true };
+  },
+
+  /**
+   * Reads all train information from the open Journey Details panel — results page or cart, they
+   * mount the same component. Connections are the legs themselves plus the heading's change count
+   * ("Changes: 1" / "Direct").
+   * @param {import('playwright').Page} page
+   * @returns {Promise<{heading: string, changes: number, legs: Array<{departureTime: string, departureStation: string, duration: string, train: string, arrivalTime: string, arrivalStation: string}>}>}
+   */
+  async extractJourneyDetailsTrainInformation(page) {
+    if (!page) throw new Error("[BenerailResults.extractJourneyDetailsTrainInformation] page is required");
+    const benerailResultsPage = getPageObject(page, BenerailResultsPage);
+    const { heading, legs } = await benerailResultsPage.getJourneyDetailsTrainInformation();
+    const changesMatch = heading.match(/changes\s*:\s*(\d+)/i);
+    return { heading, changes: changesMatch ? Number(changesMatch[1]) : 0, legs };
+  },
+
+  /**
+   * Verifies two train-information snapshots (see extractJourneyDetailsTrainInformation) describe
+   * the same journey — heading, change count and every field of every leg. All differences are
+   * collected before failing, so one run shows everything that moved.
+   * @param {object} expected - e.g. the snapshot taken on the results page
+   * @param {object} actual - e.g. the snapshot taken in the cart
+   * @param {string} description - Names the comparison in the error, e.g. "outbound cart vs results"
+   * @throws {Error} Listing every mismatching field
+   */
+  verifyTrainInformationMatches(expected, actual, description) {
+    if (!expected?.legs || !actual?.legs) {
+      throw new Error(`[BenerailResults.verifyTrainInformationMatches] Both train information snapshots are required (${description})`);
+    }
+    // The results page zero-pads the heading's travel time hours ("03h 28m"), the cart does not ("3h 28m")
+    const normalizeHeading = (heading) => heading.replace(/\b0+(\d+h)/g, "$1");
+    const problems = [];
+    if (normalizeHeading(expected.heading) !== normalizeHeading(actual.heading)) {
+      problems.push(`heading: expected "${expected.heading}", got "${actual.heading}"`);
+    }
+    if (expected.changes !== actual.changes) problems.push(`changes: expected ${expected.changes}, got ${actual.changes}`);
+    if (expected.legs.length !== actual.legs.length) {
+      problems.push(`number of legs: expected ${expected.legs.length}, got ${actual.legs.length}`);
+    }
+    expected.legs.forEach((expectedLeg, idx) => {
+      const actualLeg = actual.legs[idx] ?? {};
+      for (const field of Object.keys(expectedLeg)) {
+        if (expectedLeg[field] !== actualLeg[field]) {
+          problems.push(`leg ${idx + 1} ${field}: expected "${expectedLeg[field]}", got "${actualLeg[field]}"`);
+        }
+      }
+    });
+    if (problems.length > 0) {
+      throw new Error(
+        `[BenerailResults.verifyTrainInformationMatches] Train information does not match (${description}):\n` +
+        problems.map((problem) => `  - ${problem}`).join("\n")
+      );
+    }
+    return { matched: true, legCount: actual.legs.length };
+  },
+
+  /**
+   * Verifies the delivered itinerary email shows the journey a train-information snapshot (see
+   * extractJourneyDetailsTrainInformation) describes. The email lists each journey under its own
+   * "Outbound:" / "Inbound:" heading and closes them with "Conditions of Cancellation"; every leg
+   * renders as "<train> <departure station> <departure time> <train> <arrival station> <arrival time>",
+   * each connection adds "Change Train at", and the journey ends with "Duration Xh Ym".
+   *
+   * Only the journey's own section is searched, and each value must be found after the previous
+   * one — so every time, station and train is held to its leg and its position, not just to
+   * appearing somewhere in the email (both journeys share every station).
+   * @param {string} emailBody - Text body of the received itinerary email
+   * @param {string} leg - "outbound" or "inbound"
+   * @param {object} trainInformation - The snapshot taken on the results page
+   * @throws {Error} Listing every value missing or out of order, with the section searched
+   */
+  verifyItineraryEmailTrainInformation(emailBody, leg, trainInformation) {
+    const method = "[BenerailResults.verifyItineraryEmailTrainInformation]";
+    if (typeof emailBody !== "string" || !emailBody.trim()) throw new Error(`${method} emailBody is required`);
+    if (!trainInformation?.legs?.length) throw new Error(`${method} The ${leg} train information snapshot is required`);
+    const sectionHeadings = { outbound: "outbound:", inbound: "inbound:" };
+    if (!(leg in sectionHeadings)) throw new Error(`${method} Unknown journey "${leg}" — expected "outbound" or "inbound"`);
+
+    const normalize = (text) => normalizeText(text).toLowerCase();
+    const body = normalize(emailBody);
+    const sectionStart = body.indexOf(sectionHeadings[leg]);
+    if (sectionStart === -1) {
+      throw new Error(`${method} The itinerary email has no "${sectionHeadings[leg]}" section. Email body: ${body.slice(0, 1500)}`);
+    }
+    const contentStart = sectionStart + sectionHeadings[leg].length;
+    const sectionEnds = [sectionHeadings.inbound, "conditions of cancellation"]
+      .map((marker) => body.indexOf(marker, contentStart))
+      .filter((idx) => idx !== -1);
+    const section = body.slice(contentStart, sectionEnds.length ? Math.min(...sectionEnds) : body.length);
+
+    const problems = [];
+    let cursor = 0;
+    trainInformation.legs.forEach((trainLeg, idx) => {
+      // Journey Details labels a train "<company> - <train name and number>" ("Sprinter - Sprinter 6619");
+      // the email prints only the name and number ("Sprinter 6619")
+      const train = trainLeg.train.split(" - ").pop();
+      const expectedInOrder = [
+        ["train", train],
+        ["departure station", trainLeg.departureStation],
+        ["departure time", trainLeg.departureTime],
+        ["train", train],
+        ["arrival station", trainLeg.arrivalStation],
+        ["arrival time", trainLeg.arrivalTime],
+      ];
+      for (const [field, value] of expectedInOrder) {
+        const found = section.indexOf(normalize(value), cursor);
+        if (found === -1) {
+          problems.push(`leg ${idx + 1} ${field} "${value}" not found (after the previous value)`);
+          continue;
+        }
+        cursor = found + normalize(value).length;
+      }
+    });
+
+    const changesInEmail = (section.match(/change train at/g) ?? []).length;
+    if (changesInEmail !== trainInformation.changes) {
+      problems.push(`changes: expected ${trainInformation.changes}, the email shows ${changesInEmail} "Change Train at"`);
+    }
+
+    // Compared in minutes: the results heading zero-pads the hours ("03h 28m"), the email does not ("3h 28m")
+    const toMinutes = (match) => (match ? Number(match[1] ?? 0) * 60 + Number(match[2]) : null);
+    const expectedDuration = toMinutes(trainInformation.heading.match(/travel time\s*:\s*(?:(\d+)h\s*)?(\d+)m/i));
+    const emailDuration = toMinutes(section.match(/duration\s*(?:(\d+)h\s*)?(\d+)m/));
+    if (expectedDuration === null) {
+      problems.push(`travel time could not be read from the results heading "${trainInformation.heading}"`);
+    } else if (emailDuration !== expectedDuration) {
+      problems.push(`duration: expected ${expectedDuration} minutes (results "${trainInformation.heading}"), the email shows ${emailDuration ?? "none"}`);
+    }
+
+    if (problems.length > 0) {
+      throw new Error(
+        `${method} The ${leg} section of the itinerary email does not match the results:\n` +
+        problems.map((problem) => `  - ${problem}`).join("\n") +
+        `\n${leg} section was: ${section}`
+      );
+    }
+    return { matched: true, legCount: trainInformation.legs.length };
   },
 
   /**

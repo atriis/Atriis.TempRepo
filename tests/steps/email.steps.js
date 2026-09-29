@@ -20,6 +20,7 @@
 const { Then } = require("@cucumber/cucumber");
 const { expect } = require("@playwright/test");
 const Email = require("@dsl/Email");
+const BenerailResults = require("@dsl/BenerailResults");
 const logger = require("@utils/logger").child("Email-Steps");
 
 /**
@@ -140,6 +141,31 @@ Then("the received share quotes email should contain subject {string}", async fu
   );
   Email.verifyEmailSubjectContains(message, expectedSubject);
 });
+
+// Holds the delivered itinerary to the train information read off the results page's Journey
+// Details (see benerail_results.steps.js) — every leg's times, stations and train, in order within
+// the journey's own section, plus its change count and total duration.
+Then(
+  "the received itinerary email should contain all {string} train information from results",
+  async function (leg) {
+    const trainInformation = this.benerailResultsTrainInformation?.[leg];
+    if (!trainInformation) {
+      throw new Error(
+        `[email.steps] No ${leg} train information was extracted from the results page — expected ` +
+          `'I extract all train information from the "${leg}" journey details in results' to have run first`
+      );
+    }
+    logger.info("Verifying the received itinerary email contains the results train information", { leg, trainInformation });
+
+    const message = await receivedItineraryEmail(this);
+    try {
+      BenerailResults.verifyItineraryEmailTrainInformation(message.body, leg, trainInformation);
+    } catch (error) {
+      this.attach(message.body, "text/plain");
+      throw error;
+    }
+  }
+);
 
 Then("the received itinerary email should contain the link {string}", async function (linkLabel) {
   logger.info("Verifying the received itinerary email contains a link", { linkLabel });

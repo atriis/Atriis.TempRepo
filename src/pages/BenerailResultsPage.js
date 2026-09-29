@@ -57,6 +57,11 @@ const SELECTORS = {
   JOURNEY_DETAILS_ARRIVAL_ITEM: ".eu-rail-timeline .rail-timeline-item.arrival",
   JOURNEY_DETAILS_STATION_TEXT: ".is-capitalized.header",
   JOURNEY_DETAILS_TIME_TEXT: ".railSegment-hour-container.header",
+  // The middle item of each leg: the leg's own duration, and getRouteDescription(railSegment) —
+  // "<carrier> - <train type> <train number>", which is where the train company is shown.
+  JOURNEY_DETAILS_TRANSPORTATION_ITEM: ".eu-rail-timeline .rail-timeline-item.transportation",
+  JOURNEY_DETAILS_LEG_DURATION_TEXT: ".railSegment-hour-container",
+  JOURNEY_DETAILS_LEG_DESCRIPTION_TEXT: ".railSegment-description",
   // eu-rail-journey-details.vue's heading, e.g. "Direct - Travel Time : 1h 45m" or "2 changes -
   // Travel Time : 2h 10m" — the $t('euRail.travelTime') label ("Travel Time") plus rail.durationText.
   JOURNEY_DETAILS_TRAVEL_TIME_TEXT: ".eu-rail-heading h5",
@@ -114,9 +119,11 @@ const SELECTORS = {
   // so the root class cannot tell the two apart — the button type can: the mini renders its CTA as
   // app-btn type="secondary" labelled btn.change ("Change") for an already-chosen leg, while every
   // still-selectable result and alternative renders type="primary" labelled common.select
-  // ("Select"). So a *secondary* .select-rail-btn exists only on a committed leg, which is what
-  // makes it a reliable "the outbound was accepted and the list below is now the inbound" gate.
-  SELECTED_LEG_CHANGE_BUTTON: ".select-rail-btn.btn--secondary",
+  // ("Select"). The one other secondary .select-rail-btn is every result card's "More Options"
+  // button (.pricing-options-btn), so it is excluded — what remains exists only on a committed leg,
+  // which is what makes it a reliable "the outbound was accepted and the list below is now the
+  // inbound" gate.
+  SELECTED_LEG_CHANGE_BUTTON: ".select-rail-btn.btn--secondary:not(.pricing-options-btn)",
   // eu-rail-results.vue's "Add to trip" / "Continue" button (app-btn with :is-loading bound to the
   // vacancy check in flight) — app-btn.vue adds this class itself when its isLoading prop is true
   // (see app-btn.vue's btnClass computed). No data-testid on either component.
@@ -273,13 +280,21 @@ class BenerailResultsPage {
    * Opens the Journey Details panel for the Benerail result card at the given index. Clicks the
    * card's "Journey Details" text (eu-rail-preview.vue renders exactly one visible instance per
    * card — a mobile OR desktop variant via v-if, never both) and waits for its dialog to open.
+   *
+   * The index counts selectable results only. On a round trip the already-picked outbound stays on
+   * the page above the inbound list as eu-rail-preview-mini, which reuses the .eu-rail-preview root
+   * class but has no "Journey Details" link — so it is excluded by its Change button (see
+   * SELECTED_LEG_CHANGE_BUTTON), and index 0 is the first inbound result rather than that card.
    * @param {number} [index=0]
    * @param {number} [timeout=15000]
    * @throws {Error} If the button or the resulting dialog never appear
    */
   async openJourneyDetailsForResultAtIndex(index = 0, timeout = 15000) {
     try {
-      const card = this.page.locator(SELECTORS.RESULT_CARD).nth(index);
+      const card = this.page
+        .locator(SELECTORS.RESULT_CARD)
+        .filter({ hasNot: this.page.locator(SELECTORS.SELECTED_LEG_CHANGE_BUTTON) })
+        .nth(index);
       await card.waitFor({ state: "visible", timeout });
       await card.getByText("Journey Details", { exact: true }).click({ timeout });
       await this.page.locator(SELECTORS.JOURNEY_DETAILS_DIALOG).waitFor({ state: "visible", timeout });
@@ -331,6 +346,65 @@ class BenerailResultsPage {
     const departureRaw = ((await departureTime.textContent()) ?? "").replace(/\s+/g, " ").trim();
     const arrivalRaw = ((await arrivalTime.textContent()) ?? "").replace(/\s+/g, " ").trim();
     return { departureRaw, arrivalRaw };
+  }
+
+  /**
+   * Reads every leg of the open Journey Details panel (eu-rail-timeline.vue) — departure time and
+   * station, the leg's duration and train description, arrival time and station — plus the
+   * "Changes: N - Travel Time : ..." heading. The same eu-rail-journey-details component is mounted
+   * by the results card and by the cart quote card, so this reads either one.
+   *
+   * eu-rail-timeline.vue renders exactly one departure, transportation and arrival item per
+   * rail.routeDetails entry, so the three lists line up by index. Its change item is gated on
+   * `rail?.railChanges?.idx`, which is never set, so connections are only visible as the number of
+   * legs and the heading's change count.
+   * @param {number} [timeout=10000]
+   * @returns {Promise<{heading: string, legs: Array<{departureTime: string, departureStation: string, duration: string, train: string, arrivalTime: string, arrivalStation: string}>}>}
+   */
+  async getJourneyDetailsTrainInformation(timeout = 10000) {
+    const dialog = this.getJourneyDetailsDialog();
+    const departures = dialog.locator(SELECTORS.JOURNEY_DETAILS_DEPARTURE_ITEM);
+    const transportations = dialog.locator(SELECTORS.JOURNEY_DETAILS_TRANSPORTATION_ITEM);
+    const arrivals = dialog.locator(SELECTORS.JOURNEY_DETAILS_ARRIVAL_ITEM);
+    try {
+      await departures.first().waitFor({ state: "visible", timeout });
+    } catch (err) {
+      throw new Error(
+        `[BenerailResultsPage.getJourneyDetailsTrainInformation] No journey leg rendered in the open ` +
+        `Benerail Journey Details panel. Original: ${err.message}`
+      );
+    }
+
+    const clean = (texts) => texts.map((text) => (text ?? "").replace(/\s+/g, " ").trim());
+    const [
+      departureTimes, departureStations, durations, trains, arrivalTimes, arrivalStations, heading,
+    ] = await Promise.all([
+      departures.locator(SELECTORS.JOURNEY_DETAILS_TIME_TEXT).allTextContents().then(clean),
+      departures.locator(SELECTORS.JOURNEY_DETAILS_STATION_TEXT).allTextContents().then(clean),
+      transportations.locator(SELECTORS.JOURNEY_DETAILS_LEG_DURATION_TEXT).allTextContents().then(clean),
+      transportations.locator(SELECTORS.JOURNEY_DETAILS_LEG_DESCRIPTION_TEXT).allTextContents().then(clean),
+      arrivals.locator(SELECTORS.JOURNEY_DETAILS_TIME_TEXT).allTextContents().then(clean),
+      arrivals.locator(SELECTORS.JOURNEY_DETAILS_STATION_TEXT).allTextContents().then(clean),
+      this.getJourneyDetailsTravelTimeText(timeout),
+    ]);
+
+    const counts = [departureTimes, departureStations, durations, trains, arrivalTimes, arrivalStations].map((list) => list.length);
+    if (new Set(counts).size !== 1) {
+      throw new Error(
+        `[BenerailResultsPage.getJourneyDetailsTrainInformation] The Journey Details legs did not line ` +
+        `up — departure times/stations, durations, trains, arrival times/stations counted ${counts.join("/")}`
+      );
+    }
+
+    const legs = departureTimes.map((departureTime, idx) => ({
+      departureTime,
+      departureStation: departureStations[idx],
+      duration: durations[idx],
+      train: trains[idx],
+      arrivalTime: arrivalTimes[idx],
+      arrivalStation: arrivalStations[idx],
+    }));
+    return { heading, legs };
   }
 
   /**
