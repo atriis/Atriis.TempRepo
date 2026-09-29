@@ -1682,6 +1682,17 @@ Then("the baggage {string} should be displayed in flight details", async functio
   logger.info("Baggage allowance confirmed in flight details", result);
 });
 
+// Negative counterpart of the step above (bug 85338: a bag the supplier refused must not read as bought).
+Then("the baggage {string} should not be displayed in flight details", async function (baggageLabel) {
+  logger.info("Verifying baggage is not listed in flight details", { baggageLabel });
+  await Cart.verifyBaggageNotInFlightDetails(this.page, baggageLabel);
+});
+
+When("I share the contact details with the airline if requested using email {string}", async function (email) {
+  logger.info("Sharing contact details with the airline in cart", { email });
+  await Cart.shareContactDetailsWithAirlineInCart(this.page, email);
+});
+
 // Word-matching counterpart of "the paid baggage should be displayed in flight details", for
 // suppliers that word the bag differently in Extras and in the drawer.
 Then("the added baggage should be displayed in flight details", async function () {

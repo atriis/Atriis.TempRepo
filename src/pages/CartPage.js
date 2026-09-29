@@ -348,6 +348,12 @@ const SELECTORS = {
   // One leg of the itinerary inside the flight details drawer (flight-details.vue renders one
   // `.segment-details-wrapper` per `flightDetails.segments` entry, outbound first).
   FLIGHT_DETAILS_DRAWER_LEG: '.app-drawer.flight-details-drawer .el-drawer__body .segment-details-wrapper',
+  // One per segment: the allowance plus any purchased bag ("1PC, CHECKED BAG UP TO 23 KG") next to the
+  // `luggage` glyph. The redesigned drawer renders it as .fd-card__strip-item
+  // (flight-details-segment-card.vue), the legacy one as .text-background (flight-details.vue).
+  FLIGHT_DETAILS_DRAWER_BAGGAGE_LINE:
+    '.app-drawer.flight-details-drawer .el-drawer__body ' +
+    ':is(.fd-card__strip-item, .text-background):has(.material-symbols-outlined:text-is("luggage")) p',
   // Leg heading, RELATIVE to FLIGHT_DETAILS_DRAWER_LEG. `getLegTitle` joins the leg's airport
   // codes, so a direct leg reads "KUL - SYD" and a connecting one "KUL - SIN - SYD".
   FLIGHT_DETAILS_DRAWER_LEG_TITLE: 'h3.flight-headline',
@@ -1654,6 +1660,26 @@ const SELECTORS = {
   // `.extra` row or on the expanded `.padding` wrapper, so match on the class alone.
   AMTRAK_CONTACT_INFO_ERROR_BORDER: '.amtrak-contact-information .error-border',
   AMTRAK_CONTACT_INFO_TITLE_TEXT: 'Contact Information',
+
+  // Flight "Contact details for the airline" extras row (flight-contact-sharing-consent.vue, AB#84706).
+  // While unanswered on a mandatory quote the row is an Error validation, so Hold flight stays disabled.
+  // Scoped to `:visible` because the quote card can render a hidden responsive duplicate.
+  // The row's own Add / Edit / View toggle by testid: a class chain would also match the
+  // "Add traveller" button extras-layout.vue renders first in the same .extra__btns.
+  FLIGHT_CONTACT_CONSENT_OPEN_BUTTON:
+    '.flight-contact-sharing-consent:visible :is([data-testid="trip.extras-layout.add-btn"], ' +
+    '[data-testid="trip.extras-layout.edit-btn"], [data-testid="trip.extras-layout.view-btn"])',
+  // el-checkbox renders a <label class="el-checkbox"> that carries the data-testid and the
+  // is-checked / is-disabled state classes; mandatory mode ticks and disables it.
+  FLIGHT_CONTACT_CONSENT_AGREE_CHECKBOX: '.flight-contact-sharing-consent:visible [data-testid="flight.contact-sharing-consent.agree-checkbox"]',
+  // Element Plus forwards non-class attrs to the native <input>, so the testid may sit on the input
+  // itself or on its wrapper depending on the version — match both.
+  FLIGHT_CONTACT_CONSENT_EMAIL_INPUT:
+    '.flight-contact-sharing-consent:visible input[data-testid="flight.contact-sharing-consent.email-input"], ' +
+    '.flight-contact-sharing-consent:visible [data-testid="flight.contact-sharing-consent.email-input"] input',
+  FLIGHT_CONTACT_CONSENT_SAVE_BUTTON: '.flight-contact-sharing-consent:visible [data-testid="flight.contact-sharing-consent.save-btn"]',
+  // Green check_circle extras-layout.vue renders on the collapsed row once the validation is OK.
+  FLIGHT_CONTACT_CONSENT_SUCCESS_ICON: '.flight-contact-sharing-consent:visible .extra .success-icon.green',
   // "Please add the required extras" notice — extras-collapse.vue renders it as the first <p> of
   // `.extras-container`, gated on isQuoteSelected (quote.status === Selected), and its created()
   // hook opens the accordion for exactly that state, so a pending Amtrak quote shows it without a
@@ -6297,6 +6323,126 @@ class CartPage {
         `[CartPage.saveAmtrakContactInfo] The Amtrak Contact Information row did not collapse after Save, ` +
         `so the phone number was not accepted (the form stays open and marks its fields when the value ` +
         `is invalid). Original: ${err.message}`,
+      );
+    }
+  }
+
+  /**
+   * Whether the flight "Contact details for the airline" extras row is rendered. It exists only while
+   * the seller's IsGtpContactSharingConsentEnabled flag is on, so its absence is a valid state.
+   * @param {number} timeout - How long to give the extras list to render the row
+   * @returns {Promise<boolean>}
+   */
+  async isFlightContactConsentRowPresent(timeout = 10000) {
+    try {
+      await this.page
+        .locator(SELECTORS.FLIGHT_CONTACT_CONSENT_OPEN_BUTTON)
+        .first()
+        .waitFor({ state: 'visible', timeout });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Expands the flight "Contact details for the airline" extras row and waits for the consent
+   * checkbox. The row fetches the stored answer on every open (an el-skeleton is shown meanwhile),
+   * so the checkbox — not the click — marks the panel as ready to read.
+   * @param {number} timeout
+   */
+  async openFlightContactConsentPanel(timeout = 30000) {
+    const openButton = this.page.locator(SELECTORS.FLIGHT_CONTACT_CONSENT_OPEN_BUTTON).first();
+    try {
+      await openButton.waitFor({ state: 'visible', timeout });
+      await openButton.click();
+    } catch (err) {
+      throw new Error(
+        `[CartPage.openFlightContactConsentPanel] Could not open the "Contact details for the airline" extras row ` +
+        `(selector: ${SELECTORS.FLIGHT_CONTACT_CONSENT_OPEN_BUTTON}). Ensure a flight quote is in the cart and ` +
+        `the outer extras accordion is expanded. Original: ${err.message}`,
+      );
+    }
+    await this.page
+      .locator(SELECTORS.FLIGHT_CONTACT_CONSENT_AGREE_CHECKBOX)
+      .first()
+      .waitFor({ state: 'visible', timeout });
+  }
+
+  /**
+   * Reads the consent checkbox state in the open panel.
+   * @param {number} timeout
+   * @returns {Promise<{ checked: boolean, disabled: boolean }>}
+   */
+  async getFlightContactConsentCheckboxState(timeout = 15000) {
+    const checkbox = this.page.locator(SELECTORS.FLIGHT_CONTACT_CONSENT_AGREE_CHECKBOX).first();
+    await checkbox.waitFor({ state: 'visible', timeout });
+    const classes = (await checkbox.getAttribute('class')) || '';
+    return { checked: classes.includes('is-checked'), disabled: classes.includes('is-disabled') };
+  }
+
+  /**
+   * Clicks the consent checkbox in the open panel.
+   * @param {number} timeout
+   */
+  async clickFlightContactConsentCheckbox(timeout = 15000) {
+    const checkbox = this.page.locator(SELECTORS.FLIGHT_CONTACT_CONSENT_AGREE_CHECKBOX).first();
+    await checkbox.waitFor({ state: 'visible', timeout });
+    await checkbox.click();
+  }
+
+  /**
+   * Reads the traveller email field of the open consent panel.
+   * @param {number} timeout
+   * @returns {Promise<string>}
+   */
+  async getFlightContactConsentEmailValue(timeout = 15000) {
+    const input = this.page.locator(SELECTORS.FLIGHT_CONTACT_CONSENT_EMAIL_INPUT).first();
+    await input.waitFor({ state: 'visible', timeout });
+    return ((await input.inputValue()) || '').trim();
+  }
+
+  /**
+   * Types the traveller email into the open consent panel.
+   * @param {string} email
+   * @param {number} timeout
+   */
+  async fillFlightContactConsentEmail(email, timeout = 15000) {
+    if (!email || typeof email !== 'string') {
+      throw new Error('[CartPage.fillFlightContactConsentEmail] email must be a non-empty string, got: ' + typeof email);
+    }
+    const input = this.page.locator(SELECTORS.FLIGHT_CONTACT_CONSENT_EMAIL_INPUT).first();
+    await input.waitFor({ state: 'visible', timeout });
+    await input.fill(email);
+  }
+
+  /**
+   * Clicks Save in the open consent panel and waits for the row's green check. The check is the
+   * only proof the save landed: saveInfo() returns silently while vuelidate is invalid, leaving the
+   * panel open with its fields marked.
+   * @param {number} timeout
+   */
+  async saveFlightContactConsent(timeout = 30000) {
+    const saveButton = this.page.locator(SELECTORS.FLIGHT_CONTACT_CONSENT_SAVE_BUTTON).first();
+    try {
+      await saveButton.waitFor({ state: 'visible', timeout });
+      await saveButton.click();
+    } catch (err) {
+      throw new Error(
+        `[CartPage.saveFlightContactConsent] Could not click Save in the "Contact details for the airline" panel ` +
+        `(selector: ${SELECTORS.FLIGHT_CONTACT_CONSENT_SAVE_BUTTON}). Original: ${err.message}`,
+      );
+    }
+    try {
+      await this.page
+        .locator(SELECTORS.FLIGHT_CONTACT_CONSENT_SUCCESS_ICON)
+        .first()
+        .waitFor({ state: 'visible', timeout });
+    } catch (err) {
+      throw new Error(
+        `[CartPage.saveFlightContactConsent] The "Contact details for the airline" row did not turn green after ` +
+        `Save, so the consent was not accepted (the panel stays open and marks its fields when a phone is ` +
+        `incomplete or no contact is given). Original: ${err.message}`,
       );
     }
   }
@@ -12092,6 +12238,25 @@ class CartPage {
     const btn = this.page.locator(SELECTORS.FLIGHT_DETAILS_BUTTON).first();
     await btn.waitFor({ state: 'visible', timeout: 15000 });
     await btn.click();
+  }
+
+  /**
+   * Returns the text of every baggage line in the open flight details drawer (one per segment card).
+   * Waits for the first line so an unloaded drawer is never read as "no baggage".
+   * @param {{ timeout?: number }} options
+   * @returns {Promise<string[]>}
+   */
+  async getFlightDetailsDrawerBaggageLines({ timeout = 15000 } = {}) {
+    const lines = this.page.locator(SELECTORS.FLIGHT_DETAILS_DRAWER_BAGGAGE_LINE);
+    try {
+      await lines.first().waitFor({ state: 'visible', timeout });
+    } catch (err) {
+      throw new Error(
+        `[CartPage.getFlightDetailsDrawerBaggageLines] No baggage line rendered in the flight details drawer ` +
+        `(selector: ${SELECTORS.FLIGHT_DETAILS_DRAWER_BAGGAGE_LINE}). Ensure the drawer is open. Original: ${err.message}`,
+      );
+    }
+    return (await lines.allInnerTexts()).map((text) => text.trim());
   }
 
   /**

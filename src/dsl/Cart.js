@@ -13438,6 +13438,79 @@ const Cart = {
   },
 
   /**
+   * Answers the flight "Contact details for the airline" extra (AB#84706) by agreeing to share, so
+   * Hold flight / checkout is no longer blocked by its Error validation. The row exists only while the
+   * seller's consent feature flag is on, so when it is not rendered this is a no-op. Ticks the box only
+   * when it is editable and unticked (mandatory mode ticks and locks it), and types the email only when
+   * the stored contact left it empty — one contact is enough for the form to save.
+   * @param {import('playwright').Page} page
+   * @param {string} email - Used only when the panel has no email yet
+   * @returns {Promise<{ answered: boolean }>}
+   */
+  async shareContactDetailsWithAirlineInCart(page, email) {
+    if (!page) throw new Error('page is required');
+    if (!email || typeof email !== 'string') {
+      throw new Error('[Cart.shareContactDetailsWithAirlineInCart] email must be a non-empty string, got: ' + typeof email);
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+    await cartPage.ensureExtrasExpanded();
+    if (!(await cartPage.isFlightContactConsentRowPresent())) {
+      logger.warn(
+        'No "Contact details for the airline" row in the cart; nothing to answer. If Hold/checkout is ' +
+        'disabled next, the row rendered late or its selector changed.',
+      );
+      return { answered: false };
+    }
+    await cartPage.openFlightContactConsentPanel();
+
+    const checkbox = await cartPage.getFlightContactConsentCheckboxState();
+    if (!checkbox.checked && !checkbox.disabled) {
+      await cartPage.clickFlightContactConsentCheckbox();
+    }
+
+    const storedEmail = await cartPage.getFlightContactConsentEmailValue();
+    if (!storedEmail) {
+      await cartPage.fillFlightContactConsentEmail(email);
+    }
+
+    await cartPage.saveFlightContactConsent();
+    logger.info('Contact details for the airline saved in the cart', {
+      mandatory: checkbox.disabled,
+      usedStoredEmail: Boolean(storedEmail),
+    });
+    return { answered: true };
+  },
+
+  /**
+   * Verifies a baggage option is NOT listed on any baggage line of the open flight details drawer.
+   * Matches the whole option label (price segment dropped) rather than single words, because the
+   * allowance a leg keeps ("1PC") shares words like "BAG" with the option being checked. Throws when
+   * no baggage line rendered at all, so an unloaded drawer never reads as "the bag is not shown".
+   * @param {import('playwright').Page} page
+   * @param {string} baggageLabel - Baggage option label, e.g. "CHECKED BAG UP TO 23 KG"
+   * @returns {Promise<{ absent: true, unexpected: string, lines: string[] }>}
+   */
+  async verifyBaggageNotInFlightDetails(page, baggageLabel) {
+    if (!page) throw new Error('page is required');
+    if (!baggageLabel || typeof baggageLabel !== 'string') {
+      throw new Error('baggageLabel must be a non-empty string, got: ' + typeof baggageLabel);
+    }
+
+    const normalize = (text) => text.toUpperCase().replace(/\s+/g, ' ').trim();
+    const unexpected = normalize(baggageLabel.split(' - ')[0]);
+    const cartPage = getPageObject(page, CartPage);
+    const lines = await cartPage.getFlightDetailsDrawerBaggageLines();
+    const offending = lines.filter((line) => normalize(line).includes(unexpected));
+    logger.info('Checked baggage lines in the flight details drawer', { unexpected, lines, offending });
+    expect(
+      offending,
+      `Flight details should not list the baggage "${baggageLabel}", but these baggage lines do: ${JSON.stringify(offending)}`,
+    ).toEqual([]);
+    return { absent: true, unexpected, lines };
+  },
+
+  /**
    * Verifies the three Amtrak phone number inputs (country code, prefix, number) are all empty —
    * the precondition that makes the blocked checkout later in the scenario meaningful.
    * @param {import('playwright').Page} page
