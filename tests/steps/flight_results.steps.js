@@ -1341,6 +1341,95 @@ When('I exit share mode', async function () {
   await FlightResults.exitShareMode(this.page);
 });
 
+// ===== SHARE MODE ON RESULTS (US 84219) =====
+
+// Quotes are recorded on the world in slot order by "I add flight result {int} to the share bar".
+function sharedQuote(world, slotNumber) {
+  const quote = (world.sharedQuotes || [])[slotNumber - 1];
+  if (!quote) throw new Error(`No shared quote recorded for share slot ${slotNumber} - add a flight result to the share bar first.`);
+  return quote;
+}
+
+Then('every flight result should offer {string} and {string} instead of its booking action', async function (shareLabel, secondaryLabel) {
+  logger.info('Verifying every result offers the share-mode actions', { shareLabel, secondaryLabel });
+  const result = await FlightResults.verifyEveryResultOffersShareActions(this.page, shareLabel, secondaryLabel);
+  logger.info('Share-mode actions verified', result);
+});
+
+Then('every flight result should show {string} as its booking action', async function (label) {
+  logger.info('Verifying every result shows its booking action', { label });
+  const result = await FlightResults.verifyEveryResultShowsBookingAction(this.page, label);
+  logger.info('Booking action verified', result);
+});
+
+Then('the share bar should show {int} of {int} quotes selected', async function (selected, max) {
+  logger.info('Verifying the share bar selection count', { selected, max });
+  await FlightResults.verifyShareBarSelection(this.page, selected, max);
+});
+
+Then('the share bar Share button should be {word}', async function (state) {
+  logger.info('Verifying the share bar Share button state', { state });
+  await FlightResults.verifyShareBarShareButtonState(this.page, state);
+});
+
+Then('the share bar should be displayed', async function () {
+  logger.info('Verifying the share bar is displayed');
+  await FlightResults.verifyShareBarDisplayed(this.page, true);
+});
+
+Then('the share bar should not be displayed', async function () {
+  logger.info('Verifying the share bar is not displayed');
+  await FlightResults.verifyShareBarDisplayed(this.page, false);
+});
+
+When('I add flight result {int} to the share bar', { timeout: 180000 }, async function (resultNumber) {
+  logger.info('Adding a flight result to the share bar', { resultNumber });
+  const quote = await FlightResults.addResultToShareBar(this.page, resultNumber);
+  this.sharedQuotes = [...(this.sharedQuotes || []), quote];
+});
+
+Then('flight result {int} should show {string} on its share button', async function (resultNumber, label) {
+  logger.info('Verifying a result share button label', { resultNumber, label });
+  await FlightResults.verifyResultShareButtonLabel(this.page, resultNumber, label);
+});
+
+Then('share slot {int} price should match the cheapest option in the intercepted pricing selection response', async function (slotNumber) {
+  logger.info('Verifying the slot price is the cheapest priced option', { slotNumber });
+  await FlightResults.verifySharedQuotePriceIsCheapestPricedOption(sharedQuote(this, slotNumber), this.flightPricingSelectionResponsePromise);
+});
+
+Then('share slot {int} price should match the price of flight result {int}', function (slotNumber, resultNumber) {
+  logger.info('Verifying the slot price matches the result price', { slotNumber, resultNumber });
+  FlightResults.verifySharedQuotePriceMatchesResultPrice(sharedQuote(this, slotNumber), resultNumber);
+});
+
+When('I hover share slot {int}', async function (slotNumber) {
+  logger.info('Hovering a share slot', { slotNumber });
+  await FlightResults.hoverShareSlot(this.page, slotNumber);
+});
+
+Then('the share slot tooltip should show the route, times and price of share slot {int}', async function (slotNumber) {
+  logger.info('Verifying the share slot tooltip', { slotNumber });
+  await FlightResults.verifyShareSlotTooltip(this.page, sharedQuote(this, slotNumber));
+});
+
+When('I click share slot {int}', async function (slotNumber) {
+  logger.info('Removing a quote by clicking its share slot', { slotNumber });
+  await FlightResults.removeShareSlot(this.page, slotNumber);
+  this.sharedQuotes.splice(slotNumber - 1, 1);
+});
+
+Then('the pricing options footer should offer {string} instead of {string}', async function (expectedLabel, absentLabel) {
+  logger.info('Verifying the pricing options footer actions', { expectedLabel, absentLabel });
+  await FlightResults.verifyNewFlowFooterOffers(this.page, expectedLabel, absentLabel);
+});
+
+Then('the share email preview should contain every quote in the share bar', { timeout: 120000 }, async function () {
+  logger.info('Verifying the email preview carries every shared quote', { quotes: (this.sharedQuotes || []).length });
+  const result = await FlightResults.verifySharePreviewContainsQuotes(this.page, this.sharedQuotes);
+  logger.info('Email preview verified', result);
+});
+
 // ========================================
 // STOPOVER INDICATOR
 // ========================================

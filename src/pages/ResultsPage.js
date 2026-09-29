@@ -54,6 +54,9 @@ const SELECTORS = {
   CONFLICT_MODAL_TRIP_LINK: '.conflicting-quotes-dialog .cart-link',
   EDIT_SEARCH_BUTTON_NAME: /^Edit(?: search)?$/i,
   SHARE_BAR_CLOSE_BUTTON: '.share-bar button.exit-share-mode',
+  SHARE_BAR: '.share-bar',
+  // Desktop heading "Share Quotes: {n} of {max} selected"; mobile renders its own count in .mobile-share-count.
+  SHARE_BAR_HEADING: '.share-bar h4.is-size-6',
 };
 
 const AIRLINE_FILTER_ALIASES = {
@@ -832,6 +835,35 @@ class ResultsPage {
     const button = this.page.locator(SELECTORS.SHARE_QUOTE_EMAIL_BUTTON).first();
     await button.waitFor({ state: 'visible', timeout: 10000 });
     await button.click({ timeout: 10000 });
+  }
+
+  /**
+   * Waits for the share bar to reach the given state (it is mounted only while share mode is on).
+   * @param {'visible'|'hidden'} state
+   * @param {number} timeout - Max wait in ms (default: 15000)
+   */
+  async waitForShareBar(state = 'visible', timeout = 15000) {
+    await this.page.locator(SELECTORS.SHARE_BAR).first().waitFor({ state, timeout });
+  }
+
+  /**
+   * Reads the share bar heading, whitespace-collapsed (e.g. "Share Quotes: 1 of 4 selected").
+   * @returns {Promise<string>}
+   */
+  async getShareBarHeadingText() {
+    const heading = this.page.locator(SELECTORS.SHARE_BAR_HEADING).first();
+    await heading.waitFor({ state: 'visible', timeout: 15000 });
+    return (await heading.innerText()).replace(/\s+/g, ' ').trim();
+  }
+
+  /**
+   * Whether the share bar's "Share" (send price offer) button is disabled.
+   * @returns {Promise<boolean>}
+   */
+  async isShareBarShareButtonDisabled() {
+    const button = this.page.locator(SELECTORS.SHARE_QUOTE_EMAIL_BUTTON).first();
+    await button.waitFor({ state: 'visible', timeout: 10000 });
+    return button.isDisabled();
   }
 
   /**

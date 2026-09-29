@@ -407,6 +407,25 @@ function pick(obj, ...names) {
   return undefined;
 }
 
+// Share-bar slot aria-label (flight.shareSlotRemoveLabel):
+// "Remove: leg 1 LIS - STN, Direct, 15:20 - 18:10; leg 2 STN - LIS, Direct, 17:45 - 20:35; €59.97999954223633. From the share list."
+function parseShareSlotLabel(label) {
+  const legs = [...String(label).matchAll(/leg \d+ ([A-Z]{3} - [A-Z]{3}), [^,]+, (\d{2}:\d{2}) - (\d{2}:\d{2})/g)]
+    .map(([, route, departure, arrival]) => ({ route, departure, arrival }));
+  const price = String(label).match(/;\s*[^;\d]*(\d+(?:\.\d+)?)\. From the share list/);
+  return { legs, price: price ? Number(price[1]) : NaN };
+}
+
+// Result card actions outside share mode (new flow: "Select flight"; old flow: "Add to trip").
+const BOOKING_ACTION_LABELS = ['Select flight', 'Add to trip'];
+const SHARE_ACTION_LABELS = ['Share', 'Added'];
+// Slots keep the unrounded per-traveller price; screens and the email show two decimals.
+const SHARE_PRICE_TOLERANCE = 0.01;
+
+function hasLabel(labels, label) {
+  return labels.some((l) => l.toLowerCase() === String(label).toLowerCase());
+}
+
 /**
  * Returns the fare rules that apply to a given leg of a pricing-option package,
  * mirroring getApplicableFareRulesForLeg (_flight-fare-rules.logic.ts): use the
@@ -2043,6 +2062,323 @@ const FlightResults = {
 
     const resultsPage = getPageObject(page, ResultsPage);
     await resultsPage.clickExitShareModeButton();
+  },
+
+  // ===== SHARE MODE ON RESULTS (US 84219) =====
+
+  /**
+   * Asserts every result card shows both share-mode actions and none of the booking actions.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} shareLabel - e.g. "Share"
+   * @param {string} secondaryLabel - e.g. "Pricing Options"
+   * @returns {Promise<{cardsChecked: number}>}
+   */
+  async verifyEveryResultOffersShareActions(page, shareLabel, secondaryLabel) {
+    if (!page) throw new Error('[FlightResults.verifyEveryResultOffersShareActions] "page" is required.');
+    const cards = await getPageObject(page, FlightResultsPage).getResultCardButtonLabels();
+    const wrong = cards
+      .map((labels, i) => ({ result: i + 1, labels }))
+      .filter(({ labels }) => !hasLabel(labels, shareLabel) || !hasLabel(labels, secondaryLabel)
+        || BOOKING_ACTION_LABELS.some((booking) => hasLabel(labels, booking)));
+    if (cards.length === 0 || wrong.length > 0) {
+      throw new Error(
+        `[FlightResults.verifyEveryResultOffersShareActions] Every result should offer "${shareLabel}" and ` +
+        `"${secondaryLabel}" instead of ${BOOKING_ACTION_LABELS.map((l) => `"${l}"`).join('/')}. ` +
+        `${cards.length} cards read; wrong: ${JSON.stringify(wrong.slice(0, 5))}`
+      );
+    }
+    return { cardsChecked: cards.length };
+  },
+
+  /**
+   * Asserts every result card shows `label` as its booking action and no share-mode action.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} label - e.g. "Select flight"
+   * @returns {Promise<{cardsChecked: number}>}
+   */
+  async verifyEveryResultShowsBookingAction(page, label) {
+    if (!page) throw new Error('[FlightResults.verifyEveryResultShowsBookingAction] "page" is required.');
+    const cards = await getPageObject(page, FlightResultsPage).getResultCardButtonLabels();
+    const wrong = cards
+      .map((labels, i) => ({ result: i + 1, labels }))
+      .filter(({ labels }) => !hasLabel(labels, label) || SHARE_ACTION_LABELS.some((share) => hasLabel(labels, share)));
+    if (cards.length === 0 || wrong.length > 0) {
+      throw new Error(
+        `[FlightResults.verifyEveryResultShowsBookingAction] Every result should show "${label}" and no share action. ` +
+        `${cards.length} cards read; wrong: ${JSON.stringify(wrong.slice(0, 5))}`
+      );
+    }
+    return { cardsChecked: cards.length };
+  },
+
+  /**
+   * Asserts the share bar heading reads "{selected} of {max} selected".
+   *
+   * @param {import('playwright').Page} page
+   * @param {number} selected
+   * @param {number} max
+   */
+  async verifyShareBarSelection(page, selected, max) {
+    if (!page) throw new Error('[FlightResults.verifyShareBarSelection] "page" is required.');
+    const resultsPage = getPageObject(page, ResultsPage);
+    const expected = `${selected} of ${max} selected`;
+    let heading = '';
+    try {
+      await expect.poll(async () => {
+        heading = await resultsPage.getShareBarHeadingText();
+        return heading.toLowerCase();
+      }, { timeout: 15000 }).toContain(expected);
+    } catch {
+      throw new Error(`[FlightResults.verifyShareBarSelection] Share bar should read "${expected}", but read "${heading}".`);
+    }
+    return { heading };
+  },
+
+  /**
+   * Asserts the share bar's "Share" (send price offer) button is enabled or disabled.
+   *
+   * @param {import('playwright').Page} page
+   * @param {'enabled'|'disabled'} state
+   */
+  async verifyShareBarShareButtonState(page, state) {
+    if (!page) throw new Error('[FlightResults.verifyShareBarShareButtonState] "page" is required.');
+    if (!['enabled', 'disabled'].includes(state)) {
+      throw new Error(`[FlightResults.verifyShareBarShareButtonState] state must be "enabled" or "disabled", got: ${state}`);
+    }
+    const disabled = await getPageObject(page, ResultsPage).isShareBarShareButtonDisabled();
+    if (disabled !== (state === 'disabled')) {
+      throw new Error(`[FlightResults.verifyShareBarShareButtonState] Share bar "Share" button should be ${state}, but it is ${disabled ? 'disabled' : 'enabled'}.`);
+    }
+    return { state };
+  },
+
+  /**
+   * Asserts the share bar is shown (share mode on) or gone (share mode off).
+   *
+   * @param {import('playwright').Page} page
+   * @param {boolean} displayed
+   */
+  async verifyShareBarDisplayed(page, displayed) {
+    if (!page) throw new Error('[FlightResults.verifyShareBarDisplayed] "page" is required.');
+    try {
+      await getPageObject(page, ResultsPage).waitForShareBar(displayed ? 'visible' : 'hidden');
+    } catch {
+      throw new Error(`[FlightResults.verifyShareBarDisplayed] The share bar should ${displayed ? 'be displayed' : 'not be displayed'}.`);
+    }
+    return { displayed };
+  },
+
+  /**
+   * Clicks "+ Share" on a result card and waits for its slot (the new flow prices the package first).
+   *
+   * @param {import('playwright').Page} page
+   * @param {number} resultNumber - 1-based card position
+   * @returns {Promise<{resultNumber: number, flightNumbers: string[], cardPrice: number|null,
+   *   legs: Array<{route: string, departure: string, arrival: string}>, price: number}>}
+   */
+  async addResultToShareBar(page, resultNumber) {
+    if (!page) throw new Error('[FlightResults.addResultToShareBar] "page" is required.');
+    if (!Number.isInteger(resultNumber) || resultNumber < 1) {
+      throw new Error(`[FlightResults.addResultToShareBar] resultNumber must be an integer >= 1, got: ${resultNumber}`);
+    }
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    const index = resultNumber - 1;
+    const flightNumbers = await flightResultsPage.getResultCardFlightNumbers(index);
+    const cardPrice = await flightResultsPage.getResultCardPrice(index);
+    const before = await flightResultsPage.getFilledShareSlotCount();
+
+    await flightResultsPage.clickResultCardShareButton(index);
+    try {
+      await flightResultsPage.waitForFilledShareSlotCount(before + 1);
+    } catch (err) {
+      throw new Error(
+        `[FlightResults.addResultToShareBar] Result ${resultNumber} did not fill a share slot (${before} filled before). ` +
+        `On the new flow a failed pricing opens the pricing options screen instead. Original: ${err.message}`
+      );
+    }
+
+    const slotLabel = (await flightResultsPage.getFilledShareSlotLabels())[before];
+    const quote = { resultNumber, flightNumbers, cardPrice, ...parseShareSlotLabel(slotLabel) };
+    logger.info('[Share] Result added to the share bar', { resultNumber, flightNumbers, cardPrice, slotPrice: quote.price });
+    return quote;
+  },
+
+  /**
+   * Asserts a result card's share button reads `label` ("Added" once shared, "Share" otherwise).
+   *
+   * @param {import('playwright').Page} page
+   * @param {number} resultNumber - 1-based card position
+   * @param {string} label
+   */
+  async verifyResultShareButtonLabel(page, resultNumber, label) {
+    if (!page) throw new Error('[FlightResults.verifyResultShareButtonLabel] "page" is required.');
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    let labels = [];
+    try {
+      await expect.poll(async () => {
+        labels = (await flightResultsPage.getResultCardButtonLabels())[resultNumber - 1] || [];
+        return hasLabel(labels, label);
+      }, { timeout: 15000 }).toBe(true);
+    } catch {
+      throw new Error(`[FlightResults.verifyResultShareButtonLabel] Result ${resultNumber} should show "${label}"; its buttons read ${JSON.stringify(labels)}.`);
+    }
+    return { resultNumber, labels };
+  },
+
+  /**
+   * Asserts the slot price is the cheapest priced option per traveller: min(TotalDisplay.Amount) / TotalPassengers.
+   *
+   * @param {{price: number, resultNumber: number}} quote - from addResultToShareBar
+   * @param {Promise<import('@playwright/test').Response>} responsePromise - from startCapturingPricingSelectionResponse
+   * @returns {Promise<{expected: number, slotPrice: number, options: number}>}
+   */
+  async verifySharedQuotePriceIsCheapestPricedOption(quote, responsePromise) {
+    if (!quote) throw new Error('[FlightResults.verifySharedQuotePriceIsCheapestPricedOption] "quote" is required - add a result to the share bar first.');
+    if (!responsePromise) {
+      throw new Error('[FlightResults.verifySharedQuotePriceIsCheapestPricedOption] "responsePromise" is required - start intercepting the flight pricing selection response before adding the result.');
+    }
+    const body = await readJson(responsePromise);
+    const totals = (pick(body, 'results', 'Results') || [])
+      .filter((option) => (pick(option, 'segments', 'Segments') || []).length > 0)
+      .map((option) => Number(pick(pick(pick(option, 'pricing', 'Pricing'), 'totalDisplay', 'TotalDisplay'), 'amount', 'Amount')))
+      .filter(Number.isFinite);
+    if (totals.length === 0) {
+      throw new Error('[FlightResults.verifySharedQuotePriceIsCheapestPricedOption] The FlightPricingSelection response has no priced option with segments.');
+    }
+    const passengers = Number(pick(pick(body, 'searchCriteria', 'SearchCriteria'), 'totalPassengers', 'TotalPassengers'));
+    const expected = Math.min(...totals) / (passengers > 0 ? passengers : 1);
+    if (!(Math.abs(quote.price - expected) <= SHARE_PRICE_TOLERANCE)) {
+      throw new Error(
+        `[FlightResults.verifySharedQuotePriceIsCheapestPricedOption] Result ${quote.resultNumber} was shared at ${quote.price}, ` +
+        `but its cheapest priced option is ${expected.toFixed(2)} per traveller (lowest of ${totals.length} options).`
+      );
+    }
+    logger.info('[Share] Slot price is the cheapest priced option', { slotPrice: quote.price, expected, options: totals.length });
+    return { expected, slotPrice: quote.price, options: totals.length };
+  },
+
+  /**
+   * Asserts the slot price equals the price shown on its result card (old flow: no pricing call).
+   *
+   * @param {{price: number, cardPrice: number|null, resultNumber: number}} quote - from addResultToShareBar
+   * @param {number} resultNumber - 1-based card position the quote must come from
+   */
+  verifySharedQuotePriceMatchesResultPrice(quote, resultNumber) {
+    if (!quote) throw new Error('[FlightResults.verifySharedQuotePriceMatchesResultPrice] "quote" is required - add a result to the share bar first.');
+    if (quote.resultNumber !== resultNumber) {
+      throw new Error(`[FlightResults.verifySharedQuotePriceMatchesResultPrice] The slot holds result ${quote.resultNumber}, not ${resultNumber}.`);
+    }
+    if (!(Math.abs(quote.price - quote.cardPrice) <= SHARE_PRICE_TOLERANCE)) {
+      throw new Error(
+        `[FlightResults.verifySharedQuotePriceMatchesResultPrice] Result ${quote.resultNumber} shows ${quote.cardPrice} ` +
+        `but was shared at ${quote.price}.`
+      );
+    }
+    return { resultNumber: quote.resultNumber, cardPrice: quote.cardPrice, slotPrice: quote.price };
+  },
+
+  /**
+   * Hovers a filled share slot to open its tooltip.
+   *
+   * @param {import('playwright').Page} page
+   * @param {number} slotNumber - 1-based slot position
+   */
+  async hoverShareSlot(page, slotNumber) {
+    if (!page) throw new Error('[FlightResults.hoverShareSlot] "page" is required.');
+    await getPageObject(page, FlightResultsPage).hoverFilledShareSlot(slotNumber - 1);
+    return { hovered: slotNumber };
+  },
+
+  /**
+   * Asserts the open slot tooltip shows the quote's route and times per leg and its price.
+   *
+   * @param {import('playwright').Page} page
+   * @param {{legs: Array<{route: string, departure: string, arrival: string}>, price: number}} quote
+   * @returns {Promise<{tooltip: string}>}
+   */
+  async verifyShareSlotTooltip(page, quote) {
+    if (!page) throw new Error('[FlightResults.verifyShareSlotTooltip] "page" is required.');
+    if (!quote || quote.legs.length === 0) throw new Error('[FlightResults.verifyShareSlotTooltip] "quote" with legs is required.');
+    const tooltip = await getPageObject(page, FlightResultsPage).getShareSlotTooltipText();
+    const expected = [
+      ...quote.legs.flatMap((leg) => [leg.route, `${leg.departure} - ${leg.arrival}`]),
+      quote.price.toFixed(2),
+    ];
+    const missing = expected.filter((value) => !tooltip.replace(/,(?=\d{3})/g, '').includes(value));
+    if (missing.length > 0) {
+      throw new Error(`[FlightResults.verifyShareSlotTooltip] Tooltip is missing ${JSON.stringify(missing)}. Tooltip: "${tooltip}"`);
+    }
+    return { tooltip };
+  },
+
+  /**
+   * Clicks a filled share slot and waits for its quote to be removed.
+   *
+   * @param {import('playwright').Page} page
+   * @param {number} slotNumber - 1-based slot position
+   */
+  async removeShareSlot(page, slotNumber) {
+    if (!page) throw new Error('[FlightResults.removeShareSlot] "page" is required.');
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    const before = await flightResultsPage.getFilledShareSlotCount();
+    if (slotNumber < 1 || slotNumber > before) {
+      throw new Error(`[FlightResults.removeShareSlot] Slot ${slotNumber} is not filled (${before} filled).`);
+    }
+    await flightResultsPage.clickFilledShareSlot(slotNumber - 1);
+    await flightResultsPage.waitForFilledShareSlotCount(before - 1, 15000);
+    return { removed: slotNumber, remaining: before - 1 };
+  },
+
+  /**
+   * Asserts the new pricing options footer offers `expectedLabel` and not `absentLabel`.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} expectedLabel
+   * @param {string} absentLabel
+   */
+  async verifyNewFlowFooterOffers(page, expectedLabel, absentLabel) {
+    if (!page) throw new Error('[FlightResults.verifyNewFlowFooterOffers] "page" is required.');
+    const labels = await getPageObject(page, FlightResultsPage).getNewFlowFooterButtonLabels();
+    if (!hasLabel(labels, expectedLabel) || hasLabel(labels, absentLabel)) {
+      throw new Error(`[FlightResults.verifyNewFlowFooterOffers] The pricing options footer should offer "${expectedLabel}" and not "${absentLabel}"; it reads ${JSON.stringify(labels)}.`);
+    }
+    return { labels };
+  },
+
+  /**
+   * Asserts the email preview has one "Flight Offer # n" per quote, with its flight numbers, times and total.
+   *
+   * @param {import('playwright').Page} page
+   * @param {Array<object>} quotes - from addResultToShareBar, in slot order
+   * @returns {Promise<{offers: number}>}
+   */
+  async verifySharePreviewContainsQuotes(page, quotes) {
+    if (!page) throw new Error('[FlightResults.verifySharePreviewContainsQuotes] "page" is required.');
+    if (!Array.isArray(quotes) || quotes.length === 0) {
+      throw new Error('[FlightResults.verifySharePreviewContainsQuotes] No shared quotes recorded - add results to the share bar first.');
+    }
+    const preview = (await getPageObject(page, CartPage).getSharePreviewTextContent()).replace(/,(?=\d{3})/g, '');
+    const offers = preview.split(/Flight Offer #\s*\d+/i).slice(1);
+    if (offers.length !== quotes.length) {
+      throw new Error(`[FlightResults.verifySharePreviewContainsQuotes] The email preview has ${offers.length} flight offers, expected ${quotes.length} (one per shared quote).`);
+    }
+
+    const problems = quotes.flatMap((quote, i) => {
+      const offer = offers[i];
+      const missing = [...quote.flightNumbers, ...quote.legs.flatMap((leg) => [leg.departure, leg.arrival])]
+        .filter((value) => !offer.includes(value));
+      const total = Number((offer.match(/Total:\s*[^\d]*(\d+(?:\.\d+)?)/i) || [])[1]);
+      const totalOk = Math.abs(total - quote.price) <= SHARE_PRICE_TOLERANCE;
+      return missing.length === 0 && totalOk
+        ? []
+        : [`offer #${i + 1} (result ${quote.resultNumber}): missing ${JSON.stringify(missing)}, total ${total} vs shared ${quote.price.toFixed(2)}`];
+    });
+    if (problems.length > 0) {
+      throw new Error(`[FlightResults.verifySharePreviewContainsQuotes] The email preview does not match the share bar: ${problems.join('; ')}`);
+    }
+    return { offers: offers.length };
   },
 
   /**

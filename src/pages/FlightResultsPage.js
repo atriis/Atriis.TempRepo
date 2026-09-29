@@ -289,6 +289,13 @@ const SELECTORS = {
   MARKED_FLIGHT_LOCATION_CODE: '.loc-code.marked, .loc-code.markedEdge',
   FIRST_FLIGHT_RESULT_PRICE_WRAPPER: '.flight-list .flight-preview .price-wrapper',
   FIRST_FLIGHT_RESULT_AMOUNT: '.flight-list .flight-preview .price-wrapper .amount',
+  // Share mode (US 84219): data-testids are stripped outside local builds. The tooltip is teleported to <body>.
+  RESULT_CARD_SHARE_BUTTON: '.flight-extra-info button.share-btn',
+  RESULT_CARD_PRICE_AMOUNT: '.price-wrapper .amount',
+  SHARE_SLOT_FILLED: '.share-bar .flight-share-tags .selected-item',
+  SHARE_SLOT_TOOLTIP: '.share-tag-popper',
+  MATERIAL_ICON: '.material-symbols-outlined',
+  NEW_FLOW_FOOTER_BUTTONS: '.flight-selection .selection-actions .actions-section button:visible',
   OFFICE_HOURS_INFO_ICON: 'button.add-to-trip .app-tooltip__content',
   OFFICE_HOURS_TOOLTIP_TITLE: '.app-tooltip.hours-limitation-description .app-tooltip__title',
   RESULTS_CO2_TOOLTIP_TRIGGER: '.flight-list .flight-preview .co2-emissions-label .info-icon',
@@ -3897,6 +3904,124 @@ async clickSelectForFareWithBaggagePricingOptions(baggageText) {
       .first();
     await selectButton.scrollIntoViewIfNeeded();
     await selectButton.click({ timeout: 10000 });
+  }
+
+  /**
+   * Button labels of every result card, icon ligatures stripped (e.g. "add Share" -> "Share").
+   * @returns {Promise<string[][]>} One array of labels per card, in list order
+   */
+  async getResultCardButtonLabels() {
+    await this.page.locator(SELECTORS.FLIGHT_PREVIEW).first().waitFor({ state: 'visible', timeout: 30000 });
+    return this.page.locator(SELECTORS.FLIGHT_PREVIEW).evaluateAll((cards, iconSelector) =>
+      cards.map((card) => [...card.querySelectorAll('button')]
+        .map((button) => {
+          const clone = button.cloneNode(true);
+          clone.querySelectorAll(iconSelector).forEach((icon) => icon.remove());
+          return clone.textContent.replace(/\s+/g, ' ').trim();
+        })
+        .filter(Boolean)), SELECTORS.MATERIAL_ICON);
+  }
+
+  /**
+   * Flight numbers of a result card, in leg order (e.g. ["FR1885", "FR1080"]).
+   * @param {number} index - Zero-based card index
+   * @returns {Promise<string[]>}
+   */
+  async getResultCardFlightNumbers(index) {
+    const card = this.page.locator(SELECTORS.FLIGHT_PREVIEW).nth(index);
+    await card.waitFor({ state: 'visible', timeout: 30000 });
+    return (await card.locator(SELECTORS.RESULT_SEGMENT_FLIGHT_NUMBER_TEXT).allInnerTexts()).map((t) => t.trim());
+  }
+
+  /**
+   * Displayed "From" price of a result card.
+   * @param {number} index - Zero-based card index
+   * @returns {Promise<number|null>}
+   */
+  async getResultCardPrice(index) {
+    const card = this.page.locator(SELECTORS.FLIGHT_PREVIEW).nth(index);
+    await card.locator(SELECTORS.RESULT_CARD_PRICE_AMOUNT).first().waitFor({ state: 'visible', timeout: 30000 });
+    return extractNumber(card, SELECTORS.RESULT_CARD_PRICE_AMOUNT, 0);
+  }
+
+  /**
+   * Clicks a result card's share-mode button ("+ Share", or "Added" to remove).
+   * @param {number} index - Zero-based card index
+   */
+  async clickResultCardShareButton(index) {
+    const button = this.page.locator(SELECTORS.FLIGHT_PREVIEW).nth(index).locator(SELECTORS.RESULT_CARD_SHARE_BUTTON).first();
+    await button.scrollIntoViewIfNeeded();
+    await button.click({ timeout: 15000 });
+  }
+
+  /**
+   * Number of filled slots in the share bar.
+   * @returns {Promise<number>}
+   */
+  async getFilledShareSlotCount() {
+    return this.page.locator(SELECTORS.SHARE_SLOT_FILLED).count();
+  }
+
+  /**
+   * Waits until the share bar holds exactly `count` filled slots.
+   * @param {number} count
+   * @param {number} timeout - Max wait in ms; the new flow prices the package first (default: 120000)
+   */
+  async waitForFilledShareSlotCount(count, timeout = 120000) {
+    await this.page.waitForFunction(
+      ([selector, expected]) => document.querySelectorAll(selector).length === expected,
+      [SELECTORS.SHARE_SLOT_FILLED, count],
+      { timeout }
+    );
+  }
+
+  /**
+   * aria-labels of the filled slots, in slot order (they carry each quote's legs and price).
+   * @returns {Promise<string[]>}
+   */
+  async getFilledShareSlotLabels() {
+    return this.page.locator(SELECTORS.SHARE_SLOT_FILLED).evaluateAll((slots) => slots.map((s) => s.getAttribute('aria-label') || ''));
+  }
+
+  /**
+   * Hovers a filled share slot to open its tooltip.
+   * @param {number} index - Zero-based slot index
+   */
+  async hoverFilledShareSlot(index) {
+    await this.page.locator(SELECTORS.SHARE_SLOT_FILLED).nth(index).hover({ timeout: 10000 });
+  }
+
+  /**
+   * Clicks a filled share slot, which removes its quote.
+   * @param {number} index - Zero-based slot index
+   */
+  async clickFilledShareSlot(index) {
+    await this.page.locator(SELECTORS.SHARE_SLOT_FILLED).nth(index).click({ timeout: 10000 });
+  }
+
+  /**
+   * Text of the open share slot tooltip, whitespace-collapsed.
+   * @param {number} timeout - Max wait in ms (default: 10000)
+   * @returns {Promise<string>}
+   */
+  async getShareSlotTooltipText(timeout = 10000) {
+    const tooltip = this.page.locator(`${SELECTORS.SHARE_SLOT_TOOLTIP}:visible`).first();
+    await tooltip.waitFor({ state: 'visible', timeout });
+    return (await tooltip.innerText()).replace(/\s+/g, ' ').trim();
+  }
+
+  /**
+   * Labels of the visible buttons in the new pricing options footer, icon ligatures stripped.
+   * @returns {Promise<string[]>}
+   */
+  async getNewFlowFooterButtonLabels() {
+    const buttons = this.page.locator(SELECTORS.NEW_FLOW_FOOTER_BUTTONS);
+    await buttons.first().waitFor({ state: 'visible', timeout: 30000 });
+    return buttons.evaluateAll((els, iconSelector) => els.map((button) => {
+      const clone = button.cloneNode(true);
+      clone.querySelectorAll(iconSelector).forEach((icon) => icon.remove());
+      return clone.textContent.replace(/\s+/g, ' ').trim();
+    }), SELECTORS.MATERIAL_ICON);
   }
 
   /**

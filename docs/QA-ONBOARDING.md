@@ -359,7 +359,12 @@ When I filter results by carrier "Lufthansa"
 When I hide the comparison table in flight results
 When I show the comparison table in flight results
 When I click on the "Share" button
+When I add flight result 1 to the share bar
+When I click share slot 1
+When I click on the "Share" button to open the share dialog
 When I exit share mode
+Then the share bar should show 1 of 4 quotes selected
+Then the share email preview should contain every quote in the share bar
 Then the original currency symbol "$" should be visible in flight results
 Then the original currency symbol "$" should be visible in pricing options
 Then the original currency symbol "$" should be visible in the share quote from results
