@@ -425,6 +425,33 @@ const App = {
   },
 
   /**
+   * Waits for the URL to show a trip number other than previousTripId, because right after
+   * "Book a New Trip" the tab can still be on the previous trip's route.
+   */
+  async waitForNewTripNumberInUrl(page, previousTripId = null, { timeoutMs = 20000 } = {}) {
+    if (!page) throw new Error('[App.waitForNewTripNumberInUrl] page is required');
+    const commonPage = getPageObject(page, CommonPage);
+    logger.debug("Waiting for a new trip number in the URL", { previousTripId });
+
+    let tripId = null;
+    await expect
+      .poll(
+        () => {
+          tripId = commonPage.getTripNumberFromUrl();
+          return Boolean(tripId) && tripId !== previousTripId;
+        },
+        {
+          message:
+            `[App.waitForNewTripNumberInUrl] No trip number other than ${previousTripId} appeared in the URL ` +
+            `within ${timeoutMs}ms (current URL: ${page.url()}). The new trip page may not have opened.`,
+          timeout: timeoutMs,
+        }
+      )
+      .toBe(true);
+    return { tripId, previousTripId };
+  },
+
+  /**
    * Logs out the user and confirms we are back on the login page.
    */
   async logout(page) {

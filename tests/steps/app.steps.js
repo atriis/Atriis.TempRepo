@@ -92,6 +92,21 @@ When("I book a new trip", async function () {
   logger.debug("New trip page opened");
 });
 
+/**
+ * Payload capture reads this.tripId, which "I book a new trip" leaves on the previous trip, so a
+ * scenario that searches again in a second trip must point the capture at that new trip first.
+ */
+When("I store the current trip number for payload validation", async function () {
+  const previousTripId = this.tripId || null;
+  logger.info("Storing the current trip number for payload validation", { previousTripId });
+  const { tripId } = await App.waitForNewTripNumberInUrl(this.page, previousTripId);
+  this.tripId = tripId;
+  this.currentTripId = tripId;
+  this.createdTripId = tripId;
+  this.recordTripId(tripId);
+  logger.info("Trip number stored for payload validation", { previousTripId, tripId });
+});
+
 // ===== WHEN STEPS =====
 
 /**
