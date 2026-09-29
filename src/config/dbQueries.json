@@ -1,0 +1,133 @@
+{
+  "forbidden": ["\\bDROP\\b", "\\bTRUNCATE\\b", "\\bALTER\\b", "\\bGRANT\\b", "\\bREVOKE\\b"],
+  "queries": {
+    "dbPing": {
+      "description": "Connectivity check: returns a single row with ok = 1",
+      "sql": "SELECT 1 AS ok",
+      "params": {}
+    },
+
+    "getTripQuotes": {
+      "description": "Read the quotes of a trip (id, product, status, expires)",
+      "sql": "SELECT Id AS id, Product AS product, Status AS status, Expires AS expires FROM Quotes WHERE TripId = @tripId",
+      "params": {
+        "tripId": { "type": "Int", "default": "{tripNumber}" }
+      }
+    },
+
+    "expireTripQuotes": {
+      "description": "Set the expiry of every quote of a trip to now + N minutes",
+      "sql": "UPDATE Quotes SET Expires = DATEADD(MINUTE, @minutes, GETDATE()) WHERE TripId = @tripId",
+      "params": {
+        "tripId":  { "type": "Int", "default": "{tripNumber}" },
+        "minutes": { "type": "Int", "default": "2" }
+      },
+      "snapshot": "SELECT Id AS id, Expires AS expires FROM Quotes WHERE TripId = @tripId",
+      "restore": "restoreQuoteExpires",
+      "maxRows": 20
+    },
+    "restoreQuoteExpires": {
+      "description": "Restore one quote's expiry by id",
+      "restoreOnly": true,
+      "sql": "UPDATE Quotes SET Expires = @expires WHERE Id = @id",
+      "params": {
+        "id":      { "type": "Int", "required": true },
+        "expires": { "type": "DateTime2", "required": true }
+      },
+      "maxRows": 1
+    },
+
+    "expireTripEvolviPricings": {
+      "description": "Set the expiry of every Evolvi pricing of a trip to now + N minutes",
+      "sql": "UPDATE EvolviPricings SET Expires = DATEADD(MINUTE, @minutes, GETDATE()) WHERE QuoteId IN (SELECT Id FROM Quotes WHERE TripId = @tripId)",
+      "params": {
+        "tripId":  { "type": "Int", "default": "{tripNumber}" },
+        "minutes": { "type": "Int", "default": "0" }
+      },
+      "snapshot": "SELECT Id AS id, Expires AS expires FROM EvolviPricings WHERE QuoteId IN (SELECT Id FROM Quotes WHERE TripId = @tripId)",
+      "restore": "restoreEvolviPricingExpires",
+      "maxRows": 20
+    },
+    "restoreEvolviPricingExpires": {
+      "description": "Restore one Evolvi pricing's expiry by id",
+      "restoreOnly": true,
+      "sql": "UPDATE EvolviPricings SET Expires = @expires WHERE Id = @id",
+      "params": {
+        "id":      { "type": "Int", "required": true },
+        "expires": { "type": "DateTime2", "required": true }
+      },
+      "maxRows": 1
+    },
+
+    "expireTripGroundServicePricings": {
+      "description": "Set the expiry of the active ground-service pricings of a trip to now + N minutes (quote status 14 excluded)",
+      "sql": "UPDATE [dbo].[GroundServicePricings] SET Expires = DATEADD(MINUTE, @minutes, GETDATE()) WHERE QuoteId IN (SELECT Id FROM Quotes WHERE TripId = @tripId AND Product = 'groundService' AND Status <> 14)",
+      "params": {
+        "tripId":  { "type": "Int", "default": "{tripNumber}" },
+        "minutes": { "type": "Int", "default": "2" }
+      },
+      "snapshot": "SELECT Id AS id, Expires AS expires FROM [dbo].[GroundServicePricings] WHERE QuoteId IN (SELECT Id FROM Quotes WHERE TripId = @tripId AND Product = 'groundService' AND Status <> 14)",
+      "restore": "restoreGroundServicePricingExpires",
+      "maxRows": 20
+    },
+    "restoreGroundServicePricingExpires": {
+      "description": "Restore one ground-service pricing's expiry by id",
+      "restoreOnly": true,
+      "sql": "UPDATE [dbo].[GroundServicePricings] SET Expires = @expires WHERE Id = @id",
+      "params": {
+        "id":      { "type": "Int", "required": true },
+        "expires": { "type": "DateTime2", "required": true }
+      },
+      "maxRows": 1
+    },
+
+    "setTripCarPickupDate": {
+      "description": "Set the pickup date of the car segments of a trip",
+      "sql": "UPDATE CarSegments SET PickupDate = @pickupDate WHERE QuoteId IN (SELECT Id FROM Quotes WHERE Product = 'car' AND TripId = @tripId)",
+      "params": {
+        "tripId":     { "type": "Int", "default": "{tripNumber}" },
+        "pickupDate": { "type": "DateTime2", "required": true }
+      },
+      "snapshot": "SELECT Id AS id, PickupDate AS pickupDate FROM CarSegments WHERE QuoteId IN (SELECT Id FROM Quotes WHERE Product = 'car' AND TripId = @tripId)",
+      "restore": "restoreCarSegmentPickupDate",
+      "maxRows": 10
+    },
+    "restoreCarSegmentPickupDate": {
+      "description": "Restore one car segment's pickup date by id",
+      "restoreOnly": true,
+      "sql": "UPDATE CarSegments SET PickupDate = @pickupDate WHERE Id = @id",
+      "params": {
+        "id":         { "type": "Int", "required": true },
+        "pickupDate": { "type": "DateTime2", "required": true }
+      },
+      "maxRows": 1
+    },
+
+    "setTripHotelPrice": {
+      "description": "Force price, tax and total price of the hotel pricings of a trip",
+      "sql": "UPDATE HotelPricings SET Price = @price, Tax = @tax, TotalPrice = @totalPrice WHERE QuoteId IN (SELECT Id FROM Quotes WHERE TripId = @tripId)",
+      "params": {
+        "tripId":     { "type": "Int", "default": "{tripNumber}" },
+        "price":      { "type": "Decimal", "default": "1" },
+        "tax":        { "type": "Decimal", "default": "1" },
+        "totalPrice": { "type": "Decimal", "default": "2" }
+      },
+      "snapshot": "SELECT Id AS id, Price AS price, Tax AS tax, TotalPrice AS totalPrice FROM HotelPricings WHERE QuoteId IN (SELECT Id FROM Quotes WHERE TripId = @tripId)",
+      "restore": "restoreHotelPricingPrice",
+      "maxRows": 10
+    },
+    "restoreHotelPricingPrice": {
+      "description": "Restore one hotel pricing's price, tax and total price by id",
+      "restoreOnly": true,
+      "sql": "UPDATE HotelPricings SET Price = @price, Tax = @tax, TotalPrice = @totalPrice WHERE Id = @id",
+      "params": {
+        "id":         { "type": "Int", "required": true },
+        "price":      { "type": "Decimal", "required": true },
+        "tax":        { "type": "Decimal", "required": true },
+        "totalPrice": { "type": "Decimal", "required": true }
+      },
+      "maxRows": 1
+    }
+  }
+
+}
