@@ -7796,6 +7796,85 @@ async verifyFareComponentTextColorInPricingOptions(page, expectedColor, index = 
 
     return { cardsChecked, cabinsRead, legsRead };
   },
+
+  /**
+   * Bug 85493: every brand the airline offered on the outbound leg must reach the pricing options
+   * screen as a card, and that card must carry its feature badges.
+   *
+   * The brand-details lookup behind each card failed silently - a cleanup step threw on a session
+   * that was never opened, the caller logged it and dropped the brand. Nothing on screen said a
+   * brand was missing, so the oracle has to be the supplier payload: the brands the Amadeus NDC
+   * offers carry for the leg, compared by name with the cards the screen rendered on every cabin tab.
+   *
+   * Outbound only. The return cards render only once an outbound brand is picked, and which return
+   * brands are then offered depends on that pick, so the return leg's payload brands are not all
+   * expected on screen at once.
+   *
+   * An offer with a single brand proves nothing about brands being dropped, so fewer than two
+   * offered brands is reported as a test-data problem rather than passed.
+   *
+   * @param {import('playwright').Page} page
+   * @param {object} world
+   * @returns {Promise<{offeredBrands: string[], cardsChecked: number, cabinsRead: string[]}>}
+   */
+  async verifyEveryNdcOfferedBrandHasCardWithDetails(page, world) {
+    if (!page) {
+      throw new Error('[FlightResults.verifyEveryNdcOfferedBrandHasCardWithDetails] page is required');
+    }
+
+    const { cards, cabinsRead } = await this.readBrandCardsAcrossCabinTabs(page);
+    const { legs } = await this.captureAmadeusNdcBrandOffers(world);
+
+    const outbound = legs.find((leg) => leg.legIndex === 0);
+    const offeredBrands = [...new Set(
+      Object.values(outbound ? outbound.brands : {}).map((brand) => normalizeBrandName(brand.brandName))
+    )].filter((name) => name.length > 0);
+
+    if (offeredBrands.length < 2) {
+      throw new Error(
+        '[FlightResults.verifyEveryNdcOfferedBrandHasCardWithDetails] The Amadeus NDC offers carry ' +
+        `${offeredBrands.length} brand(s) on the outbound leg (${offeredBrands.join(', ') || 'none'}), so a dropped ` +
+        'brand cannot be detected. Search a route whose NDC offer has several brands.'
+      );
+    }
+
+    const outboundCards = cards.filter((card) => card.legIndex === 0);
+    const missing = [];
+    const withoutDetails = [];
+    let cardsChecked = 0;
+
+    for (const brandName of offeredBrands) {
+      const matching = outboundCards.filter((card) => normalizeBrandName(card.brandName) === brandName);
+      if (matching.length === 0) {
+        missing.push(brandName);
+        continue;
+      }
+      for (const card of matching) {
+        cardsChecked++;
+        if (card.featureTexts.length === 0) {
+          withoutDetails.push(`${card.brandName} ${card.priceText || ''}`.trim());
+        }
+      }
+    }
+
+    if (missing.length > 0 || withoutDetails.length > 0) {
+      throw new Error(
+        '[FlightResults.verifyEveryNdcOfferedBrandHasCardWithDetails] Every brand the airline offered on the outbound ' +
+        'leg must have a brand card with its details. ' +
+        (missing.length > 0 ? `Offered but not shown: ${missing.join(', ')}. ` : '') +
+        (withoutDetails.length > 0 ? `Shown without any details: ${withoutDetails.join(', ')}. ` : '') +
+        `Offered: ${offeredBrands.join(', ')}. Shown: ${outboundCards.map((card) => card.brandName).join(', ')}.`
+      );
+    }
+
+    logger.info('[NdcBrandOffers] Every offered outbound brand has a card with details', {
+      offeredBrands,
+      cardsChecked,
+      cabinsRead,
+    });
+
+    return { offeredBrands, cardsChecked, cabinsRead };
+  },
 }
 
 module.exports = FlightResults;

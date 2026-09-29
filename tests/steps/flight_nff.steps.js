@@ -426,3 +426,15 @@ Then(
     logger.info("[NewFlightFlow] Brand card baggage verified against the supplier payload", result);
   }
 );
+
+// ===== ADO Bug 85493 - Amadeus NDC brands dropped when the brand-details lookup failed =====
+
+Then(
+  "every brand the airline offered on the outbound leg should have a brand card with details",
+  { timeout: 300000 },
+  async function () {
+    logger.info("[NewFlightFlow] Cross-checking the outbound brand cards against the brands the NDC offers carry");
+    const result = await FlightResults.verifyEveryNdcOfferedBrandHasCardWithDetails(this.page, this);
+    logger.info("[NewFlightFlow] Every offered outbound brand has a brand card", result);
+  }
+);
