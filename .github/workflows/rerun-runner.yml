@@ -1,14 +1,24 @@
 name: Rerun Failures (reusable)
 
 # Reusable engine behind the four per-domain rerun workflows (Rerun - Flights,
-# Rerun - Hotels, Rerun - Shell, Rerun - Transportation). Manual only: nothing
-# schedules or chains into it, so it never runs unless someone asks for it.
+# Rerun - Hotels, Rerun - Shell, Rerun - Transportation). Those are started
+# automatically after every nightly by rerun-nightly-gate.yml, once all four
+# domains have finished, and can also be dispatched by hand.
 #
 # EVERY failed scenario is rerun. Three jobs:
-#   plan   - resolve the source run, collect its failures, work out where each
-#            one lives on the ref under test, and shard them
+#   plan   - resolve the source run, collect its failures and its per-suite
+#            totals, work out where each failure lives on the ref under test,
+#            and shard them
 #   rerun  - one matrix job per shard, running that shard's scenarios
-#   report - aggregate every shard into a single pass/fail table
+#   report - two reports in the summary:
+#              1. Rerun only - what the rerun did with the failures it reran
+#              2. Combined   - the source run's pass rate with the rerun folded
+#                 in. The total stays the SOURCE run's scenario count: a
+#                 scenario is passed if it passed in the source run or on the
+#                 rerun, so the rerun can only move failures to passes, never
+#                 add scenarios. A failure that was not rerun (not found on
+#                 the ref, or cut by max-scenarios) or that produced no rerun
+#                 result stays failed.
 #
 # Sharding is BY SOURCE SUITE, not by an arbitrary slice count. Each shard holds
 # exactly the failures that came out of one suite job of the source run, so the
@@ -244,6 +254,10 @@ jobs:
 
           const reports = walk(root).filter((f) => path.basename(f) === 'cucumber-report.json');
           const found = [];
+          // Per-suite totals of the source run, classified exactly like the
+          // suite's own report (failed / all-steps-skipped / passed), so the
+          // combined report starts from the same numbers the suite summary showed.
+          const totals = {};
           for (const file of reports) {
             // artifact dir is "<suite_id>-report" — the suite_id becomes the shard
             const m = file.match(/source-artifacts[\\/]([^\\/]+)-report[\\/]/);
@@ -251,18 +265,26 @@ jobs:
             let data;
             try { data = JSON.parse(fs.readFileSync(file, 'utf8')); }
             catch (e) { console.log('Skipping invalid JSON: ' + file); continue; }
+            const t = totals[suiteId] || (totals[suiteId] = { total: 0, passed: 0, failed: 0, skipped: 0 });
             for (const feature of (Array.isArray(data) ? data : [data])) {
               // Reports written on a Windows dev box carry backslash uris.
               const uri = String(feature.uri || '').replace(/\\/g, '/');
-              if (!uri) continue;
               for (const el of (feature.elements || [])) {
                 if (el.type !== 'scenario') continue;
                 const steps = el.steps || [];
-                if (!steps.some((s) => s.result && FAIL_STATUSES.has(s.result.status))) continue;
+                t.total++;
+                if (!steps.some((s) => s.result && FAIL_STATUSES.has(s.result.status))) {
+                  if (steps.every((s) => !s.result || s.result.status === 'skipped')) t.skipped++;
+                  else t.passed++;
+                  continue;
+                }
+                t.failed++;
+                if (!uri) continue;
                 found.push({ uri, line: el.line, name: el.name || '', suite: suiteId });
               }
             }
           }
+          fs.writeFileSync(path.join(process.env.RUNNER_TEMP, 'source-totals.json'), JSON.stringify(totals));
 
           // The json formatter omits attempts that will be retried, so a
           // scenario that failed then passed on retry is not in here. Dedupe is
@@ -453,9 +475,10 @@ jobs:
 
           // One shard per source suite: the failures of one suite job stay in one
           // job, exactly as they ran in the source run.
+          const shardOf = (suite) => String(suite || 'unknown-suite').replace(/[^A-Za-z0-9._-]/g, '-');
           const bySuite = new Map();
           for (const s of selected) {
-            const id = String(s.suite || 'unknown-suite').replace(/[^A-Za-z0-9._-]/g, '-');
+            const id = shardOf(s.suite);
             const shard = bySuite.get(id) || [];
             shard.push(s);
             bySuite.set(id, shard);
@@ -516,6 +539,25 @@ jobs:
           }
           fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, out.join('\n') + '\n');
 
+          // Everything the report job needs for the combined pass rate: the
+          // source run's per-suite totals, and what happened to each of its
+          // failures here — rerun (at `loc` in shard `shard`), or not and why.
+          const entry = (s, status, reason) => ({
+            suite: s.suite, shard: shardOf(s.suite), name: s.name, uri: s.uri, line: s.line,
+            loc: s.loc || '', status, reason: reason || '',
+          });
+          const plan = {
+            ref,
+            totals: JSON.parse(fs.readFileSync(path.join(tmp, 'source-totals.json'), 'utf8')),
+            entries: [
+              ...selected.map((s) => entry(s, 'rerun')),
+              ...dropped.map((s) => entry(s, 'not-rerun', 'left out by max-scenarios = ' + limit)),
+              ...unresolved.map((s) => entry(s, 'not-rerun', s.reason)),
+            ],
+          };
+          fs.mkdirSync(path.join(tmp, 'rerun-plan'), { recursive: true });
+          fs.writeFileSync(path.join(tmp, 'rerun-plan', 'plan.json'), JSON.stringify(plan));
+
           console.log('Resolved ' + resolved.length + ' of ' + failures.length + ' failed scenario(s) on ' + ref +
             '; rerunning ' + selected.length + ' in ' + include.length + ' shard(s).');
           if (resolved.length === 0) {
@@ -528,6 +570,15 @@ jobs:
             process.exit(1);
           }
           NODE
+
+      # Read by the report job to build the combined (source run + rerun) report.
+      - name: Upload the rerun plan
+        if: steps.collect.outputs.count != '0'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: rerun-plan
+          path: ${{ runner.temp }}/rerun-plan/plan.json
+          if-no-files-found: error
 
   rerun:
     name: '[${{ inputs.domain }}] ${{ matrix.suite_id }} (${{ matrix.count }})'
@@ -619,11 +670,11 @@ jobs:
       # HTTP status code 403"), and the download action classes 403 as non-retryable
       # and gives up immediately - so the retry has to happen at the step level.
       # Without it a healthy rerun reports every shard as missing.
-      - name: Download every shard's report
+      - name: Download every shard's report and the rerun plan
         id: download-1
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
-          pattern: 'rerun-*-report'
+          pattern: 'rerun-{plan,*-report}'
           path: shard-reports
         continue-on-error: true
 
@@ -632,12 +683,12 @@ jobs:
         shell: bash
         run: sleep 30
 
-      - name: Download every shard's report (retry)
+      - name: Download every shard's report and the rerun plan (retry)
         id: download-2
         if: always() && steps.download-1.outcome == 'failure'
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
-          pattern: 'rerun-*-report'
+          pattern: 'rerun-{plan,*-report}'
           path: shard-reports
         continue-on-error: true
 
@@ -646,12 +697,12 @@ jobs:
         shell: bash
         run: sleep 90
 
-      - name: Download every shard's report (final attempt)
+      - name: Download every shard's report and the rerun plan (final attempt)
         id: download-3
         if: always() && steps.download-2.outcome == 'failure'
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
-          pattern: 'rerun-*-report'
+          pattern: 'rerun-{plan,*-report}'
           path: shard-reports
         continue-on-error: true
 
@@ -671,10 +722,18 @@ jobs:
           echo "::error::Could not download the shard reports after 3 attempts (attempts: $OUTCOME_1, $OUTCOME_2, $OUTCOME_3). The shards are NOT known to have failed - their artifacts are still attached to this run. Re-run this rerun report job alone."
           exit 1
 
-      # One table for the whole rerun. A shard that produced no report at all
-      # (timed out, or crashed before writing) is called out by name rather than
-      # quietly leaving its scenarios out of the totals.
-      - name: Aggregate shard results
+      # Two reports in the summary:
+      #   1. Rerun only - every rerun scenario and how it ended this time.
+      #   2. Combined   - the source run's pass rate with the rerun folded in.
+      #      The denominator is the SOURCE run's scenario count, never source +
+      #      rerun: a rerun only re-attempts scenarios that are already in that
+      #      count, so it can turn a failure into a pass but never adds a
+      #      scenario. Passed = passed in the source run + failures that passed
+      #      on the rerun.
+      # A shard that produced no report at all (timed out, or crashed before
+      # writing) is called out rather than quietly leaving its scenarios out;
+      # in the combined report those scenarios stay failed.
+      - name: Build the rerun and combined reports
         shell: bash
         env:
           EXPECTED_SHARDS: ${{ needs.plan.outputs.shards }}
@@ -688,16 +747,39 @@ jobs:
 
           const root = 'shard-reports';
           const FAIL = new Set(['failed', 'ambiguous', 'pending', 'undefined']);
-          const esc = (t) => String(t == null ? '' : t).slice(0, 220).split('\n').join(' ').split('|').join('¦');
+          const esc = (t) => String(t == null ? '' : t).slice(0, 220).split('\n').join(' ').split('|').join('¦')
+            .split('<').join('&lt;').split('>').join('&gt;');
+          const pct = (n, d) => (d > 0 ? ((n / d) * 100).toFixed(1) + '%' : '—');
+          const ICON = { passed: '✅', failed: '❌', skipped: '⏭️' };
 
           const walk = (dir) => !fs.existsSync(dir) ? [] :
             fs.readdirSync(dir, { withFileTypes: true }).flatMap((e) =>
               e.isDirectory() ? walk(path.join(dir, e.name)) : [path.join(dir, e.name)]);
 
+          // A scenario stopped by a known supplier booking error ends 'pending'
+          // with no error message; the step attaches the supplier's own words as
+          // a 'BOOKING_ERROR:' text embedding. Same read as the suite report.
+          const bookingError = (el) => {
+            for (const step of (el.steps || [])) {
+              for (const emb of (step.embeddings || [])) {
+                if (!emb || !emb.data) continue;
+                const mt = emb.mime_type || emb.media_type || '';
+                if (mt && mt.indexOf('text') === -1 && mt.indexOf('json') === -1) continue;
+                let text = String(emb.data);
+                if (text.indexOf('BOOKING_ERROR:') === -1) {
+                  try { text = Buffer.from(emb.data, 'base64').toString('utf8'); } catch (e) { /* not base64 */ }
+                }
+                const m = text.match(/BOOKING_ERROR:([\s\S]+)/);
+                if (m) return m[1].split('\n')[0].trim();
+              }
+            }
+            return '';
+          };
+
+          // ---- Rerun results, classified like the suite report ----
           const files = walk(root).filter((f) => path.basename(f) === 'cucumber-report.json');
           const rows = [];
           const shards = new Set();
-          let passed = 0;
           for (const file of files) {
             // Anchor on the artifact DIRECTORY: a greedy match runs past it and
             // swallows "cucumber-report.json" too.
@@ -711,28 +793,40 @@ jobs:
               const uri = String(feature.uri || '').replace(/\\/g, '/');
               for (const el of (feature.elements || [])) {
                 if (el.type !== 'scenario') continue;
-                const bad = (el.steps || []).find((s) => s.result && FAIL.has(s.result.status));
+                const steps = el.steps || [];
+                const bad = steps.find((s) => s.result && FAIL.has(s.result.status));
+                let status = 'passed';
+                let err = '';
                 if (bad) {
-                  const err = ((bad.result && bad.result.error_message) || '').split('\n')[0];
-                  rows.push({ ok: false, shard, name: el.name, loc: uri + ':' + el.line, err });
-                } else {
-                  passed++;
-                  rows.push({ ok: true, shard, name: el.name, loc: uri + ':' + el.line, err: '' });
+                  status = 'failed';
+                  err = ((bad.result && bad.result.error_message) || '').split('\n')[0] || bookingError(el) ||
+                    (bad.result.status + ' step: ' + ((bad.keyword || '') + (bad.name || '')).trim());
+                } else if (steps.every((s) => !s.result || s.result.status === 'skipped')) {
+                  status = 'skipped';
                 }
+                rows.push({ status, shard, name: el.name, loc: uri + ':' + el.line, err });
               }
             }
           }
-          rows.sort((a, b) => Number(a.ok) - Number(b.ok) || a.shard.localeCompare(b.shard) || a.loc.localeCompare(b.loc));
+          const ORDER = { failed: 0, skipped: 1, passed: 2 };
+          rows.sort((a, b) => ORDER[a.status] - ORDER[b.status] || a.shard.localeCompare(b.shard) || a.loc.localeCompare(b.loc));
 
           const expectedShards = parseInt(process.env.EXPECTED_SHARDS || '0', 10);
           const expectedScenarios = parseInt(process.env.EXPECTED_SCENARIOS || '0', 10);
-          const failed = rows.length - passed;
+          const count = (st) => rows.filter((r) => r.status === st).length;
+          const passed = count('passed');
+          const failed = count('failed');
+          const skipped = count('skipped');
 
-          const out = ['', '## Rerun result', ''];
-          out.push('**' + passed + ' now passing, ' + failed + ' still failing** of ' + rows.length +
-            ' rerun (' + expectedScenarios + ' were planned, across ' + expectedShards + ' shard(s)).', '');
+          // ---- Report 1: rerun only ----
+          const out = ['', '## Report 1 · Rerun only', ''];
+          out.push('Only the scenarios that failed in the source run and were rerun here.', '');
+          out.push('| Rerun | ✅ Passed | ❌ Failed again | ⏭️ Skipped | 📊 Rerun pass rate |');
+          out.push('|-------|-----------|-----------------|------------|--------------------|');
+          out.push('| ' + rows.length + ' | ' + passed + ' | ' + failed + ' | ' + skipped + ' | **' + pct(passed, rows.length) + '** |');
+          out.push('');
           if (rows.length < expectedScenarios) {
-            out.push('> **' + (expectedScenarios - rows.length) + ' planned scenario(s) produced no result.** ' +
+            out.push('> **' + (expectedScenarios - rows.length) + ' of ' + expectedScenarios + ' planned scenario(s) produced no result.** ' +
               'A shard hit its timeout or crashed before writing a report — check the shard jobs above.', '');
             console.log('::warning::' + (expectedScenarios - rows.length) +
               ' planned scenario(s) produced no result; a shard did not finish.');
@@ -743,12 +837,87 @@ jobs:
           out.push('| | Shard | Scenario | Location | Error |');
           out.push('|---|-------|----------|----------|-------|');
           for (const r of rows) {
-            out.push('| ' + (r.ok ? '✅' : '❌') + ' | ' + esc(r.shard) + ' | ' + esc(r.name) + ' | ' +
-              esc(r.loc) + ' | ' + (r.ok ? '—' : esc(r.err)) + ' |');
+            out.push('| ' + ICON[r.status] + ' | ' + esc(r.shard) + ' | ' + esc(r.name) + ' | ' +
+              esc(r.loc) + ' | ' + (r.status === 'failed' ? esc(r.err) : '—') + ' |');
           }
           out.push('');
+
+          // ---- Report 2: source run + rerun combined ----
+          out.push('## Report 2 · Source run + rerun combined', '');
+          const planFile = walk(root).find((f) => path.basename(f) === 'plan.json');
+          let plan = null;
+          if (planFile) {
+            try { plan = JSON.parse(fs.readFileSync(planFile, 'utf8')); }
+            catch (e) { console.log('Invalid plan.json: ' + e.message); }
+          }
+          if (!plan) {
+            out.push('> Not available: the rerun-plan artifact could not be read, so the source run\'s totals are unknown. ' +
+              'Re-run this report job alone.', '');
+            console.log('::warning::rerun-plan artifact missing or invalid; combined report skipped.');
+          } else {
+            const byKey = new Map(rows.map((r) => [r.shard + '|' + r.loc, r]));
+            const recovered = {};
+            const still = [];
+            for (const e of plan.entries) {
+              let why;
+              if (e.status !== 'rerun') {
+                why = 'not rerun — ' + e.reason;
+              } else {
+                const r = byKey.get(e.shard + '|' + e.loc);
+                if (!r) why = 'no rerun result (its shard did not finish)';
+                else if (r.status === 'passed') { recovered[e.suite] = (recovered[e.suite] || 0) + 1; continue; }
+                else if (r.status === 'skipped') why = 'skipped on the rerun';
+                else why = 'failed again — ' + r.err;
+              }
+              still.push({ ...e, why });
+            }
+
+            const suites = Object.keys(plan.totals).sort();
+            const sum = { total: 0, passed: 0, failed: 0, skipped: 0, recovered: 0 };
+            const suiteRows = suites.map((id) => {
+              const t = plan.totals[id];
+              // A failure can only be recovered once, and never beyond the
+              // suite's own failure count.
+              const rec = Math.min(recovered[id] || 0, t.failed);
+              sum.total += t.total; sum.passed += t.passed; sum.failed += t.failed;
+              sum.skipped += t.skipped; sum.recovered += rec;
+              return { id, ...t, rec };
+            });
+            const combinedPassed = sum.passed + sum.recovered;
+            const combinedFailed = sum.failed - sum.recovered;
+
+            out.push('The total is the source run\'s own scenario count. A scenario counts as passed if it passed in the ' +
+              'source run **or** on this rerun — rerun scenarios are not added to the total.', '');
+            out.push('| | Scenarios | ✅ Passed | ❌ Failed | ⏭️ Skipped | 📊 Pass rate |');
+            out.push('|---|-----------|-----------|-----------|------------|--------------|');
+            out.push('| Source run | ' + sum.total + ' | ' + sum.passed + ' | ' + sum.failed + ' | ' + sum.skipped + ' | ' + pct(sum.passed, sum.total) + ' |');
+            out.push('| **Source run + rerun** | ' + sum.total + ' | ' + combinedPassed + ' (' + sum.recovered + ' on the rerun) | ' +
+              combinedFailed + ' | ' + sum.skipped + ' | **' + pct(combinedPassed, sum.total) + '** |');
+            out.push('');
+            out.push('| Suite | Scenarios | Passed in source run | Passed on rerun | Still failing | Skipped | Source run rate | Combined rate |');
+            out.push('|-------|-----------|----------------------|-----------------|---------------|---------|-----------------|---------------|');
+            for (const s of suiteRows) {
+              out.push('| ' + esc(s.id) + ' | ' + s.total + ' | ' + s.passed + ' | ' + s.rec + ' | ' + (s.failed - s.rec) + ' | ' +
+                s.skipped + ' | ' + pct(s.passed, s.total) + ' | ' + pct(s.passed + s.rec, s.total) + ' |');
+            }
+            out.push('');
+            if (still.length > 0) {
+              const MAX_ROWS = 150;
+              out.push('### ❌ Still failing after the rerun (' + still.length + ')', '');
+              out.push('| Suite | Scenario | Location in source run | Why |');
+              out.push('|-------|----------|------------------------|-----|');
+              for (const s of still.slice(0, MAX_ROWS)) {
+                out.push('| ' + esc(s.suite) + ' | ' + esc(s.name) + ' | ' + esc(s.uri + ':' + s.line) + ' | ' + esc(s.why) + ' |');
+              }
+              if (still.length > MAX_ROWS) out.push('', '…and ' + (still.length - MAX_ROWS) + ' more.');
+              out.push('');
+            }
+            console.log('Combined: ' + combinedPassed + '/' + sum.total + ' passed (' + pct(combinedPassed, sum.total) +
+              '); source run alone ' + sum.passed + '/' + sum.total + ' (' + pct(sum.passed, sum.total) + ').');
+          }
+
           out.push('Source run: ' + (process.env.SOURCE_RUN_URL || '(unknown)'));
           out.push('');
           fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, out.join('\n') + '\n');
-          console.log(passed + ' passing, ' + failed + ' failing, ' + rows.length + ' scenario(s) reported.');
+          console.log('Rerun: ' + passed + ' passed, ' + failed + ' failed, ' + skipped + ' skipped of ' + rows.length + ' reported.');
           NODE

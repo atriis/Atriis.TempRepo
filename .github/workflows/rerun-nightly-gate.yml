@@ -1,0 +1,150 @@
+name: Nightly Rerun Gate
+run-name: Nightly Rerun Gate · batch ${{ inputs.batch }}
+
+# Starts each domain's rerun of its failures once ALL FOUR domain suites of one
+# nightly have finished, so the reruns never compete with the nightly itself
+# for the shared staging environment.
+#
+# How it is triggered: the Suite Scheduler dispatches every suite with
+# nightly_batch = its own run id, which each suite puts in its run name
+# ("Suite - Flights · nightly <batch>"). When a suite finishes, its last job
+# ("Hand off to the nightly rerun gate") dispatches this workflow with that
+# batch. So the gate runs four times a night; the first three find a domain
+# still running and exit, and the one dispatched by the LAST domain to finish
+# starts the reruns.
+#
+# "Finished" is judged from jobs, not from the run's status: the suite that
+# dispatched this gate is still in progress (its hand-off job is the one
+# running), so a run counts as finished when it is completed, OR when its
+# hand-off job exists and every other job in it has completed.
+#
+# Safe to run more than once for a batch: a domain whose rerun already exists
+# (its run name is "Rerun - <Domain> · run <suite run id>") is not rerun again.
+# Two domains finishing at the same moment both dispatch the gate, and the
+# concurrency group below runs those one after the other, so the second one
+# finds the reruns already started.
+#
+# A domain with no run in the batch (the scheduler failed to dispatch it) is
+# reported and skipped, so it cannot hold back the other three.
+#
+# Manual use: dispatch it with the Suite Scheduler run id to start (or finish
+# starting) a nightly's reruns by hand. To rerun one specific suite run, use the
+# domain's own Rerun workflow instead.
+
+on:
+  workflow_dispatch:
+    inputs:
+      batch:
+        description: 'Suite Scheduler run id of the nightly (the suite runs are titled "… · nightly <id>")'
+        required: true
+        type: string
+
+permissions:
+  actions: write # read the suite runs, dispatch the rerun workflows
+
+concurrency:
+  group: rerun-nightly-gate
+  cancel-in-progress: false
+
+jobs:
+  gate:
+    name: Start the reruns once every domain has finished
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Check the nightly's domain runs and start their reruns
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BATCH: ${{ inputs.batch }}
+          # Must match the hand-off job's `name:` in the four suite-*.yml files.
+          HANDOFF_JOB: Hand off to the nightly rerun gate
+        run: |
+          set -euo pipefail
+          case "$BATCH" in
+            ''|*[!0-9]*) echo "::error::batch must be a Suite Scheduler run id (digits only), got '$BATCH'."; exit 1 ;;
+          esac
+
+          # A one-off API error must not cost the night its reruns: the last
+          # domain's gate is the only one that would start them.
+          retry() {
+            local attempt
+            for attempt in 1 2 3 4 5; do
+              if "$@"; then return 0; fi
+              echo "  (attempt $attempt failed: $*; retrying in 20s)" >&2
+              sleep 20
+            done
+            return 1
+          }
+
+          domains="flights hotels shell transportation"
+          declare -A RUN_ID
+          running=""
+          missing=""
+          summary=$'| Domain | Nightly run | State |\n|---|---|---|\n'
+
+          for d in $domains; do
+            id=$(retry gh run list --workflow "suite-$d.yml" --repo "$GITHUB_REPOSITORY" \
+                   --branch main --limit 30 --json databaseId,displayTitle \
+                   --jq '[.[] | select(.displayTitle | endswith("nightly " + env.BATCH))][0].databaseId // empty')
+            if [ -z "$id" ]; then
+              echo "::warning::No suite-$d.yml run found for nightly batch $BATCH — it was never dispatched. Skipping it."
+              missing="$missing $d"
+              summary+="| $d | — | never started, no rerun |"$'\n'
+              continue
+            fi
+            state=$(retry gh run view "$id" --repo "$GITHUB_REPOSITORY" --json status,jobs --jq '
+              if .status == "completed" then "finished"
+              elif ([.jobs[] | select(.name == env.HANDOFF_JOB)] | length) > 0
+                   and ([.jobs[] | select(.name != env.HANDOFF_JOB and .status != "completed")] | length) == 0
+              then "finished"
+              else "running" end')
+            RUN_ID[$d]="$id"
+            echo "suite-$d.yml run $id: $state"
+            [ "$state" = "running" ] && running="$running $d"
+            summary+="| $d | [#$id]($GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$id) | $state |"$'\n'
+          done
+
+          {
+            echo "## Nightly rerun gate — batch $BATCH"
+            echo ""
+            printf '%s\n' "$summary"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          if [ -n "$running" ]; then
+            echo "Still running:$running. Not starting any rerun yet — the hand-off of the last domain to finish will."
+            echo "Still running:$running — reruns start when the last domain finishes." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
+          echo "### Reruns" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          failed=""
+          for d in $domains; do
+            id="${RUN_ID[$d]:-}"
+            [ -z "$id" ] && continue
+            existing=$(RID="$id" retry gh run list --workflow "rerun-$d.yml" --repo "$GITHUB_REPOSITORY" \
+                         --limit 50 --json displayTitle \
+                         --jq '[.[] | select(.displayTitle | endswith(" run " + env.RID))] | length')
+            if [ "$existing" != "0" ]; then
+              echo "rerun-$d.yml already started for run $id — skipping."
+              echo "- $d: already started for run $id" >> "$GITHUB_STEP_SUMMARY"
+              continue
+            fi
+            if retry gh workflow run "rerun-$d.yml" --ref main --repo "$GITHUB_REPOSITORY" -f run_id="$id"; then
+              echo "Started rerun-$d.yml for run $id."
+              echo "- $d: rerun started for run $id" >> "$GITHUB_STEP_SUMMARY"
+            else
+              echo "::error::Could not start rerun-$d.yml for run $id."
+              echo "- $d: **could not start the rerun** — dispatch Rerun - $d with run id $id by hand" >> "$GITHUB_STEP_SUMMARY"
+              failed="$failed $d"
+            fi
+          done
+
+          if [ -n "$missing" ]; then
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            echo "Never started, so nothing to rerun:$missing" >> "$GITHUB_STEP_SUMMARY"
+          fi
+          if [ -n "$failed" ]; then
+            echo "::error::Reruns not started:$failed"
+            exit 1
+          fi

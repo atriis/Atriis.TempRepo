@@ -1,11 +1,18 @@
 name: Suite - Shell
+run-name: ${{ inputs.nightly_batch && format('Suite - Shell · nightly {0}', inputs.nightly_batch) || 'Suite - Shell' }}
 
 # One of the four nightly domain suites, dispatched in parallel with the others
-# by suite-scheduler.yml at 21:10 Portugal time, and manually dispatchable on its
+# by suite-scheduler.yml at 21:00 Portugal time, and manually dispatchable on its
 # own. It starts and finishes independently — no domain waits on another.
 
 on:
   workflow_dispatch:
+    inputs:
+      nightly_batch:
+        description: 'Set by the Suite Scheduler. Leave blank for a one-off run (no automatic rerun).'
+        required: false
+        type: string
+        default: ''
 
 permissions:
   contents: read
@@ -75,3 +82,34 @@ jobs:
             { "suite_id": "shell-user-profile",                     "suite_name": "Shell User Profile",                     "test_path": "tests/features/shell/shell_user_profile/",                     "parallel": 2, "retry": 1, "job_timeout_minutes": 100, "step_timeout_minutes": 95 }
           ]
         }
+
+  # Nightly only (the scheduler passes nightly_batch). Once this domain has
+  # finished, ask the gate to start the reruns. The gate starts them only when
+  # ALL FOUR domains of this nightly have finished, so whichever domain ends
+  # last is the one that actually kicks them off. The gate finds this job by
+  # its name — keep the name in sync with HANDOFF_JOB in rerun-nightly-gate.yml.
+  rerun-handoff:
+    name: Hand off to the nightly rerun gate
+    needs: suite
+    if: ${{ always() && inputs.nightly_batch != '' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      actions: write # gh workflow run dispatches the gate
+    steps:
+      - name: Ask the gate to start this nightly's reruns
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BATCH: ${{ inputs.nightly_batch }}
+        run: |
+          # Retry: a transient GitHub API 5xx must not cost the night its reruns.
+          for attempt in 1 2 3 4 5; do
+            if gh workflow run rerun-nightly-gate.yml --ref main --repo "$GITHUB_REPOSITORY" -f batch="$BATCH"; then
+              echo "Gate dispatched for nightly batch $BATCH (attempt $attempt)."
+              exit 0
+            fi
+            echo "Dispatch attempt $attempt failed; retrying in 30s…"
+            sleep 30
+          done
+          echo "::error::Could not dispatch the nightly rerun gate after 5 attempts. Start it by hand: Nightly Rerun Gate, batch $BATCH."
+          exit 1

@@ -7,8 +7,11 @@ name: Domain Suite (reusable)
 #   test   - the matrix of cucumber runs (per-leg parallelism/retry/timeout).
 #            Transient flakes are absorbed in-run by cucumber's --retry; a
 #            scenario is only reported failed if it fails EVERY attempt. There
-#            is no separate cross-job rerun — see the git history for why it was
-#            removed (marginal value on top of --retry, and a self-timeout risk).
+#            is no rerun job inside this run (removed in 66afd9a1: it ran
+#            minutes later, in the same bad staging window, and risked the
+#            run's own timeout). The nightly's failures are instead rerun as
+#            separate runs once all four domains are done — see
+#            rerun-nightly-gate.yml.
 #   report - one per-domain report (Allure + Cucumber HTML + dorny check-run +
 #            reconciliation) built from THIS run's artifacts only; the job
 #            summary lists every failed scenario with its error

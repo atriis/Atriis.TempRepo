@@ -1,7 +1,8 @@
 name: Suite - Flights
+run-name: ${{ inputs.nightly_batch && format('Suite - Flights · nightly {0}', inputs.nightly_batch) || 'Suite - Flights' }}
 
 # One of the four nightly domain suites. suite-scheduler.yml dispatches all four
-# (Flights, Hotels, Shell, Transportation) in parallel at 21:10 Portugal time;
+# (Flights, Hotels, Shell, Transportation) in parallel at 21:00 Portugal time;
 # this one is also manually dispatchable on its own. It starts and finishes
 # independently — no domain waits on another any more, and nothing downstream
 # depends on this run. See suite-scheduler.yml for why the schedule lives there
@@ -9,8 +10,10 @@ name: Suite - Flights
 #
 # Stability levers vs. the legacy Test Suite:
 #   - lower parallelism (non-booking 4→2, booking 2→1) to cut contention flakes
-#   - --retry 1 (the run plus one rerun of a failing scenario); flakes are
-#     absorbed in-run, so there is no separate cross-job rerun
+#   - --retry 1 (the run plus one rerun of a failing scenario) absorbs flakes
+#     in-run; on the nightly, whatever still fails is rerun again later by
+#     Rerun - Flights, started by rerun-nightly-gate.yml once all four domains
+#     are done (see the hand-off job at the bottom)
 #
 # Two directories are sharded across legs (`"shard": "i/n"`), both for the same
 # reason: cucumber writes its json/junit formatters only at the very end, so a
@@ -40,6 +43,12 @@ name: Suite - Flights
 
 on:
   workflow_dispatch:
+    inputs:
+      nightly_batch:
+        description: 'Set by the Suite Scheduler. Leave blank for a one-off run (no automatic rerun).'
+        required: false
+        type: string
+        default: ''
 
 permissions:
   contents: read
@@ -97,3 +106,34 @@ jobs:
             { "suite_id": "flights-ua-ndc-booking",          "suite_name": "Flights UA NDC Booking",          "test_path": "tests/features/flights/flights_ua_ndc/flights_ua_ndc_booking/",               "parallel": 1, "retry": 1, "job_timeout_minutes": 200, "step_timeout_minutes": 190 }
           ]
         }
+
+  # Nightly only (the scheduler passes nightly_batch). Once this domain has
+  # finished, ask the gate to start the reruns. The gate starts them only when
+  # ALL FOUR domains of this nightly have finished, so whichever domain ends
+  # last is the one that actually kicks them off. The gate finds this job by
+  # its name — keep the name in sync with HANDOFF_JOB in rerun-nightly-gate.yml.
+  rerun-handoff:
+    name: Hand off to the nightly rerun gate
+    needs: suite
+    if: ${{ always() && inputs.nightly_batch != '' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      actions: write # gh workflow run dispatches the gate
+    steps:
+      - name: Ask the gate to start this nightly's reruns
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BATCH: ${{ inputs.nightly_batch }}
+        run: |
+          # Retry: a transient GitHub API 5xx must not cost the night its reruns.
+          for attempt in 1 2 3 4 5; do
+            if gh workflow run rerun-nightly-gate.yml --ref main --repo "$GITHUB_REPOSITORY" -f batch="$BATCH"; then
+              echo "Gate dispatched for nightly batch $BATCH (attempt $attempt)."
+              exit 0
+            fi
+            echo "Dispatch attempt $attempt failed; retrying in 30s…"
+            sleep 30
+          done
+          echo "::error::Could not dispatch the nightly rerun gate after 5 attempts. Start it by hand: Nightly Rerun Gate, batch $BATCH."
+          exit 1

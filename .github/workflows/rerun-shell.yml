@@ -1,9 +1,14 @@
 name: Rerun - Shell
+# The gate finds an existing rerun of a suite run by this " · run <id>" suffix.
+run-name: ${{ inputs.run_id && format('Rerun - Shell · run {0}', inputs.run_id) || 'Rerun - Shell' }}
 
-# Manual only. Reruns the scenarios that FAILED in the latest completed
-# "Suite - Shell" run on main (or in a specific run id you pass in), against the
-# latest main by default. All the logic lives in rerun-runner.yml — see its
-# header.
+# Reruns the scenarios that FAILED in a "Suite - Shell" run on main, against
+# the latest main by default. Started automatically after every nightly by
+# rerun-nightly-gate.yml (with that nightly's run id), and dispatchable by hand
+# with any run id (blank = the latest completed run on main). Either way the
+# summary carries two reports: the rerun on its own, and the combined pass rate
+# of the source run and this rerun. All the logic lives in rerun-runner.yml —
+# see its header.
 #
 # `rerun_against`: main (the default) reruns each failure at its CURRENT line on
 # main, so a test fixed since the suite ran is verified as fixed; source-commit
