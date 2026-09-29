@@ -188,6 +188,40 @@ const config = {
       return Number(getOptionalEnv("PAYLOAD_VALIDATION_MAX_REQUESTS_MATCHES", "10"));
     },
   },
+  // Azure SQL access for the DB query steps (tests/steps/db_queries.steps.js). Everything except
+  // `enabled` is optional here and only required on the first DB operation, so a run with no DB
+  // settings still passes every scenario that does not use DB steps. See docs/DbQueries.md.
+  db: {
+    get enabled() {
+      return getOptionalBooleanEnv("DB_QUERIES_ENABLED", true);
+    },
+    get serverName() {
+      return getOptionalEnv("DB_SERVER_NAME", "");
+    },
+    get databaseName() {
+      return getOptionalEnv("DB_DATABASE_NAME", "");
+    },
+    // entra-mfa | service-principal | azure-cli
+    get authentication() {
+      return getOptionalEnv("DB_AUTHENTICATION", "");
+    },
+    // entra-mfa: login hint (UPN)
+    get userName() {
+      return getOptionalEnv("DB_USER_NAME", "");
+    },
+    get tenantId() {
+      return getOptionalEnv("DB_TENANT_ID", "");
+    },
+    get clientId() {
+      return getOptionalEnv("DB_CLIENT_ID", "");
+    },
+    get clientSecret() {
+      return getOptionalEnv("DB_CLIENT_SECRET", "");
+    },
+    get timeoutMs() {
+      return Number(getOptionalEnv("DB_TIMEOUT_MS", "30000"));
+    },
+  },
 };
 
 module.exports = config;
