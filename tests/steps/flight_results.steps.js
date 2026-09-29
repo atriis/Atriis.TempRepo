@@ -21,6 +21,8 @@ const RENDER_MEASUREMENT_TIMEOUT_MS = 150000;
 // the default step timeout to surface the banner in flight results (see test 47148).
 const RAIL_BANNER_STEP_TIMEOUT_MS = 180000;
 
+const LAYOVER_DRAWER_STEP_TIMEOUT_MS = 300000;
+
 async function applyResultsSearchFilter(world, filterText) {
   if (!filterText || typeof filterText !== 'string') {
     throw new Error(`filterText must be a non-empty string, got: ${typeof filterText}`);
@@ -770,6 +772,34 @@ When("I scroll to the Flight Duration filter for {string}", async function (loca
 When('I adjust the Limit Layover Duration filter from the half timepoint of the longest point', async function () {
   logger.info('Adjusting Limit Layover Duration filter from midpoint of longest range');
   await FlightResults.adjustLimitLayoverDurationFilterFromMidpoint(this.page);
+});
+
+Then('the Limit Layover Duration filter should be displayed', async function () {
+  logger.info('Verifying the Limit Layover Duration filter is displayed');
+  await FlightResults.verifyLimitLayoverDurationFilterDisplayed(this.page, true);
+});
+
+Then('the Limit Layover Duration filter should not be displayed', async function () {
+  logger.info('Verifying the Limit Layover Duration filter is not displayed');
+  await FlightResults.verifyLimitLayoverDurationFilterDisplayed(this.page, false);
+});
+
+// Multi-stop legs are read one Flight Details drawer at a time, so these need more than the default.
+Then('only results within the Limit Layover Duration range should be displayed', { timeout: LAYOVER_DRAWER_STEP_TIMEOUT_MS }, async function () {
+  logger.info('Verifying every rendered layover is inside the Limit Layover Duration range');
+  const result = await FlightResults.verifyResultsWithinLimitLayoverDurationRange(this.page);
+  logger.info('Layovers verified against the range', result);
+});
+
+Then('the Limit Layover Duration range should cover the total time of the 2 stops', { timeout: LAYOVER_DRAWER_STEP_TIMEOUT_MS }, async function () {
+  logger.info('Verifying the Limit Layover Duration range covers the 2-stop totals');
+  const result = await FlightResults.verifyLimitLayoverDurationRangeCoversTwoStopTotals(this.page);
+  logger.info('2-stop totals verified against the range', result);
+});
+
+Then('all flight results should be from the selected carrier', async function () {
+  logger.info('Verifying all flight results are from the selected carrier', { filterOption: this.selectedAirlineFilter });
+  await FlightResults.verifyAllResultsFromSelectedCarrier(this.page, this.selectedAirlineFilter);
 });
 
 Then('all pricing option segments {string} and {string} and {string} should be visible and selectable', async function (firstRoute, secondRoute, thirdRoute) {

@@ -24,6 +24,75 @@ const {
 // second leg — on a multi-city search that is the second requested leg.
 const INBOUND_LEG_INDEX = 1;
 
+// Airline filter options whose result cards name the carrier differently (flight-preview-segment.vue
+// prints $t('flight.multipleCarriers') on a leg flown by more than one airline).
+const CARRIER_FILTER_CARD_NAMES = {
+  'Multi carrier': 'Multiple Carriers',
+};
+
+/** Parses a flight details connection duration ("2h 30m", "1d 3h") into minutes. */
+function layoverTextToMinutes(text, cardIndex, legIndex) {
+  const matches = [...(text || '').matchAll(/(\d+)\s*([dhm])/gi)];
+  if (!matches.length) {
+    throw new Error(
+      `[FlightResults.getLayoverMinutesPerResult] Result card ${cardIndex + 1}, leg ${legIndex + 1}: the flight details ` +
+      `drawer shows "${text}" as a connection time, which is not a parsable duration.`
+    );
+  }
+  const unitMinutes = { d: 24 * 60, h: 60, m: 1 };
+  return matches.reduce((total, [, amount, unit]) => total + Number(amount) * unitMinutes[unit.toLowerCase()], 0);
+}
+
+function describeLayover(layover) {
+  const parts = layover.stopMinutes.length > 1 ? ` (stops ${layover.stopMinutes.join(' + ')} min)` : '';
+  return `card ${layover.card} leg ${layover.leg} "${layover.text}" = ${layover.minutes} min${parts}`;
+}
+
+function assertLayoversInRange(layovers, range, caller) {
+  const outside = layovers.filter((layover) =>
+    layover.minutes !== null && (layover.minutes < range.startMinutes || layover.minutes > range.endMinutes));
+
+  if (outside.length) {
+    throw new Error(
+      `[FlightResults.${caller}] ${outside.length} layover(s) fall outside the Limit Layover Duration range ` +
+      `"${range.rangeText}" (${range.startMinutes}-${range.endMinutes} min), so the filter let them through: ` +
+      outside.map(describeLayover).join('; ')
+    );
+  }
+}
+
+/**
+ * Retries the card-only layover read until the rendered list agrees with the range, so a list still
+ * re-rendering after a filter click is not judged. Multi-stop legs are only counted here; their
+ * totals need the drawer and are judged once the list has settled.
+ */
+async function waitForCardLayoversInRange(dsl, page, range, caller, { requireMultiStop = false, timeout = 15000 } = {}) {
+  let lastError;
+
+  try {
+    await expect(async () => {
+      try {
+        const layovers = await dsl.getLayoverMinutesPerResult(page, { includeMultiStop: false });
+        if (!layovers.length) {
+          throw new Error('No rendered result has a leg with a stop, so there is no layover to judge.');
+        }
+        if (requireMultiStop && !layovers.some((layover) => layover.stops > 1)) {
+          throw new Error('No rendered result has a leg with two or more stops yet.');
+        }
+        assertLayoversInRange(layovers, range, caller);
+      } catch (err) {
+        lastError = err;
+        throw err;
+      }
+    }).toPass({ timeout });
+  } catch (err) {
+    throw new Error(
+      `[FlightResults.${caller}] The rendered results never agreed with the Limit Layover Duration range ` +
+      `"${range.rangeText}" within ${timeout}ms. Original: ${(lastError || err).message}`
+    );
+  }
+}
+
 const MONTH_NAMES = [
   'January', 'February', 'March', 'April', 'May', 'June',
   'July', 'August', 'September', 'October', 'November', 'December',
@@ -2870,6 +2939,207 @@ async verifyFareComponentTextColorInPricingOptions(page, expectedColor, index = 
     await flightResultsPage.waitForFlightResults();
 
     return result;
+  },
+
+  /**
+   * Verifies whether the "Limit Layover Duration" link under the Stops filter is rendered.
+   * flight-filter.vue drops it (v-if) only when "No stops" is the sole ticked stops option.
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @param {boolean} shouldBeDisplayed - true when the link must be rendered, false when it must be absent
+   * @returns {Promise<{displayed: boolean}>}
+   */
+  async verifyLimitLayoverDurationFilterDisplayed(page, shouldBeDisplayed) {
+    if (!page) throw new Error('[FlightResults.verifyLimitLayoverDurationFilterDisplayed] "page" is required, got: ' + typeof page);
+    if (typeof shouldBeDisplayed !== 'boolean') {
+      throw new Error(
+        `[FlightResults.verifyLimitLayoverDurationFilterDisplayed] "shouldBeDisplayed" must be a boolean, got: ${typeof shouldBeDisplayed}`
+      );
+    }
+
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    // Anchor on the Stops filter first, so an absent link means the app hid it, not that the panel never loaded.
+    await flightResultsPage.waitForStopsFilter();
+    const link = flightResultsPage.getLimitLayoverDurationFilterContainer();
+
+    try {
+      if (shouldBeDisplayed) {
+        await expect(link).toBeVisible({ timeout: 10000 });
+      } else {
+        await expect(link).toHaveCount(0, { timeout: 10000 });
+      }
+    } catch (err) {
+      throw new Error(
+        `[FlightResults.verifyLimitLayoverDurationFilterDisplayed] The "Limit Layover Duration" link under the Stops ` +
+        `filter was expected to be ${shouldBeDisplayed ? 'displayed' : 'hidden'} but was not. It is hidden only when ` +
+        `"No stops" is the sole ticked stops option. Original: ${err.message}`
+      );
+    }
+
+    logger.info('Limit Layover Duration link visibility verified', { displayed: shouldBeDisplayed });
+    return { displayed: shouldBeDisplayed };
+  },
+
+  /**
+   * Reads the layover time of every leg with a stop on every rendered result card. A 1-stop leg's
+   * time comes from the card; a card only names its stops when a leg has two or more, so those
+   * legs are read from the Flight Details drawer and their stop times summed — the total the
+   * layover filter judges.
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @param {{includeMultiStop?: boolean}} [options] - false skips the drawer reads for multi-stop legs
+   * @returns {Promise<Array<{card: number, leg: number, stops: number, text: string, minutes: number|null, stopMinutes: number[]}>>}
+   *   one entry per leg that has a stop; minutes is null for a multi-stop leg when includeMultiStop is false
+   */
+  async getLayoverMinutesPerResult(page, { includeMultiStop = true } = {}) {
+    if (!page) throw new Error('[FlightResults.getLayoverMinutesPerResult] "page" is required, got: ' + typeof page);
+
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    const cards = await flightResultsPage.getStopTimesPerResult();
+    const layovers = [];
+
+    for (let cardIndex = 0; cardIndex < cards.length; cardIndex++) {
+      const legs = cards[cardIndex];
+      let drawerLegs = null;
+
+      if (includeMultiStop && legs.some((leg) => leg.stops > 1)) {
+        logger.debug('Reading multi-stop layovers from the flight details drawer', { card: cardIndex + 1 });
+        await flightResultsPage.clickFlightDetailsButtonOnResult(cardIndex);
+        drawerLegs = await flightResultsPage.getFlightDetailsConnectionDurationsPerLeg();
+        await flightResultsPage.closeFlightDetailsDrawer();
+      }
+
+      legs.forEach((leg, legIndex) => {
+        if (!leg.stops) return;
+
+        const entry = { card: cardIndex + 1, leg: legIndex + 1, stops: leg.stops, text: leg.text, minutes: null, stopMinutes: [] };
+
+        if (leg.stops === 1) {
+          entry.minutes = leg.stopMinutes;
+          entry.stopMinutes = [leg.stopMinutes];
+        } else if (drawerLegs) {
+          const durations = drawerLegs[legIndex] ?? [];
+          if (durations.length !== leg.stops) {
+            throw new Error(
+              `[FlightResults.getLayoverMinutesPerResult] Result card ${cardIndex + 1}, leg ${legIndex + 1} shows ` +
+              `"${leg.text}" but its flight details drawer lists ${durations.length} connection(s), so the stop ` +
+              'times cannot be summed for the same leg.'
+            );
+          }
+          entry.stopMinutes = durations.map((duration) => layoverTextToMinutes(duration, cardIndex, legIndex));
+          entry.minutes = entry.stopMinutes.reduce((total, minutes) => total + minutes, 0);
+        }
+
+        layovers.push(entry);
+      });
+    }
+
+    return layovers;
+  },
+
+  /**
+   * Verifies every layover on the rendered result cards falls inside the Limit Layover Duration
+   * range label. flight.service.ts filterByLayoverDuration keeps a result only when each of its
+   * layovers is inside the range, so one outside it means the filter let it through.
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @returns {Promise<{range: string, checked: number, multiStop: number}>}
+   */
+  async verifyResultsWithinLimitLayoverDurationRange(page) {
+    if (!page) throw new Error('[FlightResults.verifyResultsWithinLimitLayoverDurationRange] "page" is required, got: ' + typeof page);
+
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    const range = await flightResultsPage.getLimitLayoverDurationFilterSummary();
+
+    // A stops or carrier filter click re-renders the list without a signal, so the cheap card-only
+    // read is retried until it agrees with the range before the drawer reads start.
+    await waitForCardLayoversInRange(this, page, range, 'verifyResultsWithinLimitLayoverDurationRange');
+
+    const layovers = await this.getLayoverMinutesPerResult(page);
+    assertLayoversInRange(layovers, range, 'verifyResultsWithinLimitLayoverDurationRange');
+
+    const multiStop = layovers.filter((layover) => layover.stops > 1).length;
+    logger.info('Every rendered layover is inside the Limit Layover Duration range', {
+      range: range.rangeText,
+      checked: layovers.length,
+      multiStop,
+    });
+    return { range: range.rangeText, checked: layovers.length, multiStop };
+  },
+
+  /**
+   * Verifies the Limit Layover Duration range is judged against the total of both stops on a
+   * 2-stop leg (#72380): every rendered 2-stop leg's summed stop time, read from the Flight Details
+   * drawer, has to sit inside the range.
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @returns {Promise<{range: string, twoStopLegs: number, longestTotal: number}>}
+   */
+  async verifyLimitLayoverDurationRangeCoversTwoStopTotals(page) {
+    if (!page) throw new Error('[FlightResults.verifyLimitLayoverDurationRangeCoversTwoStopTotals] "page" is required, got: ' + typeof page);
+
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    const range = await flightResultsPage.getLimitLayoverDurationFilterSummary();
+    await waitForCardLayoversInRange(this, page, range, 'verifyLimitLayoverDurationRangeCoversTwoStopTotals', { requireMultiStop: true });
+
+    const twoStopLegs = (await this.getLayoverMinutesPerResult(page)).filter((layover) => layover.stops > 1);
+    if (!twoStopLegs.length) {
+      throw new Error(
+        '[FlightResults.verifyLimitLayoverDurationRangeCoversTwoStopTotals] No rendered result has a leg with two or more ' +
+        `stops, so there is no 2-stop total to judge against the range "${range.rangeText}".`
+      );
+    }
+
+    assertLayoversInRange(twoStopLegs, range, 'verifyLimitLayoverDurationRangeCoversTwoStopTotals');
+
+    const longestTotal = Math.max(...twoStopLegs.map((layover) => layover.minutes));
+    logger.info('Limit Layover Duration range covers the 2-stop totals', {
+      range: range.rangeText,
+      twoStopLegs: twoStopLegs.length,
+      longestTotal,
+    });
+    return { range: range.rangeText, twoStopLegs: twoStopLegs.length, longestTotal };
+  },
+
+  /**
+   * Verifies every rendered result is from the carrier picked in the airline filter. "Multi carrier"
+   * keeps only results flown by more than one airline, which a card names "Multiple Carriers".
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @param {string} filterOption - The airline filter option that was ticked, e.g. "Multi carrier"
+   * @returns {Promise<{expectedCarrier: string}>}
+   */
+  async verifyAllResultsFromSelectedCarrier(page, filterOption) {
+    if (!page) throw new Error('[FlightResults.verifyAllResultsFromSelectedCarrier] "page" is required, got: ' + typeof page);
+    if (!filterOption || typeof filterOption !== 'string') {
+      throw new Error(
+        `[FlightResults.verifyAllResultsFromSelectedCarrier] "filterOption" must be a non-empty string — tick an airline ` +
+        `filter option first, got: ${typeof filterOption} (${filterOption})`
+      );
+    }
+
+    const expectedCarrier = CARRIER_FILTER_CARD_NAMES[filterOption.trim()] || filterOption.trim();
+    let lastError;
+
+    try {
+      // The airline filter click re-renders the list without a signal, so the read is retried.
+      await expect(async () => {
+        try {
+          await this.verifyAllResultsFromAirline(page, expectedCarrier);
+        } catch (err) {
+          lastError = err;
+          throw err;
+        }
+      }).toPass({ timeout: 15000 });
+    } catch (err) {
+      throw new Error(
+        `[FlightResults.verifyAllResultsFromSelectedCarrier] Not every rendered result is from "${expectedCarrier}" ` +
+        `after ticking the "${filterOption}" airline filter. Original: ${(lastError || err).message}`
+      );
+    }
+
+    logger.info('Every rendered result is from the selected carrier', { filterOption, expectedCarrier });
+    return { expectedCarrier };
   },
 
   /**

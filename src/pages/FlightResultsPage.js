@@ -303,6 +303,10 @@ const SELECTORS = {
   TIME_SLIDER_RANGE_LABEL: '.time-label',
   TIME_SLIDER_RUNWAY: '.time-slider .el-slider__runway',
   TIME_SLIDER_HANDLE: '.time-slider .el-slider__button-wrapper',
+  // The stops line under each result-card leg (flight-preview-segment.vue): "Direct", "1 stop AMS 2h30m"
+  // or "2 stops CDG / JFK". Only a 1-stop leg prints its stop time, in the gray span.
+  RESULT_SEGMENT_STOPS: '.flight-stops',
+  RESULT_SEGMENT_SINGLE_STOP_DURATION: '.flight-stops span.gray',
 
   // Codeshare / Operated by
   FLIGHT_OPERATOR: '.flight-operator',
@@ -361,6 +365,10 @@ const SELECTORS = {
   // Flight details drawer — connection advisory message (flight-details.vue)
   // Works in both results drawer ([aria-label='Flight details']) and cart drawer ([aria-label='More details'])
   FLIGHT_DETAILS_CONNECTION_MSG: '.connection-msg',
+  // The connection time printed on the right of each older-drawer .connection-msg row.
+  FLIGHT_DETAILS_CONNECTION_STOP_DURATION: '.connection-msg .stop-duration',
+  // Whichever flight details drawer is open on results, redesigned or older.
+  FLIGHT_DETAILS_OPEN_DRAWER: '.el-overlay:visible .app-drawer.flight-details-drawer',
   FLIGHT_DETAILS_TRANSPORT_ICON: '.connection-msg .material-symbols-outlined',
   FLIGHT_DETAILS_MATERIAL_ICON: '.material-symbols-outlined',
   // Flight details drawer — visible drawer container (results or cart)
@@ -3025,6 +3033,159 @@ async clickSelectForFareWithBaggagePricingOptions(baggageText) {
     const { startMinutes, endMinutes } = parseDurationRange(rangeText);
 
     return { rangeText, startMinutes, endMinutes };
+  }
+
+  /**
+   * Waits for the Stops filter group, the section the Limit Layover Duration link sits under.
+   * @param {number} timeout - Max wait time in ms (default: 30000)
+   */
+  async waitForStopsFilter(timeout = 30000) {
+    try {
+      await this.page.locator(SELECTORS.STOPS_FILTER).first().waitFor({ state: 'visible', timeout });
+    } catch (err) {
+      throw new Error(
+        `[FlightResultsPage.waitForStopsFilter] The Stops filter (${SELECTORS.STOPS_FILTER}) was not visible ` +
+        `within ${timeout}ms. The filter panel may not have loaded. Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Reads the stops line of every leg on every rendered result card.
+   *
+   * @param {{timeout?: number}} [options]
+   * @returns {Promise<Array<Array<{stops: number, text: string, stopMinutes: number|null}>>>} one entry
+   *   per card, each its legs in DOM order; stopMinutes is set only for a 1-stop leg, the only one
+   *   whose card prints its stop time.
+   */
+  async getStopTimesPerResult({ timeout = 60000 } = {}) {
+    try {
+      await this.waitForFlightResults(timeout);
+    } catch (err) {
+      throw new Error(
+        `[FlightResultsPage.getStopTimesPerResult] No flight result card became visible within ${timeout}ms ` +
+        `(selector: ${SELECTORS.FLIGHT_PREVIEW}). The filters may have left no result. Original: ${err.message}`
+      );
+    }
+
+    const cards = this.page.locator(SELECTORS.FLIGHT_PREVIEW);
+    const cardCount = await cards.count();
+    const perCard = [];
+
+    for (let cardIndex = 0; cardIndex < cardCount; cardIndex++) {
+      const legs = cards.nth(cardIndex).locator(SELECTORS.FLIGHT_PREVIEW_SEGMENT);
+      const legCount = await legs.count();
+      const legStops = [];
+
+      for (let legIndex = 0; legIndex < legCount; legIndex++) {
+        const leg = legs.nth(legIndex);
+        const text = ((await leg.locator(SELECTORS.RESULT_SEGMENT_STOPS).first().textContent()) ?? '')
+          .replace(/\s+/g, ' ')
+          .trim();
+        // No trailing \b: a 2-stop leg's textContent runs the count into the airport codes ("2 stopsAMS / SEA").
+        const stopsMatch = text.match(/(\d+)\s*stops?/i);
+        const stops = stopsMatch ? Number(stopsMatch[1]) : 0;
+        let stopMinutes = null;
+
+        if (stops === 1) {
+          const durationText = ((await leg.locator(SELECTORS.RESULT_SEGMENT_SINGLE_STOP_DURATION).first().textContent()) ?? '').trim();
+          try {
+            stopMinutes = parseDurationToMinutes(durationText);
+          } catch (err) {
+            throw new Error(
+              `[FlightResultsPage.getStopTimesPerResult] Leg ${legIndex + 1} of result card ${cardIndex + 1} is a 1-stop ` +
+              `leg ("${text}") but its stop time "${durationText}" is not a parsable duration. Original: ${err.message}`
+            );
+          }
+        }
+
+        legStops.push({ stops, text, stopMinutes });
+      }
+
+      perCard.push(legStops);
+    }
+
+    return perCard;
+  }
+
+  /**
+   * Opens the Flight details drawer of one result card, scoped to that card so the drawer always
+   * belongs to the card that was read.
+   * @param {number} cardIndex - Zero-based result card index
+   * @param {number} timeout - Max wait time in ms (default: 15000)
+   */
+  async clickFlightDetailsButtonOnResult(cardIndex, timeout = 15000) {
+    const card = this.page.locator(SELECTORS.FLIGHT_PREVIEW).nth(cardIndex);
+    const button = card
+      .getByRole('button', { name: SELECTORS.FLIGHT_DETAILS_BUTTON_NAME })
+      .or(card.getByRole('link', { name: SELECTORS.FLIGHT_DETAILS_BUTTON_NAME }))
+      .first();
+
+    try {
+      await button.scrollIntoViewIfNeeded({ timeout });
+      await button.click({ timeout });
+    } catch (err) {
+      throw new Error(
+        `[FlightResultsPage.clickFlightDetailsButtonOnResult] Could not click "${SELECTORS.FLIGHT_DETAILS_BUTTON_NAME}" ` +
+        `on result card ${cardIndex + 1}. The list may have re-rendered under a filter change. Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Reads the connection time of every stop on every leg of the open Flight details drawer, from
+   * whichever drawer the environment serves: the redesigned one (US 84214) or the older one staging
+   * still renders, where each .segment-details-wrapper is a leg and each .connection-msg a stop.
+   * The older drawer's .stop-over-msg (same aircraft, no connection) is deliberately not read.
+   *
+   * @param {number} timeout - Max wait time in ms (default: 30000)
+   * @returns {Promise<string[][]>} one entry per leg, outbound first, each its raw durations ("2h 15m")
+   */
+  async getFlightDetailsConnectionDurationsPerLeg(timeout = 30000) {
+    const redesignedLegs = this.getRedesignedFlightDetailsPanel().locator(SELECTORS.FD_LEG);
+    const olderLegs = this.page
+      .locator(SELECTORS.FLIGHT_DETAILS_OPEN_DRAWER)
+      .locator(SELECTORS.FLIGHT_DETAILS_LEG_WRAPPER);
+
+    try {
+      await redesignedLegs.first().or(olderLegs.first()).first().waitFor({ state: 'visible', timeout });
+    } catch (err) {
+      throw new Error(
+        `[FlightResultsPage.getFlightDetailsConnectionDurationsPerLeg] Neither a redesigned leg (${SELECTORS.FD_LEG}) ` +
+        `nor an older leg wrapper (${SELECTORS.FLIGHT_DETAILS_LEG_WRAPPER}) appeared in the flight details drawer ` +
+        `within ${timeout}ms. The drawer may not have opened. Original: ${err.message}`
+      );
+    }
+
+    if (await redesignedLegs.count()) {
+      const legs = await this.getRedesignedFlightDetailsLegs(timeout);
+      return legs.map((leg) => leg.connections.map((connection) => connection.duration));
+    }
+
+    const legCount = await olderLegs.count();
+    const perLeg = [];
+    for (let legIndex = 0; legIndex < legCount; legIndex++) {
+      const durations = await olderLegs.nth(legIndex).locator(SELECTORS.FLIGHT_DETAILS_CONNECTION_STOP_DURATION).allInnerTexts();
+      perLeg.push(durations.map((text) => text.replace(/\s+/g, ' ').trim()));
+    }
+    return perLeg;
+  }
+
+  /**
+   * Closes the open Flight details drawer, redesigned or older, and waits for it to be gone.
+   * @param {number} timeout - Max wait time in ms (default: 10000)
+   */
+  async closeFlightDetailsDrawer(timeout = 10000) {
+    const drawer = this.page.locator(SELECTORS.FLIGHT_DETAILS_OPEN_DRAWER).first();
+    try {
+      await drawer.locator(SELECTORS.FD_DRAWER_CLOSE).first().click({ timeout });
+      await drawer.waitFor({ state: 'hidden', timeout });
+    } catch (err) {
+      throw new Error(
+        `[FlightResultsPage.closeFlightDetailsDrawer] Could not close the flight details drawer ` +
+        `(${SELECTORS.FLIGHT_DETAILS_OPEN_DRAWER}). Original: ${err.message}`
+      );
+    }
   }
 
   async adjustLimitLayoverDurationFilterFromMidpoint() {

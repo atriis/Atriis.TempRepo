@@ -197,6 +197,7 @@ When("I filter results by {string} checkbox", async function (option) {
 When("I filter airline results by {string} checkbox", async function (option) {
   logger.info("Filtering airline results by checkbox", { option });
   await Results.filterAirlineByCheckboxOption(this.page, option);
+  this.selectedAirlineFilter = option;
 });
 
 When("I filter results by {string}", async function (optionLabel) {
