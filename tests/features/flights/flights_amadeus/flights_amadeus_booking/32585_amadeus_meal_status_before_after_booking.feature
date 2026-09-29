@@ -7,15 +7,16 @@
 # Updated: 2026-01-19T07:33:31Z
 
 @regression @flights @amadeus @meal @full-purchase
-Feature: 32585 Amadeus - Meal status displayed in cart before and after booking
+Feature: 32585 Amadeus - Flights - Display meal status in cart before and after booking and correct meal type is sent
   As a corporate traveler
   I want to see meal status in the cart before and after booking
   So that I know my meal preferences are correctly applied
 
-  Scenario: Meal status is visible before and after booking
+  Scenario: Meal status is visible before and after booking and correct meal type is sent
     Given I am logged in as "testim@meal.stt" booking a new trip
     And I have added myself as the traveler
     When I search for a one way flight from "LON" to "NYC"
+    And I filter results by carrier "Jetblue"
     And I add the first flight to cart
     Then the booking status should be "Pending booking"
     When I click to edit the meal extras section
@@ -31,4 +32,6 @@ Feature: 32585 Amadeus - Meal status displayed in cart before and after booking
     When I click the extras arrow button
     And I click to edit the meal extras section
     Then the selected meal should have status matching "(In progress)|(Declined by)"
+    When I capture the "response" payload for request type "Amadeus4.PNR_AddMultiElements" from Storage
+    Then the captured "response" payload for request type "Amadeus4.PNR_AddMultiElements" should contain "<type>DBML</type>"
     
