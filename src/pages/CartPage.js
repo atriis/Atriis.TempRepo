@@ -10491,6 +10491,35 @@ class CartPage {
     await this.page.waitForTimeout(3000);
   }
 
+  /**
+   * Opens the share dialog Language dropdown and leaves it open for the option reads.
+   * Scoped to :visible so a closed share dialog lingering in the DOM is never targeted. The whole
+   * form sits behind the dialog's loading skeleton, which can take well over 15s to clear.
+   * @param {object} [options]
+   * @param {number} [options.timeout=45000]
+   */
+  async openShareLanguageDropdown({ timeout = 45000 } = {}) {
+    try {
+      const dropdown = this.page.locator(`${SELECTORS.SHARE_LANGUAGE_DROPDOWN}:visible`).first();
+      await dropdown.waitFor({ state: 'visible', timeout });
+      await dropdown.click();
+    } catch (err) {
+      throw new Error(
+        `[CartPage.openShareLanguageDropdown] Could not open the Language dropdown in the share dialog. ` +
+        `The share dialog may not be open or still loading. Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Reads the option labels of the open share dialog Language dropdown, in display order.
+   * @returns {Promise<string[]>} Trimmed, non-empty option labels
+   */
+  async getOpenShareLanguageOptionTexts() {
+    const texts = await this.page.locator(SELECTORS.EL_SELECT_VISIBLE_DROPDOWN_ITEM).allInnerTexts();
+    return texts.map((t) => t.trim()).filter(Boolean);
+  }
+
   async selectShareDetailedView({ timeout = 30000 } = {}) {
     const detailedRadio = this.page
       .locator(SELECTORS.SHARE_DETAILED_RADIO)

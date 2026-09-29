@@ -16,7 +16,7 @@ const BookingErrorHandler = require("@utils/bookingErrorHandler");
 const { selectDateOfBirthWithYearArrows, parseDateValue, parseTimeToMinutes } = require("@utils/calendar.helper");
 const { expectNumbersToBeEqualWithTolerance } = require("../assertions/numberAssertions");
 const { parseAmountText } = require("@utils/dom");
-const { normalizeText, extractDateTokens, escapeRegex, stripWhitespaceAndLowercase } = require("@utils/text");
+const { normalizeText, extractDateTokens, escapeRegex, stripWhitespaceAndLowercase, sortAlphabetically } = require("@utils/text");
 const { extractPdfText, countLetters, assertPdfTextIsReadable, containsAmount, findCurrencyAmounts } = require("@utils/pdf");
 const logger = require("@utils/logger").child("Cart-DSL");
 
@@ -9370,6 +9370,55 @@ const Cart = {
     if (!language || typeof language !== 'string') throw new Error(`language must be a non-empty string, got: ${typeof language}`);
     const cartPage = getPageObject(page, CartPage);
     await cartPage.selectShareLanguage(language);
+  },
+
+  /**
+   * Opens the Language dropdown in the open share quote/itinerary dialog and leaves it open.
+   * The share dialog must already be open.
+   *
+   * @param {import('playwright').Page} page
+   * @returns {Promise<void>}
+   */
+  async openShareLanguageDropdown(page) {
+    if (!page) throw new Error('[Cart.openShareLanguageDropdown] "page" is required.');
+    const cartPage = getPageObject(page, CartPage);
+    await cartPage.openShareLanguageDropdown();
+  },
+
+  /**
+   * Verifies the open share dialog Language dropdown lists its options in alphabetical order
+   * (case-insensitive, locale-aware). Polls until the panel has rendered options, and needs at least
+   * two — an order assertion on zero or one option would pass vacuously.
+   *
+   * @param {import('playwright').Page} page
+   * @returns {Promise<{options: string[]}>}
+   */
+  async verifyShareLanguageDropdownSortedAlphabetically(page) {
+    if (!page) throw new Error('[Cart.verifyShareLanguageDropdownSortedAlphabetically] "page" is required.');
+    const cartPage = getPageObject(page, CartPage);
+
+    let options = [];
+    await expect
+      .poll(async () => {
+        options = await cartPage.getOpenShareLanguageOptionTexts();
+        return options.length;
+      }, { timeout: 10000 })
+      .toBeGreaterThan(1)
+      .catch(() => {
+        throw new Error(
+          `[Cart.verifyShareLanguageDropdownSortedAlphabetically] The share dialog Language dropdown shows fewer than two ` +
+          `options (${JSON.stringify(options)}). It may not be open — run "I open the language dropdown in the share dialog" first.`
+        );
+      });
+
+    const sorted = sortAlphabetically(options);
+    logger.info('[Cart.verifyShareLanguageDropdownSortedAlphabetically] Dropdown options', { options });
+    expect(
+      options,
+      `[Cart.verifyShareLanguageDropdownSortedAlphabetically] Share dialog Language options are not sorted alphabetically. ` +
+      `Displayed: ${JSON.stringify(options)}, expected: ${JSON.stringify(sorted)}`
+    ).toEqual(sorted);
+    return { options };
   },
 
   /**

@@ -2513,6 +2513,17 @@ When("I change the share language to {string}", async function (language) {
   await Cart.changeShareLanguage(this.page, language);
 });
 
+// Leaves the dropdown open so the following order assertion reads its options (test 85641).
+When("I open the language dropdown in the share dialog", async function () {
+  logger.info("Opening the share dialog language dropdown");
+  await Cart.openShareLanguageDropdown(this.page);
+});
+
+Then("the language dropdown options in the share dialog should be sorted alphabetically", async function () {
+  logger.info("Verifying the share dialog language dropdown options are sorted alphabetically");
+  await Cart.verifyShareLanguageDropdownSortedAlphabetically(this.page);
+});
+
 Then("{string} should be displayed in the share email preview", async function (text) {
   logger.info("Verifying share email preview contains text", { text });
   await Cart.verifySharePreviewContainsText(this.page, text);
