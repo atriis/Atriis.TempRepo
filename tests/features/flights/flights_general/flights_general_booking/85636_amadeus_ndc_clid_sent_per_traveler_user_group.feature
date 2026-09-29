@@ -1,4 +1,4 @@
-# Test Name: 71026 Amadeus NDC - CLID sent according to the lead traveler's user group
+# Test Name: 85636 Amadeus NDC - CLID sent according to the lead traveler's user group
 # Description: The Amadeus NDC search sends the Client IDs from 'Agreements - Tour Codes / Client Id'
 # only when the lead traveler's user group is selected on that agreement. With Anna Jonas as the
 # lead traveler the NDC search request carries no frequentTravellerInfo. With James Kristas as the
@@ -11,7 +11,7 @@
 
 # ADO Work Item: 71026
 @regression @flights @amadeus @ndc @clid @payload @priority:high
-Feature: 71026 Amadeus NDC - CLID sent according to the lead traveler's user group
+Feature: 85636 Amadeus NDC - CLID sent according to the lead traveler's user group
   As a corporate booker searching Amadeus NDC content
   I want the Client IDs sent only for travelers whose user group is on the agreement
   So that the negotiated corporate account is applied to the right travelers only
