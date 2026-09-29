@@ -187,6 +187,9 @@ async function settleRequestCount(countRequests, { requestType }) {
 // {headers}". That is two documents in one blob, so a straight parse throws and every path
 // assertion is unusable. Reading just the first complete document recovers the body; a payload
 // that really is malformed still lands in the error below.
+// A leading document followed by an XML body is not that case: BA NDC stores
+// '{"SOAPAction":"OrderCreate17_2_V5"}<OrderCreateRQ ...>', where the JSON is only the SOAP
+// header and the XML is the payload, so it is left to the XML path.
 function extractLeadingJsonDocument(payload) {
   if (typeof payload !== "string") return null;
 
@@ -212,6 +215,7 @@ function extractLeadingJsonDocument(payload) {
     if (character === "\"") inString = true;
     else if (character === opening) depth++;
     else if (character === closing && --depth === 0) {
+      if (payload.slice(i + 1).trimStart().startsWith("<")) return null;
       try {
         return JSON.parse(payload.slice(start, i + 1));
       } catch {
