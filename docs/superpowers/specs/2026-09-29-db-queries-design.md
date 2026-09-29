@@ -86,29 +86,136 @@ CI: variables are added to the existing `secrets.ENV` dotenv secret (exported by
 {
   "forbidden": ["\\bDROP\\b", "\\bTRUNCATE\\b", "\\bALTER\\b", "\\bGRANT\\b", "\\bREVOKE\\b"],
   "queries": {
-    "getTripStatus": {
-      "description": "Read the current status of a trip",
-      "sql": "SELECT Status AS status FROM Trips WHERE TripId = @tripId",
+    "getTripQuotes": {
+      "description": "Read the quotes of a trip (id, product, status, expires)",
+      "sql": "SELECT Id AS id, Product AS product, Status AS status, Expires AS expires FROM Quotes WHERE TripId = @tripId",
       "params": {
         "tripId": { "type": "Int", "default": "{tripNumber}" }
       }
     },
-    "setTripStatus": {
-      "description": "Force the status of a trip",
-      "sql": "UPDATE Trips SET Status = @status WHERE TripId = @tripId",
+
+    "expireTripQuotes": {
+      "description": "Set the expiry of every quote of a trip to now + N minutes",
+      "sql": "UPDATE Quotes SET Expires = DATEADD(MINUTE, @minutes, GETDATE()) WHERE TripId = @tripId",
       "params": {
-        "tripId": { "type": "Int", "default": "{tripNumber}" },
-        "status": { "type": "NVarChar", "required": true }
+        "tripId":  { "type": "Int", "default": "{tripNumber}" },
+        "minutes": { "type": "Int", "default": "2" }
       },
-      "snapshot": "SELECT Status AS status FROM Trips WHERE TripId = @tripId",
-      "restore": "setTripStatus",
+      "snapshot": "SELECT Id AS id, Expires AS expires FROM Quotes WHERE TripId = @tripId",
+      "restore": "restoreQuoteExpires",
+      "maxRows": 20
+    },
+    "restoreQuoteExpires": {
+      "description": "Restore one quote's expiry by id",
+      "restoreOnly": true,
+      "sql": "UPDATE Quotes SET Expires = @expires WHERE Id = @id",
+      "params": {
+        "id":      { "type": "Int", "required": true },
+        "expires": { "type": "DateTime2", "required": true }
+      },
+      "maxRows": 1
+    },
+
+    "expireTripEvolviPricings": {
+      "description": "Set the expiry of every Evolvi pricing of a trip to now + N minutes",
+      "sql": "UPDATE EvolviPricings SET Expires = DATEADD(MINUTE, @minutes, GETDATE()) WHERE QuoteId IN (SELECT Id FROM Quotes WHERE TripId = @tripId)",
+      "params": {
+        "tripId":  { "type": "Int", "default": "{tripNumber}" },
+        "minutes": { "type": "Int", "default": "0" }
+      },
+      "snapshot": "SELECT Id AS id, Expires AS expires FROM EvolviPricings WHERE QuoteId IN (SELECT Id FROM Quotes WHERE TripId = @tripId)",
+      "restore": "restoreEvolviPricingExpires",
+      "maxRows": 20
+    },
+    "restoreEvolviPricingExpires": {
+      "description": "Restore one Evolvi pricing's expiry by id",
+      "restoreOnly": true,
+      "sql": "UPDATE EvolviPricings SET Expires = @expires WHERE Id = @id",
+      "params": {
+        "id":      { "type": "Int", "required": true },
+        "expires": { "type": "DateTime2", "required": true }
+      },
+      "maxRows": 1
+    },
+
+    "expireTripGroundServicePricings": {
+      "description": "Set the expiry of the active ground-service pricings of a trip to now + N minutes (quote status 14 excluded)",
+      "sql": "UPDATE [dbo].[GroundServicePricings] SET Expires = DATEADD(MINUTE, @minutes, GETDATE()) WHERE QuoteId IN (SELECT Id FROM Quotes WHERE TripId = @tripId AND Product = 'groundService' AND Status <> 14)",
+      "params": {
+        "tripId":  { "type": "Int", "default": "{tripNumber}" },
+        "minutes": { "type": "Int", "default": "2" }
+      },
+      "snapshot": "SELECT Id AS id, Expires AS expires FROM [dbo].[GroundServicePricings] WHERE QuoteId IN (SELECT Id FROM Quotes WHERE TripId = @tripId AND Product = 'groundService' AND Status <> 14)",
+      "restore": "restoreGroundServicePricingExpires",
+      "maxRows": 20
+    },
+    "restoreGroundServicePricingExpires": {
+      "description": "Restore one ground-service pricing's expiry by id",
+      "restoreOnly": true,
+      "sql": "UPDATE [dbo].[GroundServicePricings] SET Expires = @expires WHERE Id = @id",
+      "params": {
+        "id":      { "type": "Int", "required": true },
+        "expires": { "type": "DateTime2", "required": true }
+      },
+      "maxRows": 1
+    },
+
+    "setTripCarPickupDate": {
+      "description": "Set the pickup date of the car segments of a trip",
+      "sql": "UPDATE CarSegments SET PickupDate = @pickupDate WHERE QuoteId IN (SELECT Id FROM Quotes WHERE Product = 'car' AND TripId = @tripId)",
+      "params": {
+        "tripId":     { "type": "Int", "default": "{tripNumber}" },
+        "pickupDate": { "type": "DateTime2", "required": true }
+      },
+      "snapshot": "SELECT Id AS id, PickupDate AS pickupDate FROM CarSegments WHERE QuoteId IN (SELECT Id FROM Quotes WHERE Product = 'car' AND TripId = @tripId)",
+      "restore": "restoreCarSegmentPickupDate",
+      "maxRows": 10
+    },
+    "restoreCarSegmentPickupDate": {
+      "description": "Restore one car segment's pickup date by id",
+      "restoreOnly": true,
+      "sql": "UPDATE CarSegments SET PickupDate = @pickupDate WHERE Id = @id",
+      "params": {
+        "id":         { "type": "Int", "required": true },
+        "pickupDate": { "type": "DateTime2", "required": true }
+      },
+      "maxRows": 1
+    },
+
+    "setTripHotelPrice": {
+      "description": "Force price, tax and total price of the hotel pricings of a trip",
+      "sql": "UPDATE HotelPricings SET Price = @price, Tax = @tax, TotalPrice = @totalPrice WHERE QuoteId IN (SELECT Id FROM Quotes WHERE TripId = @tripId)",
+      "params": {
+        "tripId":     { "type": "Int", "default": "{tripNumber}" },
+        "price":      { "type": "Decimal", "default": "1" },
+        "tax":        { "type": "Decimal", "default": "1" },
+        "totalPrice": { "type": "Decimal", "default": "2" }
+      },
+      "snapshot": "SELECT Id AS id, Price AS price, Tax AS tax, TotalPrice AS totalPrice FROM HotelPricings WHERE QuoteId IN (SELECT Id FROM Quotes WHERE TripId = @tripId)",
+      "restore": "restoreHotelPricingPrice",
+      "maxRows": 10
+    },
+    "restoreHotelPricingPrice": {
+      "description": "Restore one hotel pricing's price, tax and total price by id",
+      "restoreOnly": true,
+      "sql": "UPDATE HotelPricings SET Price = @price, Tax = @tax, TotalPrice = @totalPrice WHERE Id = @id",
+      "params": {
+        "id":         { "type": "Int", "required": true },
+        "price":      { "type": "Decimal", "required": true },
+        "tax":        { "type": "Decimal", "required": true },
+        "totalPrice": { "type": "Decimal", "required": true }
+      },
       "maxRows": 1
     }
   }
 }
 ```
 
-Table/column names above are illustrative; real entries are added per test need.
+These entries translate the team's current manual queries (hard-coded trip ids become `@tripId` defaulting to `{tripNumber}`; the hard-coded minute offsets become `@minutes` defaults). `UPDATE Quotes … WHERE Id IN (SELECT Id FROM Quotes WHERE TripId = …)` is simplified to the equivalent `WHERE TripId = @tripId`. Column types (`Int` ids, `DateTime2` dates, `Decimal` prices) and the exact table casing are to be confirmed against the DB schema during implementation; `db:check` validates each catalog read against the live DB.
+
+### Restore pattern
+
+A write that changes several rows restores them **row by row by primary key**: its `snapshot` returns `id` plus the original values of every column the write changes, aliased to the param names of a paired `restoreOnly` query (`UPDATE … SET col = @col WHERE Id = @id`, `maxRows: 1`). The restore therefore writes back the exact original values, not a recomputed one (e.g. the original absolute `Expires`, not `DATEADD` relative to cleanup time).
 
 ### Query entry fields
 
@@ -117,10 +224,11 @@ Table/column names above are illustrative; real entries are added per test need.
 | `description` | yes | Human description, shown in logs/errors |
 | `sql` | yes | Single statement with `@param` placeholders |
 | `params` | yes (may be `{}`) | Map name → `{ type, default?, required? }`; `type` is an `mssql` type name (`Int`, `BigInt`, `NVarChar`, `VarChar`, `Bit`, `DateTime2`, `Decimal`, `UniqueIdentifier`) |
-| `snapshot` | writes with restore | SELECT run before the write with the same params; its columns feed the restore |
-| `restore` | writes with restore | Name of a catalog query to run on cleanup |
+| `snapshot` | writes with restore | SELECT run inside the write's transaction with the same params; returns `id` + original values, aliased to the restore query's param names |
+| `restore` | writes with restore | Name of a `restoreOnly` catalog query, run once per snapshot row on cleanup |
+| `restoreOnly` | no | `true` marks a restore query: it needs no `snapshot`/`restore`/`noRestore` and cannot be run from a step |
 | `noRestore` | writes without restore | Non-empty reason string; mutually exclusive with `snapshot`/`restore` |
-| `maxRows` | no | Max rows a write may affect (default `1`) |
+| `maxRows` | every write | Max rows the write may affect; no default, so each entry states its expected blast radius |
 
 ### Catalog validation (at load, fail-fast for the whole run)
 
@@ -129,23 +237,25 @@ The catalog is validated on first load; any violation throws `DbQueryError(POLIC
 1. Every `forbidden` entry (case-insensitive regex) is tested against each query's `sql` and `snapshot`.
 2. Built-in rules, not configurable:
    - One statement only: no `;` except a single trailing one; no `GO`.
+   - No SQL comments (`--`, `/* */`), so no pattern can be hidden from the forbidden check.
    - No `EXEC`/`EXECUTE`/`sp_executesql`.
    - `UPDATE`/`DELETE` must contain `WHERE`.
    - `snapshot` must be a `SELECT`.
 3. Every `@param` used in `sql`/`snapshot` is declared in `params`; every declared param is used in `sql`.
 4. `type` must be a supported `mssql` type.
-5. Write queries (`UPDATE`/`INSERT`/`DELETE`/`MERGE`) must have (`snapshot` AND `restore`) XOR `noRestore`.
-6. `restore` must reference an existing catalog query, which must itself be a write. (Snapshot column names are only known at runtime, so matching them to the restore query's params is checked in §6 step 4.)
+5. Write queries (`UPDATE`/`INSERT`/`DELETE`/`MERGE`) must declare `maxRows`, and — unless `restoreOnly` — (`snapshot` AND `restore`) XOR `noRestore`.
+6. `restore` must reference an existing catalog query marked `restoreOnly`. (Snapshot column names are only known at runtime, so matching them to the restore query's params is checked in §6 step 4.)
 
 ## 6. Runtime flow — `DbQueries.runQuery(world, name, overrides)`
 
-1. **Resolve** name in catalog → else `POLICY` error listing close names.
+1. **Resolve** name in catalog → else `POLICY` error listing close names. A `restoreOnly` query is refused here (only the restore hook runs it).
 2. **Validate overrides**: keys must be declared params → else `POLICY` error (catches Gherkin typos).
 3. **Build params**: `default` → override → resolve `{placeholder}` against world (`{tripNumber}` = trip id, other `{key}` = `world[key]` primitive) → coerce to declared type (invalid `Int` etc. → `POLICY` error). A `required` param with an empty result, or any param still containing an unresolved `{…}`, fails.
-4. **Snapshot** (writes with `snapshot`): run SELECT with same params. 0 rows, or more rows than `maxRows` → fail before writing. Every snapshot column name must be a declared param of the restore query → else `POLICY` error before writing. All snapshot rows are kept; the restore runs once per snapshot row.
-5. **Execute** in a transaction. For writes, if `rowsAffected > maxRows` → rollback + `ROW_LIMIT` error. Else commit.
-6. **Register restore** (writes with restore): for each snapshot row push `{ query: restore, params: { ...builtParams, ...snapshotRow } }` onto `world.dbRestores`.
-7. **Store result**: `world.dbLastResult = { query: name, rows, rowsAffected }`.
+4. **Begin transaction** (writes). Snapshot and write share it, so no parallel worker can change the rows in between.
+5. **Snapshot** (writes with `snapshot`): run the SELECT with the same params. 0 rows, or more rows than `maxRows` → rollback + fail before writing. Snapshot columns must be exactly the restore query's declared params → else rollback + `POLICY` error.
+6. **Execute** the write. If `rowsAffected > maxRows`, or (with a snapshot) `rowsAffected ≠ snapshot row count` → rollback + `ROW_LIMIT` error. Else commit.
+7. **Register restore** (after commit): for each snapshot row push `{ query: restore, params: snapshotRow }` onto `world.dbRestores`; the restore query's params come only from the snapshot row.
+8. **Store result**: `world.dbLastResult = { query: name, rows, rowsAffected }`.
 
 ### Restore — `tests/support/dbHooks.js`
 
