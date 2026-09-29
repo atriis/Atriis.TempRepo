@@ -129,8 +129,21 @@ test("a write whose rowsAffected differs from the snapshot rolls back and regist
 });
 
 test("snapshot columns that do not match the restore params roll back", async () => {
-  withFake(() => ({ rows: [{ Id: 1, expires: ORIGINAL_1 }], rowsAffected: 1 }));
-  await assert.rejects(DbQueries.runQuery({ tripId: "42" }, "expire"), errorWith("POLICY", "alias the snapshot columns"));
+  const client = withFake(() => ({ rows: [{ Id: 1, expires: ORIGINAL_1 }], rowsAffected: 1 }));
+  const world = { tripId: "42" };
+  await assert.rejects(DbQueries.runQuery(world, "expire"), errorWith("POLICY", "alias the snapshot columns"));
+  assert.equal(client.calls.at(-1).type, "rollback");
+  assert.equal(client.calls.some((call) => call.sqlText === Q.expire.sql), false);
+  assert.equal(world.dbRestores, undefined);
+});
+
+test("a snapshot row whose restore params cannot be coerced rolls back before the write", async () => {
+  const client = withFake(() => ({ rows: [{ id: "not-a-number", expires: ORIGINAL_1 }], rowsAffected: 1 }));
+  const world = { tripId: "42" };
+  await assert.rejects(DbQueries.runQuery(world, "expire"), (error) => error instanceof DbQueryError && error.code === "POLICY");
+  assert.deepEqual(client.calls.map((call) => call.type), ["begin", "execute", "rollback"]);
+  assert.equal(client.calls.some((call) => call.sqlText === Q.expire.sql), false);
+  assert.equal(world.dbRestores, undefined);
 });
 
 test("a noRestore write above maxRows rolls back", async () => {
@@ -241,6 +254,14 @@ test("waitForColumn polls a read query until the value appears", async () => {
   const result = await DbQueries.waitForColumn({ tripId: "1" }, { name: "readStatus", column: "status", expected: "DONE", seconds: 5, intervalMs: 5 });
   assert.equal(result.rows[0].status, "DONE");
   assert.equal(reads, 3);
+});
+
+test("waitForColumn makes a final poll at the deadline", async () => {
+  let reads = 0;
+  withFake(() => ({ rows: [{ status: ++reads >= 2 ? "DONE" : "PENDING" }], rowsAffected: 1 }));
+  const result = await DbQueries.waitForColumn({ tripId: "1" }, { name: "readStatus", column: "status", expected: "DONE", seconds: 1, intervalMs: 700 });
+  assert.equal(result.rows[0].status, "DONE");
+  assert.equal(reads, 2);
 });
 
 test("waitForColumn times out showing the last value, and refuses writes and long waits", async () => {

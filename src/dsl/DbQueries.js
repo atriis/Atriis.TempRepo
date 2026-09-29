@@ -80,6 +80,10 @@ async function runWrite(catalog, name, query, params, transaction) {
       throw new DbQueryError("ROW_LIMIT", `DB query "${name}" snapshot matched ${snapshotRows.length} rows, maxRows ${query.maxRows}`);
     }
     policy.checkSnapshotColumns(name, snapshotRows, query.restore, restoreQuery);
+    // Dry-run the restore params now: a coercion failure at restore time would leave a committed, unrestorable write.
+    for (const row of snapshotRows) {
+      policy.buildParams(query.restore, restoreQuery, row, {}, { fromSnapshot: true });
+    }
   }
 
   const { rows, rowsAffected } = await client.execute(query.sql, params, query.params, { transaction, queryName: name });
@@ -286,10 +290,11 @@ const DbQueries = {
         lastSeen = normalizeValue(result.rows[0][column]);
         if (lastSeen === value) return result;
       }
-      if (Date.now() + intervalMs > deadline) {
+      if (Date.now() >= deadline) {
         throw assertionFailure(result, `DB query "${name}" column "${column}" did not become "${value}" within ${seconds}s; last seen "${lastSeen}"`);
       }
-      await sleep(intervalMs);
+      // Never sleep past the deadline, so there is always a final poll at it.
+      await sleep(Math.min(intervalMs, deadline - Date.now()));
     }
   },
 
