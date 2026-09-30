@@ -16,15 +16,16 @@ Feature: 77845 Amadeus - Office ID MU fixed value applied on by schedule round t
     And I have added myself as the traveler
     And I have added a random guest traveler
 
-    # First search: LON-FRA route with office ID FLXtest — expects no markup
+    # First search: LON-FRA route with office ID FLXtest (LH NDC) — expects no markup. The NDC row is
+    # picked explicitly: LH is also sold through Amadeus office NCEPF, which carries the $15 MU.
     When I search for a flight by schedule from "LON" to "FRA" with preferred carrier "LH"
-    And I click to open first pricing options
+    And I click to open pricing options for the first NDC direct rate result
     And I start intercepting the flight pricing response
     Then the markup in the flight pricing response should be "0"
     And I select the first option from pricing options
     And I add to trip from pricing options
     And I wait for the change flight button to be visible
-    And I click to open first pricing options
+    And I click to open pricing options for the first NDC direct rate result
     And I start intercepting the flight pricing response
     Then the markup in the flight pricing response should be "0"
     And I close pricing options modal
