@@ -282,6 +282,10 @@ async function downloadPayload({ baseUrl, tripId, rowKey, source, operationTimeo
  *                                                  its response share the same rowKey, so this is
  *                                                  how the counterpart of a captured payload is read.
  * @param {number}  [options.lookbackMinutes]     - defaults to config value
+ * @param {Date}    [options.notBefore]           - hard floor on the entry timestamp. Unlike the
+ *                                                  lookback it is never widened by the retries, so
+ *                                                  calls logged before it (an earlier run on the same
+ *                                                  fixed trip) can never be picked up.
  * @param {number}  [options.timeoutMs]           - whole-operation budget; defaults to config value.
  *                                                  Raise it when downloading many payloads at once.
  * @param {boolean} [options.listOnly]            - return the matched entries' metadata WITHOUT
@@ -295,7 +299,7 @@ async function downloadPayload({ baseUrl, tripId, rowKey, source, operationTimeo
  * @returns {Promise<{ payload: string, metadata: object }>} - or, when `listOnly` is set,
  *            `{ entries: object[], metadata: object }` with no payload downloaded.
  */
-async function fetchPayloadFromStorage({ source, requestType, tripId, transactionId, sid, rowKey, lookbackMinutes, returnAllMatches = false, maxMatches, timeoutMs, listOnly = false } = {}) {
+async function fetchPayloadFromStorage({ source, requestType, tripId, transactionId, sid, rowKey, lookbackMinutes, notBefore, returnAllMatches = false, maxMatches, timeoutMs, listOnly = false } = {}) {
   if (!source || !["request", "response"].includes(source)) {
     throw new Error(`source must be "request" or "response", got: ${source}`);
   }
@@ -382,6 +386,7 @@ async function fetchPayloadFromStorage({ source, requestType, tripId, transactio
       to: criteria.toDate.toISOString(),
       tripId: criteria.includeTripId ? tripIdString : "<ignored>",
       rowKey: rowKey || "<any>",
+      notBefore: notBefore ? notBefore.toISOString() : "<none>",
       requestType: criteria.includeRequestType ? requestType : "<ignored>",
       requestTypeMatchMode: criteria.includeRequestType
         ? (requestTypeMatcher.hasWildcard ? "wildcard" : "exact")
@@ -427,6 +432,7 @@ async function fetchPayloadFromStorage({ source, requestType, tripId, transactio
       if (!entry) continue;
 
       if (entry.timestamp < criteria.fromDate || entry.timestamp > criteria.toDate) continue;
+      if (notBefore && entry.timestamp < notBefore) continue;
       // A pinned rowKey identifies one exact stored call, so it overrides nothing else but narrows
       // every filter combination below to that single row.
       if (rowKey && entry.rowKey !== rowKey) continue;

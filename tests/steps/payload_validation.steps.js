@@ -115,6 +115,43 @@ When("I capture the {string} payload for request type {string} from Storage", as
   });
 });
 
+// A fixed, reused trip keeps the calls of every earlier run in storage. Noting the time right before
+// the action lets the capture below ignore them, so the assertion can only pass on this run's call.
+When("I note the time before new payload requests are sent", async function () {
+  this.payloadRequestsNotBefore = new Date();
+  logger.info("Noted the time before new payload requests are sent", {
+    notBefore: this.payloadRequestsNotBefore.toISOString(),
+  });
+});
+
+When("I capture the latest {string} payload for request type {string} sent since the noted time from Storage", async function (source, requestType) {
+  await runPayloadValidationStep(this, "capturePayloadSentSince", { source, requestType }, async () => {
+    const identifiers = getScenarioIdentifiers(this);
+    logger.info("Capturing the latest payload sent since the noted time", {
+      source,
+      requestType,
+      notBefore: this.payloadRequestsNotBefore?.toISOString(),
+      ...identifiers,
+    });
+
+    const record = await PayloadValidation.capturePayloadSentSince(
+      this.page,
+      this,
+      source,
+      requestType,
+      this.payloadRequestsNotBefore,
+      identifiers
+    );
+
+    this.lastCapturedParserPayload = record;
+    logger.info("Payload sent since the noted time captured and pinned", {
+      source: record.source,
+      requestType: record.requestType,
+      rowKey: record.rowKey,
+    });
+  });
+});
+
 // Captures the other half of the call captured just before — the response of that request, or the
 // request of that response. Use it when a trip sends the same request type several times and the
 // assertion must stay on ONE of them (e.g. one post-creation FQTV call per carrier): capture the

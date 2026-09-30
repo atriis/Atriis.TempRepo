@@ -3,6 +3,7 @@ const { expect } = require("@playwright/test");
 const { MenuPage } = require("@pages/MenuPage");
 const TripsPage = require("@pages/TripsPage");
 const LoginPage = require("@pages/LoginPage");
+const { HomePage } = require("@pages/HomePage");
 const logger = require("@utils/logger").child("Trips");
 
 /**
@@ -116,6 +117,61 @@ const Trips = {
     } catch (err) {
       throw new Error(
         `[Trips.clickFirstTrip] Failed to click the first trip from the trip list. The trip list may be empty or the trip card link was not clickable. Original: ${err.message}`
+      );
+    }
+  },
+
+  /**
+   * Opens one named trip from the trip list and waits for its cart.
+   *
+   * Same tab handling as clickFirstTrip (new tab for bookers/no-corp users, same
+   * tab for travelers), but targets the card by trip id, so it still works when
+   * other trips sort above it. Returns the page showing the trip so the caller
+   * can reassign `this.page`.
+   *
+   * @param {import('@playwright/test').Page} page
+   * @param {string} tripId
+   * @returns {Promise<import('@playwright/test').Page>} the page showing the opened trip cart
+   */
+  async openTripById(page, tripId) {
+    if (!page) throw new Error('[Trips.openTripById] page is required');
+    if (typeof tripId !== 'string' || !tripId.trim()) {
+      throw new Error(`[Trips.openTripById] "tripId" must be a non-empty string, got: ${JSON.stringify(tripId)}`);
+    }
+    const context = page.context();
+    if (!context) throw new Error('[Trips.openTripById] page context is null — cannot detect a new tab');
+
+    const tripsPage = getPageObject(page, TripsPage);
+    const loginPage = getPageObject(page, LoginPage);
+
+    let openedPage;
+    try {
+      // Cookie consent banner can intercept the click.
+      await loginPage.acceptCookiesIfPresent(5000);
+
+      // Arm the new-page listener BEFORE the click; fall back to same-tab nav.
+      const newTabPromise = context.waitForEvent('page', { timeout: 15000 }).catch(() => null);
+      logger.debug(`[Trips.openTripById] Clicking trip ${tripId}`);
+      await tripsPage.clickTripLinkById(tripId);
+      const newTab = await newTabPromise;
+
+      if (newTab) {
+        await newTab.waitForLoadState('domcontentloaded', { timeout: 30000 }).catch(() => {});
+        logger.info(`[Trips.openTripById] Trip ${tripId} opened in a new browser tab`);
+        openedPage = newTab;
+      } else {
+        // A missed booker tab would leave us on the trips list; the warning plus
+        // the cart-URL wait below makes that visible instead of a later mystery.
+        logger.warn(`[Trips.openTripById] No new browser tab detected for trip ${tripId} — assuming same-tab open (traveler) or a missed booker tab`);
+        await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => {});
+        openedPage = page;
+      }
+
+      await getPageObject(openedPage, HomePage).waitForTripCartUrl(tripId.trim());
+      return openedPage;
+    } catch (err) {
+      throw new Error(
+        `[Trips.openTripById] Failed to open trip ${tripId} from the trip list. The trip may not be in the active list, its link was not clickable, or its cart did not load. Original: ${err.message}`
       );
     }
   },

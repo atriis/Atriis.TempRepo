@@ -25,6 +25,11 @@ When("I click the first trip from the trip list", async function () {
   this.page = await Trips.clickFirstTrip(this.page);
 });
 
+When("I open the trip with id {string} from the trips page", async function (tripId) {
+  logger.info("Opening a trip by id from the trips page", { tripId });
+  this.page = await Trips.openTripById(this.page, tripId);
+});
+
 When("I open the trip overview tab", async function () {
   logger.info("Opening the trip Overview tab");
   await Trips.openTripOverviewTab(this.page);

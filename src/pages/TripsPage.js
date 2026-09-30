@@ -114,6 +114,11 @@ const SELECTORS = {
   FIRST_TRIP_LINK:
     '.trip-preview .more-details-link:visible',
 
+  // The trip id inside a trip card's details link (trip-preview.vue). Used to pick
+  // one named trip's link out of FIRST_TRIP_LINK, since list order is not stable.
+  TRIP_LINK_TRIP_ID:
+    '.trip-id',
+
   // Overview tab header in the trip cart (trip-cart.vue → el-tab-pane name="overview").
   // Element Plus renders the tab header as <div id="tab-overview" class="el-tabs__item">.
   OVERVIEW_TAB:
@@ -287,6 +292,34 @@ class TripsPage {
     } catch (err) {
       throw new Error(
         `[TripsPage.clickFirstTripLink] Could not click the first trip's details link (${SELECTORS.FIRST_TRIP_LINK}). The trip list may be empty or not loaded. Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Clicks the details link of the trip card whose trip id matches exactly.
+   *
+   * Exact match so "390150" never hits "3901506". Same dynamic target as
+   * clickFirstTripLink — the caller detects any new tab. Click only.
+   *
+   * @param {string} tripId
+   */
+  async clickTripLinkById(tripId) {
+    if (typeof tripId !== "string" || !tripId.trim()) {
+      throw new Error(
+        `[TripsPage.clickTripLinkById] "tripId" must be a non-empty string, got: ${JSON.stringify(tripId)}`
+      );
+    }
+    const link = this.page
+      .locator(SELECTORS.FIRST_TRIP_LINK)
+      .filter({ has: this.page.locator(SELECTORS.TRIP_LINK_TRIP_ID, { hasText: exactText(tripId.trim()) }) })
+      .first();
+    try {
+      await link.waitFor({ state: "visible", timeout: 15000 });
+      await link.click({ timeout: 10000 });
+    } catch (err) {
+      throw new Error(
+        `[TripsPage.clickTripLinkById] Could not click the details link of trip ${tripId} (${SELECTORS.FIRST_TRIP_LINK} containing ${SELECTORS.TRIP_LINK_TRIP_ID} "${tripId}"). The trip may not be in the active trip list or the list has not loaded. Original: ${err.message}`
       );
     }
   }

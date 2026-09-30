@@ -754,6 +754,67 @@ const PayloadValidation = {
   },
 
   /**
+   * Capture the latest payload of a request type logged at or after `notBefore`, and pin it.
+   *
+   * Why this exists: on a fixed, reused trip the storage already holds calls of the same type from
+   * earlier runs. capturePayloadByRequestType can hand back one of those while this run's call is
+   * still being published, and its assertion fallback scans them all — so an old call made on a
+   * fixed build can turn a broken build green. The floor keeps old calls out of the lookup (the
+   * lookup retries until a new one lands), and pinning keeps the assertion on this one call.
+   *
+   * @param {Date} notBefore - moment noted before the action that sends the call
+   */
+  async capturePayloadSentSince(page, world, source, requestType, notBefore, options = {}) {
+    if (!page) {
+      throw new Error("page is required");
+    }
+
+    assertWorld(world);
+
+    if (!(notBefore instanceof Date) || Number.isNaN(notBefore.getTime())) {
+      throw new Error(
+        `[PayloadValidation.capturePayloadSentSince] no valid start time was noted, got: ${notBefore}. ` +
+        `Run "I note the time before new payload requests are sent" before the action.`
+      );
+    }
+
+    const normalizedSource = normalizeSource(source);
+    const normalizedRequestType = normalizeRequestType(requestType);
+
+    let captureResult;
+    try {
+      captureResult = await fetchPayloadFromStorage({
+        source: normalizedSource,
+        requestType: normalizedRequestType,
+        tripId: options.tripId,
+        transactionId: options.transactionId,
+        sid: options.sid,
+        notBefore,
+      });
+    } catch (error) {
+      throw new Error(
+        `[PayloadValidation.capturePayloadSentSince] No "${normalizedRequestType}" ${normalizedSource} was logged ` +
+        `for trip ${options.tripId} at or after ${notBefore.toISOString()}. Older calls of this type were ignored on purpose. ` +
+        `Underlying error: ${error.message}`
+      );
+    }
+
+    return this.setCapturedPayload(
+      world,
+      normalizedSource,
+      normalizedRequestType,
+      captureResult.payload,
+      {
+        tripId: options.tripId,
+        transactionId: options.transactionId,
+        sid: options.sid,
+        rowKey: captureResult.metadata?.rowKey,
+        pinned: true,
+      }
+    );
+  },
+
+  /**
    * Capture the counterpart of the payload captured most recently for `previousSource`.
    *
    * Why this exists: {@link capturePayloadByRequestType} always takes the LATEST call of a request
