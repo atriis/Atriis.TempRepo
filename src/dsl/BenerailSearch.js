@@ -585,6 +585,23 @@ const BenerailSearch = {
 
     return results;
   },
+
+  /**
+   * Types a query into the rail "From" station field and returns the autocomplete rows in the
+   * order they are displayed — city rows and station rows alike (both render their name in
+   * .autocomplete-result-text p). Returns raw texts; ordering assertions belong in the step.
+   * @param {import('playwright').Page} page
+   * @param {string} query - Text typed into the From station field
+   * @returns {Promise<string[]>}
+   */
+  async getFromStationSuggestions(page, query) {
+    if (!page) {
+      throw new Error('[BenerailSearch.getFromStationSuggestions] "page" is required.');
+    }
+
+    const benerailSearchPage = getPageObject(page, BenerailSearchPage);
+    return benerailSearchPage.getStationAutocompleteSuggestionTexts(query);
+  },
 };
 
 module.exports = BenerailSearch;

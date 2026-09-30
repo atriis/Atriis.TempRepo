@@ -79,6 +79,25 @@ When("I navigate to the Benerail rail search tab", async function () {
   await BenerailSearch.selectBenerailSearch(this.page);
 });
 
+// ===== FROM STATION AUTOCOMPLETE ORDER =====
+
+When("I type {string} in from station location", async function (query) {
+  logger.info("Typing into the Benerail From station field", { query });
+  this.railStationSuggestions = await BenerailSearch.getFromStationSuggestions(this.page, query);
+});
+
+Then("you should see exactly {string} as the {int} option", async function (expectedText, position) {
+  const suggestions = this.railStationSuggestions;
+  if (!suggestions) {
+    throw new Error('No station suggestions captured — run "I type {string} in from station location" first.');
+  }
+  logger.info("Verifying Benerail From station suggestion at position", { expectedText, position });
+  expect(
+    suggestions[position - 1],
+    `Expected option ${position} to be exactly "${expectedText}", displayed options: ${JSON.stringify(suggestions)}`,
+  ).toBe(expectedText);
+});
+
 // ===== TIME-PICKER REDESIGN (test 68008) =====
 
 When("I select the one way trip type for the Benerail search", async function () {
