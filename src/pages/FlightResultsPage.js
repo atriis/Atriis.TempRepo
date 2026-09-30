@@ -332,6 +332,14 @@ const SELECTORS = {
   // both noBrandResults and noBrandFeatures are true (branded-fares.vue line 23,
   // i18n key flight.brandedFaresUnavailable)
   BRANDED_FARES_UNAVAILABLE_MESSAGE: "[aria-label='Branded fares'] h6:has-text('Brand information is currently unavailable')",
+  // Every brand renders its own tab pane; only the clicked brand's pane is displayed.
+  BRANDED_FARES_ACTIVE_PANE: "[aria-label='Branded fares'] .el-tab-pane:visible",
+  BRANDED_FARES_BRAND_SERVICES: '.brand-services',
+  BRANDED_FARES_BRAND_TITLE: '.brand-services > h4',
+  // .service-item excludes the h6.service-title section headings, which are not attributes.
+  BRANDED_FARES_INCLUDED_ITEMS: '.brand-services .included .service-item',
+  BRANDED_FARES_ADDITIONAL_CHARGE_ITEMS: '.brand-services .additional-charge .service-item',
+  BRANDED_FARES_NOT_INCLUDED_ITEMS: '.brand-services .not-included .service-item',
 
   // Carrier name in flight details drawer
   CARRIER_NAME_IN_DETAILS: '.flight-details-top-bar .carrier-name',
@@ -3902,6 +3910,56 @@ async clickSelectForFareWithBaggagePricingOptions(baggageText) {
     } catch {
       return false;
     }
+  }
+
+  /**
+   * Reads the attribute lines of the brand shown in the branded fares drawer's active tab, grouped
+   * by the section they render under. An item holding several `<br>`-separated lines yields one
+   * entry per line.
+   * @param {number} timeout - Max wait time in ms for the brand content to load (default: 30000)
+   * @returns {Promise<{brandName: string, included: string[], additionalCharge: string[], notIncluded: string[]}>}
+   */
+  async getActiveBrandedFareSections(timeout = 30000) {
+    const pane = this.page.locator(SELECTORS.BRANDED_FARES_ACTIVE_PANE).first();
+    const services = pane.locator(SELECTORS.BRANDED_FARES_BRAND_SERVICES).first();
+    const unavailable = this.page.locator(SELECTORS.BRANDED_FARES_UNAVAILABLE_MESSAGE).first();
+
+    // The drawer shell opens before Brand Info returns; the skeleton is replaced by either the
+    // brand content or the unavailable message.
+    try {
+      await services.or(unavailable).first().waitFor({ state: 'visible', timeout });
+    } catch (err) {
+      throw new Error(
+        `[FlightResultsPage.getActiveBrandedFareSections] The branded fares drawer showed neither brand ` +
+        `content nor the unavailable message within ${timeout}ms. Brand Info may still be loading or the ` +
+        `drawer did not open. Original: ${err.message}`
+      );
+    }
+
+    if (await unavailable.isVisible()) {
+      throw new Error(
+        '[FlightResultsPage.getActiveBrandedFareSections] The branded fares drawer shows "Brand information ' +
+        'is currently unavailable", so there are no brand attributes to read. The Brand Info call likely ' +
+        'failed or returned no brands for this offer.'
+      );
+    }
+
+    const readLines = async (selector) => {
+      const texts = await pane.locator(selector).evaluateAll((els) => els.map((el) => el.innerText || ''));
+      return texts
+        .flatMap((text) => text.split(/\r?\n/))
+        .map((line) => line.trim())
+        .filter(Boolean);
+    };
+
+    const brandName = ((await pane.locator(SELECTORS.BRANDED_FARES_BRAND_TITLE).first().innerText()) || '').trim();
+
+    return {
+      brandName,
+      included: await readLines(SELECTORS.BRANDED_FARES_INCLUDED_ITEMS),
+      additionalCharge: await readLines(SELECTORS.BRANDED_FARES_ADDITIONAL_CHARGE_ITEMS),
+      notIncluded: await readLines(SELECTORS.BRANDED_FARES_NOT_INCLUDED_ITEMS),
+    };
   }
 
   /**

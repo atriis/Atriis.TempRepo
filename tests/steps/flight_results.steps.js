@@ -8,6 +8,7 @@ const { CommonPage } = require("../../src/pages/CommonPage");
 const { getPageObject } = require("@utils/pageObjectCache");
 const { expectNumbersToBeEqualWithTolerance } = require("../../src/assertions/numberAssertions");
 const { getTravelerCount } = require("../support/scenarioState");
+const config = require("@config/config");
 const logger = require("@utils/logger").child("FlightResults");
 
 setDefaultTimeout(120000);
@@ -1205,6 +1206,29 @@ Then("the branded fare ancillaries text should be visible", async function () {
 Then("the brand information unavailable message should be displayed", async function () {
   logger.info("Verifying brand information unavailable message is displayed");
   await FlightResults.verifyBrandInformationUnavailable(this.page);
+});
+
+Then("the branded fares offered and not offered items should match the captured Brand Info", async function () {
+  if (!config.payloadValidation.enabled) {
+    logger.warn("PAYLOAD_VALIDATION_ENABLED=false", { step: "verifyBrandedFaresOfferedItemsMatchBrandInfo" });
+    return;
+  }
+  logger.info("Verifying branded fares offered and not offered items match the captured Brand Info");
+  await FlightResults.verifyBrandedFaresOfferedItemsMatchBrandInfo(this.page, this);
+});
+
+Then("the branded fares chargeable items should be listed only under additional charge", async function () {
+  if (!config.payloadValidation.enabled) {
+    logger.warn("PAYLOAD_VALIDATION_ENABLED=false", { step: "verifyBrandedFaresChargeableItemsOnlyUnderAdditionalCharge" });
+    return;
+  }
+  logger.info("Verifying branded fares chargeable items are listed only under additional charge");
+  await FlightResults.verifyBrandedFaresChargeableItemsOnlyUnderAdditionalCharge(this.page, this);
+});
+
+Then("the branded fares drawer should show each attribute only once", async function () {
+  logger.info("Verifying the branded fares drawer shows each attribute only once");
+  await FlightResults.verifyBrandedFaresAttributesListedOnce(this.page);
 });
 
 Then("the carrier name in more details should be {string}", async function (expectedName) {

@@ -971,6 +971,17 @@ const PayloadValidation = {
     return payloadRecord;
   },
 
+  /**
+   * Parse a captured payload record's body as JSON, tolerating diagnostics a supplier appends
+   * after the document. Throws when the body holds no JSON.
+   */
+  parseCapturedPayloadJson(payloadRecord) {
+    if (!payloadRecord || typeof payloadRecord !== "object") {
+      throw new Error(`[PayloadValidation.parseCapturedPayloadJson] "payloadRecord" must be a captured payload record, got: ${typeof payloadRecord}`);
+    }
+    return parseJsonPayload(payloadRecord.payload, payloadRecord.source, payloadRecord.requestType);
+  },
+
   async expectCapturedPayloadContains(page, world, source, requestType, expectedText) {
     if (!page) {
       throw new Error("page is required");

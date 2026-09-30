@@ -516,6 +516,101 @@ function normalizeBrandName(name) {
   return (name || '').toString().trim().toUpperCase().replace(/\s+/g, ' ');
 }
 
+// A prefix, because the feature captures the call with a trailing wildcard.
+const BRAND_INFO_REQUEST_TYPE = 'UAPI TVP NDC Brand Info';
+
+// Brand Info inclusions as attributeKey() compacts them ("Not Offered" -> "notoffered").
+const CHARGEABLE = 'chargeable';
+const NOT_OFFERED = 'notoffered';
+
+// The branded fares drawer prints a Brand Info classification as words ("Carry on") while the
+// payload files it in one token ("CarryOn"); both collapse to the same key here.
+function attributeKey(text) {
+  return (text || '').toString().toLowerCase().replace(/[^a-z0-9]/g, '');
+}
+
+/** Splits a drawer line such as "Carry on: Included" into its attribute key and compact value. */
+function parseBrandServiceLine(line) {
+  const colon = line.indexOf(':');
+  if (colon === -1) {
+    return { line, key: attributeKey(line), value: null };
+  }
+  return { line, key: attributeKey(line.slice(0, colon)), value: attributeKey(line.slice(colon + 1)) };
+}
+
+// Travelport's JSON API has shipped both camelCase and PascalCase property names, so every Brand
+// Info property is looked up without regard to case.
+function getPropertyIgnoringCase(obj, name) {
+  if (!obj || typeof obj !== 'object') return undefined;
+  const wanted = name.toLowerCase();
+  const match = Object.keys(obj).find((k) => k.toLowerCase() === wanted);
+  return match === undefined ? undefined : obj[match];
+}
+
+function asArray(value) {
+  if (value === undefined || value === null) return [];
+  return Array.isArray(value) ? value : [value];
+}
+
+/** Every Brand filed in a UAPI TVP NDC Brand Info response, with the attributes each one lists. */
+function collectBrandInfoBrands(json) {
+  const response = getPropertyIgnoringCase(json, 'OfferListResponse');
+  if (!response) {
+    throw new Error(
+      `[FlightResults.collectBrandInfoBrands] The captured Brand Info response has no OfferListResponse. ` +
+      `Top-level keys: ${Object.keys(json || {}).join(', ') || '(none)'}. The captured call may not be a Brand Info response.`
+    );
+  }
+
+  const brands = [];
+  for (const referenceList of asArray(getPropertyIgnoringCase(response, 'ReferenceList'))) {
+    for (const brand of asArray(getPropertyIgnoringCase(referenceList, 'Brand'))) {
+      const attributes = [];
+      for (const list of ['BrandAttribute', 'AdditionalBrandAttribute']) {
+        for (const attribute of asArray(getPropertyIgnoringCase(brand, list))) {
+          attributes.push({
+            classification: getPropertyIgnoringCase(attribute, 'classification'),
+            inclusion: getPropertyIgnoringCase(attribute, 'inclusion'),
+          });
+        }
+      }
+      brands.push({ id: getPropertyIgnoringCase(brand, 'id'), name: getPropertyIgnoringCase(brand, 'name'), attributes });
+    }
+  }
+  return brands;
+}
+
+/**
+ * What Brand Info files for one brand, keyed by attribute. A round trip files one Brand per leg
+ * under the same name, and the legs can disagree on an attribute; the drawer shows the brand once,
+ * so any inclusion filed on any leg is accepted.
+ */
+function expectedAttributesForBrand(brands, brandName) {
+  const wanted = normalizeBrandName(brandName);
+  const expected = new Map();
+  for (const brand of brands.filter((b) => normalizeBrandName(b.name) === wanted)) {
+    for (const attribute of brand.attributes) {
+      const key = attributeKey(attribute.classification);
+      if (!key) continue;
+      if (!expected.has(key)) {
+        expected.set(key, { classification: attribute.classification, inclusions: new Set() });
+      }
+      expected.get(key).inclusions.add(attributeKey(attribute.inclusion));
+    }
+  }
+  for (const [key, entry] of expected) {
+    if (entry.inclusions.size > 1) {
+      logger.info('Brand Info files conflicting inclusions for one attribute across same-named brands; accepting any of them', {
+        brandName,
+        attribute: entry.classification,
+        key,
+        inclusions: [...entry.inclusions],
+      });
+    }
+  }
+  return expected;
+}
+
 // The Amadeus NDC offer message that carries what the airline filed per brand. The trip logs it in
 // two flavours - "NDC Search Upsell" holds every brand combination of the itinerary, "Flight Price
 // (Brand Info)" prices one combination per rendered card - and both are read: which flavour fed a
@@ -4239,6 +4334,204 @@ async verifyFareComponentTextColorInPricingOptions(page, expectedColor, index = 
 
     await flightResultsPage.clickBrandNameInPricingOptions();
     await flightResultsPage.waitForBrandedFaresDrawer();
+  },
+
+  /**
+   * Reads the active brand tab of the branded fares drawer together with what the last captured
+   * Brand Info response files for that brand.
+   * @private
+   */
+  async _readActiveBrandAgainstBrandInfo(page, world) {
+    if (!page) throw new Error('[FlightResults._readActiveBrandAgainstBrandInfo] "page" is required, got: ' + typeof page);
+    if (!world || typeof world !== 'object') {
+      throw new Error('[FlightResults._readActiveBrandAgainstBrandInfo] "world" must be the Cucumber world, got: ' + typeof world);
+    }
+
+    const record = PayloadValidation.getLastCapturedPayloadBySource(world, 'response');
+    if (!(record.requestType || '').startsWith(BRAND_INFO_REQUEST_TYPE)) {
+      throw new Error(
+        `[FlightResults._readActiveBrandAgainstBrandInfo] The last captured response is "${record.requestType}", ` +
+        `not a "${BRAND_INFO_REQUEST_TYPE}" call. Capture the Brand Info response right before this check.`
+      );
+    }
+    const brands = collectBrandInfoBrands(PayloadValidation.parseCapturedPayloadJson(record));
+
+    logger.debug('Reading the active brand of the branded fares drawer');
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    const sections = await flightResultsPage.getActiveBrandedFareSections();
+
+    const wanted = normalizeBrandName(sections.brandName);
+    const matched = brands.filter((b) => normalizeBrandName(b.name) === wanted);
+    if (matched.length === 0) {
+      throw new Error(
+        `[FlightResults._readActiveBrandAgainstBrandInfo] The drawer shows brand "${sections.brandName}", but the ` +
+        `captured Brand Info files no Brand of that name. Brand Info names: ${[...new Set(brands.map((b) => b.name))].join(', ') || '(none)'}. ` +
+        `The capture may belong to a different offer than the one opened.`
+      );
+    }
+
+    const expected = expectedAttributesForBrand(brands, sections.brandName);
+    if (expected.size === 0) {
+      throw new Error(
+        `[FlightResults._readActiveBrandAgainstBrandInfo] Brand Info files ${matched.length} Brand(s) named ` +
+        `"${sections.brandName}" with no attributes, so there is nothing to compare the drawer against.`
+      );
+    }
+
+    logger.info('Comparing the active branded fare against Brand Info', {
+      brandName: sections.brandName,
+      brandInfoBrandsMatched: matched.length,
+      attributesFiled: expected.size,
+      lines: {
+        included: sections.included.length,
+        additionalCharge: sections.additionalCharge.length,
+        notIncluded: sections.notIncluded.length,
+      },
+    });
+
+    return { sections, expected };
+  },
+
+  /**
+   * Verifies the active brand's main list and "not included" section show exactly the attributes
+   * Brand Info files as included or not offered, with the filed inclusion.
+   * @param {import('playwright').Page} page
+   * @param {object} world - Cucumber world holding the captured Brand Info response
+   * @returns {Promise<{brandName: string, attributesChecked: number}>}
+   */
+  async verifyBrandedFaresOfferedItemsMatchBrandInfo(page, world) {
+    const { sections, expected } = await this._readActiveBrandAgainstBrandInfo(page, world);
+    const mainLines = sections.included.map(parseBrandServiceLine);
+    const notIncludedLines = sections.notIncluded.map(parseBrandServiceLine);
+    const chargeKeys = new Set(sections.additionalCharge.map((line) => parseBrandServiceLine(line).key));
+    const mismatches = [];
+    let attributesChecked = 0;
+
+    for (const [key, { classification, inclusions }] of expected) {
+      const acceptable = [...inclusions].filter((inclusion) => inclusion !== CHARGEABLE);
+      if (acceptable.length === 0) continue;
+      attributesChecked += 1;
+
+      const shownInMain = mainLines.some((l) => l.key === key && acceptable.includes(l.value));
+      const shownNotOffered = acceptable.includes(NOT_OFFERED)
+        && notIncludedLines.some((l) => l.key === key && l.value === NOT_OFFERED);
+      // A leg filing it as chargeable makes the additional-charge placement a filed value too.
+      const shownAsCharge = inclusions.has(CHARGEABLE) && chargeKeys.has(key);
+      if (!shownInMain && !shownNotOffered && !shownAsCharge) {
+        mismatches.push(`"${classification}" is filed as ${[...inclusions].join('/')} but the drawer does not show it with that value`);
+      }
+    }
+
+    for (const { line, key, value } of [...mainLines, ...notIncludedLines]) {
+      const filed = expected.get(key);
+      if (!filed) {
+        mismatches.push(`"${line}" is shown but Brand Info files no such attribute for this brand`);
+      } else if (value !== null && !filed.inclusions.has(value)) {
+        mismatches.push(`"${line}" is shown but Brand Info files "${filed.classification}" as ${[...filed.inclusions].join('/')}`);
+      }
+    }
+
+    expect(
+      mismatches,
+      `[FlightResults.verifyBrandedFaresOfferedItemsMatchBrandInfo] Brand "${sections.brandName}": the branded fares ` +
+      `drawer does not match the captured Brand Info:\n- ${mismatches.join('\n- ')}`
+    ).toEqual([]);
+
+    return { brandName: sections.brandName, attributesChecked };
+  },
+
+  /**
+   * Verifies every attribute Brand Info files as chargeable for the active brand is listed under
+   * "Ancillaries for additional charge" and nowhere else, and that section holds nothing else.
+   * @param {import('playwright').Page} page
+   * @param {object} world - Cucumber world holding the captured Brand Info response
+   * @returns {Promise<{brandName: string, chargeableChecked: number}>}
+   */
+  async verifyBrandedFaresChargeableItemsOnlyUnderAdditionalCharge(page, world) {
+    const { sections, expected } = await this._readActiveBrandAgainstBrandInfo(page, world);
+    const chargeable = [...expected].filter(([, entry]) => entry.inclusions.has(CHARGEABLE));
+
+    if (chargeable.length === 0) {
+      throw new Error(
+        `[FlightResults.verifyBrandedFaresChargeableItemsOnlyUnderAdditionalCharge] Brand Info files no chargeable ` +
+        `attribute for brand "${sections.brandName}", so the additional-charge placement cannot be checked. ` +
+        `Open a brand that has chargeable items.`
+      );
+    }
+
+    const chargeLines = sections.additionalCharge.map(parseBrandServiceLine);
+    const otherLines = [...sections.included, ...sections.notIncluded].map(parseBrandServiceLine);
+    const mismatches = [];
+
+    for (const [key, { classification, inclusions }] of chargeable) {
+      const inCharge = chargeLines.some((l) => l.key === key);
+      const elsewhere = otherLines.filter((l) => l.key === key).map((l) => l.line);
+      // Legs disagreeing (chargeable on one, included on another) may legitimately render either way.
+      if (inclusions.size > 1) {
+        if (!inCharge && elsewhere.length === 0) {
+          mismatches.push(`"${classification}" (filed as ${[...inclusions].join('/')}) is not shown anywhere`);
+        }
+        continue;
+      }
+      if (!inCharge) {
+        mismatches.push(`"${classification}" is filed as chargeable but is not listed under additional charge`);
+      }
+      if (elsewhere.length > 0) {
+        mismatches.push(`"${classification}" is filed as chargeable but is also listed as: ${elsewhere.join(' | ')}`);
+      }
+    }
+
+    for (const { line, key } of chargeLines) {
+      if (!expected.get(key)?.inclusions.has(CHARGEABLE)) {
+        mismatches.push(`"${line}" is listed under additional charge but Brand Info does not file it as chargeable`);
+      }
+    }
+
+    expect(
+      mismatches,
+      `[FlightResults.verifyBrandedFaresChargeableItemsOnlyUnderAdditionalCharge] Brand "${sections.brandName}": ` +
+      `chargeable items are misplaced:\n- ${mismatches.join('\n- ')}`
+    ).toEqual([]);
+
+    return { brandName: sections.brandName, chargeableChecked: chargeable.length };
+  },
+
+  /**
+   * Verifies no attribute appears more than once across the active brand's sections of the
+   * branded fares drawer (included, additional charge and not included).
+   * @param {import('playwright').Page} page
+   * @returns {Promise<{brandName: string, linesChecked: number}>}
+   */
+  async verifyBrandedFaresAttributesListedOnce(page) {
+    if (!page) throw new Error('[FlightResults.verifyBrandedFaresAttributesListedOnce] "page" is required, got: ' + typeof page);
+
+    logger.debug('Reading the active brand of the branded fares drawer');
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    const sections = await flightResultsPage.getActiveBrandedFareSections();
+    const lines = [...sections.included, ...sections.additionalCharge, ...sections.notIncluded];
+
+    logger.info('Branded fares attribute lines read', { brandName: sections.brandName, lineCount: lines.length });
+    if (lines.length === 0) {
+      throw new Error(
+        `[FlightResults.verifyBrandedFaresAttributesListedOnce] Brand "${sections.brandName}" shows no attribute ` +
+        `lines, so duplicates cannot be ruled out. The drawer rendered the brand without any services.`
+      );
+    }
+
+    const byKey = new Map();
+    for (const line of lines) {
+      const { key } = parseBrandServiceLine(line);
+      byKey.set(key, [...(byKey.get(key) || []), line]);
+    }
+    const duplicates = [...byKey.values()].filter((group) => group.length > 1);
+
+    expect(
+      duplicates,
+      `[FlightResults.verifyBrandedFaresAttributesListedOnce] Brand "${sections.brandName}" lists an attribute more ` +
+      `than once:\n- ${duplicates.map((group) => group.join(' | ')).join('\n- ')}`
+    ).toEqual([]);
+
+    return { brandName: sections.brandName, linesChecked: lines.length };
   },
 
   /**
