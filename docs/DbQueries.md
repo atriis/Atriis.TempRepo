@@ -6,7 +6,9 @@ back for assertions. Every change is reverted automatically after the scenario, 
 
 - Catalog: `src/config/dbQueries.json` — the only SQL that can run.
 - Steps: `tests/steps/db_queries.steps.js` · DSL: `src/dsl/DbQueries.js` (`const { DbQueries } = require("@dsl")`).
-- Global switch: `DB_QUERIES_ENABLED=false` turns every DB step into a logged no-op, and the restore hook does nothing.
+- Global switch: `DB_QUERIES_ENABLED=false` turns every DB step into a logged no-op, and the restore hook does nothing. `npm run db:check` ignores this switch.
+- Node: the DB dependencies are pinned (see `overrides` in `package.json`) to releases that run on Node 20, which CI uses; do not upgrade them past that without moving CI.
+- Restores are queued in memory: if the process is killed mid-scenario (cancelled run, crash) the queued restores are lost. The After hook attaches the queue (`db-restores-queued.json`) before running it, so the rows can be fixed by hand.
 - Unrelated: `tests/steps/db.steps.js` / `DbRail` are about Deutsche Bahn rail.
 
 ## 1. Setup
@@ -38,9 +40,12 @@ The app registration needs a database user with the least privilege the catalog 
 
 ```sql
 CREATE USER [qa-automation-app] FROM EXTERNAL PROVIDER;
-GRANT SELECT ON dbo.Quotes TO [qa-automation-app];
+GRANT SELECT, UPDATE ON dbo.Quotes TO [qa-automation-app];
 GRANT SELECT, UPDATE ON dbo.EvolviPricings TO [qa-automation-app];
--- one GRANT per table the catalog reads or writes
+GRANT SELECT, UPDATE ON dbo.GroundServicePricings TO [qa-automation-app];
+GRANT SELECT, UPDATE ON dbo.CarSegments TO [qa-automation-app];
+GRANT SELECT, UPDATE ON dbo.HotelPricings TO [qa-automation-app];
+-- keep this list in sync with the tables in src/config/dbQueries.json
 ```
 
 ### CI alternative: `azure-cli` with OIDC
@@ -176,5 +181,6 @@ containing `UPDATE`/`INSERT`/`DELETE`/`MERGE`/`INTO` counts as a write (so `SELE
 | `[DB POLICY] … references {tripNumber} …` | no trip yet: open/create a trip first or pass `tripId` |
 | `[DB POLICY] Invalid DB query catalog` | the catalog broke a rule; the message lists each one |
 | `[DB ROW_LIMIT] …` | the write would touch 0 or too many rows; nothing was changed |
+| `[DB QUERY] �` | driver or connection failure: check `DB_SERVER_NAME` / `DB_DATABASE_NAME`, the firewall (your IP or the runner), and that the DB user exists |
 | `[DB TIMEOUT]` | raise `DB_TIMEOUT_MS` or check DB load |
 | `[DB RESTORE]` | cleanup failed; check the attached rows and fix them by hand |
