@@ -42,7 +42,7 @@ function expectInvalid(extraQueries, fragment, forbidden) {
 
 test("the shipped catalog is valid", () => {
   const catalog = policy.loadCatalog();
-  for (const name of ["dbPing", "getTripQuotes", "expireTripQuotes", "restoreQuoteExpires", "setTripHotelPrice"]) {
+  for (const name of ["dbPing", "getTripQuotes", "expireTripQuotes", "changeQuoteStatus", "setTripHotelPrice"]) {
     assert.ok(catalog.queries[name], `missing ${name}`);
   }
 });
@@ -58,6 +58,13 @@ test("forbidden patterns are checked case-insensitively in sql and snapshot", ()
 
 test("an invalid forbidden regex is reported", () => {
   expectInvalid({}, "is not a valid regex", ["(unclosed"]);
+});
+
+test("a query placed outside \"queries\" is reported, not ignored", () => {
+  assert.throws(
+    () => policy.validateCatalog({ ...catalogWith(), changeQuoteStatus: READ }),
+    policyError("unknown top-level key \"changeQuoteStatus\": queries go inside \"queries\""),
+  );
 });
 
 test("built-in rules cannot be switched off", () => {

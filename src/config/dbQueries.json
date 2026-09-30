@@ -17,24 +17,13 @@
 
     "expireTripQuotes": {
       "description": "Set the expiry of every quote of a trip to now + N minutes",
-      "sql": "UPDATE Quotes SET Expires = DATEADD(MINUTE, @minutes, GETDATE()) WHERE TripId = @tripId",
+      "sql": "UPDATE Quotes SET Expires = DATEADD(MINUTE, @minutes, GETDATE()) WHERE Id IN (SELECT Id FROM Quotes WHERE TripId = @tripId)",
       "params": {
         "tripId":  { "type": "Int", "default": "{tripNumber}" },
         "minutes": { "type": "Int", "default": "2" }
       },
-      "snapshot": "SELECT Id AS id, Expires AS expires FROM Quotes WHERE TripId = @tripId",
-      "restore": "restoreQuoteExpires",
+      "noRestore": "Leaves the trip's quotes about to expire so the countdown can be checked in the app after the scenario; the original expiry is not saved",
       "maxRows": 20
-    },
-    "restoreQuoteExpires": {
-      "description": "Restore one quote's expiry by id",
-      "restoreOnly": true,
-      "sql": "UPDATE Quotes SET Expires = @expires WHERE Id = @id",
-      "params": {
-        "id":      { "type": "Int", "required": true },
-        "expires": { "type": "DateTime2", "required": true }
-      },
-      "maxRows": 1
     },
 
     "expireTripEvolviPricings": {
@@ -127,7 +116,17 @@
         "totalPrice": { "type": "Decimal", "required": true }
       },
       "maxRows": 1
+    },
+
+    "changeQuoteStatus": {
+      "description": "Change the status of every quote of a trip to a new status",
+      "sql": "UPDATE Quotes SET Status = @newStatus WHERE Id IN (SELECT Id FROM Quotes WHERE TripId = @tripId)",
+      "params": {
+        "tripId":    { "type": "Int", "default": "{tripNumber}" },
+        "newStatus": { "type": "Int", "required": true }
+      },
+      "noRestore": "Leaves the quote status as changed so the new status can be checked in the app after the scenario; the original status is not saved",
+      "maxRows": 20
     }
   }
-
 }

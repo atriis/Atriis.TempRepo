@@ -179,6 +179,13 @@ function validateCatalog(catalog) {
   }
   const problems = [];
 
+  // A query placed outside "queries" (e.g. after its closing brace) would otherwise be ignored silently.
+  for (const key of Object.keys(catalog)) {
+    if (key !== "forbidden" && key !== "queries") {
+      problems.push(`unknown top-level key "${key}": queries go inside "queries"`);
+    }
+  }
+
   const forbidden = catalog.forbidden ?? [];
   const forbiddenRegexes = [];
   if (!Array.isArray(forbidden)) problems.push("\"forbidden\" must be an array of regex strings");
