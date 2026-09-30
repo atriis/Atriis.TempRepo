@@ -71,7 +71,14 @@ function coerceParam(name, type, raw, now = new Date()) {
     throw fail("expected true/false/1/0");
   }
   case "DateTime2": {
-    if (raw instanceof Date) return raw;
+    if (raw instanceof Date) {
+      // tedious stores the sub-millisecond part of a value it reads as "nanosecondsDelta" but only
+      // writes "nanosecondDelta", so copy it across or a restored datetime2(7) loses precision.
+      if (typeof raw.nanosecondsDelta !== "number") return raw;
+      const copy = new Date(raw.getTime());
+      copy.nanosecondDelta = raw.nanosecondsDelta;
+      return copy;
+    }
     const date = parseDateText(raw, now);
     if (!date) throw fail("expected an ISO-8601 date or now±N(m|h|d)");
     return date;

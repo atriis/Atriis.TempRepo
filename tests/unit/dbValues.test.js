@@ -116,3 +116,16 @@ test("formatRowsTable renders a compact, truncated table", () => {
   const many = Array.from({ length: 25 }, (_, index) => ({ id: index }));
   assert.match(values.formatRowsTable(many), /\.\.\. 5 more row\(s\)$/);
 });
+
+test("coerceParam carries tedious sub-millisecond precision over to the property it writes", () => {
+  const read = new Date("2026-01-01T00:00:00.123Z");
+  Object.defineProperty(read, "nanosecondsDelta", { value: 0.0004567, enumerable: false });
+  const restored = values.coerceParam("expires", "DateTime2", read);
+  assert.notEqual(restored, read);
+  assert.equal(restored.getTime(), read.getTime());
+  assert.equal(restored.nanosecondDelta, 0.0004567);
+  assert.equal(read.nanosecondDelta, undefined);
+
+  const plain = new Date("2026-01-01T00:00:00.123Z");
+  assert.equal(values.coerceParam("expires", "DateTime2", plain), plain);
+});
