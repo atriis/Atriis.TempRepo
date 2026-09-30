@@ -7,6 +7,7 @@ const { CommonPage, SELECTORS: COMMON_SELECTORS } = require("@pages/CommonPage")
 const { ResultsPage } = require("@pages/ResultsPage");
 const FlightResultsPage = require("@pages/FlightResultsPage");
 const FlightResults = require("./FlightResults");
+const PayloadValidation = require("./PayloadValidation");
 const Email = require("./Email");
 const Profile = require("./Profile");
 const ProfilePage = require("@pages/ProfilePage");
@@ -73,6 +74,48 @@ const ETICKET_LINK_TIMEOUT_MS = 45000;
 // first, so the leaf (sedan.png / van.png / ...) legitimately varies between runs while the
 // directory identifies it as a GroundScope vehicle picture rather than any content image.
 const GROUNDSCOPE_VEHICLE_IMAGE_PATTERN = /\/GroundScope\/VehicleTypes\//i;
+
+// Travelfusion files a fare's ancillary options as one low-cost RequiredParameter in the
+// ProcessDetails response, e.g.
+//   <Name>AdvancedAncillaryOptions</Name> ...
+//   <DisplayText>Please Select Advanced Ancillary Options: 0 (Personal Item ... - 0.00 EUR), 1 (...)</DisplayText>
+const ANCILLARY_OPTIONS_PARAMETER = 'AdvancedAncillaryOptions';
+const ANCILLARY_OPTIONS_DISPLAY_TEXT_PATTERN = new RegExp(
+  `<Name>\\s*${ANCILLARY_OPTIONS_PARAMETER}\\s*</Name>(?:(?!</RequiredParameter>)[\\s\\S])*?<DisplayText>([\\s\\S]*?)</DisplayText>`
+);
+const XML_ENTITIES = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'" };
+
+function decodeXmlEntities(text) {
+  return text.replace(/&(#x[0-9a-f]+|#\d+|amp|lt|gt|quot|apos);/gi, (match, entity) => {
+    const lower = entity.toLowerCase();
+    if (lower.startsWith('#x')) return String.fromCodePoint(parseInt(lower.slice(2), 16));
+    if (lower.startsWith('#')) return String.fromCodePoint(parseInt(lower.slice(1), 10));
+    return XML_ENTITIES[lower];
+  });
+}
+
+/**
+ * Splits the AdvancedAncillaryOptions DisplayText into the option labels the cart should show.
+ * Mirrors GetAncillaryOptionsByQuoteIdQueryHandler.ParseOptions (Atriis.App.Flights): drop the
+ * prompt up to the first ':', split before every "<n> (" token on ';' or ',', and keep the text
+ * between the first '(' and the last ')'. Segments whose leading token is not an integer are
+ * excluded, as the backend does.
+ * @param {string} displayText - DisplayText with XML entities already decoded
+ * @returns {string[]}
+ */
+function parseAncillaryOptionLabels(displayText) {
+  const fields = displayText.slice(displayText.indexOf(':') + 1);
+  return fields
+    .split(/(?:;|,)\s*(?=\d+\s*\()/)
+    .filter((segment) => /^\s*-?\d+\s*(\(|$)/.test(segment))
+    .map((segment) => {
+      const open = segment.indexOf('(');
+      const close = segment.lastIndexOf(')');
+      const start = open === -1 ? 0 : open + 1;
+      const end = close === -1 ? segment.length : close;
+      return segment.slice(start, end);
+    });
+}
 
 /**
  * Cart DSL
@@ -13147,6 +13190,67 @@ const Cart = {
     const cartPage = getPageObject(page, CartPage);
     await expect(cartPage.getAncillaryOptionsFilledIndicator()).toBeVisible({ timeout: 30000 });
     logger.info('Ancillary options filled indicator is visible');
+  },
+
+  /**
+   * Verifies the ancillary options dropdown lists exactly the options Travelfusion filed in the
+   * AdvancedAncillaryOptions parameter of the captured ProcessDetails response, in the same order,
+   * with XML entities decoded ("&amp;" must display as "&"). The ancillary options section must
+   * already be open.
+   * @param {import('playwright').Page} page
+   * @param {object} world - Cucumber world holding the captured ProcessDetails response
+   * @param {string} requestType - Request type the response was captured under
+   * @returns {Promise<{options: string[]}>}
+   */
+  async verifyAncillaryOptionsMatchProcessDetails(page, world, requestType) {
+    if (!page) throw new Error('page is required');
+    if (!world || typeof world !== 'object') {
+      throw new Error('[Cart.verifyAncillaryOptionsMatchProcessDetails] "world" must be the Cucumber world, got: ' + typeof world);
+    }
+    if (!requestType || typeof requestType !== 'string') {
+      throw new Error('[Cart.verifyAncillaryOptionsMatchProcessDetails] "requestType" must be a non-empty string, got: ' + typeof requestType);
+    }
+
+    const record = PayloadValidation.getCapturedPayload(world, 'response', requestType);
+    const match = String(record.payload || '').match(ANCILLARY_OPTIONS_DISPLAY_TEXT_PATTERN);
+    if (!match) {
+      throw new Error(
+        `[Cart.verifyAncillaryOptionsMatchProcessDetails] The captured "${requestType}" response files no ` +
+        `${ANCILLARY_OPTIONS_PARAMETER} parameter with a DisplayText, so there is nothing to compare the cart against.`
+      );
+    }
+    const expected = parseAncillaryOptionLabels(decodeXmlEntities(match[1])).map(normalizeText);
+    if (expected.length === 0) {
+      throw new Error(
+        `[Cart.verifyAncillaryOptionsMatchProcessDetails] No option could be parsed from the ${ANCILLARY_OPTIONS_PARAMETER} ` +
+        `DisplayText: "${match[1]}"`
+      );
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+    await cartPage.openAncillaryOptionsDropdown();
+    const actual = (await cartPage.getAncillaryOptionsDropdownOptionTexts()).map(normalizeText);
+    await cartPage.closeAncillaryOptionsDropdown();
+
+    logger.info('Comparing ancillary options in the cart against ProcessDetails', {
+      expectedCount: expected.length,
+      actualCount: actual.length,
+      expected,
+      actual,
+    });
+
+    const encoded = actual.filter((text) => /&(amp|lt|gt|quot|apos|#\d+|#x[0-9a-f]+);/i.test(text));
+    expect(
+      encoded,
+      `Ancillary options still show XML-encoded characters (e.g. "&amp;" instead of "&"): ${JSON.stringify(encoded)}`
+    ).toEqual([]);
+    expect(
+      actual,
+      `Ancillary options in the cart do not match ${ANCILLARY_OPTIONS_PARAMETER} in the ProcessDetails response.\n` +
+      `Expected: ${JSON.stringify(expected)}\nActual:   ${JSON.stringify(actual)}`
+    ).toEqual(expected);
+
+    return { options: actual };
   },
 
   async selectAncillaryServiceWithPriceBySegment(page, segmentIndex) {

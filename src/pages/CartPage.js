@@ -655,6 +655,8 @@ const SELECTORS = {
   FLIGHT_ANCILLARY_OPTIONS_EDIT_BUTTON: '.flight-ancillary-options .extra__btns', // Edit/Add button in the ancillary options extras row
   FLIGHT_ANCILLARY_OPTIONS_CARD_TITLE: '.flight-ancillary-options .card-title', // "Ancillary Options" card title rendered by extras-layout slot (visible whenever the section exists and extras is open)
   FLIGHT_ANCILLARY_OPTIONS_SELECT_TRIGGER: '.flight-ancillary-options .app-select .el-select__wrapper', // Click to open the ancillary options dropdown
+  FLIGHT_ANCILLARY_OPTIONS_SELECT_INPUT: ".flight-ancillary-options .app-select input[role='combobox']", // Read-only: its aria-controls names the dropdown this select owns
+  FLIGHT_ANCILLARY_OPTIONS_DROPDOWN_OPTION: '.el-select-dropdown__item', // Option inside the dropdown named by the select's aria-controls
   FLIGHT_ANCILLARY_OPTIONS_FILLED_INDICATOR: '.flight-ancillary-options .material-symbols-outlined.filled.success-icon.green', // Green filled indicator after successful save
   // Premier Inn extras selectors (premier-inn.vue)
   PREMIER_INN_PAYMENT_SELECT: '.quote-extras--premier-inn .extras-card .el-select', // First el-select in Premier Inn extras = payment method
@@ -7240,6 +7242,33 @@ class CartPage {
     const firstOption = this.page.locator(SELECTORS.FLIGHT_ANCILLARY_SERVICES_DROPDOWN_OPTION).first();
     await firstOption.waitFor({ state: 'visible', timeout });
     await firstOption.click();
+  }
+
+  /**
+   * Reads the option labels of the ancillary options dropdown. The dropdown must already be open.
+   * Options are read from the dropdown this select owns (its aria-controls): every el-select
+   * teleports its dropdown to <body> and a previously opened one stays mounted and visible, so a
+   * ":visible" lookup can return another select's options.
+   * @param {number} [timeout=10000] - Per-action timeout in ms
+   * @returns {Promise<string[]>} Option labels in display order
+   */
+  async getAncillaryOptionsDropdownOptionTexts(timeout = 10000) {
+    const popperId = await this.page
+      .locator(SELECTORS.FLIGHT_ANCILLARY_OPTIONS_SELECT_INPUT)
+      .first()
+      .getAttribute('aria-controls', { timeout });
+    const options = popperId
+      ? this.page.locator(`[id="${popperId}"] ${SELECTORS.FLIGHT_ANCILLARY_OPTIONS_DROPDOWN_OPTION}`)
+      : this.page.locator(SELECTORS.FLIGHT_ANCILLARY_SERVICES_DROPDOWN_OPTION);
+    await options.first().waitFor({ state: 'visible', timeout });
+    return options.allInnerTexts();
+  }
+
+  /**
+   * Closes the open ancillary options dropdown without changing the selection.
+   */
+  async closeAncillaryOptionsDropdown() {
+    await this.page.keyboard.press('Escape');
   }
 
   /**

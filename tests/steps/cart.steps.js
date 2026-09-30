@@ -10,6 +10,7 @@ const { CartPage } = require("@pages/CartPage");
 const { CheckoutPage } = require("@pages/CheckoutPage");
 const { getPageObject } = require("@utils/pageObjectCache");
 const tripStatus = require("@data/tripStatus.json");
+const config = require("@config/config");
 const { getTravelerCount, getSelfAndGuestTravelerCount } = require("../support/scenarioState");
 const logger = require("@utils/logger").child("Cart");
 const {
@@ -2990,6 +2991,17 @@ When("I select the first ancillary option", async function () {
 Then("the ancillary options filled indicator should be visible", async function () {
   logger.info("Verifying ancillary options filled indicator is visible");
   await Cart.verifyAncillaryOptionsFilledIndicator(this.page);
+});
+
+// The expected list is read from the response captured by
+// 'I capture the "response" payload for request type "..." from Storage'.
+Then("the ancillary options list should match the AdvancedAncillaryOptions in the captured {string} response", async function (requestType) {
+  if (!config.payloadValidation.enabled) {
+    logger.warn("PAYLOAD_VALIDATION_ENABLED=false", { step: "verifyAncillaryOptionsMatchProcessDetails" });
+    return;
+  }
+  logger.info("Verifying ancillary options match AdvancedAncillaryOptions in the captured response", { requestType });
+  await Cart.verifyAncillaryOptionsMatchProcessDetails(this.page, this, requestType);
 });
 
 When("I select the first ancillary service option with price for flight {int} and store its value", async function (flightNumber) {
