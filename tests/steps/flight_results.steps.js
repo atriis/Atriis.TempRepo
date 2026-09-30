@@ -606,6 +606,32 @@ Then('all pricing options should be disabled', async function () {
   logger.info('Pricing options verified as disabled', { checked });
 });
 
+// --- Restricting travel policy applied to results and pricing options (test 72013) ---
+
+Then('every flight result should be out of policy and restricted', async function () {
+  logger.info('Verifying every flight result is out of policy with "Add to trip" disabled');
+  const { checked } = await FlightResults.expectAllFlightResultsPolicyState(this.page, { outOfPolicy: true });
+  logger.info('Flight results verified as out of policy and restricted', { checked });
+});
+
+Then('every pricing option should be out of policy and restricted', async function () {
+  logger.info('Verifying every pricing option is out of policy with its select button disabled');
+  const { checked } = await FlightResults.expectAllPricingOptionsPolicyState(this.page, { outOfPolicy: true });
+  logger.info('Pricing options verified as out of policy and restricted', { checked });
+});
+
+Then('every flight result should be in policy and "Add to trip" button enabled', async function () {
+  logger.info('Verifying every flight result is in policy with "Add to trip" enabled');
+  const { checked } = await FlightResults.expectAllFlightResultsPolicyState(this.page, { outOfPolicy: false });
+  logger.info('Flight results verified as in policy and bookable', { checked });
+});
+
+Then('every pricing option should be in policy and "Add to trip" button enabled', async function () {
+  logger.info('Verifying every pricing option is in policy with its select button enabled');
+  const { checked } = await FlightResults.expectAllPricingOptionsPolicyState(this.page, { outOfPolicy: false });
+  logger.info('Pricing options verified as in policy and selectable', { checked });
+});
+
 When('I hover over the add to trip button in flight results', async function () {
   logger.info('Hovering over the add to trip button in flight results');
   this.bookingRestrictedMessage = await FlightResults.hoverAddToTripButtonAndGetTooltipText(this.page);

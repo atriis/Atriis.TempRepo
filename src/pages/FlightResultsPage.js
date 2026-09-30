@@ -987,6 +987,55 @@ class FlightResultsPage {
   }
 
   /**
+   * Every visible flight result card in the results list.
+   *
+   * @returns {import('@playwright/test').Locator}
+   */
+  getFlightResultCards() {
+    return this.page.locator(SELECTORS.FLIGHT_PREVIEW).filter({ visible: true });
+  }
+
+  /**
+   * Every visible fare card in the open Pricing Options drawer. Cards of inactive cabin-class
+   * tabs stay in the DOM but hidden, so they are filtered out.
+   *
+   * @returns {import('@playwright/test').Locator}
+   */
+  getVisiblePricingOptionsCards() {
+    return this.getPricingOptionsCards().filter({ visible: true });
+  }
+
+  /**
+   * The "Add to trip" button inside one flight result card.
+   *
+   * @param {import('@playwright/test').Locator} card - A card from getFlightResultCards()
+   * @returns {import('@playwright/test').Locator}
+   */
+  getAddToTripButtonInResultCard(card) {
+    return card.locator(SELECTORS.RESULTS_ADD_TO_TRIP_BUTTON);
+  }
+
+  /**
+   * The "Select" / "Add to trip" button inside one Pricing Options fare card.
+   *
+   * @param {import('@playwright/test').Locator} card - A card from getVisiblePricingOptionsCards()
+   * @returns {import('@playwright/test').Locator}
+   */
+  getSelectButtonInPricingOptionCard(card) {
+    return card.locator(SELECTORS.PRICING_OPTIONS_SELECT_BUTTON);
+  }
+
+  /**
+   * The out-of-policy badge (app-oop-badge.vue root) inside a result or fare card.
+   *
+   * @param {import('@playwright/test').Locator} card - A flight result or pricing option card
+   * @returns {import('@playwright/test').Locator}
+   */
+  getOOPIndicatorInCard(card) {
+    return card.locator(SELECTORS.OOP_INDICATOR_IN_PRICING_OPTION);
+  }
+
+  /**
    * Gets the visible Element Plus tooltip text.
    *
    * @param {{ timeout?: number }} options

@@ -891,6 +891,133 @@ const FlightResults = {
   },
 
   /**
+   * Verifies the travel-policy state of every visible flight result card.
+   *
+   * A restricting policy sets `isRestricTravelPolicyViolation`, which flight-extra-info.vue folds
+   * into `isAddToCardDisabled`, and a violation renders app-oop-badge in the same card. So an out
+   * of policy result shows the badge with a disabled "Add to trip"; an in-policy one shows neither.
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @param {{outOfPolicy: boolean}} options - true: every card OOP and restricted; false: every card in policy and bookable
+   * @throws {Error} If page is missing, no result card is found, or any card is in the other state
+   * @returns {Promise<{checked: number}>} How many result cards were asserted
+   */
+  async expectAllFlightResultsPolicyState(page, { outOfPolicy } = {}) {
+    if (!page) throw new Error('page is required');
+    if (typeof outOfPolicy !== 'boolean') {
+      throw new Error(`outOfPolicy must be a boolean, got: ${outOfPolicy}`);
+    }
+
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    await flightResultsPage.waitForFlightResults();
+
+    const cards = flightResultsPage.getFlightResultCards();
+    const count = await cards.count();
+    if (count === 0) {
+      throw new Error('[FlightResults.expectAllFlightResultsPolicyState] No visible flight result card was found');
+    }
+
+    for (let i = 0; i < count; i += 1) {
+      const card = cards.nth(i);
+      const oopBadge = flightResultsPage.getOOPIndicatorInCard(card);
+      const oopBadgeShown = oopBadge.first();
+      const addToTripButton = flightResultsPage.getAddToTripButtonInResultCard(card).first();
+
+      await expect(
+        addToTripButton,
+        `Flight result ${i} should render an "Add to trip" button`,
+      ).toBeVisible();
+
+      if (outOfPolicy) {
+        await expect(
+          oopBadgeShown,
+          `Flight result ${i} should show the out of policy badge — the travel policy was not applied to it`,
+        ).toBeVisible();
+        await expect(
+          addToTripButton,
+          `Flight result ${i} is out of policy, so its "Add to trip" button should be disabled by the restricting policy`,
+        ).toBeDisabled();
+      } else {
+        await expect(
+          oopBadge,
+          `Flight result ${i} should be in policy, but it shows the out of policy badge`,
+        ).toHaveCount(0);
+        await expect(
+          addToTripButton,
+          `Flight result ${i} is in policy, so its "Add to trip" button should be enabled`,
+        ).toBeEnabled();
+      }
+    }
+
+    logger.info('Flight result policy state verified', { outOfPolicy, checked: count });
+
+    return { checked: count };
+  },
+
+  /**
+   * Verifies the travel-policy state of every visible fare card in the open Pricing Options drawer.
+   *
+   * leg-pricing-option.vue disables the card's button when its option carries
+   * `isRestricTravelPolicyViolation`, and renders app-oop-badge when it has policy violations.
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @param {{outOfPolicy: boolean}} options - true: every card OOP and restricted; false: every card in policy and selectable
+   * @throws {Error} If page is missing, no fare card is found, or any card is in the other state
+   * @returns {Promise<{checked: number}>} How many fare cards were asserted
+   */
+  async expectAllPricingOptionsPolicyState(page, { outOfPolicy } = {}) {
+    if (!page) throw new Error('page is required');
+    if (typeof outOfPolicy !== 'boolean') {
+      throw new Error(`outOfPolicy must be a boolean, got: ${outOfPolicy}`);
+    }
+
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    await flightResultsPage.waitForPricingOptionCards();
+
+    const cards = flightResultsPage.getVisiblePricingOptionsCards();
+    const count = await cards.count();
+    if (count === 0) {
+      throw new Error('[FlightResults.expectAllPricingOptionsPolicyState] No visible pricing option fare card was found');
+    }
+
+    for (let i = 0; i < count; i += 1) {
+      const card = cards.nth(i);
+      const oopBadge = flightResultsPage.getOOPIndicatorInCard(card);
+      const oopBadgeShown = oopBadge.first();
+      const selectButton = flightResultsPage.getSelectButtonInPricingOptionCard(card).first();
+
+      await expect(
+        selectButton,
+        `Pricing option ${i} should render its select button`,
+      ).toBeVisible();
+
+      if (outOfPolicy) {
+        await expect(
+          oopBadgeShown,
+          `Pricing option ${i} should show the out of policy badge — the travel policy was not applied to it`,
+        ).toBeVisible();
+        await expect(
+          selectButton,
+          `Pricing option ${i} is out of policy, so its select button should be disabled by the restricting policy`,
+        ).toBeDisabled();
+      } else {
+        await expect(
+          oopBadge,
+          `Pricing option ${i} should be in policy, but it shows the out of policy badge`,
+        ).toHaveCount(0);
+        await expect(
+          selectButton,
+          `Pricing option ${i} is in policy, so its select button should be enabled`,
+        ).toBeEnabled();
+      }
+    }
+
+    logger.info('Pricing option policy state verified', { outOfPolicy, checked: count });
+
+    return { checked: count };
+  },
+
+  /**
    * Hovers over the office-hours restriction icon and returns the tooltip title text.
    *
    * @param {import('playwright').Page} page
