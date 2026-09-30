@@ -6,6 +6,7 @@
     "env:sync": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/sync-env-from-1password.ps1",
     "payload:check": "node scripts/check-payload-api.js",
     "db:check": "node scripts/check-db.js",
+    "db:query": "node scripts/run-db-query.js",
     "test:unit": "node scripts/run-unit-tests.js",
     "bdd:db": "npx cucumber-js tests/features/db/",
     "test": "playwright test",
