@@ -693,6 +693,76 @@ const Trips = {
   },
 
   /**
+   * Waits for a trip to show a status label in the trips search results, re-submitting the search
+   * between checks. The trips list lags behind approval decisions: straight after a decline the
+   * trip is still listed as "In Approvals" for a few minutes, while the cart already reads it as
+   * declined. The current search term is re-submitted as-is, so search for the trip first.
+   *
+   * @param {import('@playwright/test').Page} page
+   * @param {string} tripId - the trip id the search was made for
+   * @param {string} status - visible status label, e.g. "Declined"
+   * @param {{ pollIntervalMs?: number, timeoutMs?: number }} [options]
+   * @returns {Promise<{ tripId: string, status: string, attempts: number }>}
+   */
+  async waitForTripStatusInSearchResults(page, tripId, status, { pollIntervalMs = 15000, timeoutMs = 300000 } = {}) {
+    if (!page) throw new Error('[Trips.waitForTripStatusInSearchResults] page is required');
+    if (typeof tripId !== 'string' || tripId.length === 0) {
+      throw new Error('[Trips.waitForTripStatusInSearchResults] "tripId" must be a non-empty string, got: ' + typeof tripId);
+    }
+    if (typeof status !== 'string' || status.length === 0) {
+      throw new Error('[Trips.waitForTripStatusInSearchResults] "status" must be a non-empty string, got: ' + typeof status);
+    }
+    for (const [name, value] of Object.entries({ pollIntervalMs, timeoutMs })) {
+      if (!Number.isInteger(value) || value <= 0) {
+        throw new Error(`[Trips.waitForTripStatusInSearchResults] "${name}" must be a positive integer, got: ${value}`);
+      }
+    }
+
+    const tripsPage = getPageObject(page, TripsPage);
+    logger.info('Waiting for the trip to show the status in the trips search results', { tripId, status, timeoutMs });
+    const startedAt = Date.now();
+    let attempts = 0;
+
+    try {
+      await expect
+        .poll(
+          async () => {
+            attempts++;
+            // expect.poll propagates a thrown callback instead of retrying it, so a missing label
+            // (list not updated yet) or a refresh caught mid-render is reported as "not yet".
+            try {
+              if (attempts > 1) {
+                logger.debug('Status not shown yet — re-submitting the trips search', { tripId, status, attempts });
+                await tripsPage.submitTripsSearch();
+                await tripsPage.waitForTripListSettled({ timeout: 30000 });
+              }
+              // Scoped to the trip's own card: the user keeps declined trips from earlier runs,
+              // so a "Declined" label anywhere in the list proves nothing about this trip.
+              await tripsPage.getResultTripStatusLabel(tripId, status, { timeout: 5000 });
+              return true;
+            } catch {
+              return false;
+            }
+          },
+          {
+            message: `Trip ${tripId} should show the "${status}" status in the trips search results`,
+            intervals: [pollIntervalMs],
+            timeout: timeoutMs,
+          }
+        )
+        .toBe(true);
+    } catch (err) {
+      throw new Error(
+        `[Trips.waitForTripStatusInSearchResults] Trip ${tripId} did not show the "${status}" status in the trips search ` +
+        `results after ${attempts} attempt(s) over ${Date.now() - startedAt}ms. Original: ${err.message}`
+      );
+    }
+
+    logger.info('Trip shows the status in the trips search results', { tripId, status, attempts });
+    return { tripId, status, attempts };
+  },
+
+  /**
    * Verifies a trip with the given id is displayed in the search results.
    *
    * @param {import('@playwright/test').Page} page

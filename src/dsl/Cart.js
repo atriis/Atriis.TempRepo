@@ -548,6 +548,122 @@ const Cart = {
   },
 
   /**
+   * Clicks an action button on the opened trip's approvals bar. For "Decline" this only opens the
+   * decline-reason dialog — nothing is sent until a reason is submitted.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} label - Approvals-bar button label, e.g. "Decline"
+   * @returns {Promise<{clicked: string}>}
+   */
+  async clickApprovalsBarButton(page, label) {
+    if (!page) throw new Error('[Cart.clickApprovalsBarButton] "page" is required.');
+    if (typeof label !== 'string' || label.length === 0) {
+      throw new Error(
+        `[Cart.clickApprovalsBarButton] "label" must be a non-empty string, got: ${typeof label} (${label})`
+      );
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+    logger.info('Clicking an approvals bar button', { label });
+
+    await cartPage.waitForApprovalsBar();
+    await cartPage.clickApprovalsBarButton(label);
+    return { clicked: label };
+  },
+
+  /**
+   * Verifies the decline-reason dialog is open with its title, reason textarea and Decline button.
+   *
+   * @param {import('playwright').Page} page
+   * @returns {Promise<{displayed: true}>}
+   */
+  async verifyDeclineReasonDialogDisplayed(page) {
+    if (!page) throw new Error('[Cart.verifyDeclineReasonDialogDisplayed] "page" is required.');
+
+    const cartPage = getPageObject(page, CartPage);
+    logger.info('Verifying the decline reason dialog is displayed');
+
+    await cartPage.waitForDeclineReasonDialog();
+    await expect(
+      cartPage.getDeclineReasonDialogTitle(),
+      '[Cart.verifyDeclineReasonDialogDisplayed] Expected the decline reason dialog title to read "Please provide decline reason".'
+    ).toContainText('Please provide decline reason', { timeout: 10000 });
+    await expect(
+      cartPage.getDeclineReasonTextarea(),
+      '[Cart.verifyDeclineReasonDialogDisplayed] Expected the decline reason textarea to be visible in the dialog.'
+    ).toBeVisible({ timeout: 10000 });
+    await expect(
+      cartPage.getDeclineReasonDialogButton('Decline'),
+      '[Cart.verifyDeclineReasonDialogDisplayed] Expected a "Decline" button in the decline reason dialog.'
+    ).toBeVisible({ timeout: 10000 });
+
+    return { displayed: true };
+  },
+
+  /**
+   * Enters a decline reason in the open decline-reason dialog, submits it, and waits for the
+   * decline to be accepted (the dialog closes and the approvals bar's action buttons are removed).
+   * Mutates real approval state — use only in scenarios that create their own trip.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} reason - Decline reason text
+   * @returns {Promise<{declined: true, reason: string}>}
+   */
+  async declineTripWithReason(page, reason) {
+    if (!page) throw new Error('[Cart.declineTripWithReason] "page" is required.');
+    if (typeof reason !== 'string' || reason.trim().length === 0) {
+      throw new Error(
+        `[Cart.declineTripWithReason] "reason" must be a non-empty string, got: ${typeof reason} (${reason})`
+      );
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+    logger.info('Declining the trip with a reason', { reason });
+
+    try {
+      await cartPage.waitForDeclineReasonDialog();
+      await cartPage.fillDeclineReason(reason);
+      await cartPage.clickDeclineReasonSubmitButton();
+      await cartPage.waitForDeclineReasonDialogHidden();
+      await cartPage.waitForApprovalsBarActionsHidden();
+    } catch (err) {
+      throw new Error(
+        `[Cart.declineTripWithReason] Failed to decline the trip with reason "${reason}". Original: ${err.message}`
+      );
+    }
+
+    logger.info('Trip declined from the approvals bar');
+    return { declined: true, reason };
+  },
+
+  /**
+   * Verifies the approvals bar title, e.g. "Trip was declined" once a decline was accepted.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} expectedTitle - Expected approvals-bar title
+   * @returns {Promise<{title: string}>}
+   */
+  async verifyApprovalsBarTitle(page, expectedTitle) {
+    if (!page) throw new Error('[Cart.verifyApprovalsBarTitle] "page" is required.');
+    if (typeof expectedTitle !== 'string' || expectedTitle.length === 0) {
+      throw new Error(
+        `[Cart.verifyApprovalsBarTitle] "expectedTitle" must be a non-empty string, got: ${typeof expectedTitle} (${expectedTitle})`
+      );
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+    logger.info('Verifying the approvals bar title', { expectedTitle });
+
+    await cartPage.waitForApprovalsBar();
+    await expect(
+      cartPage.getApprovalsBarTitle(),
+      `[Cart.verifyApprovalsBarTitle] Expected the trip approvals bar title to contain "${expectedTitle}".`
+    ).toContainText(expectedTitle, { timeout: 30000 });
+
+    return { title: expectedTitle };
+  },
+
+  /**
    * STRICT cancel flow with an explicit pre-cancellation wait.
    *
    * @param {import('playwright').Page} page

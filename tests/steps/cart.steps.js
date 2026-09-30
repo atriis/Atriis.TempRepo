@@ -4344,6 +4344,26 @@ When("I approve the trip from the approvals bar", { timeout: CHECKOUT_STEP_TIMEO
   await Cart.approveTripFromApprovalsBar(this.page);
 });
 
+When("I click {string} on the trip approvals bar", async function (label) {
+  logger.info("Clicking a trip approvals bar button", { label });
+  await Cart.clickApprovalsBarButton(this.page, label);
+});
+
+Then("the decline reason dialog should be displayed", async function () {
+  logger.info("Verifying the decline reason dialog is displayed");
+  await Cart.verifyDeclineReasonDialogDisplayed(this.page);
+});
+
+When("I decline the trip with reason {string}", { timeout: CHECKOUT_STEP_TIMEOUT_MS }, async function (reason) {
+  logger.info("Declining the trip with a reason", { reason });
+  await Cart.declineTripWithReason(this.page, reason);
+});
+
+Then("the trip approvals bar title should be {string}", async function (expectedTitle) {
+  logger.info("Verifying the trip approvals bar title", { expectedTitle });
+  await Cart.verifyApprovalsBarTitle(this.page, expectedTitle);
+});
+
 // ===== EVOLVI MANDATORY CART FIELDS =====
 
 When("I fill mandatory Evolvi fields in cart", async function () {

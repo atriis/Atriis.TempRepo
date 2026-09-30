@@ -200,6 +200,14 @@ const SELECTORS = {
     '.trip-list-container .trip-preview .app-label:visible',
   RESULT_TRIP_ID:
     '.trip-list-container .trip-preview .trip-id:visible',
+  // One result trip card, and the status label / id inside it — for checks that must
+  // be tied to a specific trip rather than to any card in the list.
+  RESULT_TRIP_CARD:
+    '.trip-list-container .trip-preview',
+  RESULT_CARD_TRIP_ID:
+    '.trip-id',
+  RESULT_CARD_STATUS_LABEL:
+    '.app-label:visible',
 
   // The trip list and its cards. trip-list-panel.vue renders the list element even
   // when it holds no cards, so the list's presence alone never proves a search
@@ -741,6 +749,32 @@ class TripsPage {
     } catch (err) {
       throw new Error(
         `[TripsPage.getResultStatusLabel] No search-results trip showed the "${status}" status label within ${timeout}ms. Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Returns the status label (.app-label) matching the given status on the result
+   * card of one specific trip, once visible. Unlike getResultStatusLabel, a label on
+   * any other listed trip never matches.
+   *
+   * @param {string} tripId
+   * @param {string} status - visible status label, e.g. "Declined"
+   * @param {object} options
+   * @param {number} options.timeout - Maximum time to wait (default: 30000ms)
+   */
+  async getResultTripStatusLabel(tripId, status, { timeout = 30000 } = {}) {
+    const label = this.page
+      .locator(SELECTORS.RESULT_TRIP_CARD)
+      .filter({ has: this.page.locator(SELECTORS.RESULT_CARD_TRIP_ID, { hasText: exactText(tripId) }) })
+      .locator(SELECTORS.RESULT_CARD_STATUS_LABEL, { hasText: exactText(status) })
+      .first();
+    try {
+      await label.waitFor({ state: 'visible', timeout });
+      return label;
+    } catch (err) {
+      throw new Error(
+        `[TripsPage.getResultTripStatusLabel] The result card of trip "${tripId}" did not show the "${status}" status label within ${timeout}ms. Original: ${err.message}`
       );
     }
   }

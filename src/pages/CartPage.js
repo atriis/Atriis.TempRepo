@@ -1006,6 +1006,14 @@ const SELECTORS = {
   // The Decline/Approve button container itself — removed once the decision is accepted, so its
   // disappearance is the "approval went through" signal.
   APPROVALS_BAR_ACTIONS: '.approvals-bar .btn-container',
+  // Decline-reason el-dialog opened by the approvals bar's Decline button (approvals-bar.vue →
+  // approval-decline-reason.vue). The dialog is appended to <body>, so it is anchored on its own
+  // `.approval-decline-reason` content rather than on `.approvals-bar`.
+  DECLINE_REASON_DIALOG: '.el-dialog:has(.approval-decline-reason):visible',
+  DECLINE_REASON_DIALOG_TITLE: '.el-dialog:has(.approval-decline-reason):visible .el-dialog__title',
+  DECLINE_REASON_TEXTAREA: '.el-dialog:has(.approval-decline-reason):visible .decline-approval-textarea textarea',
+  // Footer holds a link-style Cancel and the primary Decline app-btn; filter by label, never by position.
+  DECLINE_REASON_FOOTER_BUTTON: '.el-dialog:has(.approval-decline-reason):visible .app-footer button',
 
   // ===== Additional items section (trip-cart.vue) =====
   // The cart's "Additional items" section is where on-demand products (Stay Safe, the
@@ -15172,6 +15180,112 @@ class CartPage {
         `[CartPage.waitForApprovalsBarActionsHidden] The approvals-bar action buttons (${SELECTORS.APPROVALS_BAR_ACTIONS}) ` +
         `were still shown ${timeout}ms after the decision. The approval may have failed (check for an error toast). ` +
         `Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Waits for the decline-reason dialog (opened by the approvals bar's Decline button) to be visible.
+   *
+   * @param {{ timeout?: number }} [options]
+   * @param {number} [options.timeout=15000] - Max wait for the dialog to open (ms)
+   * @returns {Promise<import('@playwright/test').Locator>}
+   */
+  async waitForDeclineReasonDialog({ timeout = 15000 } = {}) {
+    const dialog = this.page.locator(SELECTORS.DECLINE_REASON_DIALOG).first();
+    try {
+      await dialog.waitFor({ state: 'visible', timeout });
+    } catch (err) {
+      throw new Error(
+        `[CartPage.waitForDeclineReasonDialog] The decline reason dialog (${SELECTORS.DECLINE_REASON_DIALOG}) did not open ` +
+        `within ${timeout}ms of clicking Decline on the approvals bar. Original: ${err.message}`
+      );
+    }
+    return dialog;
+  }
+
+  /**
+   * Gets the decline-reason dialog title locator ("Please provide decline reason").
+   *
+   * @returns {import('@playwright/test').Locator}
+   */
+  getDeclineReasonDialogTitle() {
+    return this.page.locator(SELECTORS.DECLINE_REASON_DIALOG_TITLE).first();
+  }
+
+  /**
+   * Gets the decline-reason dialog's reason textarea.
+   *
+   * @returns {import('@playwright/test').Locator}
+   */
+  getDeclineReasonTextarea() {
+    return this.page.locator(SELECTORS.DECLINE_REASON_TEXTAREA).first();
+  }
+
+  /**
+   * Fills the decline reason into the decline-reason dialog.
+   *
+   * @param {string} reason - Decline reason text
+   */
+  async fillDeclineReason(reason) {
+    const textarea = this.getDeclineReasonTextarea();
+    try {
+      await textarea.fill(reason, { timeout: 10000 });
+    } catch (err) {
+      throw new Error(
+        `[CartPage.fillDeclineReason] Could not fill the decline reason textarea (${SELECTORS.DECLINE_REASON_TEXTAREA}). ` +
+        `Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Gets a decline-reason dialog footer button by its visible label ("Cancel" / "Decline").
+   *
+   * @param {string} label - Visible button label
+   * @returns {import('@playwright/test').Locator}
+   */
+  getDeclineReasonDialogButton(label) {
+    if (!label || typeof label !== 'string') {
+      throw new Error(
+        `[CartPage.getDeclineReasonDialogButton] "label" must be a non-empty string, got: ${typeof label} (${label})`
+      );
+    }
+    return this.page
+      .locator(SELECTORS.DECLINE_REASON_FOOTER_BUTTON)
+      .filter({ hasText: label })
+      .first();
+  }
+
+  /**
+   * Clicks the decline-reason dialog's Decline button. The button stays disabled until a reason is
+   * entered, so fill the reason first.
+   */
+  async clickDeclineReasonSubmitButton() {
+    const button = this.getDeclineReasonDialogButton('Decline');
+    try {
+      await button.click({ timeout: 10000 });
+    } catch (err) {
+      throw new Error(
+        `[CartPage.clickDeclineReasonSubmitButton] Could not click "Decline" in the decline reason dialog ` +
+        `(${SELECTORS.DECLINE_REASON_FOOTER_BUTTON}). It is disabled until a reason is entered. Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Waits for the decline-reason dialog to close — it closes only once the decline request succeeded.
+   *
+   * @param {{ timeout?: number }} [options]
+   * @param {number} [options.timeout=60000] - Max wait for the dialog to close (ms)
+   */
+  async waitForDeclineReasonDialogHidden({ timeout = 60000 } = {}) {
+    try {
+      await this.page.locator(SELECTORS.DECLINE_REASON_DIALOG).first().waitFor({ state: 'hidden', timeout });
+    } catch (err) {
+      throw new Error(
+        `[CartPage.waitForDeclineReasonDialogHidden] The decline reason dialog was still open ${timeout}ms after ` +
+        `submitting. The decline request may have failed (check for an error toast). Original: ${err.message}`
       );
     }
   }

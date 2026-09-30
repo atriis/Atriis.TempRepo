@@ -101,6 +101,16 @@ When("I search the trips page for {string}", async function (term) {
   await Trips.searchTripsPage(this.page, term);
 });
 
+When("I search the trips page for the scenario trip", async function () {
+  if (!this.tripId) {
+    throw new Error(
+      "No trip number on the World. The trip id must be captured during 'I am logged in ... booking a new trip' before this step."
+    );
+  }
+  logger.info("Searching the trips page for the scenario trip", { tripId: this.tripId });
+  await Trips.searchTripsPage(this.page, String(this.tripId));
+});
+
 When("I search the past trips for {string}", async function (term) {
   logger.info("Searching the past trips", { term });
   throw new Error(`TODO: implement 'I search the past trips for {string}' — type "${term}" into the past-trips search input`);
@@ -216,4 +226,15 @@ Then("the trip status label {string} should be displayed", async function (statu
 Then("the trip with id {string} should be displayed in the results", async function (tripId) {
   logger.info("Verifying trip id is displayed in results", { tripId });
   await Trips.verifyTripDisplayedById(this.page, tripId);
+});
+
+// Timeout covers Trips.waitForTripStatusInSearchResults's 300000ms poll budget plus the re-submitted searches.
+Then("the scenario trip should show the {string} status in the trips search results", { timeout: 420000 }, async function (status) {
+  if (!this.tripId) {
+    throw new Error(
+      "No trip number on the World. The trip id must be captured during 'I am logged in ... booking a new trip' before this step."
+    );
+  }
+  logger.info("Waiting for the scenario trip status in the trips search results", { tripId: this.tripId, status });
+  await Trips.waitForTripStatusInSearchResults(this.page, String(this.tripId), status);
 });
