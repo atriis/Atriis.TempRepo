@@ -1111,6 +1111,17 @@ Then('the {string} brand should be displayed in pricing options', async function
   await FlightResults.verifyPricingOptionsBrandDisplayed(this.page, expectedBrandName);
 });
 
+// Reads the trip's request log, so it is skipped like every payload step when payload validation is off.
+Then('the pricing options brands should match the extFlightInfo brands in the Ypsilon {string} responses', async function (requestType) {
+  if (!config.payloadValidation.enabled) {
+    logger.warn('PAYLOAD_VALIDATION_ENABLED=false', { step: 'verifyPricingOptionsBrandsMatchYpsilonFareResponse', requestType });
+    return;
+  }
+  logger.info('Comparing pricing options brands with the Ypsilon Fare responses', { requestType });
+  const result = await FlightResults.verifyPricingOptionsBrandsMatchYpsilonFareResponse(this.page, this, requestType);
+  logger.info('Pricing options brands match the Ypsilon Fare responses', result);
+});
+
 Then('the {string} text should be displayed in pricing options', async function (expectedText) {
   logger.info('Verifying text is displayed in pricing options', { expectedText });
   await FlightResults.verifyPricingOptionsHeaderContains(this.page, expectedText);

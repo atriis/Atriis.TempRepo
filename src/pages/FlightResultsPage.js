@@ -246,6 +246,15 @@ const SELECTORS = {
   PRICING_OPTIONS_LEG_SELECT_BTN: '.pricing-options .leg-pricing-option .select-btn',
   PRICING_OPTIONS_LEG_CARD: '.pricing-options .leg-pricing-option',
   PRICING_OPTIONS_LEG_CARD_BRAND_NAME: '.brand-name',
+  // pricing-options.vue: "{selectedCabinClass} pricing" above the fare cards, and the active cabin
+  // tab's own label, which shortens a name longer than 14 characters ("Premium Eco").
+  PRICING_OPTIONS_SELECTED_CABIN_HEADING: '.pricing-options .options-header h4',
+  PRICING_OPTIONS_ACTIVE_CABIN_TAB_LABEL: '.pricing-options .cabin-class-tabs .el-tabs__item.is-active .text-center-top',
+  // The flight-preview of the leg the drawer is pricing: flight number next to the carrier name,
+  // then departure date and airport codes.
+  PRICING_OPTIONS_PREVIEW_FLIGHT_NUMBER: '.pricing-options .segment-preview .flight-info-top-bar p:not(.carrier-name):not(.aircraft-name)',
+  PRICING_OPTIONS_PREVIEW_FLIGHT_DATE: '.pricing-options .segment-preview .flight-date',
+  PRICING_OPTIONS_PREVIEW_AIRPORT_CODE: '.pricing-options .segment-preview .loc-code',
   PRICING_OPTIONS_TAB: '.pricing-options .pricing-options-tabs .el-tabs__item',
   // Per-tab "ORIGIN - DEST" headline inside the leg tab label (pricing-options.vue)
   PRICING_OPTIONS_TAB_ROUTE: '.origin-dest',
@@ -5192,6 +5201,45 @@ async clickSelectForFareWithBaggagePricingOptions(baggageText) {
       names.push(normalized || null);
     }
     return names;
+  }
+
+  /**
+   * Returns the two texts naming the cabin the classic Pricing Options drawer is listing: the
+   * "{cabin} pricing" heading above the fares and the active cabin tab's label.
+   * @param {number} timeout - Max wait time in ms (default: 30000)
+   * @returns {Promise<{heading: string, activeTabLabel: string}>}
+   */
+  async getPricingOptionsSelectedCabinTexts(timeout = 30000) {
+    const heading = this.page.locator(SELECTORS.PRICING_OPTIONS_SELECTED_CABIN_HEADING).first();
+    const activeTabLabel = this.page.locator(SELECTORS.PRICING_OPTIONS_ACTIVE_CABIN_TAB_LABEL).first();
+    await heading.waitFor({ state: 'visible', timeout });
+    await activeTabLabel.waitFor({ state: 'visible', timeout });
+
+    const clean = (text) => text.replace(/\s+/g, ' ').trim();
+    return { heading: clean(await heading.innerText()), activeTabLabel: clean(await activeTabLabel.innerText()) };
+  }
+
+  /**
+   * Reads the flight the classic Pricing Options drawer is pricing on its active leg, from the
+   * flight preview above the fares: every flight number shown, the departure date as rendered
+   * ("Sat, 14 Nov 26") and the first and last airport codes.
+   * @param {number} timeout - Max wait time in ms (default: 30000)
+   * @returns {Promise<{flightNumbers: string[], departureDateText: string, origin: string, destination: string}>}
+   */
+  async getPricingOptionsPreviewFlight(timeout = 30000) {
+    const flightNumbers = this.page.locator(SELECTORS.PRICING_OPTIONS_PREVIEW_FLIGHT_NUMBER);
+    await flightNumbers.first().waitFor({ state: 'visible', timeout });
+
+    const clean = (texts) => texts.map((text) => text.replace(/\s+/g, ' ').trim()).filter(Boolean);
+    const airports = clean(await this.page.locator(SELECTORS.PRICING_OPTIONS_PREVIEW_AIRPORT_CODE).allInnerTexts());
+    const [departureDateText = ''] = clean(await this.page.locator(SELECTORS.PRICING_OPTIONS_PREVIEW_FLIGHT_DATE).allInnerTexts());
+
+    return {
+      flightNumbers: clean(await flightNumbers.allInnerTexts()),
+      departureDateText,
+      origin: airports[0] || '',
+      destination: airports[airports.length - 1] || '',
+    };
   }
 
   /**

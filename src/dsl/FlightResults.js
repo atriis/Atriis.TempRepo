@@ -310,6 +310,46 @@ function titleCaseBrandName(value) {
   return String(value || '').toLowerCase().replace(TITLE_CASE_WORD_START, (character) => character.toUpperCase());
 }
 
+// Cabin tiers from flight.service.ts mapCabinOrder (0 Economy, 1 Premium Economy, 2 Business,
+// 3 First), keyed without spaces and upper-cased. Cabins are compared by tier because the two sides
+// name them differently: the drawer says "Premium" (mapCabin) where Ypsilon says "Premium Economy".
+const CABIN_TIERS = {
+  ECONOMY: 0,
+  ECO: 0,
+  ECONOMYPREMIUM: 0,
+  ECONOMYWITHRESTRICTIONS: 0,
+  ECONOMYWITHOUTRESTRICTIONS: 0,
+  PREMIUMECONOMY: 1,
+  PREMIUM: 1,
+  BUSINESS: 2,
+  FIRST: 3,
+};
+
+function cabinTier(cabinName) {
+  return CABIN_TIERS[String(cabinName || '').replace(/\s+/g, '').toUpperCase()] ?? null;
+}
+
+// pricing-options.vue shortens a cabin tab label longer than 14 characters this way.
+const CABIN_TAB_LABEL_MAX_LENGTH = 14;
+
+/**
+ * Resolves the cabin the classic Pricing Options drawer is listing from its "{cabin} pricing"
+ * heading, whatever language "pricing" is in: the cabin is the longest leading run of heading words
+ * that the active cabin tab shows as its label, once shortened the way pricing-options.vue shortens it.
+ *
+ * @param {{heading: string, activeTabLabel: string}} texts - From getPricingOptionsSelectedCabinTexts
+ * @returns {string|null} The cabin name, or null when no leading run matches the tab
+ */
+function resolvePricingOptionsCabin({ heading, activeTabLabel }) {
+  const words = String(heading || '').split(' ').filter(Boolean);
+  for (let count = words.length; count >= 1; count -= 1) {
+    const cabin = words.slice(0, count).join(' ');
+    const tabLabel = cabin.length > CABIN_TAB_LABEL_MAX_LENGTH ? cabin.replace('Economy', 'Eco') : cabin;
+    if (tabLabel === activeTabLabel) return cabin;
+  }
+  return null;
+}
+
 function describeRailSearchOutcome(railSearch, appState) {
   if (railSearch) {
     const details = JSON.stringify(railSearch);
@@ -6072,6 +6112,154 @@ async verifyFareComponentTextColorInPricingOptions(page, expectedColor, index = 
     }
 
     return { names, offenders, miscased, flow, legIndex };
+  },
+
+  /**
+   * Asserts the classic Pricing Options drawer offers exactly the brands Ypsilon returned for the
+   * flight it is pricing (ADO 77108).
+   *
+   * Ypsilon files a brand as the extFlightInfo of a <flight> in its Fare response, and ties that
+   * flight to the legs it covers through <legXRef legId>; the <leg> list of the same response says
+   * which carrier, flight number and date each legId is. A search sends several Fare calls (the
+   * whole trip, then each leg alone), each numbering its legs itself, so legIds are resolved per
+   * call and the brands are pooled across calls.
+   *
+   * Only brands in the drawer's cabin are expected: the drawer drops every option whose cabin is not
+   * exactly the searched one (flight.service.ts, AB#84200), so an Economy search never lists the
+   * Premium Economy brand the same response carries. Those are logged, not asserted.
+   *
+   * @param {import('playwright').Page} page
+   * @param {object} world - Cucumber world carrying the trip id
+   * @param {string} [requestType='Fare'] - Logged name of the Ypsilon fare call
+   * @returns {Promise<{flight: object, cabinClass: string, displayed: string[], expected: string[], otherCabins: object}>}
+   */
+  async verifyPricingOptionsBrandsMatchYpsilonFareResponse(page, world, requestType = 'Fare') {
+    if (!page) {
+      throw new Error('[FlightResults.verifyPricingOptionsBrandsMatchYpsilonFareResponse] "page" is required.');
+    }
+    if (!world) {
+      throw new Error('[FlightResults.verifyPricingOptionsBrandsMatchYpsilonFareResponse] "world" is required to read the trip\'s Fare responses.');
+    }
+
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    await flightResultsPage.waitForPricingOptionsDrawerLeg();
+
+    const flight = await flightResultsPage.getPricingOptionsPreviewFlight();
+    const cabinTexts = await flightResultsPage.getPricingOptionsSelectedCabinTexts();
+    const cabinClass = resolvePricingOptionsCabin(cabinTexts);
+    const drawerCabinTier = cabinTier(cabinClass);
+    if (drawerCabinTier === null) {
+      throw new Error(
+        `[FlightResults.verifyPricingOptionsBrandsMatchYpsilonFareResponse] Cannot tell which cabin the pricing options drawer ` +
+        `is listing: heading "${cabinTexts.heading}", active cabin tab "${cabinTexts.activeTabLabel}", resolved to ` +
+        `${JSON.stringify(cabinClass)}. Known cabins: ${Object.keys(CABIN_TIERS).join(', ')}.`,
+      );
+    }
+    const displayed = [...new Set(
+      (await flightResultsPage.getPricingOptionsLegFareNames()).filter(Boolean).map(titleCaseBrandName),
+    )].sort();
+
+    const designators = flight.flightNumbers.map((text) => {
+      const match = text.replace(/\s+/g, '').match(/^([A-Z0-9]{2})(\d{1,4})$/i);
+      if (!match) {
+        throw new Error(`[FlightResults.verifyPricingOptionsBrandsMatchYpsilonFareResponse] Cannot read a flight number out of "${text}" in the pricing options flight preview.`);
+      }
+      return `${match[1].toUpperCase()}${Number(match[2])}`;
+    });
+    const date = parseFlightDate(flight.departureDateText);
+    if (!date) {
+      throw new Error(`[FlightResults.verifyPricingOptionsBrandsMatchYpsilonFareResponse] Cannot read the departure date "${flight.departureDateText}" in the pricing options flight preview.`);
+    }
+    const isDepartureDate = (isoDate) => {
+      const [year, month, day] = String(isoDate || '').split('-').map(Number);
+      return day === date.day && month === date.month + 1 && (date.year === null || year === date.year);
+    };
+
+    const { perCall } = await PayloadValidation.collectXmlBlockTreesPerCall(
+      world,
+      requestType,
+      {
+        leg: { attributes: ['legId', 'cr', 'fNo', 'depApt', 'depDate'] },
+        flight: { attributes: ['extFlightInfo'], blocks: { legXRef: { attributes: ['legId', 'cosDescription'] } } },
+      },
+      { source: 'response', purpose: 'read the brands the Ypsilon Fare responses offer' },
+    );
+
+    const expectedBrands = new Set();
+    const otherCabins = {};
+    // Per call, so a brand that only one of the pooled calls returned can be traced to it.
+    const brandsPerCall = [];
+    for (const call of perCall) {
+      const callBrands = new Set();
+      brandsPerCall.push(callBrands);
+      const legsById = new Map(call.leg.map((leg) => [leg.legId, leg]));
+      for (const fareFlight of call.flight) {
+        if (!fareFlight.extFlightInfo) continue;
+        const legs = fareFlight.legXRef.map((ref) => ({ ...legsById.get(ref.legId), cosDescription: ref.cosDescription }));
+        const legDesignators = legs.map((leg) => `${String(leg.cr || '').toUpperCase()}${Number(leg.fNo)}`);
+        const [firstLeg] = legs;
+        const isOpenedFlight = firstLeg
+          && legDesignators[0] === designators[0]
+          && firstLeg.depApt === flight.origin
+          && isDepartureDate(firstLeg.depDate)
+          && designators.every((designator) => legDesignators.includes(designator));
+        if (!isOpenedFlight) continue;
+
+        const brand = titleCaseBrandName(fareFlight.extFlightInfo);
+        const cabins = [...new Set(legs.map((leg) => leg.cosDescription))];
+        // An unknown cabin is not set aside as "another cabin": that would quietly drop its brand
+        // from the expectation, which is the very miss this check exists to catch.
+        const unknownCabin = cabins.find((cabin) => cabinTier(cabin) === null);
+        if (unknownCabin !== undefined) {
+          throw new Error(
+            `[FlightResults.verifyPricingOptionsBrandsMatchYpsilonFareResponse] The "${requestType}" response files brand ` +
+            `"${brand}" of ${designators.join('/')} in cabin ${JSON.stringify(unknownCabin)}, which has no known tier. ` +
+            `Add it to CABIN_TIERS (known: ${Object.keys(CABIN_TIERS).join(', ')}).`,
+          );
+        }
+        if (cabins.every((cabin) => cabinTier(cabin) === drawerCabinTier)) {
+          expectedBrands.add(brand);
+          callBrands.add(brand);
+        } else {
+          (otherCabins[cabins.join(' + ')] ||= new Set()).add(brand);
+        }
+      }
+    }
+
+    const expected = [...expectedBrands].sort();
+    const otherCabinBrands = Object.fromEntries(Object.entries(otherCabins).map(([cabin, brands]) => [cabin, [...brands]]));
+    logger.info('[YpsilonBrands] Pricing options brands vs the Fare responses', {
+      flight: { ...flight, designators },
+      cabinClass,
+      fareCalls: perCall.length,
+      brandsPerCall: brandsPerCall.map((brands) => [...brands].sort()),
+      displayed,
+      expected,
+      otherCabinBrands,
+    });
+
+    // Thrown rather than expect(value, message): this repo's Playwright drops expect's message, and
+    // the lists below are what makes a failure readable.
+    if (expected.length === 0) {
+      throw new Error(
+        `No brand (extFlightInfo) was found in the ${perCall.length} "${requestType}" response(s) for ${designators.join('/')} ` +
+        `${flight.origin}-${flight.destination} on ${flight.departureDateText} in ${cabinClass}, so there is nothing to compare the ` +
+        `drawer against. Brands in other cabins: ${JSON.stringify(otherCabinBrands)}.`,
+      );
+    }
+
+    const missing = expected.filter((brand) => !displayed.includes(brand));
+    const unexpected = displayed.filter((brand) => !expected.includes(brand));
+    if (missing.length > 0 || unexpected.length > 0) {
+      throw new Error(
+        `Pricing options for ${designators.join('/')} ${flight.origin}-${flight.destination} (${cabinClass}) must offer every brand ` +
+        `Ypsilon returned in extFlightInfo, and no other. Missing from the drawer: ${JSON.stringify(missing)}; ` +
+        `not in the Fare response: ${JSON.stringify(unexpected)}. Displayed: ${JSON.stringify(displayed)}, ` +
+        `Fare response: ${JSON.stringify(expected)}.`,
+      );
+    }
+
+    return { flight: { ...flight, designators }, cabinClass, displayed, expected, otherCabins: otherCabinBrands };
   },
 
   /**
