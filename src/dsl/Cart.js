@@ -13184,6 +13184,66 @@ const Cart = {
     logger.info('Selected the first ancillary option from dropdown');
   },
 
+  /**
+   * Selects an ancillary option by label, opening the ancillary options section first when a
+   * previous save left it collapsed.
+   * @param {import('playwright').Page} page
+   * @param {string} optionText - Text contained in the option label, e.g. "Speedy Boarding"
+   * @returns {Promise<{ selected: true, optionText: string }>}
+   */
+  async selectAncillaryOption(page, optionText) {
+    if (!page) throw new Error('page is required');
+    if (!optionText || typeof optionText !== 'string') {
+      throw new Error('optionText must be a non-empty string, got: ' + typeof optionText);
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+    if (!(await cartPage.isAncillaryOptionsSelectVisible())) {
+      await this.clickEditAncillaryOptions(page);
+    }
+    await cartPage.openAncillaryOptionsDropdown();
+    try {
+      await cartPage.selectAncillaryOptionByText(optionText);
+    } catch (error) {
+      const available = await cartPage.getAncillaryOptionsDropdownOptionTexts().catch(() => []);
+      throw new Error(
+        `Ancillary option "${optionText}" was not found in the Ancillary Options dropdown. ` +
+        `Available: ${JSON.stringify(available)}. Original: ${error.message}`
+      );
+    }
+    logger.info('Selected ancillary option', { optionText });
+    return { selected: true, optionText };
+  },
+
+  /**
+   * Opens the quote's flight details and verifies the outbound flight's baggage line shows the
+   * expected allowance (whitespace and case normalised), e.g. "26Kg+26Kg" — not the "32kg+32kg"
+   * bug 72524 displayed once an ancillary carrying its own baggage was added on top of the selected
+   * bags. Only the first line is checked: baggage lines render one per flight, outbound first, and
+   * a leg with no bag bought keeps the fare's own allowance (e.g. "1PC 20KG").
+   * @param {import('playwright').Page} page
+   * @param {string} expectedAllowance - Allowance text the outbound baggage line must contain
+   * @returns {Promise<{ lines: string[] }>}
+   */
+  async verifyOutboundBaggageAllowanceInQuote(page, expectedAllowance) {
+    if (!page) throw new Error('page is required');
+    if (!expectedAllowance || typeof expectedAllowance !== 'string') {
+      throw new Error('expectedAllowance must be a non-empty string, got: ' + typeof expectedAllowance);
+    }
+
+    const normalize = (text) => text.toUpperCase().replace(/\s+/g, ' ').trim();
+    const cartPage = getPageObject(page, CartPage);
+    await cartPage.clickFlightDetailsButton();
+    const lines = await cartPage.getFlightDetailsDrawerBaggageLines();
+    logger.info('Baggage lines in the flight details drawer', { expectedAllowance, lines });
+
+    expect(
+      normalize(lines[0]),
+      `The outbound baggage allowance should display "${expectedAllowance}" (all lines: ${JSON.stringify(lines)})`
+    ).toContain(normalize(expectedAllowance));
+    return { lines };
+  },
+
   async verifyAncillaryOptionsFilledIndicator(page) {
     if (!page) throw new Error('page is required');
 

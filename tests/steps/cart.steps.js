@@ -2988,6 +2988,16 @@ When("I select the first ancillary option", async function () {
   await Cart.selectFirstAncillaryOption(this.page);
 });
 
+When("I select ancillary option {string}", async function (optionText) {
+  logger.info("Selecting ancillary option", { optionText });
+  await Cart.selectAncillaryOption(this.page, optionText);
+});
+
+Then("the outbound baggage allowance in the quote should display {string}", async function (expectedAllowance) {
+  logger.info("Verifying outbound baggage allowance in the quote flight details", { expectedAllowance });
+  await Cart.verifyOutboundBaggageAllowanceInQuote(this.page, expectedAllowance);
+});
+
 Then("the ancillary options filled indicator should be visible", async function () {
   logger.info("Verifying ancillary options filled indicator is visible");
   await Cart.verifyAncillaryOptionsFilledIndicator(this.page);

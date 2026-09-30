@@ -7253,15 +7253,24 @@ class CartPage {
    * @returns {Promise<string[]>} Option labels in display order
    */
   async getAncillaryOptionsDropdownOptionTexts(timeout = 10000) {
+    const options = await this.getAncillaryOptionsDropdownOptions(timeout);
+    await options.first().waitFor({ state: 'visible', timeout });
+    return options.allInnerTexts();
+  }
+
+  /**
+   * Returns the options of the dropdown the ancillary options select owns (its aria-controls).
+   * @param {number} [timeout=10000] - Timeout for reading the select's aria-controls
+   * @returns {Promise<import('@playwright/test').Locator>}
+   */
+  async getAncillaryOptionsDropdownOptions(timeout = 10000) {
     const popperId = await this.page
       .locator(SELECTORS.FLIGHT_ANCILLARY_OPTIONS_SELECT_INPUT)
       .first()
       .getAttribute('aria-controls', { timeout });
-    const options = popperId
+    return popperId
       ? this.page.locator(`[id="${popperId}"] ${SELECTORS.FLIGHT_ANCILLARY_OPTIONS_DROPDOWN_OPTION}`)
       : this.page.locator(SELECTORS.FLIGHT_ANCILLARY_SERVICES_DROPDOWN_OPTION);
-    await options.first().waitFor({ state: 'visible', timeout });
-    return options.allInnerTexts();
   }
 
   /**
@@ -7269,6 +7278,28 @@ class CartPage {
    */
   async closeAncillaryOptionsDropdown() {
     await this.page.keyboard.press('Escape');
+  }
+
+  /**
+   * Whether the ancillary options section is expanded, i.e. its select is rendered.
+   * @returns {Promise<boolean>}
+   */
+  async isAncillaryOptionsSelectVisible() {
+    return this.page.locator(SELECTORS.FLIGHT_ANCILLARY_OPTIONS_SELECT_TRIGGER).first().isVisible();
+  }
+
+  /**
+   * Clicks the ancillary option whose label contains the given text. The dropdown must already be
+   * open. Scoped to the dropdown this select owns, for the same reason as
+   * getAncillaryOptionsDropdownOptionTexts: the baggage select's dropdown stays mounted and visible.
+   * @param {string} optionText - Text contained in the option label
+   * @param {number} [timeout=10000] - Per-action timeout in ms
+   */
+  async selectAncillaryOptionByText(optionText, timeout = 10000) {
+    const options = await this.getAncillaryOptionsDropdownOptions(timeout);
+    const option = options.filter({ hasText: optionText }).first();
+    await option.waitFor({ state: 'visible', timeout });
+    await option.click();
   }
 
   /**
