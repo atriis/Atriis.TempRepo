@@ -460,12 +460,13 @@ jobs:
           }
           resolved.sort((a, b) => a.loc.localeCompare(b.loc));
 
-          // A location list is passed to each shard as one space-separated
-          // string, so a path with a space in it would split into two bad args.
-          const spaced = resolved.filter((s) => /\s/.test(s.loc));
-          if (spaced.length > 0) {
-            console.log('::error::Feature paths contain whitespace, which the shard argument list cannot carry: ' +
-              spaced.map((s) => s.loc).join(', '));
+          // A location list is passed to each shard as one newline-separated
+          // string (feature filenames can contain spaces, e.g. 29744), so only a
+          // path with a line break in it would split into two bad args.
+          const broken = resolved.filter((s) => /[\r\n]/.test(s.loc));
+          if (broken.length > 0) {
+            console.log('::error::Feature paths contain line breaks, which the shard argument list cannot carry: ' +
+              broken.map((s) => JSON.stringify(s.loc)).join(', '));
             process.exit(1);
           }
 
@@ -488,7 +489,7 @@ jobs:
             .map(([suite_id, items]) => ({
               suite_id,
               count: items.length,
-              locations: items.map((s) => s.loc).join(' '),
+              locations: items.map((s) => s.loc).join('\n'),
             }));
 
           // A skipped job must still have a syntactically valid matrix, so never
@@ -610,7 +611,9 @@ jobs:
           LOCATIONS: ${{ matrix.locations }}
         run: |
           set -euo pipefail
-          read -r -a LOCS <<<"$LOCATIONS"
+          # One location per line — split on newlines only, so a feature path
+          # with a space in it stays a single argument.
+          mapfile -t LOCS < <(printf '%s\n' "$LOCATIONS" | sed '/^[[:space:]]*$/d')
           # Hard stop: `cucumber-js` with no path arguments runs the WHOLE suite,
           # which means real bookings against staging. An empty list is a bug in
           # the plan job, never an instruction to run everything.
