@@ -10,6 +10,7 @@ const { expect } = require("@playwright/test");
 const { getPageObject } = require("@utils/pageObjectCache");
 const CartPaymentPage = require("../pages/CartPaymentPage");
 const cards = require("../data/cards.json");
+const logger = require("@utils/logger").child("CartPayment");
 
 class CartPayment {
   /**
@@ -811,6 +812,81 @@ class CartPayment {
         timeout: 15000,
       }
     ).toBe(expectedCvv);
+  }
+
+  /**
+   * Selects a card type in the already-open card details drawer.
+   * @param {import('@playwright/test').Page} page
+   * @param {string} cardType - Card type label as shown in the dropdown (e.g. "Air Plus")
+   */
+  static async selectCardType(page, cardType) {
+    if (!page) throw new Error('[CartPayment.selectCardType] "page" is required');
+    if (!cardType || typeof cardType !== 'string') {
+      throw new Error(`[CartPayment.selectCardType] "cardType" must be a non-empty string, got: ${typeof cardType}`);
+    }
+    const fop = getPageObject(page, CartPaymentPage);
+    logger.debug('Selecting card type in card details drawer', { cardType });
+    try {
+      await fop.waitForCardHolderNameInput();
+      await fop.typeCardType(cardType);
+    } catch (err) {
+      throw new Error(`[CartPayment.selectCardType] Could not select card type "${cardType}" in the card details drawer. The drawer may not be open or the card type is not offered for this quote. Original: ${err.message}`);
+    }
+  }
+
+  /**
+   * Opens the "Insert card number" popup from the card details drawer.
+   * The link only renders once a card type is selected (credit-card-details-card.vue `v-if="cardDetails.cardType"`).
+   * @param {import('@playwright/test').Page} page
+   */
+  static async openCardNumberDialog(page) {
+    if (!page) throw new Error('[CartPayment.openCardNumberDialog] "page" is required');
+    const fop = getPageObject(page, CartPaymentPage);
+    try {
+      await fop.clickInsertCreditCardNumberLink();
+    } catch (err) {
+      throw new Error(`[CartPayment.openCardNumberDialog] Could not open the "Insert card number" popup. A card type must be selected first for the link to show. Original: ${err.message}`);
+    }
+  }
+
+  /**
+   * Types a card number into the open "Insert card number" popup.
+   * @param {import('@playwright/test').Page} page
+   * @param {string} cardNumber - Card number digits
+   */
+  static async typeCardNumberInDialog(page, cardNumber) {
+    if (!page) throw new Error('[CartPayment.typeCardNumberInDialog] "page" is required');
+    if (!cardNumber || typeof cardNumber !== 'string') {
+      throw new Error(`[CartPayment.typeCardNumberInDialog] "cardNumber" must be a non-empty string, got: ${typeof cardNumber}`);
+    }
+    const fop = getPageObject(page, CartPaymentPage);
+    await fop.typeCardNumberInCardNumberDialog(cardNumber);
+  }
+
+  /**
+   * Clicks Save in the "Insert card number" popup.
+   * @param {import('@playwright/test').Page} page
+   */
+  static async saveCardNumberDialog(page) {
+    if (!page) throw new Error('[CartPayment.saveCardNumberDialog] "page" is required');
+    const fop = getPageObject(page, CartPaymentPage);
+    try {
+      await fop.waitForSaveCardModalButton();
+      await fop.clickSaveCardModalButton();
+    } catch (err) {
+      throw new Error(`[CartPayment.saveCardNumberDialog] Could not click Save in the "Insert card number" popup. The popup may have closed. Original: ${err.message}`);
+    }
+  }
+
+  /**
+   * Reads the card type mismatch error shown inside the "Insert card number" popup.
+   * @param {import('@playwright/test').Page} page
+   * @returns {Promise<string>}
+   */
+  static async getCardNumberTypeMismatchError(page) {
+    if (!page) throw new Error('[CartPayment.getCardNumberTypeMismatchError] "page" is required');
+    const fop = getPageObject(page, CartPaymentPage);
+    return fop.getCardNumberTypeMismatchErrorText();
   }
 }
 

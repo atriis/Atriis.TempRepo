@@ -327,3 +327,37 @@ When("I fill the credit card CVV", async function () {
   logger.info("Filling credit card CVV (mandatory)");
   await CartPayment.fillCreditCardCVV(this.page);
 });
+
+// ===== CARD DETAILS DRAWER — "Insert card number" popup (AB#84881) =====
+
+When("I select card type as {string} in card details drawer", async function (cardType) {
+  logger.info("Selecting card type in card details drawer", { cardType });
+  await CartPayment.selectCardType(this.page, cardType);
+});
+
+When("I click insert credit card number", async function () {
+  logger.info("Opening the insert card number popup");
+  await CartPayment.openCardNumberDialog(this.page);
+});
+
+When("I insert credit card number {string}", async function (cardNumber) {
+  logger.info("Typing card number in the insert card number popup");
+  await CartPayment.typeCardNumberInDialog(this.page, cardNumber);
+});
+
+// Binds to the Save button INSIDE the "Insert card number" popup — not the drawer's Save
+// ("I click the save button" in cart.steps.js is a different CartPage button).
+When("I click save button", async function () {
+  logger.info("Clicking Save in the insert card number popup");
+  await CartPayment.saveCardNumberDialog(this.page);
+});
+
+// Binds to the card type mismatch error inside the "Insert card number" popup only — not a
+// page-wide message check ("I should see the message {string}" is the profile popup's).
+Then("I should see message {string}", async function (expectedMessage) {
+  logger.info("Verifying card type mismatch message in the insert card number popup", { expectedMessage });
+  const actual = await CartPayment.getCardNumberTypeMismatchError(this.page);
+  if (actual !== expectedMessage) {
+    throw new Error(`[cart_fop.steps] Card number popup message mismatch. Expected: "${expectedMessage}". Actual: "${actual}"`);
+  }
+});

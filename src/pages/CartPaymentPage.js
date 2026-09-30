@@ -98,6 +98,16 @@ const SELECTORS = {
   VISIBLE_DROPDOWN_ITEM: '.el-select-dropdown:visible .el-select-dropdown__item',
   // Scrollable wrapper inside the currently-visible el-select-dropdown panel.
   VISIBLE_DROPDOWN_SCROLL_WRAP: '.el-select-dropdown:visible .el-scrollbar__wrap',
+
+  // Card number input in the "Insert card number" popup (credit-card-details-card.vue, teleported el-dialog
+  // `.payment-modal`). The popup renders exactly one input via v-if/v-else: the AirPlus input (placeholder
+  // "Please enter your Air Plus card number") or the Azure-tokenised one ("Please enter your credit card number").
+  // INSERT_CREDIT_CARD_NUMBER_FIELD above matches only the latter, so it misses the AirPlus path.
+  CARD_NUMBER_DIALOG_INPUT: '.payment-modal .insert-card input',
+  // In-popup error shown when the typed number disagrees with the selected card type (AB#84881).
+  // The source span's data-testid is stripped from built OBT (vite removeDataTestId), so key on role="alert",
+  // which the sibling required-field `.is-danger` span does not carry.
+  CARD_NUMBER_TYPE_MISMATCH_ERROR: '.payment-modal .insert-card [role="alert"]',
 };
 
 class CartPaymentPage {
@@ -1107,6 +1117,44 @@ class CartPaymentPage {
   async getLastFourDigitText({ timeout = 15000 } = {}) {
     const el = this.page.locator(SELECTORS.LAST_FOUR_DIGIT).first();
     await el.waitFor({ state: 'visible', timeout });
+    return (await el.textContent()).trim();
+  }
+
+  /**
+   * Types a card number into the "Insert card number" popup, whichever input it renders
+   * (AirPlus or Azure-tokenised card number).
+   * @param {string} cardNumber - Card number (required)
+   * @param {object} [options]
+   * @param {number} [options.timeout=15000]
+   * @throws {Error} If cardNumber is not provided or the popup input never appears
+   */
+  async typeCardNumberInCardNumberDialog(cardNumber, { timeout = 15000 } = {}) {
+    if (!cardNumber || typeof cardNumber !== 'string') {
+      throw new Error(`[CartPaymentPage.typeCardNumberInCardNumberDialog] "cardNumber" must be a non-empty string, got: ${typeof cardNumber}`);
+    }
+    const input = this.page.locator(SELECTORS.CARD_NUMBER_DIALOG_INPUT);
+    try {
+      await input.waitFor({ state: 'visible', timeout });
+      await input.fill(cardNumber);
+    } catch (err) {
+      throw new Error(`[CartPaymentPage.typeCardNumberInCardNumberDialog] Could not type into the card number popup input. The "Insert card number" popup is likely not open. Original: ${err.message}`);
+    }
+  }
+
+  /**
+   * Gets the trimmed text of the card-number/card-type mismatch error inside the "Insert card number" popup.
+   * @param {object} [options]
+   * @param {number} [options.timeout=15000]
+   * @returns {Promise<string>}
+   * @throws {Error} If the error never becomes visible
+   */
+  async getCardNumberTypeMismatchErrorText({ timeout = 15000 } = {}) {
+    const el = this.page.locator(SELECTORS.CARD_NUMBER_TYPE_MISMATCH_ERROR);
+    try {
+      await el.waitFor({ state: 'visible', timeout });
+    } catch (err) {
+      throw new Error(`[CartPaymentPage.getCardNumberTypeMismatchErrorText] The card type mismatch error did not appear in the card number popup within ${timeout}ms. The number may have been accepted for the selected card type, or the popup closed. Original: ${err.message}`);
+    }
     return (await el.textContent()).trim();
   }
 }
