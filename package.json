@@ -6,7 +6,7 @@
     "env:sync": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/sync-env-from-1password.ps1",
     "payload:check": "node scripts/check-payload-api.js",
     "db:check": "node scripts/check-db.js",
-    "test:unit": "node --test \"tests/unit/**/*.test.js\"",
+    "test:unit": "node scripts/run-unit-tests.js",
     "bdd:db": "npx cucumber-js tests/features/db/",
     "test": "playwright test",
     "test:headed": "playwright test --headed",
@@ -72,8 +72,14 @@
   },
   "dependencies": {
     "@azure/data-tables": "^13.3.2",
-    "@azure/identity": "^4.13.3",
+    "@azure/identity": "4.13.1",
     "@azure/storage-blob": "^12.31.0",
     "mssql": "^12.7.2"
+  },
+  "overrides": {
+    "tedious": "19.2.2",
+    "@azure/core-rest-pipeline": "1.24.0",
+    "@azure-rest/core-client": "2.7.0",
+    "@typespec/ts-http-runtime": "0.3.6"
   }
 }
