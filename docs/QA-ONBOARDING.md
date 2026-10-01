@@ -363,6 +363,10 @@ When I add flight result 1 to the share bar
 When I click share slot 1
 When I click on the "Share" button to open the share dialog
 When I exit share mode
+When I open pricing options for flight result 1
+When I share the selection from pricing options
+When I remove the shared selection from the pricing options footer
+Then the pricing options Share button should be enabled
 Then the share bar should show 1 of 4 quotes selected
 Then the share email preview should contain every quote in the share bar
 Then the original currency symbol "$" should be visible in flight results

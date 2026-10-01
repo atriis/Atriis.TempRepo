@@ -1518,6 +1518,35 @@ Then('the share email preview should contain every quote in the share bar', { ti
   logger.info('Email preview verified', result);
 });
 
+// ===== SHARE FROM THE NEW PRICING OPTIONS SCREEN (US 84674) =====
+
+When("I open pricing options for flight result {int}", async function (resultNumber) {
+  logger.info("Opening pricing options for a flight result", { resultNumber });
+  this.pricingOptionsResult = await FlightResults.openPricingOptionsForResult(this.page, resultNumber);
+});
+
+Then("the pricing options Share button should be {word}", async function (state) {
+  logger.info("Verifying the pricing options Share button state", { state });
+  await FlightResults.verifyNewFlowShareButtonState(this.page, state);
+});
+
+When("I share the selection from pricing options", async function () {
+  logger.info("Sharing the pricing options selection");
+  const quote = await FlightResults.shareSelectionFromPricingOptions(this.page, this.pricingOptionsResult);
+  this.sharedQuotes = [...(this.sharedQuotes || []), quote];
+});
+
+When("I remove the shared selection from the pricing options footer", async function () {
+  logger.info("Removing the shared selection with the pricing options \"Added\" button");
+  const { removedSlot } = await FlightResults.removeSharedSelectionFromPricingOptions(this.page);
+  this.sharedQuotes.splice(removedSlot - 1, 1);
+});
+
+Then("share slot {int} price should match the pricing options footer total", async function (slotNumber) {
+  logger.info("Verifying the slot price matches the pricing options footer total", { slotNumber });
+  await FlightResults.verifySharedQuotePriceMatchesFooterTotal(this.page, sharedQuote(this, slotNumber));
+});
+
 // ========================================
 // STOPOVER INDICATOR
 // ========================================

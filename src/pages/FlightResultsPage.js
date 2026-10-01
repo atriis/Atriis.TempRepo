@@ -305,6 +305,8 @@ const SELECTORS = {
   SHARE_SLOT_TOOLTIP: '.share-tag-popper',
   MATERIAL_ICON: '.material-symbols-outlined',
   NEW_FLOW_FOOTER_BUTTONS: '.flight-selection .selection-actions .actions-section button:visible',
+  // Share mode footer CTA (US 84674): "+ Share", or "Added" once the selection is shared
+  NEW_FLOW_FOOTER_SHARE_BUTTON: ".flight-selection .selection-actions .actions-section button.share-btn",
   OFFICE_HOURS_INFO_ICON: 'button.add-to-trip .app-tooltip__content',
   OFFICE_HOURS_TOOLTIP_TITLE: '.app-tooltip.hours-limitation-description .app-tooltip__title',
   RESULTS_CO2_TOOLTIP_TRIGGER: '.flight-list .flight-preview .co2-emissions-label .info-icon',
@@ -4162,6 +4164,25 @@ async clickSelectForFareWithBaggagePricingOptions(baggageText) {
       clone.querySelectorAll(iconSelector).forEach((icon) => icon.remove());
       return clone.textContent.replace(/\s+/g, ' ').trim();
     }), SELECTORS.MATERIAL_ICON);
+  }
+
+  /**
+   * Whether the new pricing options footer's share CTA is disabled.
+   * @returns {Promise<boolean>}
+   */
+  async isNewFlowFooterShareButtonDisabled() {
+    const button = this.page.locator(SELECTORS.NEW_FLOW_FOOTER_SHARE_BUTTON).first();
+    await button.waitFor({ state: "visible", timeout: 30000 });
+    return button.isDisabled();
+  }
+
+  /**
+   * Clicks the new pricing options footer's share CTA ("+ Share" adds, "Added" removes).
+   */
+  async clickNewFlowFooterShareButton() {
+    const button = this.page.locator(SELECTORS.NEW_FLOW_FOOTER_SHARE_BUTTON).first();
+    await button.scrollIntoViewIfNeeded();
+    await button.click({ timeout: 15000 });
   }
 
   /**

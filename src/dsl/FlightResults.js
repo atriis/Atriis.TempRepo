@@ -2643,6 +2643,122 @@ const FlightResults = {
     return { offers: offers.length };
   },
 
+  // ===== SHARE FROM THE NEW PRICING OPTIONS SCREEN (US 84674) =====
+
+  /**
+   * Opens a result's pricing options, reading its flight numbers first: the results list is hidden while the screen is open.
+   *
+   * @param {import('playwright').Page} page
+   * @param {number} resultNumber - 1-based card position
+   * @returns {Promise<{resultNumber: number, flightNumbers: string[]}>}
+   */
+  async openPricingOptionsForResult(page, resultNumber) {
+    if (!page) throw new Error("[FlightResults.openPricingOptionsForResult] \"page\" is required.");
+    if (!Number.isInteger(resultNumber) || resultNumber < 1) {
+      throw new Error(`[FlightResults.openPricingOptionsForResult] resultNumber must be an integer >= 1, got: ${resultNumber}`);
+    }
+    const flightNumbers = await getPageObject(page, FlightResultsPage).getResultCardFlightNumbers(resultNumber - 1);
+    if (flightNumbers.length === 0) throw new Error(`[FlightResults.openPricingOptionsForResult] Result ${resultNumber} shows no flight numbers.`);
+    await this.clickToOpenPricingOptions(page, resultNumber - 1);
+    return { resultNumber, flightNumbers };
+  },
+
+  /**
+   * Asserts the new pricing options footer's share CTA is enabled or disabled.
+   *
+   * @param {import('playwright').Page} page
+   * @param {'enabled'|'disabled'} state
+   */
+  async verifyNewFlowShareButtonState(page, state) {
+    if (!page) throw new Error("[FlightResults.verifyNewFlowShareButtonState] \"page\" is required.");
+    if (!["enabled", "disabled"].includes(state)) {
+      throw new Error(`[FlightResults.verifyNewFlowShareButtonState] state must be "enabled" or "disabled", got: ${state}`);
+    }
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    let disabled;
+    try {
+      await expect.poll(async () => {
+        disabled = await flightResultsPage.isNewFlowFooterShareButtonDisabled();
+        return disabled;
+      }, { timeout: 10000 }).toBe(state === "disabled");
+    } catch {
+      throw new Error(`[FlightResults.verifyNewFlowShareButtonState] The pricing options Share button should be ${state}, but it is ${disabled ? "disabled" : "enabled"}.`);
+    }
+    return { state };
+  },
+
+  /**
+   * Clicks "+ Share" in the new pricing options footer and waits for its slot.
+   *
+   * @param {import('playwright').Page} page
+   * @param {{resultNumber: number, flightNumbers: string[]}} pricingOptionsResult - from openPricingOptionsForResult
+   * @returns {Promise<{resultNumber: number, flightNumbers: string[],
+   *   legs: Array<{route: string, departure: string, arrival: string}>, price: number}>}
+   */
+  async shareSelectionFromPricingOptions(page, pricingOptionsResult) {
+    if (!page) throw new Error("[FlightResults.shareSelectionFromPricingOptions] \"page\" is required.");
+    if (!pricingOptionsResult) {
+      throw new Error("[FlightResults.shareSelectionFromPricingOptions] \"pricingOptionsResult\" is required - open pricing options for a flight result first.");
+    }
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    const before = await flightResultsPage.getFilledShareSlotCount();
+    await flightResultsPage.clickNewFlowFooterShareButton();
+    try {
+      await flightResultsPage.waitForFilledShareSlotCount(before + 1, 15000);
+    } catch (err) {
+      throw new Error(
+        `[FlightResults.shareSelectionFromPricingOptions] The pricing options Share did not fill a share slot (${before} filled before). ` +
+        `The footer may have read "Added" already. Original: ${err.message}`,
+      );
+    }
+    const slotLabel = (await flightResultsPage.getFilledShareSlotLabels())[before];
+    const quote = { ...pricingOptionsResult, ...parseShareSlotLabel(slotLabel) };
+    logger.info("[Share] Pricing options selection added to the share bar", { resultNumber: quote.resultNumber, flightNumbers: quote.flightNumbers, slotPrice: quote.price });
+    return quote;
+  },
+
+  /**
+   * Clicks "Added" in the new pricing options footer and waits for its quote to leave the share bar.
+   *
+   * @param {import('playwright').Page} page
+   * @returns {Promise<{removedSlot: number, remaining: number}>} removedSlot is 1-based
+   */
+  async removeSharedSelectionFromPricingOptions(page) {
+    if (!page) throw new Error("[FlightResults.removeSharedSelectionFromPricingOptions] \"page\" is required.");
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    const before = await flightResultsPage.getFilledShareSlotLabels();
+    if (before.length === 0) throw new Error("[FlightResults.removeSharedSelectionFromPricingOptions] The share bar has no quote to remove.");
+    await flightResultsPage.clickNewFlowFooterShareButton();
+    try {
+      await flightResultsPage.waitForFilledShareSlotCount(before.length - 1, 15000);
+    } catch (err) {
+      throw new Error(`[FlightResults.removeSharedSelectionFromPricingOptions] "Added" did not remove a quote (${before.length} filled). Original: ${err.message}`);
+    }
+    const after = await flightResultsPage.getFilledShareSlotLabels();
+    const removedSlot = before.findIndex((label, i) => label !== after[i]) + 1;
+    return { removedSlot, remaining: after.length };
+  },
+
+  /**
+   * Asserts a slot's price equals the new pricing options footer's total per traveller.
+   *
+   * @param {import('playwright').Page} page
+   * @param {{price: number, resultNumber: number}} quote - from shareSelectionFromPricingOptions
+   * @returns {Promise<{slotPrice: number, footerTotal: number}>}
+   */
+  async verifySharedQuotePriceMatchesFooterTotal(page, quote) {
+    if (!page) throw new Error("[FlightResults.verifySharedQuotePriceMatchesFooterTotal] \"page\" is required.");
+    if (!quote) throw new Error("[FlightResults.verifySharedQuotePriceMatchesFooterTotal] \"quote\" is required - share a selection first.");
+    const footerTotal = await this.extractFlightSelectionFooterTotalPerTraveller(page);
+    if (!(Math.abs(quote.price - footerTotal) <= SHARE_PRICE_TOLERANCE)) {
+      throw new Error(
+        `[FlightResults.verifySharedQuotePriceMatchesFooterTotal] Result ${quote.resultNumber} was shared at ${quote.price}, ` +
+        `but the pricing options footer totals ${footerTotal} per traveller.`,
+      );
+    }
+    return { slotPrice: quote.price, footerTotal };
+  },
+
   /**
    * Filters flight results by carrier, extracts the price, and shares that quote.
    * Use for sharing a quote from a specific carrier (e.g., KLM, Air France).
