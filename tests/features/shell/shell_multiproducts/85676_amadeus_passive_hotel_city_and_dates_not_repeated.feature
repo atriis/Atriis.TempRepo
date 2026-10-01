@@ -34,7 +34,6 @@ Feature: 85676 Amadeus - Passive hotel segment does not repeat the city and date
     Given I am logged in as "nebe@ee.com" booking a new trip
     When I search for a one way flight from "CPH" to "BOD"
     And I add the first flight to cart
-    And I log the trip number from the URL
     Then the booking status should be "Pending booking"
     When I click to add a hotel to my trip from cart
     And I search for a hotel in "Copenhagen" for 1 night from the cart drawer
