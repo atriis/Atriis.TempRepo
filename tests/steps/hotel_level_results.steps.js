@@ -3,6 +3,7 @@ const { When, Then, setDefaultTimeout } = require("@cucumber/cucumber");
 const { expect } = require("@playwright/test");
 const { HotelLevelResults, RoomLevelResults } = require("../../src/dsl");
 const logger = require("@utils/logger").child("HotelResults");
+const config = require("@config/config");
 const HotelLevelResultsPage = require("../../src/pages/HotelLevelResultsPage");
 const { getPageObject } = require("@utils/pageObjectCache");
 const { getGsaAllowance, getDynamicLowestFare } = require("../support/scenarioState");
@@ -520,3 +521,28 @@ When("I select the most expensive in policy hotel", async function () {
 
   this.selectedHotel = await HotelLevelResults.selectHotelByName(this.page, inPolicyHotel.name);
 });
+
+// Downloads every availability request and response of the trip; well above the 120s default.
+const AVAILABILITY_PAYLOAD_STEP_TIMEOUT_MS = 240000;
+
+Then(
+  "Amadeus hotel availability {string} should re-request exactly the hotels each reply was cut short of",
+  { timeout: AVAILABILITY_PAYLOAD_STEP_TIMEOUT_MS },
+  async function (requestType) {
+    if (!config.payloadValidation.enabled) {
+      logger.warn("PAYLOAD_VALIDATION_ENABLED=false", { step: "checkAmadeusAvailabilityTruncationRetries", requestType });
+      return;
+    }
+    logger.info("Checking Amadeus availability re-requests for cut replies", { requestType, tripId: this.tripId || null });
+    const result = await HotelLevelResults.checkAmadeusAvailabilityTruncationRetries(this, requestType);
+
+    expect(
+      result.missingRetries,
+      "Amadeus replies that priced more hotels (PRV.n OK) than they delivered, with no re-request for the missing codes",
+    ).toEqual([]);
+    expect(
+      result.unexpectedRepeats,
+      "Amadeus availability calls that ask again for hotels already asked, without a cut reply to recover",
+    ).toEqual([]);
+  }
+);

@@ -16,6 +16,14 @@ const {
   findHotelsClosestToOopPrice,
   splitByOopPrice,
 } = require("@utils/hotelLowestFare.helper");
+const { fetchPayloadFromStorage } = require("@utils/payloadValidationClient");
+
+// Every Amadeus availability call of a busy trip is downloaded, request and response, so the budget
+// covers far more than the default single-payload lookup.
+const AVAILABILITY_CALLS_TO_INSPECT = 200;
+const AVAILABILITY_INSPECT_TIMEOUT_MS = 180000;
+// The search engine gives up re-requesting a cut reply after this many rounds (#85016).
+const AMADEUS_MAX_TRUNCATION_RETRIES = 3;
 
 const HOTEL_SUPPLIER_ID_MAP = {
   expedia: 'EXPEDIARAPID',
@@ -1509,6 +1517,131 @@ const HotelLevelResults = {
     await getPageObject(page, HotelLevelResultsPage).clickViewRatesByIndex(hotel.position);
 
     return hotel;
+  },
+
+  /**
+   * Reads every Amadeus OTA_HotelAvailRQ/RS pair of the trip and checks the re-requests the search
+   * engine sends for a cut reply (#85016). Amadeus stops writing a reply near 1000 rate rows without
+   * a warning, so the only sign is the PRV.n Tag="OK" counter exceeding the properties delivered;
+   * the engine then asks again for exactly the requested codes the reply did not deliver.
+   *
+   * Two things are reported, per request type (base, BAR, GVT are separate calls):
+   * - missingRetries: a cut reply that was not followed by a call for exactly its undelivered codes,
+   *   unless the engine had already stopped (round 3, or a re-request that delivered none of them)
+   * - unexpectedRepeats: a call that asks again for codes an earlier call asked for, without being
+   *   the re-request of a cut reply
+   *
+   * @param {object} world - Must carry the trip id
+   * @param {string} requestType - e.g. "Amadeus4.HotelAvailability.OTA_HotelAvailRQ*"
+   * @returns {Promise<{calls: number, cutReplies: number, retries: number, missingRetries: object[], unexpectedRepeats: object[]}>}
+   */
+  async checkAmadeusAvailabilityTruncationRetries(world, requestType) {
+    const tripId = world.tripId || world.currentTripId || world.createdTripId;
+    if (!tripId) {
+      throw new Error('[HotelLevelResults.checkAmadeusAvailabilityTruncationRetries] No trip id on the world.');
+    }
+
+    const fetchAll = async (source) => {
+      const result = await fetchPayloadFromStorage({
+        source,
+        requestType,
+        tripId,
+        returnAllMatches: true,
+        maxMatches: AVAILABILITY_CALLS_TO_INSPECT,
+        timeoutMs: AVAILABILITY_INSPECT_TIMEOUT_MS,
+      });
+      if (result.metadata.totalMatches > result.metadata.returnedMatches) {
+        throw new Error(
+          `[HotelLevelResults.checkAmadeusAvailabilityTruncationRetries] Only ${result.metadata.returnedMatches} of ` +
+          `${result.metadata.totalMatches} "${requestType}" ${source}s were downloaded.`
+        );
+      }
+      return result.matches;
+    };
+    const attributesOf = (payload, tag, names) =>
+      (payload.match(new RegExp(`<(?:[\\w.-]+:)?${tag}\\b[^>]*>`, 'g')) || []).map((openTag) =>
+        Object.fromEntries(names.map((name) => [name, (openTag.match(new RegExp(`\\b${name}="([^"]*)"`)) || [])[1] || null])));
+
+    const responses = new Map((await fetchAll('response')).map((match) => [match.metadata.rowKey, match.payload]));
+    const calls = (await fetchAll('request'))
+      .map((match) => {
+        const reply = responses.get(match.metadata.rowKey) || '';
+        const asked = new Set(attributesOf(match.payload, 'HotelRef', ['HotelCode']).map((h) => h.HotelCode).filter(Boolean));
+        const delivered = new Set(attributesOf(reply, 'BasicPropertyInfo', ['HotelCode']).map((h) => h.HotelCode).filter(Boolean));
+        const pricedOk = attributesOf(reply, 'Warning', ['Status', 'Tag'])
+          .filter((w) => w.Tag === 'OK' && /^PRV\.\d+$/.test(w.Status || ''))
+          .reduce((sum, w) => sum + Number(w.Status.slice(4)), 0);
+        const undelivered = pricedOk > delivered.size ? [...asked].filter((code) => !delivered.has(code)) : [];
+        return {
+          requestType: String(match.metadata.requestType || requestType).trim(),
+          timestamp: new Date(match.metadata.timestamp),
+          rowKey: match.metadata.rowKey,
+          asked,
+          pricedOk,
+          delivered: delivered.size,
+          undelivered,
+        };
+      })
+      .sort((a, b) => a.timestamp - b.timestamp);
+
+    if (calls.length === 0) {
+      throw new Error(`[HotelLevelResults.checkAmadeusAvailabilityTruncationRetries] The trip sent no "${requestType}" calls.`);
+    }
+
+    const sameCodes = (set, list) => set.size === list.length && list.every((code) => set.has(code));
+    const missingRetries = [];
+    const unexpectedRepeats = [];
+    let retries = 0;
+
+    for (const type of [...new Set(calls.map((call) => call.requestType))]) {
+      const ofType = calls.filter((call) => call.requestType === type);
+      const parentOf = new Map();
+      const roundOf = new Map();
+
+      ofType.forEach((call, index) => {
+        const earlier = ofType.slice(0, index);
+        const parent = earlier.find((e) => e.undelivered.length > 0 && !parentOf.has(e) && sameCodes(call.asked, e.undelivered));
+        if (parent) {
+          parentOf.set(parent, call);
+          roundOf.set(call, (roundOf.get(parent) || 0) + 1);
+          retries += 1;
+          return;
+        }
+        const repeated = [...call.asked].filter((code) => earlier.some((e) => e.asked.has(code)));
+        if (repeated.length > 0) {
+          unexpectedRepeats.push({ requestType: type, rowKey: call.rowKey, asked: call.asked.size, repeated: repeated.slice(0, 10) });
+        }
+      });
+
+      for (const call of ofType.filter((c) => c.undelivered.length > 0 && !parentOf.has(c))) {
+        const round = roundOf.get(call) || 0;
+        const stoppedForNoProgress = round > 0 && call.undelivered.length === call.asked.size;
+        if (round < AMADEUS_MAX_TRUNCATION_RETRIES && !stoppedForNoProgress) {
+          missingRetries.push({
+            requestType: type,
+            rowKey: call.rowKey,
+            asked: call.asked.size,
+            pricedOk: call.pricedOk,
+            delivered: call.delivered,
+            undelivered: call.undelivered.slice(0, 10),
+          });
+        }
+      }
+    }
+
+    const summary = {
+      calls: calls.length,
+      cutReplies: calls.filter((call) => call.undelivered.length > 0).length,
+      retries,
+      missingRetries,
+      unexpectedRepeats,
+    };
+    logger.info('Checked Amadeus availability truncation re-requests', {
+      ...summary,
+      perCall: calls.map((c) => `${c.requestType.replace(/^.*OTA_HotelAvailRQ\s*/, '') || 'base'}: asked ${c.asked.size}, OK ${c.pricedOk}, delivered ${c.delivered}`),
+    });
+
+    return summary;
   },
 };
 
