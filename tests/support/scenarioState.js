@@ -53,6 +53,18 @@ function getGsaAllowance(world) {
   return allowance;
 }
 
+function getDynamicLowestFare(world) {
+  const lowestFare = world.dynamicLowestFare;
+
+  if (!lowestFare || typeof lowestFare.oopPrice !== "number") {
+    throw new Error(
+      "The hotel out of policy price must be calculated from the dynamic lowest fare before it can be verified",
+    );
+  }
+
+  return lowestFare;
+}
+
 // Optional on purpose: this offset is context for a scroll assertion, never the thing being
 // asserted, so a scenario that never captured it gets null rather than a failure.
 function getHotelListScrollOffsetAtSelection(world) {
@@ -89,6 +101,7 @@ module.exports = {
   getSelfAndGuestTravelerCount,
   getStoredFlightNumbers,
   getGsaAllowance,
+  getDynamicLowestFare,
   getHotelListScrollOffsetAtSelection,
   getPricePerNightAndTotal,
 };

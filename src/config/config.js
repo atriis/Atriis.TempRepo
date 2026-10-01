@@ -147,6 +147,12 @@ const config = {
     return getOptionalEnv("FLIGHT_EU_RAIL_SEARCH_API_PATH", "/flightEURailSearchParallel");
   },
 
+  // Hotel search results endpoint. One POST returns every hotel of the search, and its body carries
+  // the searched location. Matched on the pathname end so /hotelsearchautocomplete stays out.
+  get hotelSearchApiPath() {
+    return getOptionalEnv("HOTEL_SEARCH_API_PATH", "/api/v3/hotelsearch");
+  },
+
   // Loyalty-number extras save endpoint (loyalty-number.ts -> hotelService.addFrequentGuest).
   // POST only: the same route is read back with GET /FrequentPrograms?quoteId=... when the panel opens.
   get frequentProgramsApiPath() {

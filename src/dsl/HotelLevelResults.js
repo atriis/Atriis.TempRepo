@@ -11,6 +11,11 @@ const {
   buildGsaViolationText,
   splitByGsaLimit,
 } = require("@utils/gsaPerDiem.helper");
+const {
+  calculateDynamicLowestFare,
+  findHotelsClosestToOopPrice,
+  splitByOopPrice,
+} = require("@utils/hotelLowestFare.helper");
 
 const HOTEL_SUPPLIER_ID_MAP = {
   expedia: 'EXPEDIARAPID',
@@ -1362,6 +1367,148 @@ const HotelLevelResults = {
       actual: normalizeText(actual),
       expected: normalizeText(buildGsaViolationText(allowance)),
     };
+  },
+
+  /**
+   * Starts listening for the hotel search response. Must run before the search is submitted,
+   * because the results arrive in a single response that cannot be read after it has passed.
+   * @param {import('playwright').Page} page
+   * @returns {Promise<{request: object, body: object}>} Settles once the hotel search responds
+   */
+  captureHotelSearchResponse(page) {
+    if (!page) throw new Error('[HotelLevelResults.captureHotelSearchResponse] "page" is required.');
+
+    return getPageObject(page, HotelLevelResultsPage).captureHotelSearchApiResponse();
+  },
+
+  /**
+   * Calculates the price from which a hotel is out of policy under the hotel lowest fare rule:
+   * the dynamic lowest fare of the captured search plus the policy margin. Also picks the hotels
+   * priced closest to it on each side: the out of policy one has its tooltip read, and the in
+   * policy one is the most expensive hotel without out of policy, whose rooms are checked.
+   * @param {Promise<{request: object, body: object}>} capturedSearch - From captureHotelSearchResponse
+   * @param {{minStars: number, maxStars: number, maxDistanceKm: number, margin: number}} policy
+   * @returns {Promise<{dynamicLowestFare: number, oopPrice: number, margin: number, currency: string,
+   *                    hotelsCounted: number, hotelsReturned: number,
+   *                    inPolicyHotel: {name: string, price: number}, outOfPolicyHotel: {name: string, price: number}}>}
+   */
+  async calculateLowestFareOopPrice(capturedSearch, { minStars, maxStars, maxDistanceKm, margin }) {
+    if (!capturedSearch) {
+      throw new Error('[HotelLevelResults.calculateLowestFareOopPrice] The hotel search response was not captured before the search.');
+    }
+    if (typeof margin !== 'number' || Number.isNaN(margin) || margin < 0) {
+      throw new Error(`[HotelLevelResults.calculateLowestFareOopPrice] "margin" must be a non-negative number, got: ${margin}`);
+    }
+
+    const { request, body } = await capturedSearch;
+    const fare = calculateDynamicLowestFare(request, body, { minStars, maxStars, maxDistanceKm });
+
+    const oopPrice = fare.average + margin;
+    const lowestFare = {
+      dynamicLowestFare: fare.average,
+      oopPrice,
+      margin,
+      currency: fare.currency,
+      hotelsCounted: fare.hotelsCounted,
+      hotelsReturned: fare.hotelsReturned,
+      ...findHotelsClosestToOopPrice(body, oopPrice),
+    };
+
+    logger.info('Calculated the hotel lowest fare out of policy price', { minStars, maxStars, maxDistanceKm, ...lowestFare });
+
+    return lowestFare;
+  },
+
+  /**
+   * Checks the out of policy badge of every hotel, on every results page, against the out of
+   * policy price. The list is sorted cheapest first, so the hotels at or above the out of policy
+   * price are only reached on the later pages. Leaves the list on its last page.
+   * @param {import('playwright').Page} page
+   * @param {number} oopPrice - The price from which a hotel is out of policy
+   * @returns {Promise<{total: number, atOrAboveOopPrice: number, belowOopPrice: number, withinRounding: number,
+   *                    missingIndicator: Array<object>, unexpectedIndicator: Array<object>}>}
+   */
+  async getHotelPolicyIndicatorsAgainstOopPrice(page, oopPrice) {
+    if (!page) throw new Error('[HotelLevelResults.getHotelPolicyIndicatorsAgainstOopPrice] "page" is required.');
+
+    const hotelLevelResultsPage = getPageObject(page, HotelLevelResultsPage);
+    const hotels = await hotelLevelResultsPage.getHotelPricesWithPolicyIndicatorOnAllPages();
+
+    if (hotels.length === 0) {
+      throw new Error('[HotelLevelResults.getHotelPolicyIndicatorsAgainstOopPrice] No hotel results are loaded to check.');
+    }
+
+    const breakdown = splitByOopPrice(hotels, oopPrice);
+
+    logger.info('Checked hotel policy indicators against the out of policy price', {
+      oopPrice,
+      total: breakdown.total,
+      atOrAboveOopPrice: breakdown.atOrAboveOopPrice,
+      belowOopPrice: breakdown.belowOopPrice,
+      withinRounding: breakdown.withinRounding,
+    });
+
+    return breakdown;
+  },
+
+  /**
+   * Filters the hotel list down to one out of policy hotel by name, hovers its badge and reads
+   * the policy violation from the tooltip.
+   * @param {import('playwright').Page} page
+   * @param {string} hotelName - The exact name of an out of policy hotel
+   * @returns {Promise<string>} The first policy violation in the tooltip
+   */
+  async hoverAndGetOOPTooltipTextOfHotel(page, hotelName) {
+    await this.getHotelPolicyIndicatorByName(page, hotelName);
+
+    const hotelLevelResultsPage = getPageObject(page, HotelLevelResultsPage);
+    const commonPage = getPageObject(page, CommonPage);
+    await hotelLevelResultsPage.hoverFirstOutOfPolicyInfoIcon();
+    return commonPage.getOOPTooltipText();
+  },
+
+  /**
+   * Filters the hotel list down to one hotel by name and reads its card: the displayed price and
+   * whether it carries an out of policy badge.
+   * @param {import('playwright').Page} page
+   * @param {string} hotelName - The exact hotel name
+   * @returns {Promise<{name: string, price: number, isOutOfPolicy: boolean, position: number}>}
+   *          position is the card's 1-based index in the filtered list
+   */
+  async getHotelPolicyIndicatorByName(page, hotelName) {
+    if (!page) throw new Error('[HotelLevelResults.getHotelPolicyIndicatorByName] "page" is required.');
+    if (!hotelName || typeof hotelName !== 'string') {
+      throw new Error(`[HotelLevelResults.getHotelPolicyIndicatorByName] "hotelName" must be a non-empty string, got: ${typeof hotelName}`);
+    }
+
+    const hotelLevelResultsPage = getPageObject(page, HotelLevelResultsPage);
+    await hotelLevelResultsPage.filterByHotelName(hotelName);
+    await hotelLevelResultsPage.waitForHotelNameFilterToShow(hotelName);
+
+    const hotels = await hotelLevelResultsPage.getHotelPricesWithPolicyIndicator();
+    const position = hotels.findIndex((hotel) => normalizeText(hotel.name) === normalizeText(hotelName)) + 1;
+    if (position === 0) {
+      throw new Error(`[HotelLevelResults.getHotelPolicyIndicatorByName] No hotel card named "${hotelName}" after filtering by name.`);
+    }
+
+    const hotel = { ...hotels[position - 1], position };
+    logger.info('Read the policy indicator of a hotel', hotel);
+
+    return hotel;
+  },
+
+  /**
+   * Filters the hotel list down to one hotel by name and opens its rooms.
+   * @param {import('playwright').Page} page
+   * @param {string} hotelName - The exact hotel name
+   * @returns {Promise<{name: string, price: number, isOutOfPolicy: boolean, position: number}>} The selected hotel
+   */
+  async selectHotelByName(page, hotelName) {
+    const hotel = await this.getHotelPolicyIndicatorByName(page, hotelName);
+
+    await getPageObject(page, HotelLevelResultsPage).clickViewRatesByIndex(hotel.position);
+
+    return hotel;
   },
 };
 

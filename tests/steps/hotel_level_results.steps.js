@@ -5,7 +5,9 @@ const { HotelLevelResults, RoomLevelResults } = require("../../src/dsl");
 const logger = require("@utils/logger").child("HotelResults");
 const HotelLevelResultsPage = require("../../src/pages/HotelLevelResultsPage");
 const { getPageObject } = require("@utils/pageObjectCache");
-const { getGsaAllowance } = require("../support/scenarioState");
+const { getGsaAllowance, getDynamicLowestFare } = require("../support/scenarioState");
+const { normalizeText } = require("@utils/text");
+const { buildLowestFareViolationText } = require("@utils/hotelLowestFare.helper");
 
 setDefaultTimeout(120000);
 
@@ -445,4 +447,76 @@ Then("the out of policy tooltip in hotel results should quote the GSA nightly lo
   );
 
   expect(actual).toBe(expected);
+});
+
+// ========================================
+// HOTEL LOWEST FARE TRAVEL POLICY
+// ========================================
+
+// Runs before the search: the results arrive in one response, which cannot be read once passed.
+// The rejection is swallowed on a side branch only, so a scenario that fails before reading the
+// response does not raise an unhandled rejection — awaiting the promise itself still fails.
+When("I capture the hotel search results", async function () {
+  logger.info("Capturing the hotel search results");
+  this.capturedHotelSearch = HotelLevelResults.captureHotelSearchResponse(this.page);
+  this.capturedHotelSearch.catch(() => {});
+});
+
+When(
+  "I calculate the hotel out of policy price from the dynamic lowest fare of {int}-{int} star hotels within {float} km plus {int}",
+  async function (minStars, maxStars, maxDistanceKm, margin) {
+    logger.info("Calculating the hotel lowest fare out of policy price", { minStars, maxStars, maxDistanceKm, margin });
+
+    this.dynamicLowestFare = await HotelLevelResults.calculateLowestFareOopPrice(this.capturedHotelSearch, {
+      minStars,
+      maxStars,
+      maxDistanceKm,
+      margin,
+    });
+  },
+);
+
+// Both directions in one pass: reading every hotel means paging through the whole list.
+Then("only the hotels priced at or above the lowest fare out of policy price should be out of policy", async function () {
+  const { oopPrice } = getDynamicLowestFare(this);
+  logger.info("Verifying the out of policy indicator of every hotel against the lowest fare out of policy price", { oopPrice });
+
+  const breakdown = await HotelLevelResults.getHotelPolicyIndicatorsAgainstOopPrice(this.page, oopPrice);
+
+  expect(
+    breakdown.atOrAboveOopPrice,
+    `No hotel is priced at or above the out of policy price of ${oopPrice}, so the indicator cannot be verified`,
+  ).toBeGreaterThan(0);
+  expect(
+    breakdown.belowOopPrice,
+    `No hotel is priced below the out of policy price of ${oopPrice}, so the indicator cannot be verified`,
+  ).toBeGreaterThan(0);
+  expect(
+    breakdown.missingIndicator.map((hotel) => `${hotel.name} (${hotel.price})`),
+    `Hotels priced at or above the out of policy price of ${oopPrice} without an out of policy indicator`,
+  ).toEqual([]);
+  expect(
+    breakdown.unexpectedIndicator.map((hotel) => `${hotel.name} (${hotel.price})`),
+    `Hotels priced below the out of policy price of ${oopPrice} showing an out of policy indicator`,
+  ).toEqual([]);
+});
+
+Then("the out of policy tooltip in hotel results should quote the hotel lowest fare margin", async function () {
+  const lowestFare = getDynamicLowestFare(this);
+  const expected = buildLowestFareViolationText(lowestFare);
+  logger.info("Verifying the out of policy tooltip in hotel results quotes the hotel lowest fare margin", {
+    hotel: lowestFare.outOfPolicyHotel.name,
+    expected,
+  });
+
+  const actual = await HotelLevelResults.hoverAndGetOOPTooltipTextOfHotel(this.page, lowestFare.outOfPolicyHotel.name);
+
+  expect(normalizeText(actual)).toBe(expected);
+});
+
+When("I select the most expensive in policy hotel", async function () {
+  const { inPolicyHotel } = getDynamicLowestFare(this);
+  logger.info("Selecting the most expensive in policy hotel", { hotel: inPolicyHotel.name });
+
+  this.selectedHotel = await HotelLevelResults.selectHotelByName(this.page, inPolicyHotel.name);
 });

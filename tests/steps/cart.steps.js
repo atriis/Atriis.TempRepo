@@ -3,6 +3,7 @@
 const { Given, When, Then, setDefaultTimeout } = require("@cucumber/cucumber");
 const { expect } = require("@playwright/test");
 const Cart = require("@dsl/Cart");
+const Results = require("@dsl/Results");
 const CartPayment = require("@dsl/CartPayment");
 const Checkout = require("@dsl/Checkout");
 const DynamicAndReferenceFields = require("@dsl/DynamicAndReferenceFields");
@@ -11,14 +12,15 @@ const { CheckoutPage } = require("@pages/CheckoutPage");
 const { getPageObject } = require("@utils/pageObjectCache");
 const tripStatus = require("@data/tripStatus.json");
 const config = require("@config/config");
-const { getTravelerCount, getSelfAndGuestTravelerCount } = require("../support/scenarioState");
+const { getTravelerCount, getSelfAndGuestTravelerCount, getDynamicLowestFare } = require("../support/scenarioState");
 const logger = require("@utils/logger").child("Cart");
 const {
   expectNumbersToBeEqualWithTolerance,
   expectSumToBeEqualWithTolerance,
 } = require("../../src/assertions/numberAssertions");
 const { extractPriceFromLocation } = require("@utils/priceExtraction");
-const { escapeRegex } = require("@utils/text");
+const { escapeRegex, normalizeText } = require("@utils/text");
+const { buildLowestFareViolationText } = require("@utils/hotelLowestFare.helper");
 const BookingErrorHandler = require("@utils/bookingErrorHandler");
 
 setDefaultTimeout(120000);
@@ -1587,6 +1589,13 @@ Then("the out of policy tooltip in cart should be {string}", async function (exp
   logger.info("Verifying OOP tooltip in cart", { expectedText });
   const actualText = await Cart.hoverAndGetOOPTooltipTextInCart(this.page);
   expect(actualText).toBe(expectedText);
+});
+
+Then("the out of policy tooltip in cart should quote the hotel lowest fare margin", async function () {
+  const expected = buildLowestFareViolationText(getDynamicLowestFare(this));
+  logger.info("Verifying OOP tooltip in cart quotes the hotel lowest fare margin", { expected });
+  const actualText = await Results.hoverAndGetOOPTooltipTextInResults(this.page);
+  expect(normalizeText(actualText)).toBe(expected);
 });
 
 Then("the out of policy violations in cart should include {string}", async function (expectedText) {

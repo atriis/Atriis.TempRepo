@@ -11,6 +11,7 @@ const {
   buildGsaViolationText,
   splitByGsaLimit,
 } = require("@utils/gsaPerDiem.helper");
+const { splitByOopPrice } = require("@utils/hotelLowestFare.helper");
 
 // Room-level supplier ids differ from the hotel-level ones for some suppliers, so this list
 // is deliberately its own: room cards render hCorpo under its Amadeus chain id, hotel cards
@@ -1213,6 +1214,65 @@ const RoomLevelResults = {
       actual: normalizeText(actual),
       expected: normalizeText(buildGsaViolationText(allowance)),
     };
+  },
+
+  /**
+   * Checks every loaded room card's out of policy badge against the out of policy price.
+   * @param {import('playwright').Page} page
+   * @param {number} oopPrice - The price from which a room is out of policy
+   * @returns {Promise<{total: number, atOrAboveOopPrice: number, belowOopPrice: number, withinRounding: number,
+   *                    missingIndicator: Array<object>, unexpectedIndicator: Array<object>}>}
+   */
+  async getRoomPolicyIndicatorsAgainstOopPrice(page, oopPrice) {
+    if (!page) throw new Error('[RoomLevelResults.getRoomPolicyIndicatorsAgainstOopPrice] "page" is required.');
+
+    const roomLevelResultsPage = getPageObject(page, RoomLevelResultsPage);
+    const rooms = await roomLevelResultsPage.getRoomPricesWithPolicyIndicator();
+
+    if (rooms.length === 0) {
+      throw new Error('[RoomLevelResults.getRoomPolicyIndicatorsAgainstOopPrice] No room results are loaded to check.');
+    }
+
+    const breakdown = splitByOopPrice(rooms, oopPrice);
+
+    logger.info('Checked room policy indicators against the out of policy price', {
+      oopPrice,
+      total: breakdown.total,
+      atOrAboveOopPrice: breakdown.atOrAboveOopPrice,
+      belowOopPrice: breakdown.belowOopPrice,
+      withinRounding: breakdown.withinRounding,
+    });
+
+    return breakdown;
+  },
+
+  /**
+   * Hovers the first out of policy room card and returns the policy violation from its tooltip.
+   * Scoped to the room card's badge, because a deposit badge on the same page shares its markup.
+   * @param {import('playwright').Page} page
+   * @returns {Promise<string>} The first policy violation in the tooltip
+   */
+  async hoverAndGetOOPTooltipTextInRoomResults(page) {
+    if (!page) throw new Error('[RoomLevelResults.hoverAndGetOOPTooltipTextInRoomResults] "page" is required.');
+
+    const roomLevelResultsPage = getPageObject(page, RoomLevelResultsPage);
+    const commonPage = getPageObject(page, CommonPage);
+    await roomLevelResultsPage.hoverFirstOutOfPolicyInfoIcon();
+    return commonPage.getOOPTooltipText();
+  },
+
+  /**
+   * Adds the first out of policy room to the cart.
+   * @param {import('playwright').Page} page
+   */
+  async addFirstOutOfPolicyRoomToCart(page) {
+    if (!page) throw new Error('[RoomLevelResults.addFirstOutOfPolicyRoomToCart] "page" is required.');
+
+    const roomLevelResultsPage = getPageObject(page, RoomLevelResultsPage);
+    await roomLevelResultsPage.clickAddToTripOnFirstOutOfPolicyRoom();
+
+    // Adding a room can raise the conflicting-quotes modal, as the other add-to-cart flows do.
+    await Results.clickProceedConflictQuoteModal(page);
   },
 };
 

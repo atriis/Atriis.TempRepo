@@ -7,7 +7,9 @@ const Cart = require("../../src/dsl/Cart");
 const RoomLevelResultsPage = require("../../src/pages/RoomLevelResultsPage");
 const { getPageObject } = require("@utils/pageObjectCache");
 const logger = require("@utils/logger").child("RoomResults");
-const { getGsaAllowance, getHotelListScrollOffsetAtSelection } = require("../support/scenarioState");
+const { getGsaAllowance, getDynamicLowestFare, getHotelListScrollOffsetAtSelection } = require("../support/scenarioState");
+const { normalizeText } = require("@utils/text");
+const { buildLowestFareViolationText } = require("@utils/hotelLowestFare.helper");
 
 setDefaultTimeout(120000);
 
@@ -493,4 +495,46 @@ Then("the out of policy tooltip in room level results should quote the GSA night
   );
 
   expect(actual).toBe(expected);
+});
+
+// ========================================
+// HOTEL LOWEST FARE TRAVEL POLICY
+// ========================================
+
+Then("only the rooms priced at or above the lowest fare out of policy price should be out of policy", async function () {
+  const { oopPrice } = getDynamicLowestFare(this);
+  logger.info("Verifying the out of policy indicator of every room against the lowest fare out of policy price", { oopPrice });
+
+  const breakdown = await RoomLevelResults.getRoomPolicyIndicatorsAgainstOopPrice(this.page, oopPrice);
+
+  expect(
+    breakdown.atOrAboveOopPrice,
+    `No room of ${this.selectedHotel?.name ?? "the selected hotel"} is priced at or above the out of policy price of ${oopPrice}, so the indicator cannot be verified`,
+  ).toBeGreaterThan(0);
+  expect(
+    breakdown.belowOopPrice,
+    `No room is priced below the out of policy price of ${oopPrice}, so the indicator cannot be verified`,
+  ).toBeGreaterThan(0);
+  expect(
+    breakdown.missingIndicator.map((room) => `room ${room.index + 1} (${room.price})`),
+    `Rooms priced at or above the out of policy price of ${oopPrice} without an out of policy indicator`,
+  ).toEqual([]);
+  expect(
+    breakdown.unexpectedIndicator.map((room) => `room ${room.index + 1} (${room.price})`),
+    `Rooms priced below the out of policy price of ${oopPrice} showing an out of policy indicator`,
+  ).toEqual([]);
+});
+
+Then("the out of policy tooltip in room level results should quote the hotel lowest fare margin", async function () {
+  const expected = buildLowestFareViolationText(getDynamicLowestFare(this));
+  logger.info("Verifying the out of policy tooltip in room level results quotes the hotel lowest fare margin", { expected });
+
+  const actual = await RoomLevelResults.hoverAndGetOOPTooltipTextInRoomResults(this.page);
+
+  expect(normalizeText(actual)).toBe(expected);
+});
+
+When("I add the first out of policy room to my cart", async function () {
+  logger.info("Adding the first out of policy room to cart");
+  await RoomLevelResults.addFirstOutOfPolicyRoomToCart(this.page);
 });

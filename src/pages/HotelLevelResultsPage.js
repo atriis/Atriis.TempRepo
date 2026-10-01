@@ -2,6 +2,9 @@
 const { toNumber } = require("@utils/numbers");
 const { normalizeText } = require("@utils/text");
 const { getScrollOffsetFromTop } = require("@utils/dom");
+const { getNetworkInterceptor } = require("@utils/networkInterceptor");
+const { waitForText } = require("@utils/wait");
+const config = require("@config/config");
 
 /**
  * Page Object for hotel level results page.
@@ -144,6 +147,12 @@ const SELECTORS = {
   HOTEL_CARD_PRICE_AMOUNT: '.hotel-price .amount',
   // Hotel name inside a hotel card, relative to HOTEL_CARD. Tag-agnostic - see HOTEL_NAME.
   HOTEL_CARD_NAME: '.hotel-name',
+  // Results pager (hotel-results.vue -> app-pagination.vue, el-pagination with a jumper). Desktop
+  // only, and the only pager on the page. el-pagination disables the next button on the last page.
+  HOTEL_RESULTS_PAGINATION: '.app-pagination',
+  HOTEL_RESULTS_PAGINATION_NEXT: '.app-pagination button.btn-next',
+  HOTEL_RESULTS_PAGINATION_ACTIVE_PAGE: '.app-pagination .el-pager li.number.is-active',
+  HOTEL_RESULTS_PAGINATION_JUMPER: '.app-pagination .el-pagination__jump input',
 };
 
 // Filter section title → Vuex hotelFilter key. Most sections store under the lowercased title,
@@ -388,6 +397,114 @@ class HotelLevelResultsPage {
     }
 
     return hotels;
+  }
+
+  /**
+   * Sets up a listener for the next hotel search API response. Must be called BEFORE the search is
+   * submitted, because all the hotels arrive in that one response. Resolves to the posted search,
+   * which carries the searched location, and the response body, which carries every hotel.
+   *
+   * @returns {Promise<{request: object, body: object}>}
+   */
+  captureHotelSearchApiResponse() {
+    return getNetworkInterceptor(this.page)
+      .waitForResponse({ pathnameEndsWith: config.hotelSearchApiPath, method: 'POST', caseInsensitive: true })
+      .then(async (response) => ({ request: response.request().postDataJSON(), body: await response.json() }));
+  }
+
+  /**
+   * Reads the hotel cards of every results page, pairing each card's displayed price with whether
+   * it carries an out of policy badge.
+   *
+   * The desktop list renders one page of hotels at a time, so the cards of the other pages are not
+   * in the DOM until their page is opened. Starts from page 1 and leaves the list on the last page.
+   * The loop is bounded so a pager that never disables reports itself instead of timing out.
+   *
+   * @param {{maxPages?: number, timeout?: number}} [options]
+   * @returns {Promise<Array<{name: string, price: number, isOutOfPolicy: boolean, page: number}>>} One entry per card
+   */
+  async getHotelPricesWithPolicyIndicatorOnAllPages({ maxPages = 50, timeout = 15000 } = {}) {
+    await this.goToHotelResultsPage(1, { timeout });
+
+    const hotels = [];
+    const nextButton = this.page.locator(SELECTORS.HOTEL_RESULTS_PAGINATION_NEXT).first();
+
+    for (let page = 1; page <= maxPages; page++) {
+      const cards = await this.getHotelPricesWithPolicyIndicator();
+      cards.forEach((hotel) => hotels.push({ ...hotel, page }));
+
+      if ((await nextButton.count()) === 0 || (await nextButton.isDisabled())) {
+        return hotels;
+      }
+
+      await nextButton.click({ timeout });
+      // The active pager number and the page's slice of hotels re-render together, so the new
+      // number showing is what proves the new cards are the ones being read.
+      await waitForText(this.page, SELECTORS.HOTEL_RESULTS_PAGINATION_ACTIVE_PAGE, String(page + 1), timeout);
+    }
+
+    throw new Error(
+      `[HotelLevelResultsPage.getHotelPricesWithPolicyIndicatorOnAllPages] The next page button never became ` +
+      `disabled after ${maxPages} pages. Either the result set is larger than expected — raise "maxPages" — ` +
+      `or the pager is stuck.`,
+    );
+  }
+
+  /**
+   * Opens a page of the hotel results through the pager's "go to" box.
+   * A single page of results has no pager and is already page 1.
+   *
+   * @param {number} pageNumber - 1-based page to open
+   * @param {{timeout?: number}} [options]
+   */
+  async goToHotelResultsPage(pageNumber, { timeout = 15000 } = {}) {
+    if (!Number.isInteger(pageNumber) || pageNumber < 1) {
+      throw new Error(`pageNumber must be a positive integer, got: ${pageNumber}`);
+    }
+
+    // The pager renders in the same block as the cards, so once a card is there so is the pager.
+    await this.page.locator(SELECTORS.HOTEL_CARD).first().waitFor({ state: 'visible', timeout: 30000 });
+
+    if ((await this.page.locator(SELECTORS.HOTEL_RESULTS_PAGINATION).count()) === 0) {
+      if (pageNumber === 1) return;
+      throw new Error(`[HotelLevelResultsPage.goToHotelResultsPage] The results have a single page, so page ${pageNumber} cannot be opened.`);
+    }
+
+    const activePage = ((await this.page.locator(SELECTORS.HOTEL_RESULTS_PAGINATION_ACTIVE_PAGE).first().textContent()) ?? '').trim();
+    if (activePage === String(pageNumber)) return;
+
+    const jumper = this.page.locator(SELECTORS.HOTEL_RESULTS_PAGINATION_JUMPER).first();
+    await jumper.fill(String(pageNumber));
+    await jumper.press('Enter');
+    await waitForText(this.page, SELECTORS.HOTEL_RESULTS_PAGINATION_ACTIVE_PAGE, String(pageNumber), timeout);
+  }
+
+  /**
+   * Waits until the hotel name filter has narrowed the list and a card named exactly this is shown.
+   *
+   * The results page filters on the search text as a case-insensitive regular expression over the
+   * hotel name (hotel.service.ts filterHotels), so the list has settled once every card's name
+   * matches it — until then the cards on screen can still be the unfiltered list.
+   *
+   * @param {string} hotelName - The exact hotel name typed into the hotel name filter
+   * @param {{timeout?: number}} [options]
+   */
+  async waitForHotelNameFilterToShow(hotelName, { timeout = 30000 } = {}) {
+    if (!hotelName || typeof hotelName !== 'string') {
+      throw new Error(`hotelName must be a non-empty string, got: ${typeof hotelName}`);
+    }
+
+    await this.page.waitForFunction(
+      ({ cardSelector, nameSelector, name }) => {
+        const normalize = (text) => (text ?? '').replace(/\s+/g, ' ').trim();
+        const names = [...document.querySelectorAll(cardSelector)]
+          .map((card) => normalize(card.querySelector(nameSelector)?.textContent));
+        const filter = new RegExp(name, 'i');
+        return names.includes(normalize(name)) && names.every((cardName) => filter.test(cardName));
+      },
+      { cardSelector: SELECTORS.HOTEL_CARD, nameSelector: SELECTORS.HOTEL_CARD_NAME, name: hotelName },
+      { timeout },
+    );
   }
 
   /**

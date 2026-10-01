@@ -568,6 +568,26 @@ class RoomLevelResultsPage {
   }
 
   /**
+   * Clicks "Add to trip" on the first room card that carries an out of policy badge.
+   * Scoped to the badge in .price-details-oop for the same reason as the hover below.
+   */
+  async clickAddToTripOnFirstOutOfPolicyRoom() {
+    const roomCard = this.page
+      .locator(SELECTORS.ROOM_CARD)
+      .filter({ has: this.page.locator(SELECTORS.ROOM_CARD_OOP_BADGE) })
+      .first();
+    await roomCard.waitFor({ state: "visible", timeout: 30000 });
+    await roomCard.scrollIntoViewIfNeeded();
+
+    const addButton = roomCard
+      .locator("button")
+      .filter({ hasText: /add to trip/i })
+      .first();
+    await addButton.waitFor({ state: "visible", timeout: 15000 });
+    await addButton.click();
+  }
+
+  /**
    * Hovers the info icon of the first out of policy room card to open its violation tooltip.
    * Scoped to .price-details-oop rather than using CommonPage's page-wide OOP icon, because
    * room-deposit.vue renders its own .app-out-of-policy badge with an identical info icon.
