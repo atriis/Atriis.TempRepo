@@ -6471,6 +6471,34 @@ async verifyFareComponentTextColorInPricingOptions(page, expectedColor, index = 
   },
 
   /**
+   * Verifies a leg offers at least one of several cabin class tabs in the new flight flow.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string[]} cabinNames - Accepted cabin names (case-insensitive substring), e.g. ["Business", "First"]
+   * @param {number} legIndex - Zero-based leg index (0=outbound, 1=inbound)
+   * @returns {Promise<{cabinNames: string[], legIndex: number, tabNames: string[]}>}
+   */
+  async verifyAnyCabinClassTabDisplayedNewFlightFlow(page, cabinNames, legIndex = 0) {
+    if (!page) {
+      throw new Error('[FlightResults.verifyAnyCabinClassTabDisplayedNewFlightFlow] "page" is required.');
+    }
+    if (!Array.isArray(cabinNames) || cabinNames.length === 0) {
+      throw new Error(`[FlightResults.verifyAnyCabinClassTabDisplayedNewFlightFlow] "cabinNames" must be a non-empty array, got: ${JSON.stringify(cabinNames)}`);
+    }
+
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    const tabNames = await flightResultsPage.getNewFlightFlowCabinClassTabNames(legIndex);
+    const accepted = cabinNames.map((name) => name.toLowerCase());
+
+    expect(
+      tabNames.some((tabName) => accepted.some((name) => tabName.toLowerCase().includes(name))),
+      `Expected leg ${legIndex} to offer one of [${cabinNames.join(', ')}] cabin class tabs, got: [${tabNames.join(', ')}]`,
+    ).toBe(true);
+
+    return { cabinNames, legIndex, tabNames };
+  },
+
+  /**
    * Selects a cabin class tab above a leg's brand cards in the new flight flow, so the leg
    * re-renders its brand cards for that cabin class.
    *

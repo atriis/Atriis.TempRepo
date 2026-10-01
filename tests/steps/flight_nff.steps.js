@@ -247,6 +247,17 @@ Then("the {string} cabin class tab should be displayed in flight selection", asy
   logger.info("[NewFlightFlow] Cabin class tab verified", result);
 });
 
+// Leg 1 = the inbound leg. Only shown once an outbound brand card is selected.
+// Comma-separated names, any one of which passes: a US domestic feeder sells its front cabin as
+// "First", so a leg searched in Business can legitimately be labelled "First" (e.g. Delta LIT-ATL-FRA).
+Then("the inbound leg should offer one of the {string} cabin class tabs in flight selection", async function (cabinNames) {
+  logger.info("[NewFlightFlow] Verifying the inbound leg offers one of the cabin class tabs", { cabinNames });
+  const result = await FlightResults.verifyAnyCabinClassTabDisplayedNewFlightFlow(
+    this.page, cabinNames.split(",").map((name) => name.trim()).filter(Boolean), 1,
+  );
+  logger.info("[NewFlightFlow] Inbound cabin class tab verified", result);
+});
+
 When("I select the {string} cabin class tab in flight selection", async function (cabinName) {
   logger.info("[NewFlightFlow] Selecting cabin class tab above the brand cards", { cabinName });
   const result = await FlightResults.selectCabinClassTabNewFlightFlow(this.page, cabinName);
