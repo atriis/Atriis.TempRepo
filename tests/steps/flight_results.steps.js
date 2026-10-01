@@ -1716,6 +1716,11 @@ Then('the flight search response should have no {string} result from source syst
   await FlightResults.verifyNoResultForCarrierFromSource(this.page, this.lastInterceptedResponsePromise, carrier, source);
 });
 
+Then("every {string} result in the flight search response should be NDC", async function (carrier) {
+  logger.info("Verifying every carrier result in the flightSearch response is NDC", { carrier });
+  await FlightResults.verifyEveryCarrierResultIsNdc(this.page, this.lastInterceptedResponsePromise, carrier);
+});
+
 // ========================================
 // FLIGHT DETAILS DRAWER (redesigned in US 84214)
 // ========================================

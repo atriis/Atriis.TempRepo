@@ -447,6 +447,14 @@ function pick(obj, ...names) {
   return undefined;
 }
 
+// True when any flight of a flightSearch result is flown by the IATA carrier code.
+function resultFliesCarrier(result, carrierCode) {
+  const wanted = String(carrierCode).toUpperCase();
+  return (Array.isArray(result?.segments) ? result.segments : []).some((seg) =>
+    (Array.isArray(seg?.flights) ? seg.flights : []).some((f) => String(f?.carrier ?? "").toUpperCase() === wanted),
+  );
+}
+
 // Share-bar slot aria-label (flight.shareSlotRemoveLabel):
 // "Remove: leg 1 LIS - STN, Direct, 15:20 - 18:10; leg 2 STN - LIS, Direct, 17:45 - 20:35; €59.97999954223633. From the share list."
 function parseShareSlotLabel(label) {
@@ -8049,12 +8057,6 @@ async verifyFareComponentTextColorInPricingOptions(page, expectedColor, index = 
     const body = Array.isArray(raw) ? raw[0] : raw;
     const results = Array.isArray(body?.results) ? body.results : [];
 
-    const resultHasCarrier = (result) =>
-      (Array.isArray(result?.segments) ? result.segments : []).some((seg) =>
-        (Array.isArray(seg?.flights) ? seg.flights : []).some(
-          (f) => String(f?.carrier ?? '').toUpperCase() === wanted
-        )
-      );
     const sourceOf = (result) => ({
       sourceSystem: String(result?.sourceSystem ?? '').toUpperCase(),
       officeId: String(result?.officeId ?? '').toUpperCase(),
@@ -8064,7 +8066,7 @@ async verifyFareComponentTextColorInPricingOptions(page, expectedColor, index = 
       return sourceSystem.includes(forbidden) || officeId.includes(forbidden);
     };
 
-    const matching = results.filter(resultHasCarrier);
+    const matching = results.filter((result) => resultFliesCarrier(result, wanted));
     const fromForbidden = matching.filter(isFromForbidden);
 
     // Distinct "sourceSystem / officeId" combos for the matched carrier, with counts
@@ -8095,6 +8097,47 @@ async verifyFareComponentTextColorInPricingOptions(page, expectedColor, index = 
     ).toBe(0);
 
     return { totalResults: results.length, matchingCarrier: matching.length, matchingFromForbidden: 0 };
+  },
+
+  /**
+   * Asserts every flightSearch result flown by {carrier} (IATA code) is NDC content (isNDC true).
+   * Results of other carriers are not judged. Fails if NO {carrier} result exists.
+   */
+  async verifyEveryCarrierResultIsNdc(page, responsePromise, carrier) {
+    if (!page) throw new Error("[FlightResults.verifyEveryCarrierResultIsNdc] page is required");
+    if (!responsePromise) {
+      throw new Error("[FlightResults.verifyEveryCarrierResultIsNdc] no intercepted response — call the flightSearch intercept step before searching");
+    }
+    if (!carrier || typeof carrier !== "string") {
+      throw new Error(`[FlightResults.verifyEveryCarrierResultIsNdc] "carrier" must be a non-empty string, got: ${JSON.stringify(carrier)}`);
+    }
+
+    const raw = await readJson(responsePromise);
+    const body = Array.isArray(raw) ? raw[0] : raw;
+    const results = Array.isArray(body?.results) ? body.results : [];
+    const matching = results.filter((result) => resultFliesCarrier(result, carrier));
+
+    if (matching.length === 0) {
+      throw new Error(
+        `[FlightResults.verifyEveryCarrierResultIsNdc] The flightSearch response has no "${carrier}" result ` +
+        `(total results: ${results.length}), so there is nothing to check.`,
+      );
+    }
+    const notNdc = matching.filter((result) => result?.isNDC !== true);
+    if (notNdc.length > 0) {
+      const sources = [...new Set(notNdc.map((result) => `${result?.sourceSystem} / ${result?.officeId}`))];
+      throw new Error(
+        `[FlightResults.verifyEveryCarrierResultIsNdc] ${notNdc.length} of ${matching.length} "${carrier}" result(s) ` +
+        `are not NDC (isNDC is not true). Their sources: ${sources.join(", ")}`,
+      );
+    }
+
+    logger.info("[FlightResults.verifyEveryCarrierResultIsNdc] Every carrier result is NDC", {
+      carrier,
+      totalResults: results.length,
+      carrierResults: matching.length,
+    });
+    return { totalResults: results.length, carrierResults: matching.length };
   },
 
   /**
@@ -9118,6 +9161,50 @@ async verifyFareComponentTextColorInPricingOptions(page, expectedColor, index = 
     });
 
     return { offeredBrands, cardsChecked, cabinsRead };
+  },
+
+  /**
+   * Verifies every brand card of an NDC result shows the Direct Rate badge in its bottom-right
+   * corner, across every cabin tab and leg.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} expectedText - The badge text as displayed, e.g. "Direct Rate"
+   * @returns {Promise<{cardsChecked: number, cabinsRead: string[], legsRead: number[]}>}
+   */
+  async verifyEveryBrandCardShowsDirectRateLabel(page, expectedText) {
+    if (!page) {
+      throw new Error("[FlightResults.verifyEveryBrandCardShowsDirectRateLabel] page is required");
+    }
+    if (!expectedText || typeof expectedText !== "string") {
+      throw new Error(
+        `[FlightResults.verifyEveryBrandCardShowsDirectRateLabel] "expectedText" must be a non-empty string, got: ${JSON.stringify(expectedText)}`,
+      );
+    }
+
+    const { cards, cabinsRead, legsRead } = await this.readBrandCardsAcrossCabinTabs(page);
+    if (cards.length === 0) {
+      throw new Error("[FlightResults.verifyEveryBrandCardShowsDirectRateLabel] No brand cards were read on the pricing options screen.");
+    }
+
+    const mismatches = cards
+      .filter((card) => card.directRateText !== expectedText)
+      .map((card) => {
+        const shown = card.directRateText === null ? "no badge" : `"${card.directRateText}"`;
+        return `leg ${card.legIndex} ${card.cabinName || ""} ${card.brandName} ${card.priceText || ""}: ${shown}`.replace(/\s+/g, " ");
+      });
+    if (mismatches.length > 0) {
+      throw new Error(
+        `[FlightResults.verifyEveryBrandCardShowsDirectRateLabel] Every brand card should show "${expectedText}" in its ` +
+        `bottom-right corner, but ${mismatches.length} of ${cards.length} did not:\n${mismatches.join("\n")}`,
+      );
+    }
+
+    logger.info("[FlightResults.verifyEveryBrandCardShowsDirectRateLabel] Every brand card shows the Direct Rate badge", {
+      cardsChecked: cards.length,
+      cabinsRead,
+      legsRead,
+    });
+    return { cardsChecked: cards.length, cabinsRead, legsRead };
   },
 }
 

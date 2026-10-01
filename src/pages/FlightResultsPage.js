@@ -222,6 +222,8 @@ const SELECTORS = {
   // here instead of the .agreement-icon handshake every other agreement type gets — AGREEMENT_ICON
   // never matches a marine brand card. Combine with MARINE_FARE_ANCHOR_ICON to read the marine one.
   NEW_FLOW_BRAND_CARD_AGREEMENTS: '.agreements',
+  // The bottom-right badge of an NDC brand card (brand.isDirectRate): carrier logo or plane icon + "Direct Rate".
+  NEW_FLOW_BRAND_CARD_DIRECT_RATE_TEXT: ".extra-info .badges-container .direct-rate .is-sentence-case",
   // Brand-class carousel arrows (app-carousel.vue, Flicking). The strip free-scrolls a fixed step
   // per click and gets the disabled class once the camera reaches the end of its range. The
   // data-testids (common.app-carousel.next-arrow) are stripped from the build — key on the class.
@@ -5896,7 +5898,7 @@ async clickSelectForFareWithBaggagePricingOptions(baggageText) {
    * the DOM, it holds no business logic.
    *
    * @param {number} [timeout] - Max wait for the first brand card to appear.
-   * @returns {Promise<Array<{legIndex: number, cardIndex: number, brandName: string|null, priceText: string|null, featureTexts: string[]}>>}
+   * @returns {Promise<Array<{legIndex: number, cardIndex: number, brandName: string|null, priceText: string|null, directRateText: string|null, featureTexts: string[]}>>}
    */
   async getPerLegBrandCardFeatureTexts(timeout = 30000) {
     const legs = this.page.locator(SELECTORS.NEW_FLOW_BRAND_LEG);
@@ -5934,11 +5936,16 @@ async clickSelectForFareWithBaggagePricingOptions(baggageText) {
         const priceText = (await priceEl.count()) > 0
           ? (await priceEl.first().innerText()).replace(/\s+/g, ' ').trim()
           : null;
+        const directRateEl = card.locator(SELECTORS.NEW_FLOW_BRAND_CARD_DIRECT_RATE_TEXT);
+        const directRateText = (await directRateEl.count()) > 0
+          ? (await directRateEl.first().innerText()).trim()
+          : null;
         cardsByLeg.push({
           legIndex,
           cardIndex,
           brandName,
           priceText,
+          directRateText,
           featureTexts: rawFeatureTexts.map((t) => t.trim()).filter((t) => t.length > 0),
         });
       }

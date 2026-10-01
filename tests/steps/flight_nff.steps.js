@@ -454,3 +454,15 @@ Then(
     logger.info("[NewFlightFlow] Every offered outbound brand has a brand card", result);
   }
 );
+
+// ===== NDC brand cards show the Direct Rate badge =====
+
+Then(
+  "every brand card should show the {string} label in the bottom-right corner",
+  { timeout: 300000 },
+  async function (labelText) {
+    logger.info("[NewFlightFlow] Verifying every brand card shows the Direct Rate badge", { labelText });
+    const result = await FlightResults.verifyEveryBrandCardShowsDirectRateLabel(this.page, labelText);
+    logger.info("[NewFlightFlow] Every brand card shows the Direct Rate badge", result);
+  },
+);
