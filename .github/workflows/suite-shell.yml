@@ -2,7 +2,7 @@ name: Suite - Shell
 run-name: ${{ inputs.nightly_batch && format('Suite - Shell · nightly {0}', inputs.nightly_batch) || 'Suite - Shell' }}
 
 # One of the four nightly domain suites, dispatched in parallel with the others
-# by suite-scheduler.yml at 21:00 Portugal time, and manually dispatchable on its
+# by suite-scheduler.yml on its schedule, and manually dispatchable on its
 # own. It starts and finishes independently — no domain waits on another.
 
 on:

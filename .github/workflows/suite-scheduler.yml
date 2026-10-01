@@ -1,15 +1,20 @@
 name: Suite Scheduler
 
 # Starts ALL FOUR domain suites (Flights, Hotels, Shell, Transportation) in
-# parallel ONCE every day, at 21:00 Portugal time (Europe/Lisbon).
+# parallel, Portugal time (Europe/Lisbon):
+#   - every day at 21:00 (the nightly)
+#   - Monday, Wednesday and Friday at 11:00 as well (the morning run)
+# Both are the same batch: same suites, same automatic rerun of the failures.
 #
 # GitHub cron is UTC-only and Lisbon alternates between UTC+0 (winter, WET)
-# and UTC+1 (summer, WEST), so BOTH candidate slots are scheduled and a guard
-# dispatches only from the slot that is 21:00 local time:
-#   - while Lisbon is UTC+1 (late Mar → late Oct): '0 20' = 21:00
-#   - while Lisbon is UTC+0 (late Oct → late Mar): '0 21' = 21:00
-# The decoy slot exits without doing anything. The offset is read at fire
-# time, so on a DST changeover day exactly one slot is still live.
+# and UTC+1 (summer, WEST), so BOTH candidate slots of each time are scheduled
+# and a guard dispatches only from the slots that match local time:
+#   - while Lisbon is UTC+1 (late Mar → late Oct): '0 20' = 21:00, '0 10' = 11:00
+#   - while Lisbon is UTC+0 (late Oct → late Mar): '0 21' = 21:00, '0 11' = 11:00
+# The decoy slots exit without doing anything. The offset is read at fire
+# time, so on a DST changeover day exactly one slot of each time is still live.
+# The weekday is the same in UTC and Lisbon at both times, so '1,3,5' in UTC
+# is Mon/Wed/Fri in Lisbon.
 #
 # The schedule lives HERE (a dispatcher) instead of on the domain workflows on
 # purpose: a schedule+guard on each suite would still produce a run on the decoy
@@ -44,6 +49,8 @@ on:
   schedule:
     - cron: '0 20 * * *' # 21:00 Lisbon during summer time (WEST)
     - cron: '0 21 * * *' # 21:00 Lisbon during winter time (WET)
+    - cron: '0 10 * * 1,3,5' # 11:00 Lisbon Mon/Wed/Fri during summer time (WEST)
+    - cron: '0 11 * * 1,3,5' # 11:00 Lisbon Mon/Wed/Fri during winter time (WET)
   workflow_dispatch: # manual: starts every domain immediately, no time guard
 
 permissions:
@@ -55,29 +62,31 @@ concurrency:
 
 jobs:
   dispatch:
-    name: Dispatch all domain suites at 21:00 Lisbon
+    name: Dispatch all domain suites (21:00 daily, 11:00 Mon/Wed/Fri Lisbon)
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
-      - name: Start every domain suite if this slot is 21:00 in Lisbon
+      - name: Start every domain suite if this slot is 21:00 or 11:00 in Lisbon
         env:
           GH_TOKEN: ${{ github.token }}
           FIRED_CRON: ${{ github.event.schedule }}
         run: |
           if [ "${{ github.event_name }}" = "schedule" ]; then
-            # Pick the correct slot from the CURRENT Lisbon UTC offset instead
+            # Pick the correct slots from the CURRENT Lisbon UTC offset instead
             # of the current hour, so a delayed runner start can't misjudge.
             offset=$(TZ=Europe/Lisbon date +%z)
             if [ "$offset" = "+0100" ]; then
-              live='0 20 * * *'
+              live_night='0 20 * * *'
+              live_morning='0 10 * * 1,3,5'
             else
-              live='0 21 * * *'
+              live_night='0 21 * * *'
+              live_morning='0 11 * * 1,3,5'
             fi
-            if [ "$FIRED_CRON" != "$live" ]; then
-              echo "Decoy slot ($FIRED_CRON; Lisbon offset $offset) — nothing to do."
-              exit 0
-            fi
-            echo "Nightly run (21:00 Lisbon; offset $offset)."
+            case "$FIRED_CRON" in
+              "$live_night")   echo "Nightly run (21:00 Lisbon; offset $offset)." ;;
+              "$live_morning") echo "Morning run (11:00 Lisbon; offset $offset)." ;;
+              *) echo "Decoy slot ($FIRED_CRON; Lisbon offset $offset) — nothing to do."; exit 0 ;;
+            esac
           fi
 
           echo "Dispatching all domain suites in parallel as nightly batch $GITHUB_RUN_ID."

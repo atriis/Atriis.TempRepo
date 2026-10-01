@@ -2,7 +2,7 @@ name: Suite - Flights
 run-name: ${{ inputs.nightly_batch && format('Suite - Flights · nightly {0}', inputs.nightly_batch) || 'Suite - Flights' }}
 
 # One of the four nightly domain suites. suite-scheduler.yml dispatches all four
-# (Flights, Hotels, Shell, Transportation) in parallel at 21:00 Portugal time;
+# (Flights, Hotels, Shell, Transportation) in parallel on its schedule;
 # this one is also manually dispatchable on its own. It starts and finishes
 # independently — no domain waits on another any more, and nothing downstream
 # depends on this run. See suite-scheduler.yml for why the schedule lives there
