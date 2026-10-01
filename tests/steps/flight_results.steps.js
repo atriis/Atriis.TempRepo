@@ -171,9 +171,11 @@ When("I filter results by the stored flight number", async function () {
   const storedFlightNumbers = Array.isArray(this.storedFlightNumbers)
     ? this.storedFlightNumbers.filter((flightNumber) => typeof flightNumber === 'string' && flightNumber.trim())
     : [];
+  // Last resort: the result stored by "I store the first flight result details for later comparison"
+  const resultFlightNumbers = (this.storedFlightSegmentDetails ?? []).map((segment) => segment?.flightNumber).filter(Boolean);
   const filterValue = storedFlightNumbers.length
     ? storedFlightNumbers.join(', ')
-    : this.storedFlightNumber;
+    : this.storedFlightNumber ?? (resultFlightNumbers.join(', ') || undefined);
 
   if (!filterValue || typeof filterValue !== 'string') {
     throw new Error(`A stored flight number must be available before filtering, got: ${typeof filterValue}`);
@@ -182,6 +184,7 @@ When("I filter results by the stored flight number", async function () {
   logger.info("Filtering results by stored flight number", {
     filterValue,
     storedFlightNumbers,
+    resultFlightNumbers,
   });
   await applyResultsSearchFilter(this, filterValue);
 });
@@ -1254,6 +1257,23 @@ When("I extract the price from pricing option at index {int}", async function (i
   if (!this.extractedPrices) this.extractedPrices = [];
   this.extractedPrices.push(price);
   logger.info("Extracted pricing option price", { index, price });
+});
+
+When("I save the {string} fare price from pricing options for one traveller", async function (fareName) {
+  logger.info("Saving the one-traveller fare price from pricing options", { fareName });
+  const price = await FlightResults.extractPricingOptionPriceByFareName(this.page, fareName);
+  this.oneTravellerFarePrices = { ...this.oneTravellerFarePrices, [fareName]: price };
+  logger.info("Saved the one-traveller fare price", { fareName, price });
+});
+
+Then("the {string} fare price in pricing options should be the same as for one traveller", async function (fareName) {
+  const expectedPrice = this.oneTravellerFarePrices?.[fareName];
+  if (typeof expectedPrice !== "number") {
+    throw new Error(`No one-traveller "${fareName}" price saved. Run 'I save the "${fareName}" fare price from pricing options for one traveller' first.`);
+  }
+  logger.info("Verifying the fare price matches the one-traveller price", { fareName, expectedPrice });
+  const result = await FlightResults.verifyPricingOptionFarePrice(this.page, fareName, expectedPrice);
+  logger.info("Fare price matches the one-traveller price", result);
 });
 
 // ========================================

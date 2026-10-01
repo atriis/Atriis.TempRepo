@@ -5590,6 +5590,68 @@ async verifyFareComponentTextColorInPricingOptions(page, expectedColor, index = 
   },
 
   /**
+   * Per-pax price of the fare card named `fareName` on the classic Pricing Options drawer's active leg.
+   * By name, not position, so a sold-out brand fails instead of reading the next brand's price.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} fareName - Brand name shown on the card, matched case-insensitively.
+   * @returns {Promise<number>}
+   */
+  async extractPricingOptionPriceByFareName(page, fareName) {
+    if (!page) {
+      throw new Error('[FlightResults.extractPricingOptionPriceByFareName] "page" is required.');
+    }
+    if (!fareName || typeof fareName !== 'string') {
+      throw new Error(`[FlightResults.extractPricingOptionPriceByFareName] "fareName" must be a non-empty string, got: ${typeof fareName}`);
+    }
+
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    await flightResultsPage.waitForPricingOptionsDrawerLeg();
+
+    const fareNames = await flightResultsPage.getPricingOptionsLegFareNames();
+    const prices = await flightResultsPage.getPricingOptionCardPrices();
+    logger.debug('[FlightResults.extractPricingOptionPriceByFareName] Fares shown', { fareName, fareNames, prices });
+    if (fareNames.length !== prices.length) {
+      throw new Error(
+        `[FlightResults.extractPricingOptionPriceByFareName] Fare names and prices are not aligned ` +
+        `(${fareNames.length} names, ${prices.length} prices): ${JSON.stringify(fareNames)}`
+      );
+    }
+
+    const index = fareNames.findIndex((name) => name?.toLowerCase() === fareName.toLowerCase());
+    if (index === -1) {
+      throw new Error(
+        `[FlightResults.extractPricingOptionPriceByFareName] No "${fareName}" fare in pricing options. ` +
+        `Fares shown: ${JSON.stringify(fareNames)}`
+      );
+    }
+    if (typeof prices[index] !== 'number') {
+      throw new Error(`[FlightResults.extractPricingOptionPriceByFareName] Could not read the price of the "${fareName}" fare card.`);
+    }
+
+    return prices[index];
+  },
+
+  /**
+   * Verifies the fare card named `fareName` in the classic Pricing Options drawer shows `expectedPrice`.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} fareName - Brand name shown on the card, matched case-insensitively.
+   * @param {number} expectedPrice
+   * @returns {Promise<{fareName: string, expectedPrice: number, actualPrice: number}>}
+   */
+  async verifyPricingOptionFarePrice(page, fareName, expectedPrice) {
+    if (typeof expectedPrice !== 'number' || !Number.isFinite(expectedPrice)) {
+      throw new Error(`[FlightResults.verifyPricingOptionFarePrice] "expectedPrice" must be a finite number, got: ${expectedPrice}`);
+    }
+
+    const actualPrice = await this.extractPricingOptionPriceByFareName(page, fareName);
+    expectNumbersToBeEqualWithTolerance(actualPrice, expectedPrice, 0.02, `"${fareName}" fare price in pricing options`);
+
+    return { fareName, expectedPrice, actualPrice };
+  },
+
+  /**
    * Selects a random fare on the currently-active leg of the classic Pricing Options
    * drawer, then waits for that leg to register as selected. Cards already chosen (button
    * reads "Unselect") are excluded so the click never deselects the current fare.
