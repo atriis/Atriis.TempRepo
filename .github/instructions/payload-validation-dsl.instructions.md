@@ -352,6 +352,27 @@ And the brand card seat badge should match the seat service the airline granted
 
 Canonical example: `tests/features/flights/flights_amadeus/flights_amadeus_non_booking/84752_amadeus_ndc_brand_card_rules_match_filed_penalties.feature`
 
+### 11. Deferred Checks — A Call a Background Process Makes Minutes Later
+
+Use when the call is not made by the flow the scenario drives. Passive PNRs are the case: the
+`PNR_AddMultiElements` that mirrors a Non-GDS hotel into the Amadeus PNR lands 3-10 minutes after booking. Do
+not wait for it in the scenario. Register the check as the last step and let the scenario finish:
+
+```gherkin
+And I complete the booking
+Then after the run, the "request" payload for request type "Amadeus4.PNR_AddMultiElements" should contain:
+  | <segmentName>HU</segmentName> |
+  | <longFreetext>HN-             |
+```
+
+`scripts/verify-deferred-payload-checks.js` runs after `cucumber-js` exits; in CI it runs right after the
+cucumber step. It polls each check for up to 5 minutes from registration and writes a failure back onto the
+scenario in the Cucumber JSON, JUnit and Allure results. Locally, run `npm run deferred:verify` after the run.
+Plain-text contains only; one row per text, and each must appear in at least one logged call of the type.
+Full details: `docs/PayloadValidation.md` §13.
+
+Canonical example: `tests/features/shell/shell_multiproducts/85676_amadeus_passive_hotel_city_and_dates_not_repeated.feature`
+
 ## Scenario Identifiers (world context)
 
 These are automatically captured during booking flow:
@@ -447,6 +468,7 @@ Error: Expected content not found in any of the 3 captured request payload(s) fo
 - ❌ Use a request-count assertion without an anchor request that the action under test really sends
 - ❌ Use `exactly 0` to prove a call was never sent — it cannot tell that from "not published yet" (use §7)
 - ❌ Assert absence on a bare request type when the supplier suffixes it with an account code (use `"... Search*"`)
+- ❌ Wait minutes with `I wait for N seconds` for a call a background process makes (passive PNRs) — use the deferred check (§11)
 - ❌ Create new expression types
 - ❌ Hardcode dynamic values — use `{tripNumber}`, `{transactionId}`, `{sid}`
 - ❌ Assume order of keys in JSON

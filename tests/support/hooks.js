@@ -13,6 +13,7 @@ const fs = require("fs");
 const { launchBrowser } = require("./browserFactory");
 const config = require("../../src/config/config");
 const sessionOptions = require("@utils/sessionOptions");
+const { writeRegistration } = require("@utils/deferredPayloadChecks");
 const logger = require("@utils/logger").child("Hooks");
 
 setDefaultTimeout(120000);
@@ -22,6 +23,8 @@ setDefaultTimeout(120000);
  */
 Before(async function (testCase) {
   this.scenarioTags = (testCase.pickle?.tags || []).map((tag) => tag.name);
+  // Floor for deferred payload checks: calls logged before this attempt started are not its own.
+  this.scenarioStartedAt = new Date();
 
   // Reset FIRST, unconditionally: a worker runs its scenarios serially in one process, so without
   // this an @timezone-tagged scenario would leak its zone into every later scenario in the same
@@ -194,4 +197,40 @@ After(async function (scenario) {
   if (this.browser) {
     await this.browser.close();
   }
+});
+
+/**
+ * Hands a passed scenario's deferred payload checks to the post-run verifier
+ * (scripts/verify-deferred-payload-checks.js). Only a PASSED attempt registers: a failed one is
+ * already reported as failed, and under --retry the attempt that passes registers its own trip.
+ */
+After(function (scenario) {
+  const checks = this.deferredPayloadChecks || [];
+  if (checks.length === 0) {
+    return;
+  }
+  if (scenario.result?.status !== Status.PASSED) {
+    logger.info("Scenario did not pass — its deferred payload checks are not registered", {
+      scenario: scenario.pickle.name,
+      checks: checks.length,
+    });
+    return;
+  }
+
+  const file = writeRegistration({
+    scenario: {
+      uri: String(scenario.pickle.uri || "").replace(/\\/g, "/"),
+      name: scenario.pickle.name,
+      line: scenario.pickle.location?.line ?? null,
+      featureName: scenario.gherkinDocument?.feature?.name || "",
+    },
+    notBefore: (this.scenarioStartedAt || new Date()).toISOString(),
+    checks,
+  });
+  logger.info("Deferred payload checks registered for the post-run verifier", {
+    scenario: scenario.pickle.name,
+    checks: checks.length,
+    file,
+    verifyWith: "npm run deferred:verify",
+  });
 });

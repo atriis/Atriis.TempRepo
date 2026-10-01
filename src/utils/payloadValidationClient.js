@@ -701,4 +701,42 @@ async function fetchPayloadFromStorage({ source, requestType, tripId, transactio
   };
 }
 
-module.exports = { fetchPayloadFromStorage, buildRequestTypeMatcher };
+/**
+ * Download one stored call by its rowKey, without listing the trip first.
+ *
+ * For callers that already hold the listing (`fetchPayloadFromStorage({ listOnly: true })`) and want
+ * only some of its bodies - a poller that re-lists every round and downloads just the rows it has
+ * not seen yet. Going through fetchPayloadFromStorage({ rowKey }) instead would re-page the whole
+ * trip listing once per row.
+ *
+ * @param {object} options
+ * @param {string} options.tripId
+ * @param {string} options.rowKey
+ * @param {"request"|"response"} options.source
+ * @param {number} [options.timeoutMs] - defaults to config value
+ * @returns {Promise<string>}
+ */
+async function downloadPayloadByRowKey({ tripId, rowKey, source, timeoutMs } = {}) {
+  if (!source || !["request", "response"].includes(source)) {
+    throw new Error(`source must be "request" or "response", got: ${source}`);
+  }
+  if (!tripId || !rowKey) {
+    throw new Error("tripId and rowKey are required to download a stored payload");
+  }
+  const baseUrl = payloadValidation.internalAtriisBaseUrl;
+  if (!baseUrl) {
+    throw new Error("PAYLOAD_VALIDATION_INTERNAL_ATRIIS_BASE_URL is not set.");
+  }
+  const token = payloadValidation.internalAtriisToken || null;
+  return downloadPayload({
+    baseUrl,
+    tripId: String(tripId).trim(),
+    rowKey,
+    source,
+    operationTimeoutMs: timeoutMs ?? payloadValidation.timeoutMs,
+    token,
+    includeAuth: false,
+  });
+}
+
+module.exports = { fetchPayloadFromStorage, downloadPayloadByRowKey, buildRequestTypeMatcher };

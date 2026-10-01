@@ -115,6 +115,48 @@ When("I capture the {string} payload for request type {string} from Storage", as
   });
 });
 
+// For a call a background process makes minutes after the action (e.g. the passive hotel
+// PNR_AddMultiElements of #85676). Registers the check instead of waiting for the call: the
+// scenario finishes now, and scripts/verify-deferred-payload-checks.js polls for it once the whole
+// run is over, writing a failure back onto this scenario. One table row per expected text; each
+// must appear in at least one logged call of the type, as with the "should contain" steps.
+Then(
+  "after the run, the {string} payload for request type {string} should contain:",
+  async function (source, requestType, dataTable) {
+    await runPayloadValidationStep(this, "registerDeferredPayloadCheck", { source, requestType }, async () => {
+      const normalizedSource = String(source).trim().toLowerCase();
+      if (normalizedSource !== "request" && normalizedSource !== "response") {
+        throw new Error(`source must be either "request" or "response", got: ${source}`);
+      }
+
+      const { tripId } = getScenarioIdentifiers(this);
+      if (!tripId) {
+        throw new Error("A deferred payload check needs the trip number, but none was captured for this scenario.");
+      }
+
+      const expectedTexts = dataTable.raw().map(([text]) => resolveWorldPlaceholders(text, this)).filter(Boolean);
+      if (expectedTexts.length === 0) {
+        throw new Error("A deferred payload check needs at least one expected text in its table.");
+      }
+
+      this.deferredPayloadChecks = this.deferredPayloadChecks || [];
+      this.deferredPayloadChecks.push({
+        source: normalizedSource,
+        requestType: requestType.trim(),
+        tripId: String(tripId),
+        expectedTexts,
+        registeredAt: new Date().toISOString(),
+      });
+      logger.info("Deferred payload check registered — verified after the run", {
+        source: normalizedSource,
+        requestType,
+        expectedTexts,
+        tripId,
+      });
+    });
+  },
+);
+
 // A fixed, reused trip keeps the calls of every earlier run in storage. Noting the time right before
 // the action lets the capture below ignore them, so the assertion can only pass on this run's call.
 When("I note the time before new payload requests are sent", async function () {

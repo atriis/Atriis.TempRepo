@@ -608,6 +608,7 @@ All step definitions are in `tests/steps/payload_validation.steps.js`. Here is t
 | `Then every "{requestType}" request should have "{parameterName}" within "{blockTag}" containing "{expectedValue}"` | `expectEveryRequestParameterContains()` | Same, but only inside the named XML block — tells round-trip legs apart (§2.10.7) |
 | `Then every "{requestType}" request should reference a different "{attributeName}"` | `expectRequestAttributeValuesAreUnique()` | Assert no two requests share the same attribute value (§2.10.8) |
 | `When I wait until "{requestType}" requests have been sent for the trip` | `waitForRequestType()` | Anchor an absence assertion: prove the log is publishing for this trip before claiming a request type is missing (§2.10.10) |
+| `Then after the run, the "{source}" payload for request type "{requestType}" should contain:` + one-column table | `src/utils/deferredPayloadChecks.js` | Register a check on a call a background process makes minutes later (passive PNRs); verified after the run by `scripts/verify-deferred-payload-checks.js` (§13) |
 
 > Fare brand coverage steps are also in `tests/steps/flight_nff.steps.js`: `When I capture the fare ladder priced for each leg in "..." from Storage`, `Then the fare ladder combinations should exceed {int}` and `Then every priced fare should be reachable in some combination in "..."` call `FlightResults.captureFareLaddersPerLeg()` / `expectFareLadderCombinationsExceed()` / `expectEveryFareReachableInSomeOption()` on top of `collectXmlBlockAttributesPerCall()` (§2.10.12) and `collectPayloadsForTrip()` (§2.10.13).
 
@@ -1016,6 +1017,24 @@ Then no additional "<requestType>" requests should have been sent after "<anchor
 ### Scenario: Baseline Capture Fails With "no such request has been logged"
 **Problem:** `When I capture the number of "X" requests sent for the trip` throws before the action even runs.
 **Solution:** This is the intended fail-fast. The flow never reached that supplier — usually the wrong carrier was selected, the filter did not apply, or the trip id is not yet on the world context. Fix the scenario setup rather than moving the capture step later.
+
+### Scenario: The Call Is Made Minutes After the Scenario Ends (Passive PNRs)
+**Problem:** A background process makes the call long after the flow under test returns. The passive `PNR_AddMultiElements` that mirrors a Non-GDS hotel into the Amadeus PNR lands 3-10 minutes after booking. Fixed `I wait for N seconds` steps hold a browser and a parallel worker idle that whole time.
+**Solution:** Register the check and let the scenario finish. Each table row is one text that must appear in at least one logged call of the type, the same as the `should contain` steps after their fallback. `{tripNumber}` and other world placeholders resolve when the step runs.
+```gherkin
+And I complete the booking
+Then after the run, the "request" payload for request type "Amadeus4.PNR_AddMultiElements" should contain:
+  | <segmentName>HU</segmentName> |
+  | <longFreetext>HN-             |
+```
+- **When it's verified:** only after `cucumber-js` exits. CI runs `node scripts/verify-deferred-payload-checks.js` right after the cucumber step. Locally: `npx cucumber-js <feature> && npm run deferred:verify`, or run `npm run deferred:verify` after any run.
+- **What is verified:** only scenarios that passed. Under `--retry`, the attempt that passed registers its own trip.
+- **Polling:** the verifier polls each check (default every 30s) until it is satisfied, or until 5 minutes after the step ran. Calls logged before the scenario started are ignored. Override with `DEFERRED_PAYLOAD_CHECK_TIMEOUT_MINUTES` and `DEFERRED_PAYLOAD_CHECK_POLL_INTERVAL_MS`.
+- **Failures:** a failure is written onto the original scenario in `cucumber-report.json` (as a failed step), `cucumber-junit.xml` (as a `<failure>`) and `allure-results/`. The CI summary, the nightly rerun plan and the ADO sync then see the scenario as failed, and the verify step exits 1. Per-check details are in `test-results/deferred-payload-checks-results.json`.
+- **Keep the step last.** Nothing after it can depend on the call.
+- **Scope:** plain-text contains only. For block, split or path expressions, capture the call live instead.
+
+Example: `tests/features/shell/shell_multiproducts/85676_amadeus_passive_hotel_city_and_dates_not_repeated.feature`
 
 ---
 

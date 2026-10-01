@@ -628,6 +628,15 @@ jobs:
             --parallel ${{ inputs.parallel }} \
             --retry ${{ inputs.retry }}
 
+      # A rerun scenario with a deferred payload check (e.g. 85676's passive hotel segment)
+      # registers it again; verify it here so the rerun report carries its real outcome.
+      - name: Verify deferred payload checks
+        if: always()
+        timeout-minutes: 20
+        run: node scripts/verify-deferred-payload-checks.js
+        env:
+          CI: "true"
+
       - name: Upload rerun JUnit results
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
