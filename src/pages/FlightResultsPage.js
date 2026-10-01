@@ -1994,6 +1994,18 @@ class FlightResultsPage {
   }
 
   /**
+   * Returns the baggage line's spans (icon + text) inside the first pricing-option card
+   * whose visible text contains the given substring.
+   *
+   * @param {string} cardText - Substring identifying the target card.
+   * @returns {import('@playwright/test').Locator}
+   */
+  getBaggageLabelsInPricingOptionByText(cardText) {
+    return this.getPricingOptionCardByText(cardText)
+      .locator(SELECTORS.PRICING_OPTIONS_BAGGAGE_CLASS);
+  }
+
+  /**
    * Returns the out-of-policy indicator locator scoped inside the first pricing-option
    * card whose visible text contains the given substring.
    *

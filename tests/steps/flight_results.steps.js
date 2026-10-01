@@ -472,6 +472,11 @@ Then('the pricing options row containing {string} should show the out of policy 
   await FlightResults.verifyPricingOptionOOPByText(this.page, cardText);
 });
 
+Then('the pricing options row containing {string} should show baggage {string}', async function (cardText, expectedBaggage) {
+  logger.info('Verifying pricing option row baggage', { cardText, expectedBaggage });
+  await FlightResults.verifyPricingOptionCardBaggage(this.page, cardText, expectedBaggage);
+});
+
 Then('the pricing options row containing {string} should not contain {string}', async function (cardText, excludedText) {
   logger.info('Verifying pricing option row does not contain text', { cardText, excludedText });
   await FlightResults.verifyPricingOptionCardDoesNotContainText(this.page, cardText, excludedText);

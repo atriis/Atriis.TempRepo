@@ -5357,6 +5357,40 @@ async verifyFareComponentTextColorInPricingOptions(page, expectedColor, index = 
   },
 
   /**
+   * Verifies the baggage line in the pricing-option card identified by cardText
+   * contains the expected allowance.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} cardText - Substring used to identify the target card (e.g. a brand name).
+   * @param {string} expectedBaggage - Allowance each leg should show (e.g. "1PC").
+   * @returns {Promise<{ cardText: string, baggageText: string }>}
+   */
+  async verifyPricingOptionCardBaggage(page, cardText, expectedBaggage) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+    if (!cardText || typeof cardText !== 'string') {
+      throw new Error('cardText must be a non-empty string, got: ' + typeof cardText);
+    }
+    if (!expectedBaggage || typeof expectedBaggage !== 'string') {
+      throw new Error('expectedBaggage must be a non-empty string, got: ' + typeof expectedBaggage);
+    }
+
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    const card = flightResultsPage.getPricingOptionCardByText(cardText);
+    await card.waitFor({ state: 'visible', timeout: 30000 });
+    await card.scrollIntoViewIfNeeded();
+
+    // The baggage line is an icon span plus a text span; the icon's ligature reads as "luggage"
+    const baggageSpans = await flightResultsPage.getBaggageLabelsInPricingOptionByText(cardText).allTextContents();
+    const baggageText = baggageSpans.join(' ').replace(/\s+/g, ' ').trim();
+    logger.info('Pricing option baggage text', { cardText, baggageText });
+    expect(baggageText).toContain(expectedBaggage);
+
+    return { cardText, baggageText };
+  },
+
+  /**
    * Verifies that a pricing-option card identified by cardText does NOT contain
    * the specified excludedText substring.
    *
