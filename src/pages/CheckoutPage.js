@@ -37,6 +37,11 @@ const SELECTORS = {
   FUSION_VERIFY_NOW_BUTTON: ".success-message__email span",
   FUSION_3DS_DIALOG_CONTAINER: ".app-dialog",
   FUSION_3DS_DIALOG_CLOSE_BUTTON: ".app-dialog .el-dialog__headerbtn",
+  // fusion-3ds.vue — the supplier's 3DS page (Travelfusion 3ds-initiate → 3ds-simulate on dev/staging).
+  FUSION_3DS_IFRAME: "#threeDsIframe",
+  // Travelfusion simulator: <input type="submit" value="Click here to complete the simulated card verification">.
+  // Only reachable through a frame locator.
+  FUSION_3DS_SIMULATE_SUBMIT: "input[type='submit'], button[type='submit']",
   // Ypsilon 3DS verification (ypsilon-3ds.vue — iframe-based SCA challenge)
   YPSILON_3DS_CONTAINER: "#yps_sca_frame",
   // Element-plus dialog title with the exact 'Card verification' text — the most
@@ -462,8 +467,20 @@ class CheckoutPage {
     }
     const tripId = tripIdMatch[1];
 
-    // Fusion auto-opens the 3DS modal up to ~18s after booking succeeds.
-    // Probe up to that bound; if it doesn't auto-open we trigger it via "Verify now".
+    await this.openFusion3dsDialog();
+
+    const closeButton = this.page.locator(SELECTORS.FUSION_3DS_DIALOG_CLOSE_BUTTON).first();
+    await closeButton.waitFor({ state: 'visible', timeout: 30000 });
+    await closeButton.click();
+
+    return tripId;
+  }
+
+  /**
+   * Waits for the Fusion 3DS modal and returns its container.
+   * Fusion auto-opens the modal up to ~18s after booking succeeds; if it doesn't, "Verify now" opens it.
+   */
+  async openFusion3dsDialog() {
     const dialogContainer = this.page.locator(SELECTORS.FUSION_3DS_DIALOG_CONTAINER).first();
     const dialogVisible = await dialogContainer
       .waitFor({ state: 'visible', timeout: 18000 })
@@ -476,12 +493,62 @@ class CheckoutPage {
       await verifyNowButton.click();
       await dialogContainer.waitFor({ state: 'visible', timeout: 30000 });
     }
+    return dialogContainer;
+  }
 
-    const closeButton = this.page.locator(SELECTORS.FUSION_3DS_DIALOG_CLOSE_BUTTON).first();
-    await closeButton.waitFor({ state: 'visible', timeout: 30000 });
-    await closeButton.click();
+  /**
+   * Completes the Fusion 3DS verification INSIDE the iframe, the way a traveller does (85766 / bug 85679).
+   *
+   * Unlike completeFusionCardVerification, the modal is not closed with the X: the supplier page's
+   * submit is clicked, the supplier redirects the iframe back to OBT `/payment-token/?quoteId=<id>`,
+   * that page posts `{ creditGuardResponse }` to OBT, and fusion-3ds.ts closes the modal by itself.
+   * Before the 85679 fix the `/payment-token` request answered 302 to the identity server and the
+   * iframe showed "... refused to connect", so the modal never closed.
+   *
+   * Does not throw on a failed return — it reports what happened, and the step asserts it.
+   *
+   * @param {number} timeout - Max wait for the verification title.
+   * @returns {Promise<{tripId: string, paymentToken: {status: number, url: string, location: string|null}|null, dialogClosedByItself: boolean, verificationNeededGone: boolean}>}
+   */
+  async completeFusionCardVerificationInIframe(timeout = 90000) {
+    await waitForText(this.page, SELECTORS.FUSION_VERIFICATION_TITLE, 'Card verification needed!', timeout);
 
-    return tripId;
+    const tripIdMatch = new URL(this.page.url()).pathname.match(/\/trips\/(\d+)/);
+    if (!tripIdMatch) {
+      throw new Error('completeFusionCardVerificationInIframe: could not extract trip ID from URL: ' + this.page.url());
+    }
+    const tripId = tripIdMatch[1];
+
+    const dialogContainer = await this.openFusion3dsDialog();
+
+    // The first answer to the iframe's /payment-token navigation: 200 when served anonymously, 302 when
+    // Heimdall sends it to login. Registered before the click so a fast redirect is not missed.
+    const paymentTokenResponse = this.page
+      .waitForResponse((r) => new URL(r.url()).pathname.replace(/\/$/, '') === '/payment-token', { timeout: 60000 })
+      .catch(() => null);
+
+    const submit = this.page.frameLocator(SELECTORS.FUSION_3DS_IFRAME).locator(SELECTORS.FUSION_3DS_SIMULATE_SUBMIT).first();
+    await submit.waitFor({ state: 'visible', timeout: 60000 });
+    await submit.click();
+
+    const response = await paymentTokenResponse;
+    const paymentToken = response
+      ? { status: response.status(), url: response.url(), location: response.headers()['location'] || null }
+      : null;
+
+    const dialogClosedByItself = await dialogContainer
+      .waitFor({ state: 'hidden', timeout: 60000 })
+      .then(() => true)
+      .catch(() => false);
+
+    const verificationNeededGone = await this.page
+      .locator(SELECTORS.FUSION_VERIFICATION_TITLE, { hasText: 'Card verification needed' })
+      .first()
+      .waitFor({ state: 'hidden', timeout: 30000 })
+      .then(() => true)
+      .catch(() => false);
+
+    return { tripId, paymentToken, dialogClosedByItself, verificationNeededGone };
   }
 
   /**

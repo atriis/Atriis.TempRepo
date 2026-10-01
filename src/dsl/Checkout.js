@@ -183,6 +183,32 @@ const Checkout = {
   },
 
   /**
+   * Finalizes a Fusion low-cost flight booking and completes the card verification inside the 3DS
+   * iframe (the supplier page's submit, not the modal's X), then opens the trip overview.
+   * Returns how the iframe's return to OBT `/payment-token` went, for the step to assert (85766).
+   *
+   * @param {import('playwright').Page} page
+   * @returns {Promise<{finalized: boolean, tripId: string, paymentToken: object|null, dialogClosedByItself: boolean, verificationNeededGone: boolean}>}
+   */
+  async bookAndFinalizeWithFusionCardVerificationInIframe(page) {
+    if (!page) throw new Error('page is required');
+
+    const checkoutPage = getPageObject(page, CheckoutPage);
+    const cartPage = getPageObject(page, CartPage);
+
+    await Checkout.bookTripWithoutNavigatingToTripOverview(page);
+    const verification = await checkoutPage.completeFusionCardVerificationInIframe();
+
+    const tripUrl = new URL(page.url());
+    tripUrl.pathname = `/trips/${verification.tripId}/cart`;
+    tripUrl.search = '';
+    await page.goto(tripUrl.href, { waitUntil: 'domcontentloaded' });
+    await cartPage.waitForTripOverviewTitle();
+
+    return { finalized: true, ...verification };
+  },
+
+  /**
    * Finalizes Ypsilon flight booking with 3DS SCA verification,
    * then navigates to the trip overview page.
    * The 3DS challenge is rendered in an iframe where the test code is entered.

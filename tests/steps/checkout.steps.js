@@ -65,6 +65,38 @@ When("I complete the booking with Fusion credit card verification", { timeout: C
   await Checkout.bookAndFinalizeWithFusionCardVerification(this.page);
 });
 
+When("I complete the booking with Fusion credit card verification inside the 3DS iframe", { timeout: CHECKOUT_STEP_TIMEOUT_MS + 60000 }, async function () {
+  logger.info("Completing Fusion booking with card verification inside the 3DS iframe");
+  this.fusion3dsVerification = await Checkout.bookAndFinalizeWithFusionCardVerificationInIframe(this.page);
+  logger.info("Fusion 3DS verification result", this.fusion3dsVerification);
+});
+
+Then("the Fusion card verification should return to OBT and close by itself", async function () {
+  const result = this.fusion3dsVerification;
+  if (!result) {
+    throw new Error('No Fusion 3DS result: run "I complete the booking with Fusion credit card verification inside the 3DS iframe" first');
+  }
+  const { paymentToken, dialogClosedByItself, verificationNeededGone, tripId } = result;
+  const appOrigin = new URL(this.page.url()).origin;
+
+  if (!paymentToken) {
+    throw new Error(`Trip ${tripId}: the 3DS iframe never navigated back to /payment-token after the supplier's verification`);
+  }
+  if (paymentToken.status !== 200 || new URL(paymentToken.url).origin !== appOrigin) {
+    throw new Error(
+      `Trip ${tripId}: /payment-token answered ${paymentToken.status} at ${paymentToken.url}` +
+      (paymentToken.location ? ` (redirect to ${paymentToken.location})` : '') +
+      ` — expected 200 from ${appOrigin} without login`,
+    );
+  }
+  if (!dialogClosedByItself) {
+    throw new Error(`Trip ${tripId}: /payment-token loaded but the Card verification modal did not close by itself`);
+  }
+  if (!verificationNeededGone) {
+    throw new Error(`Trip ${tripId}: the modal closed but "Card verification needed!" is still shown`);
+  }
+});
+
 When("I complete the booking with Ypsilon credit card verification", { timeout: CHECKOUT_STEP_TIMEOUT_MS }, async function () {
   logger.info("Completing Ypsilon booking with credit card verification");
   await Checkout.bookAndFinalizeWithYpsilon3dsVerification(this.page);
