@@ -366,7 +366,7 @@ Then after the run, the "request" payload for request type "Amadeus4.PNR_AddMult
 ```
 
 `scripts/verify-deferred-payload-checks.js` runs after `cucumber-js` exits; in CI it runs right after the
-cucumber step. It polls each check for up to 5 minutes from registration and writes a failure back onto the
+cucumber step. It polls each check for up to 15 minutes from registration (stopping as soon as every text is found) and writes a failure back onto the
 scenario in the Cucumber JSON, JUnit and Allure results. Locally, run `npm run deferred:verify` after the run.
 Plain-text contains only; one row per text, and each must appear in at least one logged call of the type.
 Full details: `docs/PayloadValidation.md` §13.
@@ -382,6 +382,11 @@ These are automatically captured during booking flow:
 | `world.tripId` | Filter payloads from Storage (booking identifier) |
 | `world.transactionId` | Filter payloads from Storage (API transaction) |
 | `world.sid` | Filter payloads from Storage (session ID) |
+
+`world.tripId` is stored by `Given I am logged in as "{user}" booking a new trip`. Don't add
+`I log the trip number from the URL` to a payload scenario: it only prints the number and stores
+nothing. After a second `When I book a new trip`, add `I store the current trip number for payload
+validation` so the payload steps follow the new trip.
 
 All placeholders in Gherkin are resolved at runtime:
 - `{tripNumber}` → `world.tripId`

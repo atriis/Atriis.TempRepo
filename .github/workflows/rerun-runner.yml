@@ -632,7 +632,7 @@ jobs:
       # registers it again; verify it here so the rerun report carries its real outcome.
       - name: Verify deferred payload checks
         if: always()
-        timeout-minutes: 20
+        timeout-minutes: 25
         run: node scripts/verify-deferred-payload-checks.js
         env:
           CI: "true"

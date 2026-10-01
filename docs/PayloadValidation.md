@@ -780,10 +780,12 @@ The `world` object automatically captures and stores scenario identifiers during
 
 ```javascript
 // Automatically set during test execution
-world.tripId        // Trip identifier (stored after booking creation)
+world.tripId        // Trip identifier (stored by the login step that opens the trip)
 world.transactionId // Transaction ID for API calls (set during API interactions)
 world.sid           // Session ID (set at test start or login)
 ```
+
+**Where `world.tripId` comes from:** `Given I am logged in as "{user}" booking a new trip` reads the trip number from the URL and stores it. No extra step is needed. `I log the trip number from the URL` only prints the number and stores nothing, so payload scenarios don't need it. If the scenario opens a second trip with `When I book a new trip`, add `I store the current trip number for payload validation` after it so the payload steps follow the new trip.
 
 These identifiers are used internally by PayloadValidation to:
 1. **Filter payloads** from Azure Storage — only fetch payloads matching the same tripId/transactionId/sid
@@ -822,7 +824,7 @@ Then the captured "response" payload for request type "Booking" should not conta
 Then the captured "response" payload for request type "Booking" should contain "{tripNumber},{sid}".split(",")
 ```
 
-**Unresolved placeholders:** If `world.tripId` is not set when the step runs, the placeholder is kept as-is (`{tripNumber}`) and the assertion will likely fail — check that the booking step ran before the assertion.
+**Unresolved placeholders:** If `world.tripId` is not set when the step runs, the placeholder is kept as-is (`{tripNumber}`) and the assertion will likely fail — check that the scenario opened its trip with the `booking a new trip` login step (or `I store the current trip number for payload validation`) before the assertion.
 
 ### Error Handling
 - **Missing payload:** Throws `No captured {source} payload found for request type "{requestType}". Run a capture step first.`
@@ -1029,7 +1031,7 @@ Then after the run, the "request" payload for request type "Amadeus4.PNR_AddMult
 ```
 - **When it's verified:** only after `cucumber-js` exits. CI runs `node scripts/verify-deferred-payload-checks.js` right after the cucumber step. Locally: `npx cucumber-js <feature> && npm run deferred:verify`, or run `npm run deferred:verify` after any run.
 - **What is verified:** only scenarios that passed. Under `--retry`, the attempt that passed registers its own trip.
-- **Polling:** the verifier polls each check (default every 30s) until it is satisfied, or until 5 minutes after the step ran. Calls logged before the scenario started are ignored. Override with `DEFERRED_PAYLOAD_CHECK_TIMEOUT_MINUTES` and `DEFERRED_PAYLOAD_CHECK_POLL_INTERVAL_MS`.
+- **Polling:** the verifier polls each check (default every 30s) until it is satisfied (it stops as soon as every text is found), or until 15 minutes after the step ran. Calls logged before the scenario started are ignored. Override with `DEFERRED_PAYLOAD_CHECK_TIMEOUT_MINUTES` and `DEFERRED_PAYLOAD_CHECK_POLL_INTERVAL_MS`.
 - **Failures:** a failure is written onto the original scenario in `cucumber-report.json` (as a failed step), `cucumber-junit.xml` (as a `<failure>`) and `allure-results/`. The CI summary, the nightly rerun plan and the ADO sync then see the scenario as failed, and the verify step exits 1. Per-check details are in `test-results/deferred-payload-checks-results.json`.
 - **Keep the step last.** Nothing after it can depend on the call.
 - **Scope:** plain-text contains only. For block, split or path expressions, capture the call live instead.

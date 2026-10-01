@@ -48,7 +48,7 @@ Watch out for these:
 | Situation | What to do |
 |---|---|
 | You open a second trip with `When I book a new trip` | `this.tripId` still points at the **first** trip. Add `And I store the current trip number for payload validation` after the new trip opens. |
-| You added `And I log the trip number from the URL` | That's fine, but it only **prints** the number to the log. It doesn't store anything, so don't count on it to set the trip. |
+| You're tempted to add `And I log the trip number from the URL` | You don't need it. The login step already stores the trip and logs it, and the verifier prints the trip in its output. The log step only **prints** the number and stores nothing. |
 | The step fails with *"needs the trip number, but none was captured"* | No step stored a trip number. Use the `booking a new trip` login step, or add `I store the current trip number for payload validation`. |
 
 You can also use world placeholders in the table, such as `{tripNumber}` or a value you stored earlier. They're filled in when the step runs, not when the verifier runs.
@@ -75,7 +75,7 @@ You can also use world placeholders in the table, such as `{tripNumber}` or a va
  cucumber-js exits
                    ▼
  npm run deferred:verify
-   ├─ polls each trip every 30s, up to 5 min after the step ran
+   ├─ polls each trip every 30s until the texts are found, at most 15 min after the step ran
    ├─ writes the outcome back onto the original scenario
    │    • cucumber-report.json  → an extra "(verified after the run) ..." step
    │    • cucumber-junit.xml    → a <failure> if it failed
@@ -118,11 +118,11 @@ You'll see output like this:
 
 | Env var | Default | Meaning |
 |---|---|---|
-| `DEFERRED_PAYLOAD_CHECK_TIMEOUT_MINUTES` | `5` | How long after **the step ran** to keep looking |
+| `DEFERRED_PAYLOAD_CHECK_TIMEOUT_MINUTES` | `15` | The longest it keeps looking after **the step ran**. It stops sooner, as soon as every text is found |
 | `DEFERRED_PAYLOAD_CHECK_POLL_INTERVAL_MS` | `30000` | Time between polls |
 
 ```powershell
-$env:DEFERRED_PAYLOAD_CHECK_TIMEOUT_MINUTES = "10"; npm run deferred:verify
+$env:DEFERRED_PAYLOAD_CHECK_TIMEOUT_MINUTES = "20"; npm run deferred:verify
 ```
 
 The clock starts when the step registered the check, not when the verifier starts. In a long suite, most checks are already past their wait and pass on the first poll.

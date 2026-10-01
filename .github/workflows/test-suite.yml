@@ -184,7 +184,7 @@ jobs:
       # in the reports uploaded below. Instant when no scenario registered one.
       - name: Verify deferred payload checks
         if: always()
-        timeout-minutes: 20
+        timeout-minutes: 25
         run: node scripts/verify-deferred-payload-checks.js
         env:
           CI: "true"
@@ -310,7 +310,7 @@ jobs:
       # See the matching step in the non-booking job above.
       - name: Verify deferred payload checks
         if: always()
-        timeout-minutes: 20
+        timeout-minutes: 25
         run: node scripts/verify-deferred-payload-checks.js
         env:
           CI: "true"

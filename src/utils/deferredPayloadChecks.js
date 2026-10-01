@@ -29,8 +29,10 @@ const RESULTS_FILE = path.join("test-results", "deferred-payload-checks-results.
 
 // Counted from the moment the scenario registered the check (right after the action that triggers
 // the background call), not from when verification starts. The hotel passive has been logged 2-5
-// minutes after booking on staging (trips 3905743, 3901797); raise it per run with the env var below.
-const DEFAULT_TIMEOUT_MINUTES = 5;
+// minutes after booking on staging (trips 3905743, 3901797), and up to 10 is expected; 15 leaves
+// room for a slow staging day. It is only an upper bound: a check stops polling as soon as every
+// text is found. Override per run with the env var below.
+const DEFAULT_TIMEOUT_MINUTES = 15;
 const DEFAULT_POLL_INTERVAL_MS = 30000;
 // One listing round: when the type is not logged yet the client retries its own lookups before
 // giving up, so the round needs more than the client's 60s default.

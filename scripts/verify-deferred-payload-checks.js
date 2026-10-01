@@ -22,7 +22,7 @@
  * Exit code: 1 when any check failed, 0 otherwise (including when nothing was registered).
  *
  * Env:
- *   DEFERRED_PAYLOAD_CHECK_TIMEOUT_MINUTES   - per check, from its registration (default 5)
+ *   DEFERRED_PAYLOAD_CHECK_TIMEOUT_MINUTES   - per check, from its registration (default 15)
  *   DEFERRED_PAYLOAD_CHECK_POLL_INTERVAL_MS  - delay between polls (default 30000)
  */
 
