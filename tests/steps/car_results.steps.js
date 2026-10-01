@@ -155,6 +155,13 @@ When("I toggle the \"In Policy\" filter on car results", async function () {
   await CarResults.toggleInPolicyFilterOnResults(this.page);
 });
 
+// Applies the "Car Class" filter options one by one until a car with the given availability
+// label is displayed, leaving that class applied for the steps that follow.
+When("I filter by each car class until a car with the {string} label is displayed", async function (expectedLabel) {
+  logger.info("Filtering by each car class until a car with the availability label is displayed", { expectedLabel });
+  await CarResults.filterByEachCarClassUntilAvailabilityLabel(this.page, expectedLabel);
+});
+
 Then("I should see the {string} label on the first car result", async function (expectedLabel) {
   logger.info("Verifying availability label on the first car result", { expectedLabel });
   await CarResults.expectCarAvailabilityLabelAtIndex(this.page, expectedLabel, 0);

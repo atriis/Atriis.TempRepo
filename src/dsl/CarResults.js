@@ -537,6 +537,64 @@ const CarResults = {
   },
 
   /**
+   * Applies each "Car Class" filter option one at a time until a car result with the given
+   * availability label (e.g. "On request") is displayed, and leaves that class applied. Each class
+   * that shows no match is unchecked again before the next one is tried, so only one class is ever
+   * applied. Fails if no class produces a matching car.
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @param {string} expectedLabel - Availability label to look for (e.g. "On request")
+   * @throws {Error} If page/expectedLabel are invalid or no car class yields a matching car
+   * @returns {Promise<{carClass: string, classesTried: string[]}>}
+   */
+  async filterByEachCarClassUntilAvailabilityLabel(page, expectedLabel) {
+    if (!page) {
+      throw new Error('[CarResults.filterByEachCarClassUntilAvailabilityLabel] "page" is required.');
+    }
+    if (!expectedLabel || typeof expectedLabel !== 'string') {
+      throw new Error(
+        `[CarResults.filterByEachCarClassUntilAvailabilityLabel] "expectedLabel" must be a non-empty string, got: ${typeof expectedLabel}`
+      );
+    }
+
+    const filterTitle = 'Car Class';
+    const carResultsPage = getPageObject(page, CarResultsPage);
+    await getPageObject(page, ResultsPage).expandFilterSectionViewMore(filterTitle);
+    const carClasses = await carResultsPage.getFilterOptionLabels(filterTitle);
+    const matchingCards = carResultsPage.getCarResultCardsByAvailabilityLabel(expectedLabel);
+    const classesTried = [];
+
+    for (const carClass of carClasses) {
+      const { selected } = await Results.selectFilterSectionOption(page, carClass, filterTitle, { exact: true });
+      if (!selected) {
+        continue;
+      }
+      classesTried.push(carClass);
+
+      const found = await matchingCards
+        .first()
+        .waitFor({ state: 'visible', timeout: 5000 })
+        .then(() => true, () => false);
+      if (found) {
+        await matchingCards.first().scrollIntoViewIfNeeded();
+        logger.info(
+          `[CarResults.filterByEachCarClassUntilAvailabilityLabel] "${expectedLabel}" car found under car class "${carClass}"`,
+          { carClass, classesTried }
+        );
+        return { carClass, classesTried };
+      }
+
+      await Results.removeFilterSectionOption(page, carClass, filterTitle, { exact: true });
+    }
+
+    throw new Error(
+      `[CarResults.filterByEachCarClassUntilAvailabilityLabel] Applied each of the ${classesTried.length} ` +
+      `"${filterTitle}" option(s) [${classesTried.join(', ')}] but none displayed a car with the ` +
+      `"${expectedLabel}" availability label. This is a supplier availability issue, not a test bug.`
+    );
+  },
+
+  /**
    * Gets the current visible FOP (payment type) from car results.
    * @param {import('playwright').Page} page
    * @returns {Promise<string>}

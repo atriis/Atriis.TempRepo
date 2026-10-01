@@ -1107,6 +1107,40 @@ class ResultsPage {
   }
 
   /**
+   * Expands the "View more" toggle of a NAMED filter section (identified by its h4 title, e.g.
+   * "Car Class"), if it has one. app-checkbox-group.vue only renders its first few options until
+   * expanded, so reading a section's option labels would otherwise miss the rest. A no-op when the
+   * section has no toggle or is already expanded ("View less").
+   *
+   * @param {string} filterTitle - The filter section's h4 title, e.g. "Car Class"
+   * @param {{timeout?: number}} [options]
+   * @throws {Error} If filterTitle is invalid or the section never appears
+   * @returns {Promise<{expanded: boolean}>}
+   */
+  async expandFilterSectionViewMore(filterTitle, { timeout = 30000 } = {}) {
+    if (typeof filterTitle !== 'string' || !filterTitle.trim()) {
+      throw new Error(`[ResultsPage.expandFilterSectionViewMore] filterTitle must be a non-empty string, got: ${typeof filterTitle}`);
+    }
+
+    const section = this.page
+      .locator(SELECTORS.AIRPORTS_FILTER_CONTAINER)
+      .filter({ has: this.page.locator(SELECTORS.FILTER_GROUP_TITLE, { hasText: filterTitle }) })
+      .first();
+    await section.waitFor({ state: 'visible', timeout });
+
+    const viewMoreButton = section
+      .locator(SELECTORS.FILTER_VIEW_MORE_CONTAINER)
+      .filter({ has: this.page.locator(SELECTORS.FILTER_VIEW_MORE_LABEL, { hasText: 'View more' }) })
+      .locator(SELECTORS.FILTER_VIEW_MORE_BUTTON)
+      .first();
+    if (!(await viewMoreButton.isVisible({ timeout: 3000 }).catch(() => false))) {
+      return { expanded: false };
+    }
+    await viewMoreButton.click();
+    return { expanded: true };
+  }
+
+  /**
    * Clicks a filter option checkbox by its label text within a NAMED filter section (identified by
    * its h4 title, e.g. "Car Class"). Unlike filterByCheckboxOption above (which searches the whole
    * page for a single unique label), this scopes to one section — required on a results page that

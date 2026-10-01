@@ -1123,6 +1123,21 @@ class CarResultsPage {
   }
 
   /**
+   * Returns the car result cards whose availability label (CAR_AVAILABILITY_LABEL) reads exactly
+   * the given text, e.g. "On request" — case-insensitive, whole-label match.
+   *
+   * @param {string} availabilityLabel - Availability label text
+   * @returns {import('playwright').Locator}
+   */
+  getCarResultCardsByAvailabilityLabel(availabilityLabel) {
+    return this.getCarResultCards().filter({
+      has: this.page.locator(SELECTORS.CAR_AVAILABILITY_LABEL, {
+        hasText: new RegExp(`^\\s*${escapeRegex(availabilityLabel)}\\s*$`, 'i'),
+      }),
+    });
+  }
+
+  /**
    * Clicks a filter option checkbox by its label text within the named filter section.
    * Returns metadata about the checkbox state so the caller can decide whether the click
    * was meaningful (e.g. already-checked+disabled when only one option exists).
