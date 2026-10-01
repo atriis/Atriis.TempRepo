@@ -4,7 +4,7 @@ const CarResultsPage = require("@pages/CarResultsPage");
 const { ResultsPage } = require("@pages/ResultsPage");
 const { getPageObject } = require("@utils/pageObjectCache");
 const { normalizeTextStrict, tokenizeAddress } = require("@utils/text");
-const { selectDatesByNthAvailable } = require("@utils/calendar.helper");
+const { selectDatesByNthAvailable, datesMatch, dayAndMonthMatch } = require("@utils/calendar.helper");
 const { SEARCH_DEFAULTS } = require("@utils/search.constants");
 const { parseAmountText } = require("@utils/dom");
 const CarSearchPage = require("@pages/CarSearchPage");
@@ -1599,6 +1599,83 @@ const CarResults = {
     ).toContain(normalizedExpected.toLowerCase());
 
     return { expectedLocation, actualLocation };
+  },
+
+  /**
+   * Verifies the rental period in the car info bar at the top of the results ("30 Nov - 01 Dec")
+   * is the one that was searched. The bar renders no year, so day and month are compared.
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @param {{pickupDate: Date, dropoffDate: Date}} searchedDates - The dates picked on the search form
+   * @returns {Promise<{infoBarText: string}>}
+   * @throws {Error} If either rendered date differs from the searched one
+   */
+  async verifyCarInfoBarDatesMatchSearch(page, { pickupDate, dropoffDate } = {}) {
+    if (!page) throw new Error('page is required');
+    if (!(pickupDate instanceof Date) || !(dropoffDate instanceof Date)) {
+      throw new Error('pickupDate and dropoffDate must be Date objects (from the car search step)');
+    }
+
+    const carResultsPage = getPageObject(page, CarResultsPage);
+    const infoBarText = await carResultsPage.getCarInfoBarDatesText();
+    const [pickupText = '', dropoffText = ''] = infoBarText.split(' - ').map((part) => part.trim());
+
+    if (!dayAndMonthMatch(pickupText, pickupDate) || !dayAndMonthMatch(dropoffText, dropoffDate)) {
+      throw new Error(
+        `[CarResults.verifyCarInfoBarDatesMatchSearch] The car info bar shows "${infoBarText}", but the search ` +
+        `was for pick-up ${pickupDate.toDateString()} and drop-off ${dropoffDate.toDateString()}.`,
+      );
+    }
+
+    return { infoBarText };
+  },
+
+  /**
+   * Verifies the pick-up and drop-off dates in the already-open "Location details" tooltip
+   * ("30 Nov 2026 · 10:00") are the searched ones, year included. These dates come from the
+   * supplier result itself (car.pickUpDate / car.dropOffDate), not from the search form — the
+   * place AB#73047 showed both dates a day early for a UTC+1 viewer.
+   * Requires openLocationDetailsOnFirstCarResult to have run.
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @param {{pickupDate: Date, dropoffDate: Date}} searchedDates - The dates picked on the search form
+   * @returns {Promise<{pickupText: string, dropoffText: string}>}
+   * @throws {Error} If either rendered date differs from the searched one
+   */
+  async verifyLocationDetailsDatesMatchSearch(page, { pickupDate, dropoffDate } = {}) {
+    if (!page) throw new Error('page is required');
+    if (!(pickupDate instanceof Date) || !(dropoffDate instanceof Date)) {
+      throw new Error('pickupDate and dropoffDate must be Date objects (from the car search step)');
+    }
+
+    const carResultsPage = getPageObject(page, CarResultsPage);
+    let pickupText;
+    let dropoffText;
+    try {
+      pickupText = await carResultsPage.getPickupDateTimeTextFromTooltip();
+      dropoffText = await carResultsPage.getDropoffDateTimeTextFromTooltip();
+    } catch (err) {
+      throw new Error(
+        '[CarResults.verifyLocationDetailsDatesMatchSearch] Could not read the pick-up/drop-off dates from the ' +
+        'location details tooltip. Either the tooltip is not open (it must be opened first and left open), ' +
+        'or the result has no drop-off date line (car-pickupdropoff-details.vue renders it only when the ' +
+        'result carries a drop-off date). ' +
+        `Original: ${err.message}`,
+      );
+    }
+
+    // "30 Nov 2026 · 10:00" -> "30 Nov 2026"
+    const datePart = (text) => text.split('·')[0].trim();
+
+    if (!datesMatch(datePart(pickupText), pickupDate) || !datesMatch(datePart(dropoffText), dropoffDate)) {
+      throw new Error(
+        `[CarResults.verifyLocationDetailsDatesMatchSearch] The first car result's location details show ` +
+        `pick-up "${pickupText}" and drop-off "${dropoffText}", but the search was for pick-up ` +
+        `${pickupDate.toDateString()} and drop-off ${dropoffDate.toDateString()}.`,
+      );
+    }
+
+    return { pickupText, dropoffText };
   },
 
   /**

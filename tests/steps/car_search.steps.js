@@ -32,6 +32,18 @@ When("I search for a car at {string} for {int} days with drop-off time {string}"
   });
 });
 
+// Pick-up on the last day of next month, drop-off on the first day of the month after (e.g.
+// 30 Nov -> 01 Dec). Stores the picked dates as this.carSearchDates for the date assertions.
+When("I search for a car at {string} from the last day of next month to the first day of the following month", async function (place) {
+  const { pickupDate, dropoffDate } = await CarSearch.searchCarAcrossMonthTransition(this.page, place, 1);
+  this.carSearchDates = { pickupDate, dropoffDate };
+  logger.info("Searched for a car across a month transition", {
+    place,
+    pickupDate: pickupDate.toDateString(),
+    dropoffDate: dropoffDate.toDateString(),
+  });
+});
+
 // Car search run from the cart's edit-search drawer (opened by the Car tile in the product
 // carousel). No location parameter on purpose: the car drawer has no location field — it inherits
 // the pick-up location from the trip. Use "I search for a car at {string} ..." when the location

@@ -110,6 +110,25 @@ function datesMatch(renderedValue, targetDate) {
 }
 
 /**
+ * Like datesMatch, but compares only the day of month and the month — for labels that render no
+ * year ("30 Nov", "Mon, 30 Nov", "Nov 30"). parseDateValue fills a missing year with the current
+ * one, so a full-date comparison would wrongly fail for a target date in the next year.
+ * Returns false for anything unparseable.
+ *
+ * @param {string} renderedValue - the value read out of the UI
+ * @param {Date} targetDate
+ * @returns {boolean}
+ */
+function dayAndMonthMatch(renderedValue, targetDate) {
+  try {
+    const renderedDate = parseDateValue(renderedValue);
+    return renderedDate.getDate() === targetDate.getDate() && renderedDate.getMonth() === targetDate.getMonth();
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Parses a time as the application renders it into minutes since midnight, so the same instant
  * can be compared across two screens that print it differently.
  *
@@ -912,6 +931,7 @@ async function selectDateAfterAdvancingMonths(
 module.exports = {
   parseDateValue,
   datesMatch,
+  dayAndMonthMatch,
   parseTimeToMinutes,
   selectDatesByNthAvailable,
   selectDatesByNthAvailableFromNextVisibleMonth,

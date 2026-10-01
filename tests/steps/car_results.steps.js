@@ -419,6 +419,28 @@ async function extractLocationAddressInLocationDetails(locationType) {
   logger.info(`Extracted ${locationType} location address from location details`, { [locationType]: address });
 }
 
+function requireCarSearchDates(world, stepText) {
+  if (!world.carSearchDates) {
+    throw new Error(
+      `"${stepText}" needs the dates picked by "I search for a car at {string} from the last day of next ` +
+      'month to the first day of the following month" — that step has not run in this scenario.',
+    );
+  }
+  return world.carSearchDates;
+}
+
+Then("the car info bar pickup and drop-off dates should match the search dates", async function () {
+  const searchedDates = requireCarSearchDates(this, "the car info bar pickup and drop-off dates should match the search dates");
+  const { infoBarText } = await CarResults.verifyCarInfoBarDatesMatchSearch(this.page, searchedDates);
+  logger.info("Car info bar shows the searched dates", { infoBarText });
+});
+
+Then("the first car location details pickup and drop-off dates should match the search dates", async function () {
+  const searchedDates = requireCarSearchDates(this, "the first car location details pickup and drop-off dates should match the search dates");
+  const { pickupText, dropoffText } = await CarResults.verifyLocationDetailsDatesMatchSearch(this.page, searchedDates);
+  logger.info("Location details show the searched dates", { pickupText, dropoffText });
+});
+
 When("I extract the pickup location address in location details", async function () {
   await extractLocationAddressInLocationDetails.call(this, 'pickup');
 });

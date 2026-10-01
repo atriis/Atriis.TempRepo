@@ -3,7 +3,12 @@ const CarSearchPage = require("@pages/CarSearchPage");
 const { SearchPage } = require("@pages/SearchPage");
 const { ResultsPage } = require("@pages/ResultsPage");
 const { CartPage } = require("@pages/CartPage");
-const { selectDatesByNthAvailable } = require("@utils/calendar.helper");
+const {
+  selectDatesByNthAvailable,
+  advanceSinglePickerCalendarUntilMonthVisible,
+  clickDayInVisibleMonth,
+  dayAndMonthMatch,
+} = require("@utils/calendar.helper");
 const { resolveLocation } = require("@utils/route.helper");
 const { SEARCH_DEFAULTS } = require("@utils/search.constants");
 const { getPageObject } = require("@utils/pageObjectCache");
@@ -248,6 +253,87 @@ const CarSearch = {
     });
 
     return { searched: true, place, monthsAhead, pickupIndex, dropoffIndex, pickupDate, dropoffDate, pickupTime, dropoffTime, noResultsRetry: retryResult };
+  },
+
+  /**
+   * Searches for a car whose rental crosses a month boundary: pick-up on the LAST day of the month
+   * `monthsAhead` from now, drop-off on the FIRST day of the month after (e.g. 30 Nov -> 01 Dec).
+   *
+   * Picks the exact calendar days instead of the nth-available strategy, and deliberately has NO
+   * no-results retry: the retry shifts both dates, which would quietly drop the month transition
+   * this search exists to exercise. A no-results outcome fails loudly instead.
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @param {string|Object} placeInput - Location or location object
+   * @param {number} [monthsAhead=1] - Which month's last day is the pick-up (0 = this month).
+   *   Default 1 keeps the pick-up at least a few weeks out whatever day the test runs.
+   * @returns {Promise<{searched: boolean, place: string, pickupDate: Date, dropoffDate: Date}>}
+   * @throws {Error} If the picker did not commit the target dates, or the search returned no results
+   */
+  async searchCarAcrossMonthTransition(page, placeInput, monthsAhead = 1) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+
+    if (!placeInput) {
+      throw new Error(`placeInput must be a non-empty location string or object, got: ${JSON.stringify(placeInput)}`);
+    }
+
+    if (!Number.isInteger(monthsAhead) || monthsAhead < 0) {
+      throw new Error(`monthsAhead must be a non-negative integer, got ${monthsAhead}`);
+    }
+
+    const place = resolveLocation(placeInput, ["place", "location"]);
+
+    const today = new Date();
+    // Day 0 of a month is the last day of the month before it.
+    const pickupDate = new Date(today.getFullYear(), today.getMonth() + monthsAhead + 1, 0);
+    const dropoffDate = new Date(today.getFullYear(), today.getMonth() + monthsAhead + 1, 1);
+
+    const carSearchPage = getPageObject(page, CarSearchPage);
+    const searchPage = getPageObject(page, SearchPage);
+    const resultsPage = getPageObject(page, ResultsPage);
+
+    await carSearchPage.clickCarTab();
+    await searchPage.fillInOrField(place, 1);
+
+    await searchPage.clickPickupDateField();
+    const pickupMonthTableIndex = await advanceSinglePickerCalendarUntilMonthVisible(page, pickupDate);
+    await clickDayInVisibleMonth(page, pickupDate, pickupMonthTableIndex);
+
+    await carSearchPage.clickDropoffDateField();
+    const dropoffMonthTableIndex = await advanceSinglePickerCalendarUntilMonthVisible(page, dropoffDate);
+    await clickDayInVisibleMonth(page, dropoffDate, dropoffMonthTableIndex);
+
+    // Guard against a test-side picking error before blaming the app: the form inputs must show
+    // the two target days before Search is clicked.
+    const pickupFieldValue = await carSearchPage.getPickupDateFieldValue();
+    const dropoffFieldValue = await carSearchPage.getDropoffDateFieldValue();
+    if (!dayAndMonthMatch(pickupFieldValue, pickupDate) || !dayAndMonthMatch(dropoffFieldValue, dropoffDate)) {
+      throw new Error(
+        `[CarSearch.searchCarAcrossMonthTransition] The search form did not commit the target dates. ` +
+        `Expected pick-up ${pickupDate.toDateString()} and drop-off ${dropoffDate.toDateString()}, ` +
+        `but the fields show "${pickupFieldValue}" and "${dropoffFieldValue}".`,
+      );
+    }
+
+    logger.info("Searching for a car across a month transition", {
+      place,
+      pickupDate: pickupDate.toDateString(),
+      dropoffDate: dropoffDate.toDateString(),
+    });
+    await searchPage.waitAndClickSearchButton();
+
+    const status = await resultsPage.waitForCarResultsOrNoResults(60000);
+    if (status !== "results") {
+      throw new Error(
+        `[CarSearch.searchCarAcrossMonthTransition] No car results at "${place}" for ` +
+        `${pickupDate.toDateString()} -> ${dropoffDate.toDateString()}. The dates are not retried on ` +
+        `purpose (a retry would lose the month transition) — treat this as an environment/supplier issue.`,
+      );
+    }
+
+    return { searched: true, place, pickupDate, dropoffDate };
   },
 
   /**

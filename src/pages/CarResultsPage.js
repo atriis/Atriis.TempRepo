@@ -11,6 +11,9 @@ const SELECTORS = {
   // Car info bar (car-info-bar.vue) at the top of results — the first `.ellipsis-txt` in
   // `.locations` is the pick-up location name (e.g. "Madrid,Spain,(MAD)").
   CAR_INFO_BAR_LOCATION: '.car-info-bar .locations .ellipsis-txt',
+  // The rental period in the same info bar, "{pickUp} - {dropOff}" with no year: "30 Nov - 01 Dec"
+  // ("Nov 30 - Dec 01" for en-US). The locations line is also a <p> but has no .ellipsis-txt.
+  CAR_INFO_BAR_DATES: '.car-info-bar > p.ellipsis-txt',
   // Search results
   STATION_PREVIEW: '.car-vendor-station-list > .preview-container',
   // City station-selection view (car-city-search.vue) renders the station list beside a Google map
@@ -169,6 +172,9 @@ const SELECTORS = {
   TOOLTIP_ANY_ADDRESS: ".car-location-details-tooltip .location-address-plain",
   TOOLTIP_PICKUP_ADDRESS: ".car-location-details-tooltip .pickup-details .location-address-plain",
   TOOLTIP_DROPOFF_ADDRESS: ".car-location-details-tooltip .dropoff-details .location-address-plain",
+  // "{date} · {time}" line of each leg (car-pickupdropoff-details.vue), e.g. "30 Nov 2026 · 10:00".
+  TOOLTIP_PICKUP_DATE_TIME: ".car-location-details-tooltip .pickup-details > p",
+  TOOLTIP_DROPOFF_DATE_TIME: ".car-location-details-tooltip .dropoff-details > p",
   FIRST_LOCATION_LINK: ".car-location-details-tooltip .pickup-details a[href*=\"maps.google.com\"][target=\"_blank\"]",
   FIRST_LOCATION_LINK_WRAPPER: ".car-location-details-tooltip .pickup-details",
   GOOGLE_MAPS_LOCATION_TEXT: '.DkEaL',
@@ -344,6 +350,18 @@ class CarResultsPage {
 
   async getDropoffAddressTextFromTooltip({ timeout = 10000 } = {}) {
     const el = this.page.locator(SELECTORS.TOOLTIP_DROPOFF_ADDRESS).first();
+    await el.waitFor({ state: "visible", timeout });
+    return (await el.innerText()).trim();
+  }
+
+  async getPickupDateTimeTextFromTooltip({ timeout = 10000 } = {}) {
+    const el = this.page.locator(SELECTORS.TOOLTIP_PICKUP_DATE_TIME).first();
+    await el.waitFor({ state: "visible", timeout });
+    return (await el.innerText()).trim();
+  }
+
+  async getDropoffDateTimeTextFromTooltip({ timeout = 10000 } = {}) {
+    const el = this.page.locator(SELECTORS.TOOLTIP_DROPOFF_DATE_TIME).first();
     await el.waitFor({ state: "visible", timeout });
     return (await el.innerText()).trim();
   }
@@ -908,6 +926,17 @@ class CarResultsPage {
       );
     }
     return ((await location.textContent()) ?? '').replace(/\s+/g, ' ').trim();
+  }
+
+  /**
+   * Reads the rental period shown in the car info bar at the top of the results page
+   * (e.g. "30 Nov - 01 Dec").
+   * @returns {Promise<string>} Trimmed text (whitespace collapsed)
+   */
+  async getCarInfoBarDatesText({ timeout = 30000 } = {}) {
+    const dates = this.page.locator(SELECTORS.CAR_INFO_BAR_DATES).first();
+    await dates.waitFor({ state: 'visible', timeout });
+    return ((await dates.textContent()) ?? '').replace(/\s+/g, ' ').trim();
   }
 
   async waitForBreadcrumbVisible({ timeout = 60000 } = {}) {
