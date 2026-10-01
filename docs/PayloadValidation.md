@@ -1036,6 +1036,8 @@ Then after the run, the "request" payload for request type "Amadeus4.PNR_AddMult
 
 Example: `tests/features/shell/shell_multiproducts/85676_amadeus_passive_hotel_city_and_dates_not_repeated.feature`
 
+Step-by-step guide (trip number reuse, local runs, timing, good habits): [DeferredPayloadChecks.md](DeferredPayloadChecks.md)
+
 ---
 
 **For further details, implementation notes, or updates, refer to:**
