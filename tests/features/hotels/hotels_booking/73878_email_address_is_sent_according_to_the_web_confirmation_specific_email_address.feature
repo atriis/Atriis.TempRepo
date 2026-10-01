@@ -1,13 +1,13 @@
-# Test Name: HYBRID for 73878 Email adress is sent according to the web confirmation - specific email address
+# Test Name: 73878 Email adress is sent according to the web confirmation - specific email address
 # Description: 
 # Status: Active
-# Labels: Hotel,Web confirmation,Full Purchase,No Amadeus Hotel Book,hybrid,Regression,Expedia
+# Labels: Hotel,Web confirmation,Full Purchase,No Amadeus Hotel Book,Regression,Expedia
 # Owner: Shani Hadar
 # Created: 2026-02-15T01:36:22Z
 # Updated: 2026-02-15T01:48:09Z
 
 @regression @provider:expedia
-Feature: 73878 HYBRID Email adress is sent according to the web confirmation - specific email address
+Feature: 73878 Email adress is sent according to the web confirmation - specific email address
   As a corporate traveler with a web confirmation specific email configured
   I want to book a hotel and verify the confirmation email is sent to the correct address
   So that web confirmation emails reach the right recipient
@@ -27,4 +27,6 @@ Feature: 73878 HYBRID Email adress is sent according to the web confirmation - s
     And I complete the booking
     Then the booking status should be "Confirmed"
     Then I successfully cancel the trip
+    When I capture the "request" payload for request type "CreateBooking" from Storage
+    Then the captured "request" payload for request type "CreateBooking" should contain "testim@tgbvfr.com".onKey("email")
 
