@@ -1,13 +1,13 @@
-# Test Name: HYBRID for 73877 Email adress is sent according to the web confirmation - exception with traveler
+# Test Name: 73877 Email adress is sent according to the web confirmation - exception with traveler
 # Description: 
 # Status: Active
-# Labels: Hotel,Web confirmation,Full Purchase,No Amadeus Hotel Book,Ehotel Regression,hybrid
+# Labels: Hotel,Web confirmation,Full Purchase,No Amadeus Hotel Book,Ehotel Regression
 # Owner: Shani Hadar
 # Created: 2026-02-15T12:57:57Z
 # Updated: 2026-02-15T01:35:44Z
 
 @regression @provider:ehotel
-Feature: 73877 HYBRID Email adress is sent according to the web confirmation - exception with traveler
+Feature: 73877 Email adress is sent according to the web confirmation - exception with traveler
   As a corporate traveler where a traveler-specific email exception is configured
   I want to book a hotel and confirm the email is sent according to the exception rule
   So that confirmation emails are routed correctly for specific travelers
@@ -27,4 +27,7 @@ Feature: 73877 HYBRID Email adress is sent according to the web confirmation - e
     And I complete the booking
     Then the booking status should be "Confirmed"
     Then I successfully cancel the trip
+    When I capture the "response" payload for request type "hotelRes" from Storage
+    Then the captured "response" payload for request type "hotelRes" should contain "Eliyahu@Tel.com".block("ResGuests")
+    And the captured "response" payload for request type "hotelRes" should contain "Eliyahu@Tel.com".block("ResGlobalInfo")
 
