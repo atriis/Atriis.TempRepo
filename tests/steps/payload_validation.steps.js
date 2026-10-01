@@ -204,6 +204,15 @@ Then("the captured {string} payload for request type {string} should not contain
   );
 });
 
+Then("the captured {string} payload for request type {string} should contain either {string} or {string}", async function (source, requestType, firstText, secondText) {
+  await runPayloadValidationStep(this, "expectCapturedPayloadContainsAny", { source, requestType }, async () => {
+    const expectedTexts = [firstText, secondText].map((text) => resolveWorldPlaceholders(text, this));
+    logger.info("Validating captured payload contains either text", { source, requestType, expectedTexts });
+
+    await PayloadValidation.expectCapturedPayloadContainsAny(this.page, this, source, requestType, expectedTexts);
+  });
+});
+
 Then(
   /^the captured "([^"]*)" payload for request type "([^"]*)" should contain "([^"]*)"\.split\(,\)$/,
   async function (source, requestType, expectedText) {

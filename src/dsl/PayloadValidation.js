@@ -1298,6 +1298,32 @@ const PayloadValidation = {
     );
   },
 
+  /**
+   * Passes when the captured payload contains at least one of the given texts. Each option goes
+   * through expectCapturedPayloadContains, so pinning and the multi-call fallback behave the same.
+   */
+  async expectCapturedPayloadContainsAny(page, world, source, requestType, expectedTexts) {
+    if (!Array.isArray(expectedTexts) || expectedTexts.length === 0) {
+      throw new Error("expectedTexts must be a non-empty array");
+    }
+
+    const errors = [];
+    for (const expectedText of expectedTexts) {
+      try {
+        await this.expectCapturedPayloadContains(page, world, source, requestType, expectedText);
+        logger.info(`Captured ${source} payload for request type "${requestType}" contains "${expectedText}"`);
+        return;
+      } catch (err) {
+        errors.push(`"${expectedText}": ${err.message}`);
+      }
+    }
+
+    throw new Error(
+      `Captured ${source} payload for request type "${requestType}" contains none of the expected texts:\n` +
+      errors.join("\n")
+    );
+  },
+
   async expectCapturedPayloadNotContains(page, world, source, requestType, expectedText) {
     if (!page) {
       throw new Error("page is required");
