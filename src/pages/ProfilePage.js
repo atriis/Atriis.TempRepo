@@ -7,6 +7,10 @@ const { SELECTORS: MENU_SELECTORS } = require("@pages/MenuPage");
 // only cares whether that chip links to a profile. Its name node is imported rather than
 // redeclared, for the same reason MENU_SELECTORS is — one copy of the markup's selector.
 const { SELECTORS: SEARCH_SELECTORS } = require("@pages/SearchPage");
+const { getNetworkInterceptor, readJson } = require("@utils/networkInterceptor");
+
+// GET the OBT profile loads the Meal type options from (general.service.ts getFlightMealTypes).
+const MEALS_CATALOG_PATH = "/api/v3/meals";
 
 const SELECTORS = {
   // Navigation to profile.
@@ -56,6 +60,12 @@ const SELECTORS = {
   TRAVEL_PREFERENCES_FORM: '.travel-preferences-form-content',
   SAVE_TRAVEL_PREFERENCES_BUTTON: '.travel-preferences-form-content button:has-text("Save")',
   SEAT_TYPE_LABEL: 'Seat type',
+  MEAL_TYPE_LABEL: "Meal type",
+  FORM_FIELD: ".field.app-column",
+  FORM_FIELD_LABEL: "label.label",
+  FORM_FIELD_SELECT: ".el-select",
+  FORM_FIELD_SELECT_VALUE: ".el-select__placeholder span",
+  OPEN_SELECT_DROPDOWN: ".el-select-dropdown:visible",
 
   // Permissions tab
   PERMISSIONS_TAB: "[id='tab-permissions'] p",
@@ -1004,6 +1014,79 @@ class ProfilePage {
       throw new Error(
         `[ProfilePage.clickSaveTravelPreferences] Could not click the Save Travel Preferences button (selector: ${SELECTORS.SAVE_TRAVEL_PREFERENCES_BUTTON}). ` +
         `The button may be hidden, disabled, or the form did not load. Original: ${err.message}`
+      );
+    }
+  }
+
+  getTravelPreferencesField(labelText) {
+    return this.page.locator(SELECTORS.TRAVEL_PREFERENCES_FORM)
+      .locator(SELECTORS.FORM_FIELD)
+      .filter({ has: this.page.locator(`${SELECTORS.FORM_FIELD_LABEL}:text-is("${labelText}")`) });
+  }
+
+  getOpenDropdownOption(optionText) {
+    return this.page.locator(SELECTORS.OPEN_SELECT_DROPDOWN).getByRole("option", { name: optionText, exact: true });
+  }
+
+  async openMealTypeDropdown() {
+    try {
+      const select = this.getTravelPreferencesField(SELECTORS.MEAL_TYPE_LABEL).locator(SELECTORS.FORM_FIELD_SELECT);
+      await select.click({ timeout: 10000 });
+      await this.page.locator(SELECTORS.OPEN_SELECT_DROPDOWN_ITEM).first().waitFor({ state: "visible", timeout: 10000 });
+    } catch (err) {
+      throw new Error(
+        `[ProfilePage.openMealTypeDropdown] Could not open the Meal type dropdown (label: "${SELECTORS.MEAL_TYPE_LABEL}"). ` +
+        `The travel preferences form may not be loaded or the field is disabled. Original: ${err.message}`,
+      );
+    }
+  }
+
+  async isOpenDropdownOptionVisible(optionText) {
+    return this.getOpenDropdownOption(optionText).isVisible();
+  }
+
+  async clickOpenDropdownOption(optionText) {
+    try {
+      await this.getOpenDropdownOption(optionText).click({ timeout: 10000 });
+    } catch (err) {
+      throw new Error(
+        `[ProfilePage.clickOpenDropdownOption] Could not click the "${optionText}" option in the open dropdown. ` +
+        `The dropdown may be closed or no option has exactly that text. Original: ${err.message}`,
+      );
+    }
+  }
+
+  async getMealTypeText() {
+    try {
+      const text = await this.getTravelPreferencesField(SELECTORS.MEAL_TYPE_LABEL)
+        .locator(SELECTORS.FORM_FIELD_SELECT_VALUE)
+        .textContent({ timeout: 10000 });
+      return text ? text.trim() : "";
+    } catch (err) {
+      throw new Error(
+        `[ProfilePage.getMealTypeText] Could not read the Meal type value (label: "${SELECTORS.MEAL_TYPE_LABEL}"). ` +
+        `The travel preferences form may not be loaded. Original: ${err.message}`,
+      );
+    }
+  }
+
+  /**
+   * Reloads the profile and returns the GET /meals body the reload fetches.
+   *
+   * @returns {Promise<Record<string, string>>} Meal code to display label, in catalog order
+   */
+  async reloadCapturingMealCatalog() {
+    const mealsResponse = getNetworkInterceptor(this.page).waitForResponse(
+      { pathnameEndsWith: MEALS_CATALOG_PATH, method: "GET" },
+      { timeout: 30000 },
+    );
+    try {
+      const [response] = await Promise.all([mealsResponse, this.page.reload({ waitUntil: "load" })]);
+      return await readJson(response);
+    } catch (err) {
+      throw new Error(
+        `[ProfilePage.reloadCapturingMealCatalog] The profile reload did not return a GET ${MEALS_CATALOG_PATH} body. ` +
+        `Original: ${err.message}`,
       );
     }
   }

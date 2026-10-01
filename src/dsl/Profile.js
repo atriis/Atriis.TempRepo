@@ -2434,6 +2434,145 @@ const Profile = {
   },
 
   /**
+   * Reloads the profile, reopens Travel Preferences and returns the meal catalog the reload fetched.
+   *
+   * @returns {Promise<Record<string, string>>} Meal code to display label, in catalog order
+   */
+  async reloadProfileOnTravelPreferencesTab(page) {
+    if (!page) throw new Error("[Profile.reloadProfileOnTravelPreferencesTab] \"page\" is required.");
+    const profilePage = getPageObject(page, ProfilePage);
+    const mealCatalog = await profilePage.reloadCapturingMealCatalog();
+    await this.openTravelPreferencesTab(page);
+    logger.info("[Profile.reloadProfileOnTravelPreferencesTab] Profile reloaded", { meals: Object.keys(mealCatalog).length });
+    return mealCatalog;
+  },
+
+  async openMealTypeDropdown(page) {
+    if (!page) throw new Error("[Profile.openMealTypeDropdown] \"page\" is required.");
+    await getPageObject(page, ProfilePage).openMealTypeDropdown();
+  },
+
+  /**
+   * Selects a Meal type option by its exact label, opening the dropdown unless it is already open.
+   */
+  async selectMealType(page, mealLabel) {
+    if (!page) throw new Error("[Profile.selectMealType] \"page\" is required.");
+    if (!mealLabel || typeof mealLabel !== "string") {
+      throw new Error(`[Profile.selectMealType] "mealLabel" must be a non-empty string, got: ${JSON.stringify(mealLabel)}`);
+    }
+    const profilePage = getPageObject(page, ProfilePage);
+    if (!(await profilePage.isOpenDropdownOptionVisible(mealLabel))) {
+      await profilePage.openMealTypeDropdown();
+    }
+    await profilePage.clickOpenDropdownOption(mealLabel);
+    logger.info("[Profile.selectMealType] Meal type selected", { mealLabel });
+  },
+
+  /**
+   * Polls, because the field shows the raw meal code (e.g. "PFML") until the meal catalog arrives.
+   */
+  async verifyMealType(page, expectedLabel) {
+    if (!page) throw new Error("[Profile.verifyMealType] \"page\" is required.");
+    if (!expectedLabel || typeof expectedLabel !== "string") {
+      throw new Error(`[Profile.verifyMealType] "expectedLabel" must be a non-empty string, got: ${JSON.stringify(expectedLabel)}`);
+    }
+    const profilePage = getPageObject(page, ProfilePage);
+    let actual = "";
+    try {
+      await expect
+        .poll(async () => (actual = await profilePage.getMealTypeText()), { timeout: 15000 })
+        .toBe(expectedLabel);
+    } catch {
+      throw new Error(
+        `[Profile.verifyMealType] Meal type should be "${expectedLabel}" but shows "${actual}". ` +
+        "The save may not have persisted.",
+      );
+    }
+    logger.info("[Profile.verifyMealType] Meal type matches", { expectedLabel });
+    return { mealType: actual };
+  },
+
+  async readOpenMealTypeOptions(page) {
+    const profilePage = getPageObject(page, ProfilePage);
+    let options = [];
+    await expect
+      .poll(async () => (options = await profilePage.getOpenSelectDropdownOptionTexts()).length, { timeout: 10000 })
+      .toBeGreaterThan(1)
+      .catch(() => {
+        throw new Error(
+          `[Profile.readOpenMealTypeOptions] The Meal type dropdown shows fewer than two options (${JSON.stringify(options)}). ` +
+          "Run \"I open the meal type dropdown in my travel preferences\" first.",
+        );
+      });
+    return options;
+  },
+
+  /**
+   * Verifies the open Meal type dropdown lists every GET /meals label exactly once, in catalog order.
+   */
+  async verifyMealTypeOptionsMatchCatalog(page, mealCatalog) {
+    if (!page) throw new Error("[Profile.verifyMealTypeOptionsMatchCatalog] \"page\" is required.");
+    if (!mealCatalog || Object.keys(mealCatalog).length === 0) {
+      throw new Error(
+        "[Profile.verifyMealTypeOptionsMatchCatalog] No meal catalog was captured. " +
+        "Run \"I reload my profile on the travel preferences tab\" first.",
+      );
+    }
+    const expected = Object.values(mealCatalog);
+    const options = await this.readOpenMealTypeOptions(page);
+
+    const duplicates = options.filter((option, i) => options.indexOf(option) !== i);
+    if (duplicates.length > 0) {
+      throw new Error(`[Profile.verifyMealTypeOptionsMatchCatalog] Meal type options are duplicated: ${JSON.stringify(duplicates)}`);
+    }
+    if (JSON.stringify(options) !== JSON.stringify(expected)) {
+      const missing = expected.filter((meal) => !options.includes(meal));
+      const extra = options.filter((option) => !expected.includes(option));
+      throw new Error(
+        "[Profile.verifyMealTypeOptionsMatchCatalog] Meal type options differ from GET /meals. " +
+        `Missing: ${JSON.stringify(missing)}, not in the catalog: ${JSON.stringify(extra)}. ` +
+        `Displayed: ${JSON.stringify(options)}, catalog: ${JSON.stringify(expected)}`,
+      );
+    }
+    logger.info("[Profile.verifyMealTypeOptionsMatchCatalog] Meal type options match the catalog", { count: options.length });
+    return { options };
+  },
+
+  async verifyFirstMealTypeOption(page, expectedLabel) {
+    if (!page) throw new Error("[Profile.verifyFirstMealTypeOption] \"page\" is required.");
+    if (!expectedLabel || typeof expectedLabel !== "string") {
+      throw new Error(`[Profile.verifyFirstMealTypeOption] "expectedLabel" must be a non-empty string, got: ${JSON.stringify(expectedLabel)}`);
+    }
+    const options = await this.readOpenMealTypeOptions(page);
+    if (options[0] !== expectedLabel) {
+      throw new Error(
+        `[Profile.verifyFirstMealTypeOption] The first Meal type option should be "${expectedLabel}" but is "${options[0]}". ` +
+        `Displayed: ${JSON.stringify(options)}`,
+      );
+    }
+    return { firstOption: options[0] };
+  },
+
+  async verifyMealTypeOptionsInclude(page, expectedLabels) {
+    if (!page) throw new Error("[Profile.verifyMealTypeOptionsInclude] \"page\" is required.");
+    if (!Array.isArray(expectedLabels) || expectedLabels.length === 0) {
+      throw new Error(
+        `[Profile.verifyMealTypeOptionsInclude] "expectedLabels" must be a non-empty array, got: ${JSON.stringify(expectedLabels)}`,
+      );
+    }
+    const options = await this.readOpenMealTypeOptions(page);
+    const missing = expectedLabels.filter((label) => !options.includes(label));
+    if (missing.length > 0) {
+      throw new Error(
+        `[Profile.verifyMealTypeOptionsInclude] ${missing.length} meal type option(s) are missing: ${JSON.stringify(missing)}. ` +
+        `Displayed: ${JSON.stringify(options)}`,
+      );
+    }
+    logger.info("[Profile.verifyMealTypeOptionsInclude] All expected meal type options are listed", { expectedLabels });
+    return { options };
+  },
+
+  /**
    * Verifies no validation warning messages are visible in the dynamic reference fields section of the profile.
    */
   async verifyNoDynamicFieldWarnings(page) {

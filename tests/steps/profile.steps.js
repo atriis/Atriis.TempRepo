@@ -371,6 +371,42 @@ Then("the seat preference should be cleared", async function () {
   await Profile.verifySeatPreferenceCleared(this.page);
 });
 
+When("I reload my profile on the travel preferences tab", async function () {
+  logger.info("Reloading the profile on the Travel Preferences tab");
+  this.mealCatalog = await Profile.reloadProfileOnTravelPreferencesTab(this.page);
+});
+
+When("I open the meal type dropdown in my travel preferences", async function () {
+  logger.info("Opening the Meal type dropdown");
+  await Profile.openMealTypeDropdown(this.page);
+});
+
+When("I select the {string} meal type in my travel preferences", async function (mealLabel) {
+  logger.info("Selecting meal type", { mealLabel });
+  await Profile.selectMealType(this.page, mealLabel);
+});
+
+Then("the meal type in my travel preferences should be {string}", async function (mealLabel) {
+  logger.info("Verifying meal type", { mealLabel });
+  await Profile.verifyMealType(this.page, mealLabel);
+});
+
+Then("the meal type options should be the meals catalog in the same order", async function () {
+  logger.info("Verifying meal type options match the meals catalog");
+  await Profile.verifyMealTypeOptionsMatchCatalog(this.page, this.mealCatalog);
+});
+
+Then("{string} should be the first meal type option", async function (mealLabel) {
+  logger.info("Verifying the first meal type option", { mealLabel });
+  await Profile.verifyFirstMealTypeOption(this.page, mealLabel);
+});
+
+Then("the meal type options should include:", async function (dataTable) {
+  const mealLabels = dataTable.raw().map((row) => row[0]);
+  logger.info("Verifying meal type options include", { mealLabels });
+  await Profile.verifyMealTypeOptionsInclude(this.page, mealLabels);
+});
+
 // --- Dynamic Fields steps ---
 
 Then("no dynamic field warning messages should be displayed", async function () {
