@@ -1056,21 +1056,22 @@ const Search = {
   },
 
   /**
-   * Adds a random guest traveler whose first name is padded with leading and
-   * trailing spaces. Used to verify that the booking flow trims whitespace
-   * from names before sending them to the supplier (e.g. Fusion ProcessTerms).
+   * Adds a random guest traveler whose first and last names are padded with
+   * leading and trailing spaces. Used to verify that the booking flow trims
+   * whitespace from names before sending them to the supplier (e.g. Fusion
+   * ProcessTerms).
    *
    * @param {Object} page - Playwright page instance
-   * @returns {Promise<{added: boolean, starIconVisible: boolean, selectedTravelerCount: number, guestData: Object}>}
+   * @returns {Promise<{added: boolean, starIconVisible: boolean, selectedTravelerCount: number, guestData: Object, trimmedName: {firstName: string, lastName: string}}>}
    */
-  async addRandomGuestWithSpacesInFirstName(page) {
+  async addRandomGuestWithSpacesInFirstAndLastName(page) {
     if (!page) throw new Error('page is required');
 
     const { firstName, lastName, title } = generateRandomGuestData();
-    const paddedFirstName = ` ${firstName} `;
     // The name is generated here, not supplied by the caller, so its matching title has to travel
     // with it -- otherwise addRandomGuestWithName's Mr default would reintroduce the mismatch.
-    return Search.addRandomGuestWithName(page, paddedFirstName, lastName, title);
+    const result = await Search.addRandomGuestWithName(page, ` ${firstName} `, ` ${lastName} `, title);
+    return { ...result, trimmedName: { firstName, lastName } };
   },
 
   /**

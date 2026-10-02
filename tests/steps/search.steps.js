@@ -310,12 +310,16 @@ Given("I have added a random guest traveler with middle name {string}", async fu
   this.selectedTravelerCount = result.selectedTravelerCount;
 });
 
-Given("I have added a random guest traveler with spaces in the first name", async function () {
-  logger.info("Adding random guest traveler with spaces in the first name");
-  const result = await Search.addRandomGuestWithSpacesInFirstName(this.page);
+// The names are typed padded, but kept on the World trimmed (`guestFirstName` / `guestLastName`) so a
+// payload step can assert the supplier received them without the spaces, e.g. "{guestFirstName}".
+Given("I have added a random guest traveler with spaces in the first and last name", async function () {
+  logger.info("Adding random guest traveler with spaces in the first and last name");
+  const result = await Search.addRandomGuestWithSpacesInFirstAndLastName(this.page);
   expect(result.added, "Guest traveler should be added").toBe(true);
   this.guestTravelerCount = (this.guestTravelerCount ?? 0) + 1;
   this.selectedTravelerCount = result.selectedTravelerCount;
+  this.guestFirstName = result.trimmedName.firstName;
+  this.guestLastName = result.trimmedName.lastName;
 });
 
 Then("the traveler icon should be displayed", async function () {

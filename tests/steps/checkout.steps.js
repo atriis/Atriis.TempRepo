@@ -154,7 +154,8 @@ Then("the approval confirmation message {string} should be displayed", { timeout
   await Checkout.verifyApprovalConfirmationMessage(this.page, message);
 });
 
-Then('I should see "Book and Finalize" button enabled', async function () {
+// Accepts both spellings: en-GB accounts label the button "Book and Finalise".
+Then(/^I should see "Book and Finali[sz]e" button enabled$/, async function () {
   logger.info('Verifying "Book and Finalize" button is visible and enabled');
   await Checkout.verifyBookAndFinalizeButtonEnabledAndVisible(this.page);
 });
