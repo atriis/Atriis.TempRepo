@@ -54,6 +54,9 @@ const SELECTORS = {
     `.ground-transport-search ${SEARCH_SELECTORS.PICK_UP_PLACEHOLDER}:not([placeholder='Pick-up Date']):visible`,
   DROPOFF_LOCATION_INPUT:
     `.ground-transport-search ${SEARCH_SELECTORS.DROP_OFF_PLACEHOLDER}:visible`,
+  // Plain <input> next to the Airline select (groundService-search-inputs.vue:52). It is only
+  // rendered for an airport pick-up, and scoped/filtered like the location inputs above.
+  FLIGHT_NUMBER_INPUT: ".ground-transport-search input.flight-number-input:visible",
   PICKUP_TIME_INPUT: ".ground-transport-search .details-container input.app-timepicker-input",
   // app-timepicker teleports its el-dropdown to <body> with this popper class.
   TIME_SELECTOR_POPPER: ".time-selector-popper:visible",
@@ -263,6 +266,25 @@ class GroundTransportSearchPage {
 
     // Small wait for UI to process the blur event
     await this.page.waitForTimeout(100);
+  }
+
+  /**
+   * Fills the flight number field shown under an airport pick-up.
+   *
+   * Only the free-text field is touched: the Airline select is left empty on purpose, since the
+   * flight number must reach the booking without a carrier being chosen (ADO #82052).
+   *
+   * @param {string} flightNumber - Flight number text, e.g. "BA8495"
+   * @param {number} timeout
+   */
+  async fillInFlightNumberField(flightNumber, timeout = 10000) {
+    const flightNumberInput = this.page.locator(SELECTORS.FLIGHT_NUMBER_INPUT).first();
+
+    await flightNumberInput.waitFor({ state: "visible", timeout });
+    await flightNumberInput.fill(flightNumber);
+
+    // Commit value
+    await pressTab(this.page);
   }
 
   // ===== Pick-up date / time (app-datepicker + app-timepicker) =====

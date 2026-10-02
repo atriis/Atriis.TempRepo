@@ -51,6 +51,23 @@ When("I search for ground transport from airport {string} to specific address {s
   });
 });
 
+When("I search for ground transport from airport {string} to specific address {string} with flight number {string}", async function (from, to, flightNumber) {
+  logger.info("Searching for ground transport from airport to specific address with a flight number", { from, to, flightNumber });
+  await GroundTransportSearch.searchGroundTransport(this.page, {
+    fromMode: "airport",
+    toMode: "specificAddress",
+    from,
+    to,
+    flightNumber,
+    ...(this.groundTransportTravellerNumber !== undefined
+      ? { travellerNumber: this.groundTransportTravellerNumber }
+      : {}),
+    ...(this.groundTransportLuggage !== undefined
+      ? { luggage: this.groundTransportLuggage }
+      : {}),
+  });
+});
+
 When("I search for ground transport from specific address {string} to specific address {string}", async function (from, to) {
   logger.info("Searching for ground transport from specific address to specific address", { from, to });
   await GroundTransportSearch.searchGroundTransport(this.page, {

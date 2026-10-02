@@ -38,6 +38,9 @@ const GroundTransportSearch = {
       // "HH:mm" to change the pick-up time away from the form's own default (10:00, seeded by
       // ground-transport.store.ts); null leaves that default in place.
       pickupTime = null,
+      // Free-text flight number for an airport pick-up. null leaves the field empty; the Airline
+      // select is never touched, so the number is sent without a chosen carrier (ADO #82052).
+      flightNumber = null,
       // false fills the form but stops short of submitting it, so a test can read the values it
       // just entered before the search navigates away.
       clickSearch = true,
@@ -74,6 +77,15 @@ const GroundTransportSearch = {
       throw new Error(`pickupTime must be a zero-padded "HH:mm" string or null, got: ${pickupTime}`);
     }
 
+    if (flightNumber !== null && (typeof flightNumber !== "string" || !flightNumber.trim())) {
+      throw new Error(`flightNumber must be a non-empty string or null, got: ${flightNumber}`);
+    }
+
+    // The flight number field is only rendered under an airport pick-up.
+    if (flightNumber !== null && fromMode !== "airport") {
+      throw new Error(`flightNumber needs fromMode "airport", got ${fromMode}`);
+    }
+
     const groundTransportSearchPage = getPageObject(page, GroundTransportSearchPage);
     const searchPage = getPageObject(page, SearchPage);
 
@@ -88,6 +100,11 @@ const GroundTransportSearch = {
     }
 
     await groundTransportSearchPage.fillInPickUpField(from);
+
+    if (flightNumber !== null) {
+      logger.debug("Filling the ground transport flight number", { flightNumber });
+      await groundTransportSearchPage.fillInFlightNumberField(flightNumber);
+    }
 
     if (toMode === "airport") {
       await groundTransportSearchPage.clickToAirport();
