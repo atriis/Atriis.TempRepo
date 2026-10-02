@@ -11,7 +11,7 @@ Feature: 46256 Amadeus - Split ticket carriers into two quotes
   So that the system correctly splits the carriers into separate quotes
 
   Scenario: Flight with split rules produces two separate quotes in cart
-    Given I am logged in as "ruimendes@amadeus.com" booking a new trip
+    Given I am logged in as "brunaauto@amadeusgds.com" booking a new trip
     And I have added myself as the traveler
     When I search for a round trip flight from "LAS" to "LAX"
     And flight results should be available
