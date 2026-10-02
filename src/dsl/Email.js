@@ -202,6 +202,117 @@ const Email = {
   },
 
   /**
+   * Waits for a mail the application sends ON ITS OWN after a trip event — e.g. the
+   * "E-ticket confirmation for" mail sent after ticketing — and proves it belongs to this trip.
+   *
+   * Unlike a share, there is no recipient field to point at a generated address: the app sends it
+   * to the traveller's profile email, so `to` is the fixed inbox that profile was set up with.
+   * The subject is matched by its template prefix only, because the rest of it is the traveller
+   * and route, so the trip number is checked in the delivered subject or body instead. A mail for
+   * another trip throws: matching a parallel run's message would be a pass for the wrong reason.
+   *
+   * @param {object} options
+   * @param {string} options.to - The traveller's profile email (a reserved test inbox)
+   * @param {string} options.subjectContains - The template's subject prefix
+   * @param {Array<string|number>} options.tripNumberCandidates - This scenario's trip numbers
+   * @param {Date} [options.sentAfter] - Ignores mail older than this, so a re-run cannot pass on
+   *   a previous run's message
+   * @param {number} [options.timeoutMs] - Mail sent after ticketing lands later than a share
+   * @returns {Promise<object>} The received message
+   */
+  async waitForTripEmail({ to, subjectContains, tripNumberCandidates = [], sentAfter, timeoutMs } = {}) {
+    if (typeof to !== "string" || !to.trim()) {
+      throw new Error(`[Email.waitForTripEmail] "to" must be the traveller's inbox address, got: ${to}`);
+    }
+    if (typeof subjectContains !== "string" || !subjectContains.trim()) {
+      throw new Error(
+        `[Email.waitForTripEmail] "subjectContains" must be the mail's subject prefix, got: ${subjectContains}`
+      );
+    }
+
+    const tripNumbers = [
+      ...new Set(
+        tripNumberCandidates
+          .filter((candidate) => candidate !== null && candidate !== undefined)
+          .map((candidate) => String(candidate).trim())
+          .filter(Boolean)
+      ),
+    ];
+    if (tripNumbers.length === 0) {
+      throw new Error(
+        "[Email.waitForTripEmail] No trip number was recorded for this scenario, so the mail cannot " +
+          "be told apart from another run's in the shared inbox. Record it with this.recordTripId."
+      );
+    }
+
+    const message = await mailbox.waitForEmail({ to, subjectContains, receivedAfter: sentAfter, timeoutMs });
+
+    const searchable = `${message.subject} ${message.body}`;
+    if (!tripNumbers.some((tripNumber) => searchable.includes(tripNumber))) {
+      throw new Error(
+        `[Email.waitForTripEmail] The "${subjectContains}" email received at "${to}" is not for this ` +
+          `trip: none of ${JSON.stringify(tripNumbers)} appears in it.\n` +
+          `Subject was: "${message.subject}"`
+      );
+    }
+
+    logger.info("[Email.waitForTripEmail] Received the trip email", {
+      to,
+      subject: message.subject,
+      bodyLength: message.body.length,
+    });
+
+    return message;
+  },
+
+  /**
+   * Verifies none of the given strings appears in a received email's body.
+   *
+   * Same normalisation as verifyEmailContainsTexts, so "Additional charges" split across table
+   * cells or cased differently is still caught.
+   *
+   * @param {object} message - A message from waitForSharedEmail or waitForTripEmail
+   * @param {string[]} unexpectedTexts
+   */
+  verifyEmailDoesNotContainTexts(message, unexpectedTexts) {
+    if (!message || typeof message.body !== "string") {
+      throw new Error('[Email.verifyEmailDoesNotContainTexts] "message" must come from the mailbox reader.');
+    }
+    if (!Array.isArray(unexpectedTexts) || unexpectedTexts.length === 0) {
+      throw new Error(
+        `[Email.verifyEmailDoesNotContainTexts] "unexpectedTexts" must be a non-empty array, got: ${unexpectedTexts}`
+      );
+    }
+
+    // An empty body contains nothing, so the absence check below would pass on a mail that failed
+    // to render at all.
+    if (!message.body.trim()) {
+      throw new Error(
+        `[Email.verifyEmailDoesNotContainTexts] The received email (subject "${message.subject}") has ` +
+          "an empty body, so the absence of anything in it proves nothing."
+      );
+    }
+
+    const body = normalize(message.body);
+    const present = unexpectedTexts.filter((text) => body.includes(normalize(text)));
+
+    if (present.length > 0) {
+      const contexts = present.map((text) => {
+        const at = body.indexOf(normalize(text));
+        return `  - "${text}" … ${body.slice(Math.max(0, at - 200), at + 200)}`;
+      });
+      throw new Error(
+        `[Email.verifyEmailDoesNotContainTexts] The received email (subject "${message.subject}") ` +
+          `contains ${present.length} string(s) it should not:\n${contexts.join("\n")}`
+      );
+    }
+
+    logger.info("[Email.verifyEmailDoesNotContainTexts] None of the unexpected strings is in the email", {
+      unexpectedTexts,
+    });
+  },
+
+  /**
    * Verifies every expected string appears in a received email's body.
    *
    * Matching is whitespace-normalised and case-insensitive: the mail is an HTML table document,

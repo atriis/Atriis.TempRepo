@@ -167,6 +167,46 @@ Then(
   }
 );
 
+// Mail the app sends by itself after ticketing goes to the traveller's PROFILE email, so `inbox` is
+// the reserved Mailsac address that traveller was created with (69689: Carlos Marcelo ->
+// atriis-qa@mailsac.com), not one the test generates. It lands after ticketing rather than on a
+// click, hence the longer wait than a share's MAILBOX_TIMEOUT_MS.
+const TRIP_EMAIL_TIMEOUT_MS = 10 * 60 * 1000;
+
+Then("the {string} email for this trip should be received at {string}", { timeout: TRIP_EMAIL_TIMEOUT_MS + 60 * 1000 }, async function (subjectPrefix, inbox) {
+  logger.info("Waiting for the trip email sent to the traveller", { subjectPrefix, inbox });
+
+  const message = await Email.waitForTripEmail({
+    to: inbox,
+    subjectContains: subjectPrefix,
+    tripNumberCandidates: this.getTripNumberCandidates(),
+    sentAfter: this.scenarioStartedAt,
+    timeoutMs: TRIP_EMAIL_TIMEOUT_MS,
+  });
+
+  // Read once: @utils/mailbox deletes the message after fetching it, so later steps use this copy.
+  this.receivedTripEmail = message;
+  this.attach(message.html || message.body, message.html ? "text/html" : "text/plain");
+});
+
+Then("the price breakdown in the received e-ticket confirmation email should not include additional charges", async function () {
+  const message = this.receivedTripEmail;
+  if (!message) {
+    throw new Error(
+      "[email.steps] No e-ticket confirmation email was read. Add " +
+        '\'Then the "E-ticket confirmation for" email for this trip should be received at "<inbox>"\' first.'
+    );
+  }
+  logger.info("Verifying the e-ticket confirmation price breakdown has no additional charges", {
+    subject: message.subject,
+  });
+
+  // Bug 68984: the price box listed "Tax: €46.58" and then the same amount again as
+  // "Add. Charges: 46.58". An empty body is rejected by the DSL, and the previous step already
+  // proved the mail is for this trip, so the absence cannot pass on a mail that never rendered.
+  Email.verifyEmailDoesNotContainTexts(message, ["Add. Charges", "Additional charges"]);
+});
+
 Then("the received itinerary email should contain the link {string}", async function (linkLabel) {
   logger.info("Verifying the received itinerary email contains a link", { linkLabel });
   const message = await receivedItineraryEmail(this);
