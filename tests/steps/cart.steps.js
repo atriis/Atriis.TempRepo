@@ -649,8 +649,7 @@ Then("the FQTV section should display {string} error", async function (expectedM
 
 When("I wait for the seat map to load", async function () {
   logger.info("Waiting for seat map to load");
-  const cartPage = getPageObject(this.page, CartPage);
-  await cartPage.waitForSeatMapToLoad();
+  await Cart.waitForSeatMapToLoad(this.page);
 });
 
 When("I select the first available flight seat", async function () {

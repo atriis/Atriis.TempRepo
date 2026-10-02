@@ -4165,6 +4165,30 @@ const Cart = {
   },
 
   /**
+   * Waits for the open leg of the seat map drawer to load and fails when it shows the
+   * "Seating map is not available at the moment" empty state instead of a seat map.
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @throws {Error} If the drawer settled on the empty state
+   */
+  async waitForSeatMapToLoad(page) {
+    if (!page) throw new Error('page is required');
+
+    const cartPage = getPageObject(page, CartPage);
+    await cartPage.waitForSeatMapToLoad();
+
+    // The page wait settles on the empty state too (forEachSeatMapLeg skips such legs), so a
+    // missing seat map has to be failed here or every seat assertion after it runs on nothing.
+    if (!(await cartPage.isSeatMapPresent())) {
+      throw new Error(
+        'Seating map is not available: the seat selection drawer shows "Seating map is not available '
+        + 'at the moment" instead of a seat map. The supplier returned no seat map for this flight — '
+        + 'check its seat map response in the supplier log.'
+      );
+    }
+  },
+
+  /**
    * Walks every leg of the seat map drawer (each segment tab, or the single leg when the drawer has
    * no tabs), loading each leg in turn and running `perLegFn(legIndex)` only on legs that actually
    * render a seat map. Legs whose seat map is unavailable (e.g. codeshare / not returned) are
