@@ -18,7 +18,7 @@ Feature: 69689 Fusion - Taxes not added as additional charges in confirmation em
   I want the e-ticket confirmation email to show the taxes only once
   So that the price breakdown in the email matches what I paid
 
-  Scenario: Fusion EasyJet e-ticket confirmation email has no additional charges in the price breakdown
+  Scenario: Taxes not added as additional charges in confirmation email
     Given I am logged in as "carlosmarcelo@amsalembrunafusion.com" booking a new trip
     And I have added myself as the traveler 
     When I search for a one way flight from "LGW" to "MXP"
