@@ -32,6 +32,11 @@ const SELECTORS = {
   SHARE_QUOTE_EMAIL_BUTTON: '.share-bar button.share-btn.is-hidden-mobile',
   NO_RESULTS_CONTAINER: '.app-no-results',
   NO_RESULTS_TITLE: '.app-no-results h3',
+  NO_RESULTS_DESCRIPTION: '.app-no-results p',
+  // flight-results.vue wraps the SAME app-no-results panel in this class when the search request
+  // itself failed ("We couldn't complete your search" / "Search Timed Out"), so NO_RESULTS_* match
+  // it too. Its data-testid is stripped from OBT builds; the class is not.
+  FLIGHT_SEARCH_ERROR_CONTAINER: '.flight-results-search-error',
   ALERT_TEXT: "[role='alert'] p",
   AIRPORTS_FILTER_CONTAINER: '.filter-container',
   AIRPORTS_FILTER_HEADER: 'h4',
@@ -236,6 +241,31 @@ class ResultsPage {
     } catch {
       // Title not readable — fall back to default text
     }
+
+    // A failed search request renders the same panel, so the panel alone does not mean zero
+    // availability. Reported separately: blaming supplier data for a search that errored sends
+    // triage the wrong way.
+    const searchFailed = await this.page
+      .locator(SELECTORS.FLIGHT_SEARCH_ERROR_CONTAINER)
+      .first()
+      .isVisible()
+      .catch(() => false);
+    if (searchFailed) {
+      let descriptionText = '';
+      try {
+        descriptionText = (await this.page.locator(SELECTORS.NO_RESULTS_DESCRIPTION).first()
+          .textContent({ timeout: 1000 }))?.trim() || '';
+      } catch {
+        // Description not readable — the title alone still names the failure
+      }
+      throw new Error(
+        `Search failed on results page: "${titleText}"` +
+        (descriptionText ? ` — "${descriptionText}"` : '') +
+        `. The flight search request errored or timed out, so expected ${expectedTarget} never appeared. ` +
+        `This is a search/environment failure, not zero availability and not a test bug.`
+      );
+    }
+
     throw new Error(
       `No results found on results page. The "${titleText}" empty state was displayed ` +
       `instead of bookable results; expected ${expectedTarget} never appeared. ` +
