@@ -14,6 +14,7 @@
  */
 
 const mailbox = require("@utils/mailbox");
+const { containsAmount, findCurrencyAmounts } = require("@utils/pdf");
 const config = require("@config/config");
 const { getPageObject } = require("@utils/pageObjectCache");
 const { CommonPage } = require("@pages/CommonPage");
@@ -444,6 +445,124 @@ const Email = {
 
     logger.info("[Email.verifyEmailContainsTexts] All expected strings present in the received email", {
       count: expectedTexts.length,
+    });
+  },
+
+  /**
+   * Verifies a received email shows an amount right after a label, e.g. "Total cost: £237.70".
+   *
+   * Scoped to the text following the label rather than the whole body: an approval email repeats
+   * per-product costs and the lowest fare, so the trip total appearing *somewhere* would also pass
+   * when the "Total cost" line shows a single product's price. Every occurrence of the label is
+   * tried, since the template prints the totals above and below the trip details.
+   *
+   * The amount is matched by value through containsAmount (shared with the PDF readers), so
+   * "£1,237.70" and "1237,70 GBP" both match 1237.7 and a bare digit run never does.
+   *
+   * @param {object} message - A message from the mailbox reader
+   * @param {string} label - The label the amount follows, e.g. "Total cost"
+   * @param {number} amount - The expected amount, e.g. the cart summary total
+   */
+  verifyEmailShowsAmountAfterLabel(message, label, amount) {
+    if (!message || typeof message.body !== "string") {
+      throw new Error('[Email.verifyEmailShowsAmountAfterLabel] "message" must come from the mailbox reader.');
+    }
+    if (typeof label !== "string" || !label.trim()) {
+      throw new Error(`[Email.verifyEmailShowsAmountAfterLabel] "label" must be a non-empty string, got: ${label}`);
+    }
+    if (typeof amount !== "number" || !Number.isFinite(amount)) {
+      throw new Error(`[Email.verifyEmailShowsAmountAfterLabel] "amount" must be a finite number, got: ${amount}`);
+    }
+
+    // Collapsed but not lower-cased, so the indices found in `lower` address the same characters.
+    const flat = message.body.replace(/\s+/g, " ");
+    const lower = flat.toLowerCase();
+    const needle = normalize(label);
+    // Long enough for the label's own colon and a currency-formatted amount, short enough to stop
+    // before the next line's figure.
+    const WINDOW = 40;
+
+    const following = [];
+    for (let at = lower.indexOf(needle); at !== -1; at = lower.indexOf(needle, at + needle.length)) {
+      following.push(flat.slice(at + needle.length, at + needle.length + WINDOW));
+    }
+
+    if (following.length === 0) {
+      throw new Error(
+        `[Email.verifyEmailShowsAmountAfterLabel] The received email (subject "${message.subject}") has no ` +
+          `"${label}" label.\nEmail body was: ${message.body.slice(0, 1500)}`
+      );
+    }
+
+    const match = following.map((text) => containsAmount(text, amount)).find((result) => result.found);
+    if (!match) {
+      throw new Error(
+        `[Email.verifyEmailShowsAmountAfterLabel] The received email (subject "${message.subject}") does not ` +
+          `show ${amount} after "${label}".\n` +
+          `Amounts it shows after "${label}": ${JSON.stringify(following.flatMap((text) => findCurrencyAmounts(text)))}`
+      );
+    }
+
+    logger.info("[Email.verifyEmailShowsAmountAfterLabel] The email shows the expected amount after the label", {
+      label,
+      amount,
+      matched: match.matched,
+    });
+  },
+
+  /**
+   * Verifies a section of a received email lists the given names in the given order, e.g. the
+   * "Approval cycle" chips "Coori Coor › Bill Corpland › Lili Atry".
+   *
+   * Order is the point: the approval cycle is a sequence, and the same three approvers in another
+   * order is a different cycle. Only the text after the section heading is searched, so a name
+   * also printed elsewhere (the greeting names the first approver) cannot satisfy it.
+   *
+   * @param {object} message - A message from the mailbox reader
+   * @param {string} sectionLabel - The section heading, e.g. "Approval cycle"
+   * @param {string[]} expectedNames - The names in their expected order
+   */
+  verifyEmailSectionListsInOrder(message, sectionLabel, expectedNames) {
+    if (!message || typeof message.body !== "string") {
+      throw new Error('[Email.verifyEmailSectionListsInOrder] "message" must come from the mailbox reader.');
+    }
+    if (typeof sectionLabel !== "string" || !sectionLabel.trim()) {
+      throw new Error(
+        `[Email.verifyEmailSectionListsInOrder] "sectionLabel" must be a non-empty string, got: ${sectionLabel}`
+      );
+    }
+    if (!Array.isArray(expectedNames) || expectedNames.length === 0) {
+      throw new Error(
+        `[Email.verifyEmailSectionListsInOrder] "expectedNames" must be a non-empty array, got: ${expectedNames}`
+      );
+    }
+
+    const body = normalize(message.body);
+    const sectionAt = body.indexOf(normalize(sectionLabel));
+    if (sectionAt === -1) {
+      throw new Error(
+        `[Email.verifyEmailSectionListsInOrder] The received email (subject "${message.subject}") has no ` +
+          `"${sectionLabel}" section.\nEmail body was: ${message.body.slice(0, 1500)}`
+      );
+    }
+
+    const section = body.slice(sectionAt + normalize(sectionLabel).length);
+    let cursor = 0;
+    for (const name of expectedNames) {
+      const at = section.indexOf(normalize(name), cursor);
+      if (at === -1) {
+        throw new Error(
+          `[Email.verifyEmailSectionListsInOrder] The "${sectionLabel}" section of the received email does not ` +
+            `list "${name}" in the expected order ${JSON.stringify(expectedNames)}.\n` +
+            `Section text: ${section.slice(0, 300)}`
+        );
+      }
+      cursor = at + normalize(name).length;
+    }
+
+    logger.info("[Email.verifyEmailSectionListsInOrder] The section lists the names in order", {
+      sectionLabel,
+      expectedNames,
     });
   },
 
