@@ -107,6 +107,11 @@ const SELECTORS = {
   // (Confirmed) or "On request" (Requested). MUST be scoped via CAR_RESULT_CARD — every card
   // renders its own `.car-features` block.
   CAR_AVAILABILITY_LABEL: '.car-features .car-feature p',
+  // Supplier car photo inside a car result card (car-preview.vue `.car-img-container`). Only rendered
+  // as `.source-img` when car.imageUrl is set — `app-img :external-url="car.imageUrl"` puts that URL
+  // straight into `src`. Without an imageUrl the card falls back to a bundled `.car-img` (no
+  // `.source-img`), so this selector never matches the default grey-car placeholder.
+  CAR_SOURCE_IMAGE: '.car-img-container img.car-img.source-img',
   // "In Policy" toggle switch in the results sort bar (car-sort-bar.vue `.in-policy .el-switch`,
   // v-model="filterBy.inPolicy"). Rendered next to the sort dropdown, DESKTOP+MOBILE (only hidden
   // entirely when showAllInputs is false). Click the whole `.el-switch` element, not an inner
@@ -712,6 +717,51 @@ class CarResultsPage {
         `Original: ${error.message}`
       );
     }
+  }
+
+  /**
+   * Returns the supplier car photo locator in the car result card at the given index.
+   *
+   * @param {number} index - Zero-based index of the car result card
+   * @returns {import('playwright').Locator}
+   * @throws {Error} If index is not a non-negative integer
+   */
+  getCarSourceImageAtIndex(index) {
+    if (!Number.isInteger(index) || index < 0) {
+      throw new Error(
+        `[CarResultsPage.getCarSourceImageAtIndex] "index" must be a non-negative integer, got: ${index}`
+      );
+    }
+    return this.getCarResultCards().nth(index).locator(SELECTORS.CAR_SOURCE_IMAGE).first();
+  }
+
+  /**
+   * Reads what the supplier car photo in a result card is currently rendering.
+   *
+   * @param {number} index - Zero-based index of the car result card
+   * @returns {Promise<{src: string, naturalWidth: number}>} `naturalWidth` is 0 while the image is
+   *   broken or still loading
+   */
+  async readCarSourceImageAtIndex(index) {
+    return this.getCarSourceImageAtIndex(index).evaluate((img) => ({
+      src: img.getAttribute('src') || '',
+      naturalWidth: img.naturalWidth,
+    }));
+  }
+
+  /**
+   * Returns every image URL the page has requested so far, broken ones included. app-img swaps a
+   * broken `src` for its placeholder on error, so this resource log is the only place the original
+   * URL is still visible once the fallback has rendered.
+   *
+   * @returns {Promise<string[]>}
+   */
+  async getRequestedImageUrls() {
+    return this.page.evaluate(() =>
+      performance.getEntriesByType('resource')
+        .filter((entry) => entry.initiatorType === 'img')
+        .map((entry) => entry.name),
+    );
   }
 
   /**

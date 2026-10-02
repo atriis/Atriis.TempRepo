@@ -1,7 +1,7 @@
 ﻿require("module-alias/register");
 const { When, Then, setDefaultTimeout } = require("@cucumber/cucumber");
 const { expect } = require("@playwright/test");
-const { CarResults } = require("../../src/dsl");
+const { CarResults, PayloadValidation } = require("../../src/dsl");
 const logger = require("@utils/logger").child("CarResults");
 
 setDefaultTimeout(120000);
@@ -530,6 +530,21 @@ Then("the first car result should be from rental agency {string}", async functio
   logger.info("Verifying first car result is from preferred rental agency", { agencyName });
   await CarResults.assertFirstCarResultIsFromAgency(this.page, agencyName);
 });
+
+// Reads every reply of the type logged for the trip (the first card's link may sit in any of them),
+// then checks the card against those links. Not routed through the PAYLOAD_VALIDATION_ENABLED
+// switch: without the replies there is nothing to compare the card's photo to.
+Then(
+  "the first car result image should come from the {string} payload for request type {string}",
+  async function (source, requestType) {
+    logger.info("Verifying first car result image against the supplier media links", { source, requestType });
+    const { payloads } = await PayloadValidation.collectPayloadsForTrip(this, requestType, {
+      source,
+      purpose: "read the car media links the first car result image should come from",
+    });
+    await CarResults.expectCarResultImageFromSupplierMedia(this.page, payloads, 0);
+  }
+);
 
 When("I click see details for {string} result", async function (resultIndex) {
   const index = parseInt(resultIndex, 10);

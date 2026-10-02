@@ -24,6 +24,9 @@ const MAX_LOCATION_SELECTION_RETRIES = 3;
 // How far to shift the pickup/drop-off day index on each non-final no-results retry attempt.
 // Shifting within the same visible month keeps the retry search close to the original dates.
 const NO_RESULTS_RETRY_DAY_STEP = 3;
+// Bundled placeholder app-img (Atriis.App src/components/app-img.vue) falls back to when an
+// external image fails to load. Vite hashes the file name, so only the stem is stable.
+const DEFAULT_CAR_IMAGE_NAME = 'noImg';
 
 
 /**
@@ -2316,6 +2319,78 @@ const CarResults = {
         `but first result has the Agency Rate badge indicating it is NOT the preferred vendor`
       ).toBe(false);
     }
+  },
+
+  /**
+   * Verifies a car result card shows the photo the supplier returned in its media links reply, or
+   * the default image when that link is broken (ADO 47724).
+   *
+   * app-img renders car.imageUrl directly and swaps it for its bundled placeholder on a load error,
+   * so the card's `src` alone cannot tell "broken supplier link" from "no link at all". The page's
+   * resource log still holds the original URL, which is what proves the fallback came from a
+   * supplier link that failed rather than one that was never sent.
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @param {string[]} mediaReplies - Raw media links replies (e.g. Galileo VehicleMediaLinksReq responses)
+   * @param {number} [index=0] - Zero-based index of the car result card
+   * @returns {Promise<{shown: 'supplier'|'default', src: string}>}
+   * @throws {Error} If the card shows neither a supplier link from the reply nor the default image
+   */
+  async expectCarResultImageFromSupplierMedia(page, mediaReplies, index = 0) {
+    if (!page) throw new Error('page is required');
+    if (!Array.isArray(mediaReplies) || mediaReplies.length === 0) {
+      throw new Error('mediaReplies must be a non-empty array of captured media links replies');
+    }
+    if (!Number.isInteger(index) || index < 0) {
+      throw new Error(`index must be a non-negative integer, got: ${index}`);
+    }
+
+    const mediaUrls = [...new Set(mediaReplies.flatMap((reply) =>
+      [...String(reply).matchAll(/MediaItem\b[^>]*\burl="([^"]+)"/g)].map((match) => match[1].replace(/&amp;/g, '&')),
+    ))];
+    expect(mediaUrls.length, 'The media links reply should carry at least one MediaItem url').toBeGreaterThan(0);
+
+    const carResultsPage = getPageObject(page, CarResultsPage);
+    await carResultsPage.waitForCarTitlesVisible();
+    const image = carResultsPage.getCarSourceImageAtIndex(index);
+    await expect(
+      image,
+      `Car result card at index ${index} should render the supplier photo slot (.source-img), which the ` +
+      `app only does when it received an imageUrl for the car`,
+    ).toBeVisible({ timeout: 30000 });
+
+    // Let the image settle: a supplier link either loads (naturalWidth > 0) or errors into the placeholder.
+    await expect.poll(async () => {
+      const { src, naturalWidth } = await carResultsPage.readCarSourceImageAtIndex(index);
+      return mediaUrls.includes(src) ? naturalWidth > 0 : src.includes(DEFAULT_CAR_IMAGE_NAME);
+    }, {
+      message: `Car result card at index ${index} should settle on a loaded supplier photo or the default image`,
+      timeout: 30000,
+    }).toBe(true);
+
+    const { src } = await carResultsPage.readCarSourceImageAtIndex(index);
+    if (mediaUrls.includes(src)) {
+      logger.info('Car result shows the supplier photo from the media links reply', { index, src });
+      return { shown: 'supplier', src };
+    }
+
+    // Chrome upgrades a plain-http image on an https page to https, so compare without the scheme.
+    const withoutScheme = (url) => url.replace(/^https?:/i, '');
+    const requested = (await carResultsPage.getRequestedImageUrls()).map(withoutScheme);
+    const brokenSupplierLinks = mediaUrls.filter((url) => requested.includes(withoutScheme(url)));
+    expect(
+      brokenSupplierLinks.length,
+      `Car result card at index ${index} shows the default image, but the page never requested any of the ` +
+      `${mediaUrls.length} supplier link(s) from the media links reply, so the fallback did not come ` +
+      `from a broken supplier link. Supplier links: ${mediaUrls.slice(0, 5).join(', ')}. ` +
+      `Images requested: ${requested.filter((url) => !url.includes('/assets/')).slice(0, 10).join(', ') || 'none'}`,
+    ).toBeGreaterThan(0);
+    logger.info('Car result shows the default image because the supplier link is broken', {
+      index,
+      src,
+      brokenSupplierLinks: brokenSupplierLinks.slice(0, 5),
+    });
+    return { shown: 'default', src };
   },
 
   /**

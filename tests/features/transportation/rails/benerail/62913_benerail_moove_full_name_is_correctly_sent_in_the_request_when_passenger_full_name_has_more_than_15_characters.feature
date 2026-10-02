@@ -1,4 +1,4 @@
-# Test Name: hybrid_for_62913 Benerail Moove - Full name is correctly sent in the request when passenger full name has more than 15 characters
+# Test Name: 62913 Benerail Moove - Full name is correctly sent in the request when passenger full name has more than 15 characters
 # Description:
 # Status: Active
 # Labels: Benerail Moove Regression,Transportation

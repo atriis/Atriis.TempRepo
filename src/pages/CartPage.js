@@ -3586,8 +3586,10 @@ class CartPage {
    * Uses text-based selector to ensure correct button.
    */
   async clickProceedToCheckout() {
-    // Click the specific button container that has "Proceed to Checkout" text
-    await this.page.locator(SELECTORS.PROCEED_TO_CHECKOUT_BUTTON).click();
+    // Click the native <button>, not the wrapping `.btn-container` div: the div is wider than the
+    // button, and on some carts (e.g. a multi-traveller car trip) a click at its centre is swallowed
+    // without reaching the button, leaving the run on the cart.
+    await this.page.locator(SELECTORS.PROCEED_TO_CHECKOUT_BUTTON).locator('button').first().click();
   }
 
   /**
