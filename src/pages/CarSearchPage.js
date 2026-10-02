@@ -54,6 +54,26 @@ const SELECTORS = {
   // AM/PM toggle (time-selection-box.vue `.section-buttons .section-ampm p.time-part`) — only
   // rendered when the picker is in 12h mode. Scoped under the open popper by the caller.
   TIME_AMPM_BUTTON: ".section-ampm .time-part",
+
+  // Delivery & Collection (car-search-inputs.vue). The toggle block only renders when the
+  // agreement in effect has "Allow D&C" (GET /cardeliverycollection -> allowDeliveryCollection).
+  // el-switch carries `is-checked` while on.
+  DELIVERY_COLLECTION_TOGGLE: ".car-search-inputs .delivery-collection",
+  DELIVERY_COLLECTION_SWITCH: ".car-search-inputs .delivery-collection .el-switch",
+  // Location field per side ("pick-up" | "drop-off"). Both components get the side as a class on
+  // their root: car-dc-autocomplete while D&C is on, car-autocomplete (standard) while it is off.
+  DC_LOCATION_FIELD: (side) => `.car-search-inputs .car-dc-autocomplete.${side}`,
+  STANDARD_LOCATION_FIELD: (side) => `.car-search-inputs .car-autocomplete.${side}`,
+  // The <input> of whichever location search the side currently shows (D&C or standard).
+  LOCATION_FIELD_INPUT: (side) => `.car-search-inputs .${side} input`,
+  // D&C suggestion rows (car-dc-autocomplete.vue #autocomplete-result slot), one per place, in
+  // the order the /cardcautocomplete reply lists them. Only the open dropdown is visible.
+  DC_SUGGESTION_ROW: ".autocomplete-result:has(.autocomplete-result-text):visible",
+  DC_SUGGESTION_TEXT: ".autocomplete-result-text p",
+  // Location-type badge: app-img icon chosen from the place's locationType.
+  DC_SUGGESTION_ICON: ".autocomplete-result-icon img",
+  // D&C place search endpoint (car.service.ts searchDcPlaces).
+  DC_AUTOCOMPLETE_URL: /\/cardcautocomplete\?/i,
 };
 
 class CarSearchPage {
@@ -138,6 +158,100 @@ class CarSearchPage {
    */
   async clickDropoffDifferentLocationCheckbox() {
     await this.page.click(SELECTORS.DROPOFF_DIFFERENT_LOCATION_CHECKBOX);
+  }
+
+  getDeliveryCollectionToggle() {
+    return this.page.locator(SELECTORS.DELIVERY_COLLECTION_TOGGLE).first();
+  }
+
+  getDeliveryCollectionSwitch() {
+    return this.page.locator(SELECTORS.DELIVERY_COLLECTION_SWITCH).first();
+  }
+
+  async isDeliveryCollectionSwitchOn() {
+    const classes = (await this.getDeliveryCollectionSwitch().getAttribute('class')) || '';
+    return classes.split(/\s+/).includes('is-checked');
+  }
+
+  async clickDeliveryCollectionSwitch() {
+    await this.getDeliveryCollectionSwitch().click();
+  }
+
+  /**
+   * @param {"pick-up"|"drop-off"} side
+   * @returns {import('playwright').Locator}
+   */
+  getDcLocationField(side) {
+    return this.page.locator(SELECTORS.DC_LOCATION_FIELD(side)).first();
+  }
+
+  /**
+   * @param {"pick-up"|"drop-off"} side
+   * @returns {import('playwright').Locator}
+   */
+  getStandardLocationField(side) {
+    return this.page.locator(SELECTORS.STANDARD_LOCATION_FIELD(side)).first();
+  }
+
+  /**
+   * Replaces the text of the D&C location field, typing key by key so app-autocomplete runs its
+   * search the way a traveller's typing does.
+   *
+   * @param {"pick-up"|"drop-off"} side
+   * @param {string} text
+   */
+  async typeInDcLocationField(side, text) {
+    const input = this.getDcLocationField(side).locator('input').first();
+    await input.click();
+    await input.fill('');
+    await input.pressSequentially(text, { delay: 100 });
+  }
+
+  /**
+   * @param {"pick-up"|"drop-off"} side
+   * @returns {Promise<string>}
+   */
+  getLocationFieldInput(side) {
+    return this.page.locator(SELECTORS.LOCATION_FIELD_INPUT(side)).first();
+  }
+
+  async getLocationFieldValue(side) {
+    return this.getLocationFieldInput(side).inputValue();
+  }
+
+  /**
+   * Starts listening for the /cardcautocomplete reply to the given text. Call BEFORE typing, then
+   * await it. Matching on the query keeps a late reply to an earlier text from being taken.
+   *
+   * @param {string} text - The full text being typed (sent as the `str` query parameter)
+   * @param {{ timeout?: number }} [options]
+   * @returns {Promise<import('playwright').Response>}
+   */
+  waitForDcAutocompleteResponse(text, { timeout = 30000 } = {}) {
+    return this.page.waitForResponse((response) => {
+      const url = response.url();
+      return SELECTORS.DC_AUTOCOMPLETE_URL.test(url) && new URL(url).searchParams.get('str') === text;
+    }, { timeout });
+  }
+
+  getDcSuggestionRows() {
+    return this.page.locator(SELECTORS.DC_SUGGESTION_ROW);
+  }
+
+  /**
+   * Reads every visible D&C suggestion row's text and whether it carries a location-type icon.
+   *
+   * @returns {Promise<Array<{text: string, hasIcon: boolean}>>}
+   */
+  async readDcSuggestionRows() {
+    return this.getDcSuggestionRows().evaluateAll((rows, { textSel, iconSel }) => rows.map((row) => ({
+      text: (row.querySelector(textSel)?.textContent || '').trim(),
+      hasIcon: !!row.querySelector(iconSel)?.getAttribute('src'),
+    })), { textSel: SELECTORS.DC_SUGGESTION_TEXT, iconSel: SELECTORS.DC_SUGGESTION_ICON });
+  }
+
+  async clickDcSuggestionAt(index) {
+    await this.getDcSuggestionRows().nth(index).click();
   }
 
   /**

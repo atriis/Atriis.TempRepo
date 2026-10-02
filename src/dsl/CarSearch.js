@@ -12,6 +12,7 @@ const {
 const { resolveLocation } = require("@utils/route.helper");
 const { SEARCH_DEFAULTS } = require("@utils/search.constants");
 const { getPageObject } = require("@utils/pageObjectCache");
+const { normalizeText } = require("@utils/text");
 const logger = require("@utils/logger").child("CarSearch");
 const carLocations = require("@data/cars.json");
 
@@ -20,6 +21,28 @@ const MAX_NO_RESULTS_RETRIES = 3;
 // How far to shift the pickup/drop-off day index on each non-final no-results retry attempt.
 // Shifting within the same visible month keeps the retry search close to the original dates.
 const NO_RESULTS_RETRY_DAY_STEP = 3;
+// Delivery & Collection place search (car-dc-autocomplete): runs from 3 typed characters, and
+// Hertz (ZE) is excluded from it in this phase (ADO 84137).
+const DC_MIN_CHARS_FOR_SEARCH = 3;
+const HERTZ_PROVIDER_CODE = 'ZE';
+const DC_NO_SUGGESTIONS_SETTLE_MS = 2000;
+
+/**
+ * How car-dc-autocomplete renders a place (Atriis.App car-dc-autocomplete-rows.ts
+ * toDcPlaceDisplayName): address line 1, line 2 and city in title case, then the country code.
+ * @param {object} place
+ * @returns {string}
+ */
+function toDcPlaceDisplayName(place) {
+  const titleCase = (value) => (value || '').trim().toLowerCase().replace(/\b\w/g, (char) => char.toUpperCase());
+  return [place.addressLine1, place.addressLine2, place.city].map(titleCase)
+    .concat((place.countryCode || '').trim())
+    .filter(Boolean)
+    .join(', ');
+}
+
+// Case- and whitespace-insensitive, so a title-casing nuance cannot fail an otherwise exact row.
+const normalizeTextLoose = (value) => normalizeText(value || '').toLowerCase();
 
 /**
  * Parses a "HH:mm" time string into zero-padded [hour, minute] strings matching the
@@ -1021,6 +1044,237 @@ const CarSearch = {
     ).toContain(expectedDestination.toLowerCase());
 
     return { expectedDestination, actualDestination };
+  },
+
+  // ========================================
+  // DELIVERY & COLLECTION (ADO 84136 / 84137)
+  // ========================================
+
+  /**
+   * Opens the car search tab and waits for the car form.
+   *
+   * @param {import('playwright').Page} page
+   */
+  async openCarSearch(page) {
+    if (!page) throw new Error('page is required');
+    const carSearchPage = getPageObject(page, CarSearchPage);
+    await carSearchPage.clickCarTab();
+    await expect(carSearchPage.getCarSearchForm(), 'The car search form should be displayed').toBeVisible({ timeout: 30000 });
+  },
+
+  /**
+   * Ticks "Drop-off at a different location" and waits for the drop-off location field.
+   *
+   * @param {import('playwright').Page} page
+   */
+  async clickDropoffAtDifferentLocation(page) {
+    if (!page) throw new Error('page is required');
+    const carSearchPage = getPageObject(page, CarSearchPage);
+    await carSearchPage.clickDropoffDifferentLocationCheckbox();
+    await expect(
+      carSearchPage.getLocationFieldInput('drop-off'),
+      'The drop-off location field should appear after ticking "Drop-off at a different location"',
+    ).toBeVisible({ timeout: 10000 });
+  },
+
+  /**
+   * Verifies the Delivery & Collection toggle is shown and starts switched off. It renders only
+   * when the agreement in effect has "Allow D&C" enabled in GTP Admin (ADO 84136).
+   *
+   * @param {import('playwright').Page} page
+   */
+  async expectDeliveryCollectionToggleShownAndOff(page) {
+    if (!page) throw new Error('page is required');
+    const carSearchPage = getPageObject(page, CarSearchPage);
+    await expect(
+      carSearchPage.getDeliveryCollectionToggle(),
+      'The "Delivery & Collection" toggle should be shown in car search: the traveller\'s Amadeus car agreement has ' +
+        '"Allow D&C" enabled. A hidden toggle means the setting was not applied (GET /cardeliverycollection returned false)',
+    ).toBeVisible({ timeout: 30000 });
+    expect(await carSearchPage.isDeliveryCollectionSwitchOn(), 'The "Delivery & Collection" toggle should be off by default').toBe(false);
+  },
+
+  /**
+   * Switches the Delivery & Collection toggle to the requested state.
+   *
+   * @param {import('playwright').Page} page
+   * @param {boolean} on
+   */
+  async setDeliveryCollectionToggle(page, on) {
+    if (!page) throw new Error('page is required');
+    if (typeof on !== 'boolean') throw new Error(`on must be a boolean, got: ${typeof on}`);
+    const carSearchPage = getPageObject(page, CarSearchPage);
+    if ((await carSearchPage.isDeliveryCollectionSwitchOn()) !== on) {
+      await carSearchPage.clickDeliveryCollectionSwitch();
+    }
+    await expect.poll(() => carSearchPage.isDeliveryCollectionSwitchOn(), {
+      message: `The "Delivery & Collection" toggle should be ${on ? 'on' : 'off'}`,
+      timeout: 10000,
+    }).toBe(on);
+  },
+
+  /**
+   * Verifies which location search a car location field uses. D&C on: the D&C address search
+   * (car-dc-autocomplete); off: the standard airport/city search (car-autocomplete).
+   *
+   * @param {import('playwright').Page} page
+   * @param {"pick-up"|"drop-off"} side
+   * @param {"delivery and collection"|"standard"} kind
+   * @param {{ expectEmpty?: boolean }} [options] - also assert the field holds no location
+   */
+  async expectLocationFieldSearchKind(page, side, kind, { expectEmpty = false } = {}) {
+    if (!page) throw new Error('page is required');
+    if (!['pick-up', 'drop-off'].includes(side)) throw new Error(`side must be "pick-up" or "drop-off", got: ${side}`);
+    if (!['delivery and collection', 'standard'].includes(kind)) {
+      throw new Error(`kind must be "delivery and collection" or "standard", got: ${kind}`);
+    }
+    const carSearchPage = getPageObject(page, CarSearchPage);
+    const dcField = carSearchPage.getDcLocationField(side);
+    const standardField = carSearchPage.getStandardLocationField(side);
+    const [shown, hidden] = kind === 'standard' ? [standardField, dcField] : [dcField, standardField];
+
+    await expect(shown, `The ${side} field should use the ${kind} location search`).toBeVisible({ timeout: 10000 });
+    await expect(hidden, `The ${side} field should not show the other location search`).toHaveCount(0);
+    if (expectEmpty) {
+      expect(
+        await carSearchPage.getLocationFieldValue(side),
+        `Switching the D&C toggle should clear the ${side} location picked before`,
+      ).toBe('');
+    }
+  },
+
+  /**
+   * Types into a D&C location field. From 3 characters the app queries /cardcautocomplete; the
+   * reply is returned so callers can check what the server offered, not only what is rendered.
+   *
+   * @param {import('playwright').Page} page
+   * @param {"pick-up"|"drop-off"} side
+   * @param {string} text
+   * @returns {Promise<{text: string, places: object[]|null}>} places is null below 3 characters
+   */
+  async typeInDcLocation(page, side, text) {
+    if (!page) throw new Error('page is required');
+    if (typeof text !== 'string' || !text) throw new Error(`text must be a non-empty string, got: ${text}`);
+    const carSearchPage = getPageObject(page, CarSearchPage);
+
+    if (text.trim().length < DC_MIN_CHARS_FOR_SEARCH) {
+      await carSearchPage.typeInDcLocationField(side, text);
+      return { text, places: null };
+    }
+
+    const replyPromise = carSearchPage.waitForDcAutocompleteResponse(text);
+    await carSearchPage.typeInDcLocationField(side, text);
+    const reply = await replyPromise;
+    expect(reply.status(), `GET /cardcautocomplete for "${text}" should succeed`).toBe(200);
+    const places = await reply.json();
+    expect(Array.isArray(places), '/cardcautocomplete should reply with a list of places').toBe(true);
+    logger.info('D&C autocomplete replied', { side, text, places: places.length });
+    return { text, places };
+  },
+
+  /**
+   * Verifies the D&C dropdown shows no suggestions (fewer than 3 characters, or no match).
+   *
+   * @param {import('playwright').Page} page
+   */
+  async expectNoDcSuggestions(page) {
+    if (!page) throw new Error('page is required');
+    const carSearchPage = getPageObject(page, CarSearchPage);
+    // Give a late dropdown the chance to appear, so "none" is not read before rendering.
+    await page.waitForTimeout(DC_NO_SUGGESTIONS_SETTLE_MS);
+    await expect(carSearchPage.getDcSuggestionRows(), 'No Delivery & Collection location suggestions should be shown').toHaveCount(0);
+  },
+
+  /**
+   * Verifies the D&C suggestions shown match the server reply, row for row: each row reads
+   * "address, city, country" for its place and carries a location-type icon.
+   *
+   * @param {import('playwright').Page} page
+   * @param {object[]} places - The /cardcautocomplete reply for the text typed
+   */
+  async expectDcSuggestionsMatchReply(page, places) {
+    if (!page) throw new Error('page is required');
+    if (!Array.isArray(places) || places.length === 0) {
+      throw new Error('places must be the non-empty /cardcautocomplete reply for the text typed');
+    }
+    const carSearchPage = getPageObject(page, CarSearchPage);
+    await expect(carSearchPage.getDcSuggestionRows().first(), 'Delivery & Collection location suggestions should be shown').toBeVisible({ timeout: 15000 });
+    const rows = await carSearchPage.readDcSuggestionRows();
+
+    expect(rows.length, 'The dropdown should show at most the places the server returned').toBeLessThanOrEqual(places.length);
+    rows.forEach((row, index) => {
+      expect(normalizeTextLoose(row.text), `Suggestion ${index + 1} should read "address, city, country" for its place`)
+        .toBe(normalizeTextLoose(toDcPlaceDisplayName(places[index])));
+      expect(row.hasIcon, `Suggestion ${index + 1} ("${row.text}") should show a location-type badge`).toBe(true);
+    });
+    return { rows };
+  },
+
+  /**
+   * Verifies a /cardcautocomplete reply offers no Hertz location and lists each place once.
+   *
+   * @param {object[]} places
+   */
+  expectDcPlacesExcludeHertzAndAreUnique(places) {
+    if (!Array.isArray(places) || places.length === 0) {
+      throw new Error('places must be the non-empty /cardcautocomplete reply for the text typed');
+    }
+    const hertzPlaces = places.filter((place) => (place.providers || []).some((provider) => provider.providerCode === HERTZ_PROVIDER_CODE));
+    expect(
+      hertzPlaces.map((place) => place.placeId),
+      `No D&C place should offer Hertz (${HERTZ_PROVIDER_CODE}) in this phase`,
+    ).toEqual([]);
+
+    const placeIds = places.map((place) => place.placeId);
+    const duplicates = placeIds.filter((id, index) => placeIds.indexOf(id) !== index);
+    expect(duplicates, 'Each D&C place should be listed once, grouped across providers').toEqual([]);
+    expect(
+      places.filter((place) => !(place.providers || []).length).map((place) => place.placeId),
+      'Every D&C place should have at least one eligible provider',
+    ).toEqual([]);
+  },
+
+  /**
+   * Selects a D&C suggestion and returns the place it stands for.
+   *
+   * @param {import('playwright').Page} page
+   * @param {"pick-up"|"drop-off"} side
+   * @param {object[]} places - The reply the dropdown was built from
+   * @param {number} [index=0]
+   * @returns {Promise<object>} The selected place
+   */
+  async selectDcSuggestion(page, side, places, index = 0) {
+    if (!page) throw new Error('page is required');
+    if (!Array.isArray(places) || !places[index]) throw new Error(`No D&C place at index ${index} in the reply`);
+    const carSearchPage = getPageObject(page, CarSearchPage);
+    await carSearchPage.clickDcSuggestionAt(index);
+    const place = places[index];
+    await expect.poll(async () => normalizeTextLoose(await carSearchPage.getLocationFieldValue(side)), {
+      message: `The ${side} field should show the selected D&C place`,
+      timeout: 10000,
+    }).toBe(normalizeTextLoose(toDcPlaceDisplayName(place)));
+    logger.info('Selected D&C place', { side, placeId: place.placeId, latitude: place.latitude, longitude: place.longitude });
+    return place;
+  },
+
+  /**
+   * Picks the dates and clicks Search with the locations already set on the form (used after a
+   * D&C place was selected, where the standard place-typing search methods do not apply).
+   *
+   * @param {import('playwright').Page} page
+   * @param {number} [monthsAhead=1]
+   */
+  async searchWithDatesForSelectedLocation(page, monthsAhead = 1) {
+    if (!page) throw new Error('page is required');
+    const carSearchPage = getPageObject(page, CarSearchPage);
+    const searchPage = getPageObject(page, SearchPage);
+    await searchPage.clickPickupDateField();
+    await searchPage.clickCalendarNextArrow(monthsAhead);
+    await selectDatesByNthAvailable(page, { startIndex: SEARCH_DEFAULTS.CAR.PICKUP_INDEX, endIndex: null });
+    await carSearchPage.clickDropoffDateField();
+    await carSearchPage.clickDropoffSecondCalendarNextMonthArrow();
+    await selectDatesByNthAvailable(page, { startIndex: SEARCH_DEFAULTS.CAR.DROPOFF_INDEX, endIndex: null });
+    await searchPage.waitAndClickSearchButton();
   },
 };
 

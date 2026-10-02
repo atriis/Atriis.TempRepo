@@ -191,3 +191,121 @@ Then("the car search form destination should be {string}", async function (expec
   logger.info("Verifying the car search form destination", { expectedDestination });
   this.carSearchFormDestination = await CarSearch.verifyCarSearchFormDestination(this.page, expectedDestination);
 });
+
+// ========================================
+// DELIVERY & COLLECTION (ADO 84136 / 84137)
+// ========================================
+
+// Gherkin side names -> the class car-search-inputs.vue gives each location field.
+const DC_SIDES = { "pick-up": "pick-up", "drop-off": "drop-off" };
+
+function toDcSide(side) {
+  const resolved = DC_SIDES[side];
+  if (!resolved) {
+    throw new Error(`Unknown car location side "${side}". Use "pick-up" or "drop-off".`);
+  }
+  return resolved;
+}
+
+function requireDcReply(world, side) {
+  const places = world.dcAutocompleteReplies?.[side];
+  if (!places) {
+    throw new Error(
+      `No Delivery & Collection location search reply stored for the ${side} field. ` +
+      `Run "I type ... in the Delivery & Collection ${side} location" with 3+ characters first.`
+    );
+  }
+  return places;
+}
+
+When("I open the car search", async function () {
+  logger.info("Opening the car search tab");
+  await CarSearch.openCarSearch(this.page);
+});
+
+Then("the Delivery & Collection toggle should be displayed and switched off", async function () {
+  logger.info("Verifying the Delivery & Collection toggle is shown and off by default");
+  await CarSearch.expectDeliveryCollectionToggleShownAndOff(this.page);
+});
+
+When("I switch on the Delivery & Collection toggle", async function () {
+  logger.info("Switching the Delivery & Collection toggle on");
+  await CarSearch.setDeliveryCollectionToggle(this.page, true);
+});
+
+When("I switch off the Delivery & Collection toggle", async function () {
+  logger.info("Switching the Delivery & Collection toggle off");
+  await CarSearch.setDeliveryCollectionToggle(this.page, false);
+});
+
+When("I tick drop-off at a different location", async function () {
+  logger.info('Ticking "Drop-off at a different location"');
+  await CarSearch.clickDropoffAtDifferentLocation(this.page);
+});
+
+Then("the car {string} location should use the {string} location search", async function (side, kind) {
+  logger.info("Verifying which location search the car field uses", { side, kind });
+  await CarSearch.expectLocationFieldSearchKind(this.page, toDcSide(side), kind);
+});
+
+Then("the car {string} location should use the {string} location search and be empty", async function (side, kind) {
+  logger.info("Verifying the car field location search and that it was cleared", { side, kind });
+  await CarSearch.expectLocationFieldSearchKind(this.page, toDcSide(side), kind, { expectEmpty: true });
+});
+
+When("I type {string} in the Delivery & Collection {string} location", async function (text, side) {
+  const resolvedSide = toDcSide(side);
+  logger.info("Typing in the Delivery & Collection location field", { side: resolvedSide, text });
+  const { places } = await CarSearch.typeInDcLocation(this.page, resolvedSide, text);
+  this.dcAutocompleteReplies = { ...this.dcAutocompleteReplies, [resolvedSide]: places };
+});
+
+Then("no Delivery & Collection location suggestions should be displayed", async function () {
+  logger.info("Verifying no Delivery & Collection location suggestions are shown");
+  await CarSearch.expectNoDcSuggestions(this.page);
+});
+
+Then("the Delivery & Collection {string} suggestions should show the address, city, country and location type of each place returned", async function (side) {
+  const resolvedSide = toDcSide(side);
+  logger.info("Verifying the Delivery & Collection suggestions against the location search reply", { side: resolvedSide });
+  await CarSearch.expectDcSuggestionsMatchReply(this.page, requireDcReply(this, resolvedSide));
+});
+
+Then("the Delivery & Collection {string} location search should exclude Hertz and list each place once", async function (side) {
+  const resolvedSide = toDcSide(side);
+  logger.info("Verifying the Delivery & Collection location search reply excludes Hertz and is deduplicated", { side: resolvedSide });
+  CarSearch.expectDcPlacesExcludeHertzAndAreUnique(requireDcReply(this, resolvedSide));
+});
+
+// Stores the place's coordinates for payload steps: {storedDcPickupLatitude}, {storedDcPickupLongitude},
+// {storedDcDropoffLatitude}, {storedDcDropoffLongitude}.
+async function selectDcLocation(world, side, position) {
+  const resolvedSide = toDcSide(side);
+  const place = await CarSearch.selectDcSuggestion(world.page, resolvedSide, requireDcReply(world, resolvedSide), position - 1);
+  const prefix = resolvedSide === "pick-up" ? "storedDcPickup" : "storedDcDropoff";
+  world[`${prefix}Latitude`] = String(place.latitude);
+  world[`${prefix}Longitude`] = String(place.longitude);
+  logger.info("Stored the selected Delivery & Collection place", {
+    side: resolvedSide,
+    position,
+    placeId: place.placeId,
+    latitude: world[`${prefix}Latitude`],
+    longitude: world[`${prefix}Longitude`],
+  });
+}
+
+When("I select the first Delivery & Collection {string} location", async function (side) {
+  await selectDcLocation(this, side, 1);
+});
+
+When("I select Delivery & Collection {string} location number {int}", async function (side, position) {
+  if (!Number.isInteger(position) || position < 1) {
+    throw new Error(`position must be a 1-based integer, got: ${position}`);
+  }
+  await selectDcLocation(this, side, position);
+});
+
+When("I search for a car at the selected locations with {int} months ahead", async function (monthsAhead) {
+  logger.info("Searching for a car at the selected locations", { monthsAhead });
+  await CarSearch.searchWithDatesForSelectedLocation(this.page, monthsAhead);
+});
