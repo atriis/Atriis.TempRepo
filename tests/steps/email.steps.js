@@ -17,9 +17,10 @@
  * an email assertion that quietly skips is worse than no assertion at all.
  */
 
-const { Then } = require("@cucumber/cucumber");
+const { When, Then } = require("@cucumber/cucumber");
 const { expect } = require("@playwright/test");
 const Email = require("@dsl/Email");
+const ApprovalByEmail = require("@dsl/ApprovalByEmail");
 const BenerailResults = require("@dsl/BenerailResults");
 const logger = require("@utils/logger").child("Email-Steps");
 
@@ -205,6 +206,36 @@ Then("the price breakdown in the received e-ticket confirmation email should not
   // "Add. Charges: 46.58". An empty body is rejected by the DSL, and the previous step already
   // proved the mail is for this trip, so the absence cannot pass on a mail that never rendered.
   Email.verifyEmailDoesNotContainTexts(message, ["Add. Charges", "Additional charges"]);
+});
+
+// The approval request goes to the APPROVER's profile email, so `inbox` is the reserved Mailsac
+// address that approver was set up with (58503: will@pop.com's approver -> atriis-qa@mailsac.com).
+Then("the approval request email for this trip should be received at {string}", { timeout: TRIP_EMAIL_TIMEOUT_MS + 60 * 1000 }, async function (inbox) {
+  logger.info("Waiting for the approval request email sent to the approver", { inbox });
+
+  const message = await Email.waitForApprovalRequestEmail({
+    to: inbox,
+    tripNumberCandidates: this.getTripNumberCandidates(),
+    sentAfter: this.scenarioStartedAt,
+    timeoutMs: TRIP_EMAIL_TIMEOUT_MS,
+  });
+
+  // Read once: @utils/mailbox deletes the message after fetching it, so later steps use this copy.
+  this.receivedApprovalRequestEmail = message;
+  this.attach(message.html || message.body, message.html ? "text/html" : "text/plain");
+});
+
+When("I click accept in the approval request email", async function () {
+  const message = this.receivedApprovalRequestEmail;
+  if (!message) {
+    throw new Error(
+      "[email.steps] No approval request email was read. Add " +
+        '\'Then the approval request email for this trip should be received at "<inbox>"\' first.'
+    );
+  }
+  const accept = Email.getApprovalAcceptLink(message);
+  logger.info("Opening the accept link of the approval request email", { subject: message.subject, link: accept.text });
+  this.approvalByEmailPage = await ApprovalByEmail.openApprovalLink(this.page, accept.href);
 });
 
 Then("the received itinerary email should contain the link {string}", async function (linkLabel) {

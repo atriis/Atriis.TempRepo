@@ -11,6 +11,7 @@ module.exports = {
   AmtrakResults: require("./AmtrakResults"),
   AmtrakSearch: require("./AmtrakSearch"),
   App: require("./App"),
+  ApprovalByEmail: require("./ApprovalByEmail"),
   BenerailResults: require("./BenerailResults"),
   BenerailSearch: require("./BenerailSearch"),
   CarResults: require("./CarResults"),

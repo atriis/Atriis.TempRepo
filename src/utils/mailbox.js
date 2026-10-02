@@ -264,6 +264,11 @@ async function deleteMessage(to, id) {
  * @param {string} [options.subjectContains] - Narrows to a subject substring (case-insensitive)
  * @param {Date} [options.receivedAfter] - Ignores mail that predates this, so a re-run of the
  *   same scenario cannot pass on the previous run's email
+ * @param {(message: object) => boolean} [options.matches] - Narrows by CONTENT, for mail whose
+ *   subject cannot identify it (e.g. a backend template localised per recipient). Evaluated on
+ *   the fetched message, so every subject-matching candidate costs a body fetch; a rejected
+ *   message is remembered for the rest of the wait and left in the inbox, because it may be the
+ *   one another scenario is waiting on.
  * @param {number} [options.timeoutMs]
  * @param {number} [options.pollIntervalMs]
  * @returns {Promise<{id: string, subject: string, from: string, to: string, html: string, text: string, body: string, links: Array<{text: string, href: string}>}>}
@@ -272,6 +277,7 @@ async function waitForEmail({
   to,
   subjectContains,
   receivedAfter,
+  matches,
   timeoutMs = config.mailbox.timeoutMs,
   pollIntervalMs = config.mailbox.pollIntervalMs,
 } = {}) {
@@ -293,6 +299,7 @@ async function waitForEmail({
   let attempts = 0;
   let lastError = null;
   let seenSubjects = [];
+  const rejectedIds = new Set();
 
   while (Date.now() < deadline) {
     attempts += 1;
@@ -300,13 +307,19 @@ async function waitForEmail({
       const candidates = await listMessages(to, receivedAfter);
       seenSubjects = candidates.map((candidate) => candidate.subject);
 
-      const hit = candidates.find(
-        (candidate) => !wantedSubject || (candidate.subject ?? "").toLowerCase().includes(wantedSubject)
+      const subjectHits = candidates.filter(
+        (candidate) =>
+          !rejectedIds.has(candidate.id) &&
+          (!wantedSubject || (candidate.subject ?? "").toLowerCase().includes(wantedSubject))
       );
 
-      if (hit) {
-        logger.info("Email arrived", { to, subject: hit.subject, attempts });
+      for (const hit of matches ? subjectHits : subjectHits.slice(0, 1)) {
         const message = await fetchMessage(hit.id, to, hit.subject);
+        if (matches && !matches(message)) {
+          rejectedIds.add(hit.id);
+          continue;
+        }
+        logger.info("Email arrived", { to, subject: hit.subject, attempts });
         // Read it, then take it out of the inbox: a reserved address is reused by every
         // scenario, and the account meters stored messages.
         await deleteMessage(to, hit.id);
@@ -327,6 +340,7 @@ async function waitForEmail({
   throw new Error(
     `[mailbox] No email to "${to}"` +
       (subjectContains ? ` with a subject containing "${subjectContains}"` : "") +
+      (matches ? ` matching the content filter (${rejectedIds.size} other message(s) rejected)` : "") +
       ` arrived within ${timeoutMs}ms (${attempts} polls).` +
       (seenSubjects.length ? ` Subjects seen for this address: ${JSON.stringify(seenSubjects)}.` : "") +
       (lastError ? ` Last poll error: ${lastError.message}` : "")

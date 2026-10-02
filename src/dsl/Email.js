@@ -1,8 +1,8 @@
 /**
  * Email DSL
  *
- * Assertions against the mail the application actually sends — share quote and share itinerary
- * emails today. Sits on top of @utils/mailbox, which owns the provider REST calls.
+ * Assertions against the mail the application actually sends — share quote, share itinerary, trip
+ * and approval request emails. Sits on top of @utils/mailbox, which owns the provider REST calls.
  *
  * Division of labour with the Cart DSL:
  * - Cart owns the share dialog: adding a recipient, sending, and asserting the *preview*.
@@ -23,6 +23,41 @@ const normalize = (value) => (value ?? "").replace(/\s+/g, " ").trim().toLowerCa
 
 // How the app titles a share-quotes email: "Share quotes for <traveller> <dates>".
 const SHARE_QUOTES_SUBJECT = "Share quotes for";
+
+// Approve / Decline links in an approval request email point at the anonymous approval-by-email
+// route (router `/tripApproval/:approvalType`). "approve" approves on load; "approvewithconfirmation"
+// (corporate setting "Enable approval confirmation on pop-up") shows a checkbox first. The decline
+// variants are "decline" / "declinereason", which the accept pattern must never match.
+const APPROVAL_LINK_PATTERN = /\/tripApproval\//i;
+const APPROVAL_ACCEPT_LINK_PATTERN = /\/tripApproval\/(approve|approvewithconfirmation)(?=[?#/]|$)/i;
+
+/**
+ * De-duplicates and validates the trip numbers a mail is matched against.
+ *
+ * Throws when there are none: a reserved MAILBOX_ADDRESS is shared by every scenario, so a mail
+ * read without a trip number to check could be a parallel run's.
+ *
+ * @param {Array<string|number|null|undefined>} candidates
+ * @param {string} caller - Method name for the error
+ * @returns {string[]}
+ */
+function requireTripNumbers(candidates, caller) {
+  const tripNumbers = [
+    ...new Set(
+      (candidates ?? [])
+        .filter((candidate) => candidate !== null && candidate !== undefined)
+        .map((candidate) => String(candidate).trim())
+        .filter(Boolean)
+    ),
+  ];
+  if (tripNumbers.length === 0) {
+    throw new Error(
+      `[Email.${caller}] No trip number was recorded for this scenario, so the mail cannot ` +
+        "be told apart from another run's in the shared inbox. Record it with this.recordTripId."
+    );
+  }
+  return tripNumbers;
+}
 
 const Email = {
   /**
@@ -230,20 +265,7 @@ const Email = {
       );
     }
 
-    const tripNumbers = [
-      ...new Set(
-        tripNumberCandidates
-          .filter((candidate) => candidate !== null && candidate !== undefined)
-          .map((candidate) => String(candidate).trim())
-          .filter(Boolean)
-      ),
-    ];
-    if (tripNumbers.length === 0) {
-      throw new Error(
-        "[Email.waitForTripEmail] No trip number was recorded for this scenario, so the mail cannot " +
-          "be told apart from another run's in the shared inbox. Record it with this.recordTripId."
-      );
-    }
+    const tripNumbers = requireTripNumbers(tripNumberCandidates, "waitForTripEmail");
 
     const message = await mailbox.waitForEmail({ to, subjectContains, receivedAfter: sentAfter, timeoutMs });
 
@@ -263,6 +285,73 @@ const Email = {
     });
 
     return message;
+  },
+
+  /**
+   * Waits for the approval request email for this trip ("We would like your approval").
+   *
+   * The mail goes to the APPROVER's profile email, so `to` is the reserved inbox that approver was
+   * set up with, not an address the test chooses. It is found by CONTENT rather than subject: the
+   * subject comes from a backend template localised per approver, whereas every approval request
+   * carries links to the `/tripApproval/` route and names the trip number. A message that is not
+   * this trip's approval request is skipped and left in the inbox for whoever it belongs to.
+   *
+   * @param {object} options
+   * @param {string} options.to - The approver's inbox
+   * @param {Array<string|number>} options.tripNumberCandidates - This scenario's trip numbers
+   * @param {Date} [options.sentAfter] - Ignores mail older than this
+   * @param {number} [options.timeoutMs]
+   * @returns {Promise<object>} The received message
+   */
+  async waitForApprovalRequestEmail({ to, tripNumberCandidates = [], sentAfter, timeoutMs } = {}) {
+    if (typeof to !== "string" || !to.trim()) {
+      throw new Error(`[Email.waitForApprovalRequestEmail] "to" must be the approver's inbox address, got: ${to}`);
+    }
+    const tripNumbers = requireTripNumbers(tripNumberCandidates, "waitForApprovalRequestEmail");
+
+    const message = await mailbox.waitForEmail({
+      to,
+      receivedAfter: sentAfter,
+      timeoutMs,
+      matches: (candidate) =>
+        candidate.links.some((link) => APPROVAL_LINK_PATTERN.test(link.href)) &&
+        tripNumbers.some((tripNumber) => `${candidate.subject} ${candidate.body}`.includes(tripNumber)),
+    });
+
+    logger.info("[Email.waitForApprovalRequestEmail] Received the approval request email", {
+      to,
+      subject: message.subject,
+      approvalLinks: message.links.filter((link) => APPROVAL_LINK_PATTERN.test(link.href)).map((link) => link.text),
+    });
+
+    return message;
+  },
+
+  /**
+   * Returns the accept (approve) link of an approval request email.
+   *
+   * Matched on the href, not on the label or position: the label is translated, and following a
+   * decline link by mistake would silently decline the trip.
+   *
+   * @param {object} message - A message from waitForApprovalRequestEmail
+   * @returns {{text: string, href: string}}
+   */
+  getApprovalAcceptLink(message) {
+    if (!message || !Array.isArray(message.links)) {
+      throw new Error('[Email.getApprovalAcceptLink] "message" must come from waitForApprovalRequestEmail.');
+    }
+
+    const accept = message.links.find((link) => APPROVAL_ACCEPT_LINK_PATTERN.test(link.href));
+    if (!accept) {
+      throw new Error(
+        `[Email.getApprovalAcceptLink] The approval request email (subject "${message.subject}") has no ` +
+          "accept link to /tripApproval/approve or /tripApproval/approvewithconfirmation.\n" +
+          `Approval links found: ${JSON.stringify(
+            message.links.filter((link) => APPROVAL_LINK_PATTERN.test(link.href))
+          )}`
+      );
+    }
+    return accept;
   },
 
   /**
