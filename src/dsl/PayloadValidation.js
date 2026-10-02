@@ -1864,7 +1864,15 @@ const PayloadValidation = {
     );
   },
 
-  async expectCapturedPayloadContainsJsonBlock(page, world, source, requestType, expectedJsonBlock) {
+  /**
+   * Deep-subset check of a captured JSON payload against an expected JSON block.
+   * By default an expected `null` requires the key to be present with a null value. With
+   * `nullMatchesMissing`, an expected `null` is also met by an absent key — for suppliers whose
+   * serializer drops null properties (e.g. the TransferzPay-by-creditcard log omits refusalReason).
+   *
+   * @param {{nullMatchesMissing?: boolean}} [options]
+   */
+  async expectCapturedPayloadContainsJsonBlock(page, world, source, requestType, expectedJsonBlock, { nullMatchesMissing = false } = {}) {
     if (!page) {
       throw new Error("page is required");
     }
@@ -1946,7 +1954,9 @@ const PayloadValidation = {
           const actualValue = actual[key];
 
           if (actualValue === undefined) {
-            errors.push(`Missing key "${currentPath}"`);
+            if (!(nullMatchesMissing && expectedValue === null)) {
+              errors.push(`Missing key "${currentPath}"`);
+            }
             continue;
           }
 

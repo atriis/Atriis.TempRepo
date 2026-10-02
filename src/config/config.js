@@ -159,6 +159,12 @@ const config = {
     return getOptionalEnv("FREQUENT_PROGRAMS_API_PATH", "/frequentprograms");
   },
 
+  // Book & Finalize endpoint (trip.service.ts -> booking). One POST books every quote in the cart and
+  // answers with a per-quote bookingResponses[] ({ success, status, errorMsg, type }) plus hasError.
+  get bookingApiPath() {
+    return getOptionalEnv("BOOKING_API_PATH", "/booking");
+  },
+
   // Trip related-files upload response endpoint and download request endpoint.
   get tripFilesUploadApiPath() {
     return getOptionalEnv("TRIP_FILES_UPLOAD_API_PATH", "/TripFiles");

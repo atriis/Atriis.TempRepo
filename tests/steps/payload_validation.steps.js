@@ -566,28 +566,44 @@ Then(
     }
   );
 
+// Shared body of the two "should contain the JSON" steps. nullMatchesMissing lets an expected null
+// also be met by an absent key — for logs whose serializer drops null properties
+// (TransferzPay-by-creditcard omits refusalReason).
+async function verifyCapturedPayloadContainsJsonBlock(world, source, requestType, expectedJsonBlock, { nullMatchesMissing = false } = {}) {
+  await runPayloadValidationStep(world, "expectCapturedPayloadContainsJsonBlock", {
+    source,
+    requestType,
+  }, async () => {
+    const resolvedBlock = resolveWorldPlaceholders(expectedJsonBlock, world);
+    logger.info("Validating captured payload contains JSON with all key-value pairs", {
+      source,
+      requestType,
+      nullMatchesMissing,
+      expectedJsonLength: String(resolvedBlock || "").length,
+    });
+
+    await PayloadValidation.expectCapturedPayloadContainsJsonBlock(
+      world.page,
+      world,
+      source,
+      requestType,
+      resolvedBlock,
+      { nullMatchesMissing }
+    );
+  });
+}
+
+Then(
+  "the captured {string} payload for request type {string} should contain the JSON, where null also matches a missing key:",
+  async function (source, requestType, expectedJsonBlock) {
+    await verifyCapturedPayloadContainsJsonBlock(this, source, requestType, expectedJsonBlock, { nullMatchesMissing: true });
+  }
+);
+
 Then(
   "the captured {string} payload for request type {string} should contain the JSON:",
   async function (source, requestType, expectedJsonBlock) {
-    await runPayloadValidationStep(this, "expectCapturedPayloadContainsJsonBlock", {
-      source,
-      requestType,
-    }, async () => {
-      const resolvedBlock = resolveWorldPlaceholders(expectedJsonBlock, this);
-      logger.info("Validating captured payload contains JSON with all key-value pairs", {
-        source,
-        requestType,
-        expectedJsonLength: String(resolvedBlock || "").length,
-      });
-
-      await PayloadValidation.expectCapturedPayloadContainsJsonBlock(
-        this.page,
-        this,
-        source,
-        requestType,
-        resolvedBlock
-      );
-    });
+    await verifyCapturedPayloadContainsJsonBlock(this, source, requestType, expectedJsonBlock);
   }
 );
 

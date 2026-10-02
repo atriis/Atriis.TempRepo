@@ -4,6 +4,8 @@ const { CheckoutPage } = require("@pages/CheckoutPage");
 const { CartPage } = require("@pages/CartPage");
 const { CommonPage } = require("@pages/CommonPage");
 const BookingErrorHandler = require("@utils/bookingErrorHandler");
+const { readJson } = require("@utils/networkInterceptor");
+const config = require("@config/config");
 const { expectSumToBeEqualWithTolerance } = require("../assertions/numberAssertions");
 const logger = require("@utils/logger").child("Checkout-DSL");
 
@@ -23,6 +25,9 @@ const CONTACT_PHONE_FILL_TIMEOUT = 10000;
 // the clock can start before Squake has answered. 30s left no headroom for a slow third-party
 // round trip; 90s does, and a genuine Squake failure still fails - just with the diagnostic below.
 const SUMMARY_LINE_TIMEOUT = 90000;
+
+// The /booking capture is armed a step before Book & Finalize, whose step allows 180s.
+const BOOKING_RESPONSE_TIMEOUT = 240000;
 
 
 /**
@@ -285,6 +290,76 @@ const Checkout = {
       const normalizedExpectedErrorText = expectedErrorText.replace(/\s+/g, ' ').trim();
       expect(normalizedDialogText.toUpperCase()).toContain(normalizedExpectedErrorText.toUpperCase());
     }
+  },
+
+  /**
+   * Arms the network interceptor for the Book & Finalize POST /booking response. Call before the
+   * step that clicks Book & Finalize; pass the returned promise to verifyInterceptedBookingResponse.
+   * The wait outlives the 180s checkout step, and a no-op catch keeps a never-awaited timeout from
+   * surfacing as an unhandled rejection — awaiting the promise still rejects.
+   *
+   * @param {import('@playwright/test').Page} page
+   * @returns {Promise<import('@playwright/test').Response>}
+   */
+  startCapturingBookingResponse(page) {
+    if (!page) throw new Error('page is required');
+    logger.info('Setting up booking API response capture');
+    const responsePromise = getPageObject(page, CheckoutPage).captureBookingApiResponse({ timeout: BOOKING_RESPONSE_TIMEOUT });
+    responsePromise.catch(() => {});
+    return responsePromise;
+  },
+
+  /**
+   * Verifies the intercepted POST /booking response: the HTTP status, no trip-level error, and the
+   * bookingResponses[] entries of the given product type reported as successful with a PNR.
+   *
+   * @param {import('@playwright/test').Page} page
+   * @param {Promise<import('@playwright/test').Response>} responsePromise - from startCapturingBookingResponse
+   * @param {object} expected
+   * @param {number} expected.httpStatus - e.g. 200
+   * @param {string} expected.productType - bookingResponses[].type wire value, e.g. 'groundService' (Transferz)
+   * @returns {Promise<{httpStatus: number, quoteId: number, sourceSystem: string, pnr: string}>}
+   */
+  async verifyInterceptedBookingResponse(page, responsePromise, { httpStatus, productType }) {
+    if (!page) throw new Error('page is required');
+    if (!responsePromise) {
+      throw new Error('No booking response capture armed: run "I start intercepting the booking response" before booking');
+    }
+    if (!Number.isInteger(httpStatus)) throw new Error(`httpStatus must be an integer, got: ${httpStatus}`);
+    if (!productType || typeof productType !== 'string') throw new Error(`productType must be a non-empty string, got: ${typeof productType}`);
+
+    let response;
+    try {
+      response = await responsePromise;
+    } catch (err) {
+      throw new Error(`[Checkout.verifyInterceptedBookingResponse] No POST ${config.bookingApiPath} response was captured: ${err.message}`);
+    }
+
+    const body = await readJson(response);
+    const summary = JSON.stringify(body?.bookingResponses ?? body);
+    logger.info('Intercepted booking response', { httpStatus: response.status(), hasError: body?.hasError, bookingResponses: summary });
+
+    // Thrown errors rather than expect(): this repo's Playwright drops expect's custom message, and
+    // the response body is the whole point of the diagnostic.
+    const fail = (reason) => {
+      throw new Error(`[Checkout.verifyInterceptedBookingResponse] ${reason}. POST ${config.bookingApiPath} answered HTTP ${response.status()}, hasError=${body?.hasError}, bookingResponses: ${summary}`);
+    };
+
+    if (response.status() !== httpStatus) fail(`Expected HTTP ${httpStatus}`);
+    if (body?.hasError !== false) fail('Expected hasError to be false');
+
+    const quoteResponses = (Array.isArray(body?.bookingResponses) ? body.bookingResponses : [])
+      .filter((r) => String(r?.type).toLowerCase() === productType.toLowerCase());
+    if (quoteResponses.length === 0) fail(`No bookingResponses entry of type "${productType}"`);
+
+    // status is not asserted: a confirmed Transferz booking still answers status 0 here.
+    for (const quote of quoteResponses) {
+      if (quote.success !== true) fail(`"${productType}" quote ${quote.quoteId} was not booked successfully`);
+      if (!String(quote.pnr ?? '').trim()) fail(`"${productType}" quote ${quote.quoteId} returned no PNR`);
+    }
+
+    const [first] = quoteResponses;
+    return { httpStatus: response.status(), quoteId: first.quoteId, sourceSystem: first.sourceSystem, pnr: first.pnr };
   },
 
   /**

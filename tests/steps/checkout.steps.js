@@ -129,6 +129,21 @@ Then("a booking error message should be displayed", async function () {
   await Checkout.verifyBookingErrorMessage(this.page);
 });
 
+// Arms the network interceptor before Book & Finalize so the POST /booking answer is not missed.
+When("I start intercepting the booking response", function () {
+  logger.info("Starting booking API response capture");
+  this.bookingResponsePromise = Checkout.startCapturingBookingResponse(this.page);
+});
+
+Then(
+  "the intercepted booking response should be HTTP {int} with the {string} quote booked successfully",
+  async function (httpStatus, productType) {
+    logger.info("Verifying the intercepted booking response", { httpStatus, productType });
+    const result = await Checkout.verifyInterceptedBookingResponse(this.page, this.bookingResponsePromise, { httpStatus, productType });
+    logger.info("Intercepted booking response verified", result);
+  }
+);
+
 Then("the send for approval button should display the text {string}", async function (expectedText) {
   logger.info("Verifying the send for approval button text", { expectedText });
   await Checkout.verifySendForApprovalButtonText(this.page, expectedText);

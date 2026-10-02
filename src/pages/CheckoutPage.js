@@ -1,5 +1,7 @@
 const { waitForText } = require("@utils/wait");
 const { parseAmountText } = require("@utils/dom");
+const { getNetworkInterceptor } = require("@utils/networkInterceptor");
+const config = require("@config/config");
 
 /**
  * Page Object for checkout page.
@@ -368,6 +370,23 @@ class CheckoutPage {
    */
   async waitForBookingErrorDialog() {
     await this.getBookingErrorDialog().waitFor({ state: "visible", timeout: 60000 });
+  }
+
+  /**
+   * Sets up a listener for the next POST /booking response (Book & Finalize).
+   * Must be called BEFORE the action that triggers the API call.
+   * Matched on the pathname end so /bookingXxx routes stay out.
+   *
+   * Read the body with readJson (from @utils/networkInterceptor).
+   *
+   * @param {{timeout?: number}} [options]
+   * @returns {Promise<import('@playwright/test').Response>}
+   */
+  captureBookingApiResponse({ timeout } = {}) {
+    return getNetworkInterceptor(this.page).waitForResponse(
+      { pathnameEndsWith: config.bookingApiPath, method: 'POST', caseInsensitive: true },
+      { timeout },
+    );
   }
 
   /**
