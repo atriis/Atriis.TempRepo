@@ -279,6 +279,32 @@ Then("I should see the Evolvi round trip results page returned train results", a
   await EvolviResults.expectRoundTripResultsReturned(this.page);
 });
 
+// ===== Fare-type row order (AB#84258) =====
+//
+// Rows are sorted by each fare type's lowest outbound price; the departure-time columns are not.
+// The sort check covers blank cells, Anytime Return prices and ties in one read of the grid, since
+// which of those occur depends on the supplier's live inventory.
+
+When("I navigate back to Evolvi search via breadcrumb", async function () {
+  logger.info("Navigating back to the Evolvi search via the results breadcrumb");
+  await EvolviResults.navigateBackToSearchViaBreadcrumb(this.page);
+});
+
+Then("the Evolvi fare type rows should be sorted by lowest outbound price", async function () {
+  logger.info("Verifying the Evolvi fare-type rows are sorted by lowest outbound price");
+  await EvolviResults.expectFareGroupsSortedByLowestOutboundPrice(this.page);
+});
+
+Then("the Evolvi {word} departure times should be in chronological order", async function (direction) {
+  logger.info("Verifying the Evolvi journey departure times are chronological", { direction });
+  await EvolviResults.expectJourneyDepartureTimesChronological(this.page, direction);
+});
+
+Then("every Evolvi fare type row should show its outbound and inbound prices side by side", async function () {
+  logger.info("Verifying every Evolvi fare-type row carries both legs of the round trip");
+  await EvolviResults.expectFareGroupsCarryBothDirections(this.page);
+});
+
 // ===== Search-criteria check on the results grid (test 49309) =====
 //
 // One phrase covers both legs because the manual test states them together, and because the check

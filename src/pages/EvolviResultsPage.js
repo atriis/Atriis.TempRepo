@@ -104,6 +104,18 @@ const SELECTORS = {
   // set of plainly-titled fare types). Addressing a group by its title is what lets a scenario name
   // the fare it is testing instead of settling for "the cheapest one".
   FARE_GROUP_TITLE: ".results .main-rows > .title-cell .title",
+  // The groups themselves, in the order the grid renders them (AB#84258: ascending by each group's
+  // lowest outbound price). Read relative to a group: its title cell, every one of its price rows
+  // (collapsed rows are clipped, not removed) and, inside a cell, the app-price that carries the
+  // fare — a cell without one is blank/unavailable or an Anytime Return "Select Time" cell.
+  FARE_GROUP: ".results .main-rows",
+  // uk-rail-results.vue's breadcrumb — its router-link ("Search Parameter", "Search" on mobile)
+  // returns to the trip search page with the Evolvi product selected. Hidden while isLoading.
+  RESULTS_BREADCRUMB_SEARCH_LINK: ".uk-rail-page-layout .breadcrumbs a",
+  FARE_GROUP_TITLE_CELL: ":scope > .title-cell",
+  FARE_GROUP_TITLE_TEXT: ".title",
+  FARE_GROUP_PRICE_ROWS: ".price-row-container > .price-row",
+  PRICE_CELL_AMOUNT: ".app-price",
   FARE_GROUP_BY_TITLE: (title) => `.results .main-rows:has(> .title-cell .title:text-is("${title}"))`,
   // A group's first price row, for the reason FIRST_PRICE_ROW gives: a collapsed
   // .price-row-container is `max-height: 72px; overflow: hidden`, so only that row is genuinely
@@ -474,10 +486,10 @@ class EvolviResultsPage {
       await firstColumn.waitFor({ state: "visible", timeout });
     } catch (error) {
       throw new Error(
-        `[EvolviResultsPage.waitForFirstJourneyColumn] No journey column rendered for direction ` +
+        "[EvolviResultsPage.waitForFirstJourneyColumn] No journey column rendered for direction " +
           `index ${directionIndex} within ${timeout}ms. The Evolvi results grid is either still ` +
-          `loading, came back with no journeys for that leg, or — for an inbound read — the search ` +
-          `was not a round trip, so the inbound .data-section is never shown. ` +
+          "loading, came back with no journeys for that leg, or — for an inbound read — the search " +
+          "was not a round trip, so the inbound .data-section is never shown. " +
           `Original: ${error.message}`,
       );
     }
@@ -691,6 +703,70 @@ class EvolviResultsPage {
   }
 
   /**
+   * Reads the whole price grid as raw text, one entry per fare-type group in grid order.
+   *
+   * Every price row of a group is read, not just the first: a collapsed .price-row-container only
+   * clips its later rows (overflow: hidden), it does not drop them from the DOM, and a group's
+   * lowest fare can sit in any of them. A cell with no .app-price — a blank/unavailable journey, an
+   * .is-invisible padding cell, or an Anytime Return inbound "Select Time" cell — reads as null, so
+   * a blank is never mistaken for a zero price downstream.
+   *
+   * @param {number} [timeout=90000] - Wait for the grid's first group to render
+   * @returns {Promise<Array<{title: string, rows: Array<Array<string|null>>}>>} Each row holds the
+   *   10 grid cells in DOM order (0-4 outbound, 5-9 inbound)
+   */
+  async readFareGroupPriceTexts(timeout = 90000) {
+    const groups = this.page.locator(SELECTORS.FARE_GROUP);
+    await groups.first().waitFor({ state: "attached", timeout });
+    return groups.evaluateAll(
+      (elements, selectors) =>
+        elements.map((group) => {
+          // SplitTix groups print their title as a link instead of p.title — fall back to the
+          // whole title cell so every group still carries a readable name.
+          const titleCell = group.querySelector(selectors.titleCell);
+          const titleElement = titleCell?.querySelector(selectors.title) ?? titleCell;
+          return {
+            title: (titleElement?.textContent ?? "").replace(/\s+/g, " ").trim(),
+            rows: Array.from(group.querySelectorAll(selectors.priceRow)).map((row) =>
+              Array.from(row.querySelectorAll(selectors.priceCell)).map((cell) => {
+                const text = (cell.querySelector(selectors.price)?.textContent ?? "").replace(/\s+/g, " ").trim();
+                return text || null;
+              }),
+            ),
+          };
+        }),
+      {
+        titleCell: SELECTORS.FARE_GROUP_TITLE_CELL,
+        title: SELECTORS.FARE_GROUP_TITLE_TEXT,
+        priceRow: SELECTORS.FARE_GROUP_PRICE_ROWS,
+        priceCell: `:scope > ${SELECTORS.PRICE_CELL}`,
+        price: SELECTORS.PRICE_CELL_AMOUNT,
+      },
+    );
+  }
+
+  /**
+   * Clicks the results breadcrumb's "Search Parameter" link and waits until the price grid is gone,
+   * i.e. the router actually left the results view rather than swallowing the click.
+   * @param {number} [timeout=30000]
+   */
+  async clickBreadcrumbSearchLink(timeout = 30000) {
+    const link = this.page.locator(SELECTORS.RESULTS_BREADCRUMB_SEARCH_LINK).first();
+    try {
+      await link.waitFor({ state: "visible", timeout });
+      await link.click();
+      await this.page.locator(SELECTORS.FARE_GROUP).first().waitFor({ state: "detached", timeout });
+    } catch (err) {
+      throw new Error(
+        "[EvolviResultsPage.clickBreadcrumbSearchLink] Could not navigate back to the search page through the " +
+          `results breadcrumb (selector: "${SELECTORS.RESULTS_BREADCRUMB_SEARCH_LINK}"). Likely causes: the ` +
+          "Evolvi results are still loading (the breadcrumb is hidden while isLoading), or the run is not on the " +
+          `Evolvi results page. Original: ${err.message}`,
+      );
+    }
+  }
+
+  /**
    * Clicks the first selectable OUTBOUND price of one named fare group.
    *
    * The outbound half of a group's first price row is scanned rather than a caller-chosen column:
@@ -711,7 +787,7 @@ class EvolviResultsPage {
       await option.waitFor({ state: "visible", timeout });
     } catch (err) {
       throw new Error(
-        `[EvolviResultsPage.clickFirstOutboundPriceInFareGroup] No selectable outbound price is on screen in the ` +
+        "[EvolviResultsPage.clickFirstOutboundPriceInFareGroup] No selectable outbound price is on screen in the " +
         `"${groupTitle}" fare group within ${timeout}ms. The grid offers these groups: ` +
         `${JSON.stringify(await this.listFareGroupTitles())}. Either that fare type was not returned for this ` +
         `route, or every one of its outbound fares is cancelled/company-disabled. Original: ${err.message}`,
@@ -744,10 +820,10 @@ class EvolviResultsPage {
       await option.waitFor({ state: "visible", timeout });
     } catch (err) {
       throw new Error(
-        `[EvolviResultsPage.clickInboundSelectTimeInFareGroup] No clickable "Select Time" cell appeared in the ` +
+        "[EvolviResultsPage.clickInboundSelectTimeInFareGroup] No clickable \"Select Time\" cell appeared in the " +
         `inbound half of the "${groupTitle}" fare group within ${timeout}ms. The grid offers these groups: ` +
         `${JSON.stringify(await this.listFareGroupTitles())}. Either that group is not an Anytime Return fare ` +
-        `(only those render "Select Time"), or its matching outbound fare was never selected — the inbound ` +
+        "(only those render \"Select Time\"), or its matching outbound fare was never selected — the inbound " +
         `cells stay disabled until it is. Original: ${err.message}`,
       );
     }

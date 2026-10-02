@@ -5,6 +5,7 @@ const Results = require("./Results");
 // Only for the generic open-drawer read/close (ANY_VISIBLE_DRAWER) — the fare-rules drawer the
 // results grid opens is the very same drawer the quote card opens, so there is one implementation.
 const Cart = require("./Cart");
+const { parseAmountText } = require("@utils/dom");
 const logger = require("@utils/logger").child("EvolviResults");
 
 /**
@@ -91,6 +92,64 @@ function toMinutesOfDay(methodName, argumentName, value) {
     );
   }
   return hours * 60 + minutes;
+}
+
+/**
+ * Reads every journey column's departure time of one direction, as displayed and as minutes past
+ * midnight. Shared by the assertions that check where the window starts and that it stays in order.
+ *
+ * @param {EvolviResultsPage} resultsPage
+ * @param {string} methodName - Calling DSL method, for error context
+ * @param {{label: string, sectionIndex: number, columnCount: number}} direction
+ * @returns {Promise<{times: string[], minutes: number[]}>}
+ */
+async function readJourneyDepartureTimes(resultsPage, methodName, { label, sectionIndex, columnCount }) {
+  const times = [];
+  for (let columnIndex = 0; columnIndex < columnCount; columnIndex += 1) {
+    times.push(await resultsPage.getJourneyDepartureTimeText(sectionIndex, columnIndex));
+  }
+  const minutes = times.map((time, columnIndex) =>
+    toMinutesOfDay(methodName, `${label} journey ${columnIndex + 1} departure time`, time),
+  );
+  return { times, minutes };
+}
+
+/**
+ * The grid always renders 10 cells per price row, shared by both legs (isOutboundCell: 0-4
+ * outbound, 5-9 inbound).
+ */
+const GRID_CELLS_PER_ROW = 10;
+const OUTBOUND_CELLS_PER_ROW = 5;
+
+/**
+ * Turns one fare-type group's raw grid text into its AB#84258 sort key: the lowest non-blank
+ * OUTBOUND price across every price row of the group, plus the journey column that price sits in
+ * (columns run in departure order, so the lower column is the earlier departure — the tie-break).
+ * Blank cells arrive as null and are skipped, never read as 0. An Anytime Return group needs no
+ * special case: its outbound cells carry the stated combined price, and only its inbound cells
+ * render "Select Time" (null here).
+ *
+ * @param {{title: string, rows: Array<Array<string|null>>}} group - One group from readFareGroupPriceTexts
+ * @returns {{title: string, lowestPrice: number|null, column: number|null, blankOutboundCells: number}}
+ */
+function toFareGroupSortKey(group) {
+  let lowestPrice = null;
+  let column = null;
+  let blankOutboundCells = 0;
+  group.rows.forEach((row) => {
+    row.slice(0, OUTBOUND_CELLS_PER_ROW).forEach((text, columnIndex) => {
+      if (text === null) {
+        blankOutboundCells += 1;
+        return;
+      }
+      const price = parseAmountText(text, `"${group.title}" outbound price (column ${columnIndex + 1})`);
+      if (lowestPrice === null || price < lowestPrice || (price === lowestPrice && columnIndex < column)) {
+        lowestPrice = price;
+        column = columnIndex;
+      }
+    });
+  });
+  return { title: group.title, lowestPrice, column, blankOutboundCells };
 }
 
 /**
@@ -453,7 +512,7 @@ const EvolviResults = {
    * @param {string} title - The group title the icon sits next to
    */
   async openSplitTicketInfoDialog(page, title) {
-    if (!page) throw new Error('[EvolviResults.openSplitTicketInfoDialog] "page" is required.');
+    if (!page) throw new Error("[EvolviResults.openSplitTicketInfoDialog] \"page\" is required.");
     const resultsPage = getPageObject(page, EvolviResultsPage);
 
     logger.info("[EvolviResults.openSplitTicketInfoDialog] Opening the SplitTix info dialog", { title });
@@ -470,7 +529,7 @@ const EvolviResults = {
    * @returns {Promise<string>} The dialog text that was read
    */
   async expectSplitTicketInfoDialogMessageAndClose(page, expectedMessage) {
-    if (!page) throw new Error('[EvolviResults.expectSplitTicketInfoDialogMessageAndClose] "page" is required.');
+    if (!page) throw new Error("[EvolviResults.expectSplitTicketInfoDialogMessageAndClose] \"page\" is required.");
     if (!expectedMessage || typeof expectedMessage !== "string") {
       throw new Error(
         `[EvolviResults.expectSplitTicketInfoDialogMessageAndClose] "expectedMessage" must be a non-empty string, got: ${expectedMessage}`,
@@ -486,7 +545,7 @@ const EvolviResults = {
 
     expect(
       dialogText,
-      'The "Save with SplitTix" dialog should explain what split ticketing is.',
+      "The \"Save with SplitTix\" dialog should explain what split ticketing is.",
     ).toContain(expectedMessage);
 
     await resultsPage.closeSplitTicketDialog();
@@ -500,7 +559,7 @@ const EvolviResults = {
    * @param {import('playwright').Page} page
    */
   async hoverFirstBlueSplitTicketFare(page) {
-    if (!page) throw new Error('[EvolviResults.hoverFirstBlueSplitTicketFare] "page" is required.');
+    if (!page) throw new Error("[EvolviResults.hoverFirstBlueSplitTicketFare] \"page\" is required.");
     const resultsPage = getPageObject(page, EvolviResultsPage);
 
     logger.info("[EvolviResults.hoverFirstBlueSplitTicketFare] Hovering the first blue SplitTix fare");
@@ -521,7 +580,7 @@ const EvolviResults = {
    * @returns {Promise<string>} The tooltip info text that was read
    */
   async expectBlueSplitTicketFareTooltipContains(page, expectedText) {
-    if (!page) throw new Error('[EvolviResults.expectBlueSplitTicketFareTooltipContains] "page" is required.');
+    if (!page) throw new Error("[EvolviResults.expectBlueSplitTicketFareTooltipContains] \"page\" is required.");
     if (!expectedText || typeof expectedText !== "string") {
       throw new Error(
         `[EvolviResults.expectBlueSplitTicketFareTooltipContains] "expectedText" must be a non-empty string, got: ${expectedText}`,
@@ -559,7 +618,7 @@ const EvolviResults = {
    * @returns {Promise<{verified: boolean}>}
    */
   async verifyFareRulesFromFirstResultContainsText(page, expectedText) {
-    if (!page) throw new Error('[EvolviResults.verifyFareRulesFromFirstResultContainsText] "page" is required.');
+    if (!page) throw new Error("[EvolviResults.verifyFareRulesFromFirstResultContainsText] \"page\" is required.");
     if (!expectedText || typeof expectedText !== "string") {
       throw new Error(
         `[EvolviResults.verifyFareRulesFromFirstResultContainsText] "expectedText" must be a non-empty string, got: ${expectedText}`,
@@ -584,7 +643,7 @@ const EvolviResults = {
    * @param {import('playwright').Page} page
    */
   async selectAndAddFirstBlueSplitTicketFareToTrip(page) {
-    if (!page) throw new Error('[EvolviResults.selectAndAddFirstBlueSplitTicketFareToTrip] "page" is required.');
+    if (!page) throw new Error("[EvolviResults.selectAndAddFirstBlueSplitTicketFareToTrip] \"page\" is required.");
     const resultsPage = getPageObject(page, EvolviResultsPage);
 
     logger.info(
@@ -605,7 +664,7 @@ const EvolviResults = {
    * @returns {Promise<{hovered: boolean}>}
    */
   async hoverGreenestSuggestedFare(page) {
-    if (!page) throw new Error('[EvolviResults.hoverGreenestSuggestedFare] "page" is required.');
+    if (!page) throw new Error("[EvolviResults.hoverGreenestSuggestedFare] \"page\" is required.");
     const resultsPage = getPageObject(page, EvolviResultsPage);
 
     logger.info("[EvolviResults.hoverGreenestSuggestedFare] Hovering the greenest suggested Evolvi fare");
@@ -627,7 +686,7 @@ const EvolviResults = {
    * @returns {Promise<string>} The tooltip text that was read
    */
   async expectGreenestFareTooltipContains(page, expectedText) {
-    if (!page) throw new Error('[EvolviResults.expectGreenestFareTooltipContains] "page" is required.');
+    if (!page) throw new Error("[EvolviResults.expectGreenestFareTooltipContains] \"page\" is required.");
     if (!expectedText || typeof expectedText !== "string") {
       throw new Error(
         `[EvolviResults.expectGreenestFareTooltipContains] "expectedText" must be a non-empty string, got: ${expectedText}`,
@@ -660,7 +719,7 @@ const EvolviResults = {
    * @returns {Promise<{selected: boolean}>}
    */
   async selectGreenestFare(page) {
-    if (!page) throw new Error('[EvolviResults.selectGreenestFare] "page" is required.');
+    if (!page) throw new Error("[EvolviResults.selectGreenestFare] \"page\" is required.");
     const resultsPage = getPageObject(page, EvolviResultsPage);
 
     logger.info("[EvolviResults.selectGreenestFare] Selecting the greenest suggested Evolvi fare");
@@ -680,7 +739,7 @@ const EvolviResults = {
    * @returns {Promise<number>}
    */
   async extractSelectedFareTotalPrice(page) {
-    if (!page) throw new Error('[EvolviResults.extractSelectedFareTotalPrice] "page" is required.');
+    if (!page) throw new Error("[EvolviResults.extractSelectedFareTotalPrice] \"page\" is required.");
     const resultsPage = getPageObject(page, EvolviResultsPage);
 
     logger.debug(
@@ -712,7 +771,7 @@ const EvolviResults = {
    * @returns {Promise<string>} The label that was read
    */
   async expectJourneyStopsLabel(page, direction, columnIndex, expectedLabel) {
-    if (!page) throw new Error('[EvolviResults.expectJourneyStopsLabel] "page" is required.');
+    if (!page) throw new Error("[EvolviResults.expectJourneyStopsLabel] \"page\" is required.");
     if (!Number.isInteger(columnIndex) || columnIndex < 0) {
       throw new Error(
         `[EvolviResults.expectJourneyStopsLabel] "columnIndex" must be a non-negative integer, got: ${columnIndex}`,
@@ -772,7 +831,7 @@ const EvolviResults = {
     expectedTime,
     { toleranceMinutes = JOURNEY_START_TOLERANCE_MINUTES } = {},
   ) {
-    if (!page) throw new Error('[EvolviResults.expectJourneyTimesStartAt] "page" is required.');
+    if (!page) throw new Error("[EvolviResults.expectJourneyTimesStartAt] \"page\" is required.");
     const { label, sectionIndex } = resolveDirection("expectJourneyTimesStartAt", direction);
     const expectedMinutes = toMinutesOfDay("expectJourneyTimesStartAt", "expectedTime", expectedTime);
     if (!Number.isInteger(toleranceMinutes) || toleranceMinutes <= 0) {
@@ -798,13 +857,11 @@ const EvolviResults = {
       );
     }
 
-    const times = [];
-    for (let columnIndex = 0; columnIndex < columnCount; columnIndex += 1) {
-      times.push(await resultsPage.getJourneyDepartureTimeText(sectionIndex, columnIndex));
-    }
-    const minutes = times.map((time, columnIndex) =>
-      toMinutesOfDay("expectJourneyTimesStartAt", `${label} journey ${columnIndex + 1} departure time`, time),
-    );
+    const { times, minutes } = await readJourneyDepartureTimes(resultsPage, "expectJourneyTimesStartAt", {
+      label,
+      sectionIndex,
+      columnCount,
+    });
 
     const earliestMinutes = Math.min(...minutes);
     const firstDepartureTime = times[minutes.indexOf(earliestMinutes)];
@@ -836,6 +893,177 @@ const EvolviResults = {
   },
 
   /**
+   * AB#84258: asserts the fare-type groups of the price grid are ordered from the lowest to the
+   * highest outbound price.
+   *
+   * Each group's sort value is its lowest non-blank outbound price (blank cells are skipped, never
+   * treated as zero; an Anytime Return group's outbound cells already carry its combined price).
+   * Groups sharing the same sort value must be ordered by the earlier departure column. Groups with
+   * no outbound price at all (an inbound-only fare type on a round trip) have no sort value under
+   * the story's rules, so they are left out of the comparison and logged.
+   *
+   * Which of those cases actually occur depends on the supplier's live inventory, so the method
+   * reports what it saw (ties, blank cells, Anytime Return groups) instead of requiring them.
+   *
+   * @param {import('playwright').Page} page
+   * @returns {Promise<{order: Array<object>, ties: number, groupsWithBlanks: number, unpricedGroups: string[]}>}
+   */
+  async expectFareGroupsSortedByLowestOutboundPrice(page) {
+    if (!page) throw new Error("[EvolviResults.expectFareGroupsSortedByLowestOutboundPrice] \"page\" is required.");
+    const resultsPage = getPageObject(page, EvolviResultsPage);
+
+    const groups = await resultsPage.readFareGroupPriceTexts();
+    if (groups.length === 0) {
+      throw new Error(
+        "[EvolviResults.expectFareGroupsSortedByLowestOutboundPrice] The Evolvi price grid rendered no fare-type " +
+          "groups, so there is no row order to check.",
+      );
+    }
+
+    const keys = groups.map(toFareGroupSortKey);
+    const order = keys.filter((key) => key.lowestPrice !== null);
+    const unpricedGroups = keys.filter((key) => key.lowestPrice === null).map((key) => key.title);
+    const describe = (key) => `"${key.title}" ${key.lowestPrice} (column ${key.column + 1})`;
+
+    const violations = [];
+    let ties = 0;
+    for (let index = 1; index < order.length; index += 1) {
+      const previous = order[index - 1];
+      const current = order[index];
+      if (current.lowestPrice === previous.lowestPrice) {
+        ties += 1;
+        if (current.column < previous.column) {
+          violations.push(`${describe(previous)} is tied with but listed before the earlier departure ${describe(current)}`);
+        }
+      } else if (current.lowestPrice < previous.lowestPrice) {
+        violations.push(`${describe(previous)} is listed before the cheaper ${describe(current)}`);
+      }
+    }
+
+    const summary = {
+      order: order.map(({ title, lowestPrice, column }) => ({ title, lowestPrice, column: column + 1 })),
+      ties,
+      groupsWithBlanks: order.filter((key) => key.blankOutboundCells > 0).length,
+      anytimeReturnGroups: order.filter((key) => /anytime return/i.test(key.title)).map((key) => key.title),
+      unpricedGroups,
+    };
+    logger.info("[EvolviResults.expectFareGroupsSortedByLowestOutboundPrice] Read the fare-type row order", summary);
+
+    if (order.length < 2) {
+      logger.warn(
+        "[EvolviResults.expectFareGroupsSortedByLowestOutboundPrice] Fewer than two priced fare-type groups were " +
+          "returned, so the row order is trivially sorted.",
+        { groups: keys.map((key) => key.title) },
+      );
+    }
+
+    if (violations.length > 0) {
+      throw new Error(
+        "[EvolviResults.expectFareGroupsSortedByLowestOutboundPrice] The Evolvi fare-type rows are not ordered by " +
+          `their lowest outbound price: ${violations.join("; ")}. Grid order read: ${order.map(describe).join(", ")}.`,
+      );
+    }
+
+    return summary;
+  },
+
+  /**
+   * Navigates from the Evolvi results back to the trip search page through the results
+   * breadcrumb, so a new search can be run in the same trip.
+   *
+   * @param {import('playwright').Page} page
+   * @returns {Promise<{navigated: true}>}
+   */
+  async navigateBackToSearchViaBreadcrumb(page) {
+    if (!page) throw new Error("[EvolviResults.navigateBackToSearchViaBreadcrumb] \"page\" is required.");
+    const resultsPage = getPageObject(page, EvolviResultsPage);
+    await resultsPage.clickBreadcrumbSearchLink();
+    return { navigated: true };
+  },
+
+  /**
+   * Asserts one direction's journey columns run in chronological departure order. AB#84258 sorts
+   * the fare-type ROWS by price; the departure-time COLUMNS must stay untouched.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} direction - "outbound" or "inbound"
+   * @returns {Promise<{direction: string, times: string[]}>}
+   */
+  async expectJourneyDepartureTimesChronological(page, direction) {
+    if (!page) throw new Error("[EvolviResults.expectJourneyDepartureTimesChronological] \"page\" is required.");
+    const { label, sectionIndex } = resolveDirection("expectJourneyDepartureTimesChronological", direction);
+    const resultsPage = getPageObject(page, EvolviResultsPage);
+
+    await resultsPage.waitForFirstJourneyColumn(sectionIndex);
+    const columnCount = await resultsPage.getJourneyColumnCount(sectionIndex);
+
+    const { times, minutes } = await readJourneyDepartureTimes(
+      resultsPage,
+      "expectJourneyDepartureTimesChronological",
+      { label, sectionIndex, columnCount },
+    );
+    logger.info("[EvolviResults.expectJourneyDepartureTimesChronological] Read the journey departure times", {
+      direction,
+      times,
+    });
+
+    const outOfOrder = minutes.findIndex((value, index) => index > 0 && value < minutes[index - 1]);
+    if (outOfOrder !== -1) {
+      throw new Error(
+        `[EvolviResults.expectJourneyDepartureTimesChronological] The ${label} journey columns should stay in ` +
+          `chronological order, but ${times[outOfOrder]} (column ${outOfOrder + 1}) follows ` +
+          `${times[outOfOrder - 1]}. Departure times read: ${times.join(", ")}.`,
+      );
+    }
+
+    return { direction, times };
+  },
+
+  /**
+   * AB#84258: asserts the round-trip grid keeps both legs in one table — every price row of every
+   * fare-type group spans the full outbound + inbound width, so sorting rows by outbound price
+   * carries the inbound prices with them (there is no separately ordered inbound table). Also
+   * requires at least one priced inbound cell, so a one-way grid cannot pass as a round trip.
+   *
+   * @param {import('playwright').Page} page
+   * @returns {Promise<{groups: number, pricedInboundCells: number}>}
+   */
+  async expectFareGroupsCarryBothDirections(page) {
+    if (!page) throw new Error("[EvolviResults.expectFareGroupsCarryBothDirections] \"page\" is required.");
+    const resultsPage = getPageObject(page, EvolviResultsPage);
+
+    const groups = await resultsPage.readFareGroupPriceTexts();
+    const narrowRows = groups.flatMap((group) =>
+      group.rows
+        .map((row, rowIndex) => ({ title: group.title, rowIndex, cells: row.length }))
+        .filter((row) => row.cells !== GRID_CELLS_PER_ROW),
+    );
+    const pricedInboundCells = groups
+      .flatMap((group) => group.rows.flatMap((row) => row.slice(OUTBOUND_CELLS_PER_ROW)))
+      .filter((text) => text !== null).length;
+    logger.info("[EvolviResults.expectFareGroupsCarryBothDirections] Read the round-trip grid shape", {
+      groups: groups.length,
+      pricedInboundCells,
+    });
+
+    if (groups.length === 0 || narrowRows.length > 0) {
+      throw new Error(
+        "[EvolviResults.expectFareGroupsCarryBothDirections] Every fare-type row should show its outbound and " +
+          `inbound prices side by side (${GRID_CELLS_PER_ROW} cells), but the grid rendered ` +
+          `${groups.length === 0 ? "no fare-type groups" : `rows of a different width: ${JSON.stringify(narrowRows)}`}.`,
+      );
+    }
+    if (pricedInboundCells === 0) {
+      throw new Error(
+        "[EvolviResults.expectFareGroupsCarryBothDirections] No fare-type row shows an inbound price, so the grid " +
+          "is not showing both legs of the round trip side by side.",
+      );
+    }
+
+    return { groups: groups.length, pricedInboundCells };
+  },
+
+  /**
    * Opens the "More Details" dialog of one journey column of a direction.
    *
    * @param {import('playwright').Page} page
@@ -844,7 +1072,7 @@ const EvolviResults = {
    * @returns {Promise<{opened: true}>}
    */
   async openJourneyDetails(page, direction, columnIndex) {
-    if (!page) throw new Error('[EvolviResults.openJourneyDetails] "page" is required.');
+    if (!page) throw new Error("[EvolviResults.openJourneyDetails] \"page\" is required.");
     if (!Number.isInteger(columnIndex) || columnIndex < 0) {
       throw new Error(
         `[EvolviResults.openJourneyDetails] "columnIndex" must be a non-negative integer, got: ${columnIndex}`,
@@ -881,7 +1109,7 @@ const EvolviResults = {
    * @returns {Promise<string[]>} The station names that were read, in travel order
    */
   async expectJourneyDetailsStations(page, expectedDeparture, expectedArrival) {
-    if (!page) throw new Error('[EvolviResults.expectJourneyDetailsStations] "page" is required.');
+    if (!page) throw new Error("[EvolviResults.expectJourneyDetailsStations] \"page\" is required.");
     if (!expectedDeparture || typeof expectedDeparture !== "string") {
       throw new Error(
         `[EvolviResults.expectJourneyDetailsStations] "expectedDeparture" must be a non-empty string, got: ${expectedDeparture}`,
@@ -915,13 +1143,13 @@ const EvolviResults = {
     // the searched city plus its station qualifier (e.g. "Leeds", "Doncaster Rail Station").
     if (!departure.includes(expectedDeparture)) {
       throw new Error(
-        `[EvolviResults.expectJourneyDetailsStations] Expected the first row of the journey details to be the ` +
+        "[EvolviResults.expectJourneyDetailsStations] Expected the first row of the journey details to be the " +
           `departure station "${expectedDeparture}", but it reads "${departure}" (full list: ${stations.join(" -> ")}).`,
       );
     }
     if (!arrival.includes(expectedArrival)) {
       throw new Error(
-        `[EvolviResults.expectJourneyDetailsStations] Expected the last row of the journey details to be the ` +
+        "[EvolviResults.expectJourneyDetailsStations] Expected the last row of the journey details to be the " +
           `arrival station "${expectedArrival}", but it reads "${arrival}" (full list: ${stations.join(" -> ")}).`,
       );
     }
@@ -938,7 +1166,7 @@ const EvolviResults = {
    * @returns {Promise<string>} The travel mode that was read
    */
   async expectJourneyDetailsTravelMode(page, expectedMode) {
-    if (!page) throw new Error('[EvolviResults.expectJourneyDetailsTravelMode] "page" is required.');
+    if (!page) throw new Error("[EvolviResults.expectJourneyDetailsTravelMode] \"page\" is required.");
     if (!expectedMode || typeof expectedMode !== "string") {
       throw new Error(
         `[EvolviResults.expectJourneyDetailsTravelMode] "expectedMode" must be a non-empty string, got: ${expectedMode}`,
@@ -956,7 +1184,7 @@ const EvolviResults = {
 
     if (actualMode.toUpperCase() !== expectedMode.toUpperCase()) {
       throw new Error(
-        `[EvolviResults.expectJourneyDetailsTravelMode] Expected the travel mode of the first journey details row ` +
+        "[EvolviResults.expectJourneyDetailsTravelMode] Expected the travel mode of the first journey details row " +
           `to be "${expectedMode}", but it reads "${actualMode}" — the Transport column is the supplier's ` +
           "trainServiceType, so an empty value means this row is not a change station.",
       );
