@@ -697,6 +697,7 @@ const SELECTORS = {
   BAGGAGE_CLICKABLE: '.flight-baggage .is-clickable',
   BAGGAGE_SAVE_BUTTON: '.flight-baggage .no-border',
   BAGGAGE_TRAVELER_TAB: '.flight-baggage .flight-cart-tabs .el-tabs__item:visible',
+  BAGGAGE_ACTIVE_TRAVELER_TAB: ".flight-baggage .flight-cart-tabs .el-tabs__item.is-active:visible",
   GREEN_ICON_BAGGAGE: ".flight-baggage .material-symbols-outlined.filled.success-icon.green",  // Green icon next to added baggage
   GREEN_ICON_BAGGAGE_VISIBLE: ".flight-baggage .material-symbols-outlined.filled.success-icon.green:visible", // Same icon, scoped to the currently visible instance (multiple hidden duplicates can exist, e.g. responsive layouts)
   BAGGAGE_SELECTED_TAG: '.flight-baggage .el-tab-pane:visible .el-tag',
@@ -704,6 +705,7 @@ const SELECTORS = {
   BAGGAGE_EXTRAS_CARD: '.flight-baggage .extras-card:visible', // Visible only when the baggage panel is expanded
   BAGGAGE_SEGMENT_ROW: '.flight-baggage .el-tab-pane:visible .segment', // One row per flight direction (idx 0 = outbound, idx 1 = inbound)
   BAGGAGE_SEGMENT_SELECT_TRIGGER: '.el-select__wrapper', // Sub-selector — clicked relative to a segment row to open its dropdown
+  BAGGAGE_SEGMENT_ROUTE: ".rout", // Sub-selector — the "LHR - GRZ" route label of a segment row (flight-baggage.vue)
   BAGGAGE_DROPDOWN_PANEL: '.el-select-dropdown:visible', // Visible Element-Plus popper containing the segment dropdown options
   BAGGAGE_DROPDOWN_ENABLED_OPTION: '.el-select-dropdown__item:not(.is-disabled)', // Enabled (selectable) option inside a baggage dropdown panel
   BAGGAGE_SEGMENT_CARRIER_NAME: '.flight-baggage .el-tab-pane:visible .form-date-section > :nth-child(1) .carrier-name', // Carrier name in the first baggage segment row (flight-baggage.vue)
@@ -5477,6 +5479,45 @@ class CartPage {
   async getVisibleBaggageSelectedTagCount(timeout = 10000) {
     await this.page.locator(SELECTORS.BAGGAGE_SAVE_BUTTON).first().waitFor({ state: 'visible', timeout });
     return this.page.locator(SELECTORS.BAGGAGE_SELECTED_TAG).count();
+  }
+
+  /**
+   * Reads the traveller names on the baggage panel tabs, in display order.
+   * @returns {Promise<string[]>}
+   */
+  async getBaggageTravelerTabNames() {
+    const names = await this.page.locator(SELECTORS.BAGGAGE_TRAVELER_TAB).allInnerTexts();
+    return names.map((name) => name.trim());
+  }
+
+  /**
+   * Waits until the baggage traveller tab with this name is the active one.
+   * @param {string} travelerName - The tab label, as read by getBaggageTravelerTabNames
+   * @param {number} [timeout=10000]
+   */
+  async waitForActiveBaggageTravelerTab(travelerName, timeout = 10000) {
+    await this.page.locator(SELECTORS.BAGGAGE_ACTIVE_TRAVELER_TAB).filter({ hasText: travelerName })
+      .waitFor({ state: "visible", timeout });
+  }
+
+  /**
+   * Reads the flight rows of the active baggage traveller tab: each row's route label and
+   * whether it renders a baggage dropdown.
+   * @returns {Promise<Array<{route: string|null, hasSelect: boolean}>>}
+   */
+  async getVisibleBaggageSegments() {
+    const rows = this.page.locator(SELECTORS.BAGGAGE_SEGMENT_ROW);
+    const rowCount = await rows.count();
+    const segments = [];
+    for (let i = 0; i < rowCount; i++) {
+      const row = rows.nth(i);
+      const routeEl = row.locator(SELECTORS.BAGGAGE_SEGMENT_ROUTE);
+      segments.push({
+        route: (await routeEl.count()) > 0 ? (await routeEl.first().innerText()).trim() : null,
+        hasSelect: (await row.locator(SELECTORS.BAGGAGE_SEGMENT_SELECT_TRIGGER).count()) > 0,
+      });
+    }
+    return segments;
   }
 
   /**

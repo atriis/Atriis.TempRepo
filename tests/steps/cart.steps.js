@@ -518,6 +518,25 @@ When("I add baggage for outbound and return segments", { timeout: BAGGAGE_EXTRAS
   await Cart.addBaggageForAllSegments(this.page);
 });
 
+Then(
+  "the baggage selection should show the {string} and {string} flights for each of the {int} travelers",
+  { timeout: BAGGAGE_EXTRAS_STEP_TIMEOUT_MS },
+  async function (outboundRoute, returnRoute, travelerCount) {
+    logger.info("Verifying every traveler has a baggage selection for both flights", { outboundRoute, returnRoute, travelerCount });
+    await Cart.verifyBaggageFlightsForEveryTraveler(this.page, [outboundRoute, returnRoute], travelerCount);
+  },
+);
+
+When("I select a baggage option for every flight of every traveler", { timeout: BAGGAGE_EXTRAS_STEP_TIMEOUT_MS }, async function () {
+  logger.info("Selecting baggage for every flight of every traveler");
+  await Cart.selectBaggageForEveryFlightOfEveryTraveler(this.page);
+});
+
+Then("every traveler should keep the baggage selected for each flight", { timeout: BAGGAGE_EXTRAS_STEP_TIMEOUT_MS }, async function () {
+  logger.info("Verifying the saved baggage of every traveler");
+  await Cart.verifyBaggageSavedForEveryFlightOfEveryTraveler(this.page);
+});
+
 // Opens the baggage panel itself when it is not already expanded, so it inherits the
 // same slow-ancillaries wait as "I click to edit the baggage extras section".
 When("I select the {string} baggage option for the {string} flight", { timeout: BAGGAGE_EXTRAS_STEP_TIMEOUT_MS }, async function (optionText, direction) {

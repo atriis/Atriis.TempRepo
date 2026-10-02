@@ -11896,6 +11896,127 @@ const Cart = {
   },
 
   /**
+   * Opens the baggage panel if needed and calls visit(travelerName) once per traveller tab,
+   * with that tab active.
+   * @param {import('playwright').Page} page
+   * @param {(travelerName: string) => Promise<void>} visit
+   * @returns {Promise<string[]>} The traveller tab names, in display order
+   */
+  async visitEveryBaggageTraveler(page, visit) {
+    await this.openBaggageExtras(page);
+    const cartPage = getPageObject(page, CartPage);
+    const travelerNames = await cartPage.getBaggageTravelerTabNames();
+    for (let i = 0; i < travelerNames.length; i++) {
+      await cartPage.clickBaggageTravelerTabByIndex(i + 1);
+      await cartPage.waitForActiveBaggageTravelerTab(travelerNames[i]);
+      await visit(travelerNames[i]);
+    }
+    return travelerNames;
+  },
+
+  /**
+   * Bug 69684: with several travellers, every traveller's baggage tab must offer a baggage
+   * selection for every flight of the quote, not only the first one.
+   * @param {import('playwright').Page} page
+   * @param {string[]} expectedRoutes - The flight rows each tab must show, in order (e.g. ["LHR - GRZ", "GRZ - LHR"])
+   * @param {number} travelerCount - How many traveller tabs the panel must have
+   * @returns {Promise<{travelers: string[], routes: string[]}>}
+   */
+  async verifyBaggageFlightsForEveryTraveler(page, expectedRoutes, travelerCount) {
+    if (!page) throw new Error("[Cart.verifyBaggageFlightsForEveryTraveler] page is required");
+    if (!Array.isArray(expectedRoutes) || expectedRoutes.length === 0) {
+      throw new Error(`[Cart.verifyBaggageFlightsForEveryTraveler] "expectedRoutes" must be a non-empty array, got: ${JSON.stringify(expectedRoutes)}`);
+    }
+    if (!Number.isInteger(travelerCount) || travelerCount < 1) {
+      throw new Error(`[Cart.verifyBaggageFlightsForEveryTraveler] "travelerCount" must be a positive integer, got: ${travelerCount}`);
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+    const mismatches = [];
+    const travelers = await this.visitEveryBaggageTraveler(page, async (travelerName) => {
+      const segments = await cartPage.getVisibleBaggageSegments();
+      const routes = segments.map((segment) => segment.route);
+      const withoutSelect = segments.filter((segment) => !segment.hasSelect).map((segment) => segment.route);
+      if (JSON.stringify(routes) !== JSON.stringify(expectedRoutes) || withoutSelect.length > 0) {
+        mismatches.push(
+          `${travelerName}: flights ${JSON.stringify(routes)}` +
+          (withoutSelect.length > 0 ? `, no baggage dropdown on ${JSON.stringify(withoutSelect)}` : ""),
+        );
+      }
+    });
+
+    if (travelers.length !== travelerCount) {
+      throw new Error(
+        `[Cart.verifyBaggageFlightsForEveryTraveler] The baggage panel should have ${travelerCount} traveller tabs, ` +
+        `but it has ${travelers.length}: ${JSON.stringify(travelers)}`,
+      );
+    }
+    if (mismatches.length > 0) {
+      throw new Error(
+        `[Cart.verifyBaggageFlightsForEveryTraveler] Every traveller should have a baggage selection for ${JSON.stringify(expectedRoutes)}, ` +
+        `but ${mismatches.length} of ${travelers.length} did not:\n${mismatches.join("\n")}`,
+      );
+    }
+
+    logger.info("[Cart.verifyBaggageFlightsForEveryTraveler] Every traveller has a baggage selection for every flight", { travelers, expectedRoutes });
+    return { travelers, routes: expectedRoutes };
+  },
+
+  /**
+   * Selects the first paid baggage option on every flight row of every traveller tab, without saving.
+   * @param {import('playwright').Page} page
+   * @returns {Promise<{travelers: string[], selections: number}>}
+   */
+  async selectBaggageForEveryFlightOfEveryTraveler(page) {
+    if (!page) throw new Error("[Cart.selectBaggageForEveryFlightOfEveryTraveler] page is required");
+
+    const cartPage = getPageObject(page, CartPage);
+    let selections = 0;
+    const travelers = await this.visitEveryBaggageTraveler(page, async () => {
+      const segments = await cartPage.getVisibleBaggageSegments();
+      for (let i = 0; i < segments.length; i++) {
+        await cartPage.selectFirstAvailableBaggageOptionForSegment(i);
+        selections++;
+      }
+    });
+
+    logger.info("[Cart.selectBaggageForEveryFlightOfEveryTraveler] Baggage selected", { travelers, selections });
+    return { travelers, selections };
+  },
+
+  /**
+   * Verifies every traveller tab keeps one selected baggage per flight row. Waits for the save to
+   * settle first, because "I click the save button" returns as soon as it clicks.
+   * @param {import('playwright').Page} page
+   * @returns {Promise<{travelers: string[]}>}
+   */
+  async verifyBaggageSavedForEveryFlightOfEveryTraveler(page) {
+    if (!page) throw new Error("[Cart.verifyBaggageSavedForEveryFlightOfEveryTraveler] page is required");
+
+    const cartPage = getPageObject(page, CartPage);
+    await cartPage.waitForBaggageSaveAndCartReload();
+
+    const mismatches = [];
+    const travelers = await this.visitEveryBaggageTraveler(page, async (travelerName) => {
+      const flights = (await cartPage.getVisibleBaggageSegments()).length;
+      const selected = await cartPage.getVisibleBaggageSelectedTagCount();
+      if (flights === 0 || selected !== flights) {
+        mismatches.push(`${travelerName}: ${selected} baggage selected for ${flights} flight(s)`);
+      }
+    });
+
+    if (mismatches.length > 0) {
+      throw new Error(
+        "[Cart.verifyBaggageSavedForEveryFlightOfEveryTraveler] After saving, every traveller should keep one baggage per flight, " +
+        `but ${mismatches.length} of ${travelers.length} did not:\n${mismatches.join("\n")}`,
+      );
+    }
+
+    logger.info("[Cart.verifyBaggageSavedForEveryFlightOfEveryTraveler] Every traveller kept the baggage of every flight", { travelers });
+    return { travelers };
+  },
+
+  /**
    * Selects a baggage option containing the given text for a specific flight
    * direction ("outbound" or "inbound") inside the cart's flight-baggage panel.
    * Idempotent: opens the baggage panel only when it is not already expanded,

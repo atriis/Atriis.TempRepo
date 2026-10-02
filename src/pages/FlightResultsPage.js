@@ -6082,9 +6082,11 @@ async clickSelectForFareWithBaggagePricingOptions(baggageText) {
   // Matches the exact path so /flightSearchDefault is not picked up by mistake.
   // Read the body with readJson (from @utils/networkInterceptor).
   captureSearchApiResponse() {
-    return getNetworkInterceptor(this.page).waitForResponse({
-      pathnameEndsWith: config.flightSearchApiPath,
-    });
+    // Skips a failed call the app retries (a STG instance answered 500 HTML before a 200 on 2026-10-02).
+    // Resolves null when no call succeeds, so the step reading it fails instead of whichever step is running.
+    return getNetworkInterceptor(this.page)
+      .waitForResponse({ pathnameEndsWith: config.flightSearchApiPath, predicate: (response) => response.ok() })
+      .catch(() => null);
   }
 }
 module.exports = FlightResultsPage;
