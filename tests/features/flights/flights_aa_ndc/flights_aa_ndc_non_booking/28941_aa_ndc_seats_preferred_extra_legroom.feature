@@ -6,7 +6,7 @@
 # Created: 2025-07-15T10:41:50Z
 # Updated: 2025-12-15T12:12:44Z
 
-@to_adjust @flights @aa @ndc @seating
+@flights @aa @ndc @seating
 Feature: 28941 AA NDC - Seats - Preferred and extra legroom seats are green
 
   As a corporate traveler
@@ -16,7 +16,7 @@ Feature: 28941 AA NDC - Seats - Preferred and extra legroom seats are green
   Scenario: Preferred and extra legroom seats are green and tooltip shows correct labels
     Given I am logged in as "ami@rickan.com" booking a new trip
     And I have added myself as the traveler
-    When I search for a one way flight from "NYC" to "MIA"
+    When I search for a random one way flight city pair in "us" using "AA NDC" supplier
     And I add the first flight to cart
     Then the booking status should be "Pending booking"
     And I click seating in extras
