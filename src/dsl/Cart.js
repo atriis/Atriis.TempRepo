@@ -101,7 +101,8 @@ const WALLET_LINK_PATTERNS = [/wallet/i, /pkpass/i, /transitpass/i, /pay\.google
 const ETICKET_LINK_PATTERNS = [/e-?ticket/i, /ticket/i, /\.pdf(?:$|[?#])/i];
 // A ticket document is fetched from the supplier, so allow for a slow first byte.
 const ETICKET_LINK_TIMEOUT_MS = 45000;
-// A Proceed to Checkout click the cart ignores is retried; one it handles reacts well within this.
+// A Proceed to Checkout click the cart ignores is retried. One it handles shows the CTA's is-loading
+// spinner at once, while the hold/price check behind it often outlasts this window.
 const PROCEED_TO_CHECKOUT_REACTION_MS = 10000;
 const PROCEED_TO_CHECKOUT_CLICK_ATTEMPTS = 3;
 
@@ -3203,8 +3204,10 @@ const Cart = {
    *
    * Right after a cart save (e.g. the car driver extras) the CTA can already be enabled while the
    * cart still ignores the click: no request is sent and the page stays put, so waiting longer
-   * never helps. A click counts as handled once the URL leaves the cart or any dialog opens (price
-   * change, booking error, approval) — those are left to the caller, never clicked through here.
+   * never helps. A click counts as handled once the URL leaves the cart, any dialog opens (price
+   * change, booking error, approval) — those are left to the caller, never clicked through here —
+   * or the CTA shows its is-loading spinner: a flight hold behind it can take 40s, and a re-click
+   * on the spinning button can never land (Bulma's pointer-events:none).
    *
    * @param {import('playwright').Page} page
    * @returns {Promise<void>}
@@ -3214,10 +3217,21 @@ const Cart = {
     const anyDialog = page.locator('.el-dialog:visible, .el-message-box:visible').first();
     const reacted = async () =>
       !/\/cart\/?$/.test(new URL(page.url()).pathname) ||
-      (await anyDialog.isVisible().catch(() => false));
+      (await anyDialog.isVisible().catch(() => false)) ||
+      (await cartPage.isProceedToCheckoutLoading());
 
     for (let attempt = 1; attempt <= PROCEED_TO_CHECKOUT_CLICK_ATTEMPTS; attempt += 1) {
-      await cartPage.clickProceedToCheckout();
+      try {
+        await cartPage.clickProceedToCheckout();
+      } catch (error) {
+        const reason = await cartPage.getCheckoutRequiredErrorText();
+        if (!reason) throw error;
+        throw new Error(
+          `[Cart.clickProceedToCheckoutUntilCartReacts] "Proceed to Checkout" stayed disabled after the cart ` +
+          `re-validated: "${reason}". An Error (status 2) entry in /api/v3/tripValidations is blocking checkout. ` +
+          `Original: ${error.message}`,
+        );
+      }
       const deadline = Date.now() + PROCEED_TO_CHECKOUT_REACTION_MS;
       while (Date.now() < deadline) {
         if (await reacted()) return;

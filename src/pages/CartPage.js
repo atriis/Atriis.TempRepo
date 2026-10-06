@@ -89,6 +89,12 @@ const SELECTORS = {
   // no-op that leaves the run sitting on the cart. Gate every click on this instead.
   PROCEED_TO_CHECKOUT_ENABLED_BTN:
     "button.btn:has-text('Proceed to Checkout'):not([disabled]):not(.disabled):not(.is-disabled)",
+  // Same native CTA while the cart handles a click: trip-cart's beforeProceedToPayment sets
+  // isBtnLoading at once, then holds/prices the quotes (8-40s on staging); app-btn renders
+  // `button is-loading`, whose Bulma pointer-events:none makes any further click unlandable.
+  PROCEED_TO_CHECKOUT_LOADING_BTN: "button.btn.is-loading:has-text('Proceed to Checkout')",
+  // trip-cart.vue #err-msg slot - the "*In order to proceed…" line under a disabled CTA.
+  CHECKOUT_REQUIRED_ERROR_MSG: '.trip-summary-container .required-error-msg',
   // Same cart CTA as Proceed to Checkout, but relabelled "Send For Approvals" when the
   // user's trip requires pre-booking approval (trip-cart.vue: isPreBookingNeeded).
   SEND_FOR_APPROVAL_BUTTON: ".btn-container:has-text('Send For Approvals')",
@@ -3595,6 +3601,26 @@ class CartPage {
         `Original: ${error.message}`
       );
     }
+  }
+
+  /**
+   * True while the Proceed to Checkout CTA shows its is-loading spinner, i.e. the cart is handling a click.
+   *
+   * @returns {Promise<boolean>}
+   */
+  async isProceedToCheckoutLoading() {
+    return this.page.locator(SELECTORS.PROCEED_TO_CHECKOUT_LOADING_BTN).first().isVisible().catch(() => false);
+  }
+
+  /**
+   * Text of the "*In order to proceed…" line under a disabled cart CTA, or '' when it is absent.
+   *
+   * @returns {Promise<string>}
+   */
+  async getCheckoutRequiredErrorText() {
+    const message = this.page.locator(SELECTORS.CHECKOUT_REQUIRED_ERROR_MSG).first();
+    if (!(await message.isVisible().catch(() => false))) return '';
+    return (await message.innerText().catch(() => '')).replace(/\s+/g, ' ').trim();
   }
 
   /**
