@@ -28,6 +28,16 @@ When("I search for a hotel in {string} for {int} night(s) with {int} rooms", asy
   this.hotelSearch = await HotelSearch.searchHotelMultiRoom(this.page, { where: location, nights, rooms });
 });
 
+// Stored as yyyy-MM-dd for the payload steps: {checkInDate}, {checkOutDate}, {today} and, for 7 days, {checkOutPlus7Days}.
+When("I store the hotel stay dates, today and the date {int} days after check-out", async function (days) {
+  const dates = HotelSearch.getStayDates(this.hotelSearch, days);
+  this.checkInDate = dates.checkInDate;
+  this.checkOutDate = dates.checkOutDate;
+  this.today = dates.today;
+  this[`checkOutPlus${days}Days`] = dates.checkOutPlusDays;
+  logger.info("Stored hotel stay dates", { days, ...dates });
+});
+
 When("I search for a hotel in {string} for {int} night(s) from the cart drawer", async function (location, nights) {
   logger.info("Searching for hotel from cart drawer", { location, nights });
   this.hotelSearch = await HotelSearch.searchHotelByNights(this.page, { where: location, nights }, { fromDrawer: true });

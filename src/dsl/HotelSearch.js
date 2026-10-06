@@ -4,7 +4,7 @@ const HotelSearchPage = require("@pages/HotelSearchPage");
 const { SearchPage } = require("@pages/SearchPage");
 const { CommonPage } = require("@pages/CommonPage");
 const { ResultsPage } = require("@pages/ResultsPage");
-const { selectDatesByNthAvailable, selectDatesByNthAvailableFromNextVisibleMonth, advanceCalendarUntilMonthVisible, clickDayInVisibleMonth } = require("@utils/calendar.helper");
+const { selectDatesByNthAvailable, selectDatesByNthAvailableFromNextVisibleMonth, advanceCalendarUntilMonthVisible, clickDayInVisibleMonth, parseDateValue } = require("@utils/calendar.helper");
 const { resolveLocation } = require("@utils/route.helper");
 const { SEARCH_DEFAULTS } = require("@utils/search.constants");
 const hotelLocations = require("@data/hotels.json");
@@ -584,6 +584,43 @@ const HotelSearch = {
     await page.waitForLoadState('domcontentloaded', { timeout: 60000 });
 
     return { searched: true, nights };
+  },
+
+  /**
+   * Turns the check-in and check-out a search kept ("Fri, 01 Jan") into yyyy-MM-dd, along with
+   * today and the date a number of days after check-out.
+   *
+   * @param {{checkInDate: string, checkOutDate: string}} hotelSearch - as returned by the search
+   * @param {number} daysAfterCheckOut
+   * @returns {{checkInDate: string, checkOutDate: string, today: string, checkOutPlusDays: string}}
+   */
+  getStayDates(hotelSearch, daysAfterCheckOut) {
+    if (!hotelSearch?.checkInDate || !hotelSearch?.checkOutDate) {
+      throw new Error('[HotelSearch.getStayDates] No check-in/check-out dates. Run a hotel search step first.');
+    }
+    if (!Number.isInteger(daysAfterCheckOut) || daysAfterCheckOut < 0) {
+      throw new Error(`[HotelSearch.getStayDates] "daysAfterCheckOut" must be a non-negative integer, got: ${daysAfterCheckOut}`);
+    }
+
+    // The search fields show no year. A searched date is never in the past, so it falls in the
+    // nearest year in which its day and month have not passed yet.
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const toUpcomingDate = (value) => {
+      const date = parseDateValue(value);
+      if (date < today) date.setFullYear(date.getFullYear() + 1);
+      return date;
+    };
+    const toIsoDate = (date) => new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate())).toISOString().slice(0, 10);
+
+    const checkOut = toUpcomingDate(hotelSearch.checkOutDate);
+    return {
+      checkInDate: toIsoDate(toUpcomingDate(hotelSearch.checkInDate)),
+      checkOutDate: toIsoDate(checkOut),
+      // UTC, as the app stamps its request dates.
+      today: now.toISOString().slice(0, 10),
+      checkOutPlusDays: toIsoDate(new Date(checkOut.getFullYear(), checkOut.getMonth(), checkOut.getDate() + daysAfterCheckOut)),
+    };
   },
 };
 
