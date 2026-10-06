@@ -25,24 +25,25 @@ const DEFAULTS = {
   // suite-transportation end.
   avgDuration: '2h',
   highlights: [
-    { value: '130',  label: 'New tests' },
+    { value: '82',  label: 'New tests' },
   ],
   // Breakdown under the headline. Kept separate from the domain bars above,
-  // which count the whole suite, not what the sprint added. New .feature files
-  // added to main from 2026-09-13 to 2026-10-06; renamed hybrids not counted.
+  // which count the whole suite, not what the sprint added. Net new .feature
+  // files under tests/features during Sprint 20 (2026-09-23 to 2026-10-06):
+  // files added minus files deleted or merged away, renames not counted.
   newTestsByDomain: [
-    { name: 'Flights', value: 83 },
-    { name: 'Hotels', value: 11 },
-    { name: 'Transportation', value: 14 },
-    { name: 'Shell', value: 22 },
+    { name: 'Flights', value: 45 },
+    { name: 'Hotels', value: 13 },
+    { name: 'Transportation', value: 10 },
+    { name: 'Shell', value: 14 },
   ],
-  // Tests (.feature files) per domain in the daily run, as reported for the
-  // 2026-10-05 morning batch.
+  // Tests (.feature files) per domain in the daily run: the files the four
+  // suite workflows pick up on main at the end of Sprint 20 (2026-10-06).
   testsByDomain: {
-    Flights: 414,
-    Hotels: 126,
-    Shell: 240,
-    Transportation: 216,
+    Flights: 421,
+    Hotels: 136,
+    Shell: 235,
+    Transportation: 176,
   },
 };
 
