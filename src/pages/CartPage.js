@@ -1596,6 +1596,8 @@ const SELECTORS = {
   // Premier Inn extras - breakfast visibility (premier-inn.vue)
   PREMIER_INN_PAYMENT_LABEL: '.quote-extras--premier-inn .extras-card label.label',
   PREMIER_INN_BREAKFAST_LABEL: '.quote-extras--premier-inn .extras-card label.label:has-text("Breakfast")',
+  PREMIER_INN_BREAKFAST_SELECT: '.quote-extras--premier-inn .extras-card .field:has(label.label:has-text("Breakfast")) .el-select',
+  PREMIER_INN_BREAKFAST_SELECTED_TEXT: '.quote-extras--premier-inn .extras-card .field:has(label.label:has-text("Breakfast")) .el-select__placeholder',
 
   // Existing loyalty dropdown (selected value text after saving a loyalty number)
   LOYALTY_EXISTING_DROPDOWN_TEXT: '.quote-extras--loyalty-number .extras-card .el-select .el-select__placeholder, .car-driver-loyalty .el-select .el-select__placeholder',
@@ -12354,6 +12356,42 @@ class CartPage {
    */
   async isPremierInnBreakfastOptionVisible() {
     return this.page.locator(SELECTORS.PREMIER_INN_BREAKFAST_LABEL).isVisible();
+  }
+
+  /**
+   * Clicks the breakfast type dropdown in the (already open) Premier Inn extras panel.
+   */
+  async clickPremierInnBreakfastDropdown() {
+    try {
+      const select = this.page.locator(SELECTORS.PREMIER_INN_BREAKFAST_SELECT).first();
+      await select.waitFor({ state: 'visible', timeout: 10000 });
+      await select.click();
+      // Wait for the open popper to render items (El-Plus shows them via display, not aria)
+      await this.page.waitForTimeout(800);
+    } catch (err) {
+      throw new Error(
+        `[CartPage.clickPremierInnBreakfastDropdown] Could not open the breakfast type dropdown in the Premier Inn extras ` +
+        `(selector: ${SELECTORS.PREMIER_INN_BREAKFAST_SELECT}). The extras panel may be closed, or the hotel offers no ` +
+        `breakfast (mealSelectionAllowed false). Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Reads the selected breakfast type text in the Premier Inn extras panel.
+   * @returns {Promise<string>} The selected option text, e.g. "Breakfast - 118.99EUR"
+   */
+  async getSelectedPremierInnBreakfastText() {
+    try {
+      const selected = this.page.locator(SELECTORS.PREMIER_INN_BREAKFAST_SELECTED_TEXT).first();
+      await selected.waitFor({ state: 'visible', timeout: 10000 });
+      return ((await selected.textContent()) ?? '').replace(/\s+/g, ' ').trim();
+    } catch (err) {
+      throw new Error(
+        `[CartPage.getSelectedPremierInnBreakfastText] Could not read the selected breakfast type in the Premier Inn extras ` +
+        `(selector: ${SELECTORS.PREMIER_INN_BREAKFAST_SELECTED_TEXT}). The extras panel may be closed. Original: ${err.message}`
+      );
+    }
   }
 
   /**

@@ -12437,6 +12437,49 @@ const Cart = {
     expect(isVisible, 'Breakfast type option should not be visible in Premier Inn extras').toBe(false);
   },
 
+  /**
+   * Picks the first breakfast type in the (already open) Premier Inn extras panel.
+   * @param {import('playwright').Page} page
+   * @returns {Promise<string>} The selected option text
+   */
+  async selectFirstPremierInnBreakfast(page) {
+    if (!page) throw new Error('page is required');
+    logger.debug('Selecting the first Premier Inn breakfast type');
+    const cartPage = getPageObject(page, CartPage);
+    await cartPage.clickPremierInnBreakfastDropdown();
+    // Reads the options of whichever Premier Inn extras dropdown is open - here the breakfast one.
+    const options = await cartPage.getPremierInnPaymentOptions();
+    if (options.length === 0) {
+      throw new Error(
+        '[Cart.selectFirstPremierInnBreakfast] The Premier Inn breakfast type dropdown opened with no options. ' +
+        'The supplier may have returned no breakfast types for this hotel.'
+      );
+    }
+    await cartPage.clickDropdownOption(options[0]);
+    return options[0];
+  },
+
+  /**
+   * Extracts the price of the selected breakfast type in the Premier Inn extras panel.
+   * The option label ends with the amount and currency, e.g. "Breakfast - 118.99EUR".
+   * @param {import('playwright').Page} page
+   * @returns {Promise<number>} The breakfast price
+   */
+  async extractPremierInnBreakfastPrice(page) {
+    if (!page) throw new Error('page is required');
+    const cartPage = getPageObject(page, CartPage);
+    const text = await cartPage.getSelectedPremierInnBreakfastText();
+    // Only the trailing amount is parsed: the " - " separator would otherwise read as a minus sign.
+    const amount = text.match(/(\d[\d.,]*)\s*[A-Z]{3}\s*$/);
+    if (!amount) {
+      throw new Error(
+        `[Cart.extractPremierInnBreakfastPrice] Selected breakfast type "${text}" has no trailing amount and currency ` +
+        `(expected e.g. "Breakfast - 118.99EUR"). No breakfast may be selected, or the label format changed.`
+      );
+    }
+    return parseAmountText(amount[1], 'Premier Inn breakfast price');
+  },
+
   // ===== EHOTEL SUPPLIER DETAILS =====
 
   /**

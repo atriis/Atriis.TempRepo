@@ -1978,6 +1978,21 @@ When("I add Premier Inn Extras Services in cart", async function () {
   await Cart.addPremierInnExtras(this.page);
 });
 
+When("I choose the first Premier Inn breakfast in cart", async function () {
+  const breakfast = await Cart.selectFirstPremierInnBreakfast(this.page);
+  logger.info("Selected Premier Inn breakfast in cart", { breakfast });
+});
+
+When("I extract the Premier Inn breakfast price", async function () {
+  const price = await Cart.extractPremierInnBreakfastPrice(this.page);
+  if (!this.extractedPrices) this.extractedPrices = [];
+  this.extractedPrices.push(price);
+  logger.info("Extracted Premier Inn breakfast price", {
+    price,
+    extractedPricesIndex: this.extractedPrices.length - 1,
+  });
+});
+
 When("I save Premier Inn Extras Services in cart", async function () {
   logger.info("Saving Premier Inn extras services in cart");
   await Cart.savePremierInnExtras(this.page);
