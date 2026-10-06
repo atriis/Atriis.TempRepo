@@ -7,7 +7,7 @@
 # Updated: 2026-02-15T03:40:39Z
 
 @regression @flights @ndc @lufthansa @baggage @multi-pax @email @bug
-Feature: 73884 Lufthansa NDC - Multi pax correct baggage display in travel plan email
+Feature: 73886 Lufthansa NDC - Multi pax correct baggage display in travel plan email
 
   As a corporate traveler
   I want to book a multi-passenger Lufthansa NDC flight with paid baggage
