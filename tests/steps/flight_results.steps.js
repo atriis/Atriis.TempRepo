@@ -1552,6 +1552,25 @@ Then("share slot {int} price should match the pricing options footer total", asy
   await FlightResults.verifySharedQuotePriceMatchesFooterTotal(this.page, sharedQuote(this, slotNumber));
 });
 
+When("I close the pricing options screen", async function () {
+  logger.info("Closing the new pricing options screen");
+  await FlightResults.closeNewFlowPricingOptions(this.page);
+});
+
+// ===== RESULT CARD SHARE AFTER PRICING OPTIONS (bug 85761) =====
+
+When("I click Share on flight result {int} for a fare already in the share bar", { timeout: 180000 }, async function (resultNumber) {
+  logger.info("Clicking Share on a result card whose fare is already shared", { resultNumber });
+  const { quotes } = await FlightResults.clickResultShareButton(this.page, resultNumber, this.sharedQuotes);
+  this.sharedQuotes = quotes;
+});
+
+When("I remove flight result {int} from the share bar with its Added button", async function (resultNumber) {
+  logger.info("Removing a quote with its result card \"Added\" button", { resultNumber });
+  const { removedSlot } = await FlightResults.removeResultFromShareBar(this.page, resultNumber);
+  this.sharedQuotes.splice(removedSlot - 1, 1);
+});
+
 // ========================================
 // STOPOVER INDICATOR
 // ========================================

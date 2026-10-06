@@ -309,6 +309,8 @@ const SELECTORS = {
   NEW_FLOW_FOOTER_BUTTONS: '.flight-selection .selection-actions .actions-section button:visible',
   // Share mode footer CTA (US 84674): "+ Share", or "Added" once the selection is shared
   NEW_FLOW_FOOTER_SHARE_BUTTON: ".flight-selection .selection-actions .actions-section button.share-btn",
+  // Desktop X of the new pricing options screen; the share-mode toggle beside it is the toolbar's other button
+  NEW_FLOW_TOOLBAR_CLOSE_BUTTON: ".flight-selection .selection-toolbar > button:not(.share-btn)",
   OFFICE_HOURS_INFO_ICON: 'button.add-to-trip .app-tooltip__content',
   OFFICE_HOURS_TOOLTIP_TITLE: '.app-tooltip.hours-limitation-description .app-tooltip__title',
   RESULTS_CO2_TOOLTIP_TRIGGER: '.flight-list .flight-preview .co2-emissions-label .info-icon',
@@ -4197,6 +4199,13 @@ async clickSelectForFareWithBaggagePricingOptions(baggageText) {
     const button = this.page.locator(SELECTORS.NEW_FLOW_FOOTER_SHARE_BUTTON).first();
     await button.scrollIntoViewIfNeeded();
     await button.click({ timeout: 15000 });
+  }
+
+  /**
+   * Clicks the new pricing options screen's toolbar X, which closes it.
+   */
+  async clickNewFlowToolbarCloseButton() {
+    await this.page.locator(SELECTORS.NEW_FLOW_TOOLBAR_CLOSE_BUTTON).first().click({ timeout: 15000 });
   }
 
   /**

@@ -466,12 +466,29 @@ function parseShareSlotLabel(label) {
 
 // Result card actions outside share mode (new flow: "Select flight"; old flow: "Add to trip").
 const BOOKING_ACTION_LABELS = ['Select flight', 'Add to trip'];
-const SHARE_ACTION_LABELS = ['Share', 'Added'];
+const SHARE_ADDED_LABEL = "Added";
+const SHARE_ACTION_LABELS = ["Share", SHARE_ADDED_LABEL];
 // Slots keep the unrounded per-traveller price; screens and the email show two decimals.
 const SHARE_PRICE_TOLERANCE = 0.01;
+// A result card's + Share prices the package before it commits (seen at 5-20 s).
+const SHARE_PRICING_TIMEOUT_MS = 120000;
 
 function hasLabel(labels, label) {
   return labels.some((l) => l.toLowerCase() === String(label).toLowerCase());
+}
+
+// Clicks an "Added" control and returns the 1-based slot whose quote left the share bar.
+async function removeSharedQuote(flightResultsPage, clickAdded, caller) {
+  const before = await flightResultsPage.getFilledShareSlotLabels();
+  if (before.length === 0) throw new Error(`[FlightResults.${caller}] The share bar has no quote to remove.`);
+  await clickAdded();
+  try {
+    await flightResultsPage.waitForFilledShareSlotCount(before.length - 1, 15000);
+  } catch (err) {
+    throw new Error(`[FlightResults.${caller}] "Added" did not remove a quote (${before.length} filled). Original: ${err.message}`);
+  }
+  const after = await flightResultsPage.getFilledShareSlotLabels();
+  return { removedSlot: before.findIndex((label, i) => label !== after[i]) + 1, remaining: after.length };
 }
 
 /**
@@ -2481,8 +2498,9 @@ const FlightResults = {
    * @param {import('playwright').Page} page
    * @param {number} resultNumber - 1-based card position
    * @param {string} label
+   * @param {number} timeout - Max wait in ms (default: 15000)
    */
-  async verifyResultShareButtonLabel(page, resultNumber, label) {
+  async verifyResultShareButtonLabel(page, resultNumber, label, timeout = 15000) {
     if (!page) throw new Error('[FlightResults.verifyResultShareButtonLabel] "page" is required.');
     const flightResultsPage = getPageObject(page, FlightResultsPage);
     let labels = [];
@@ -2490,7 +2508,7 @@ const FlightResults = {
       await expect.poll(async () => {
         labels = (await flightResultsPage.getResultCardButtonLabels())[resultNumber - 1] || [];
         return hasLabel(labels, label);
-      }, { timeout: 15000 }).toBe(true);
+      }, { timeout }).toBe(true);
     } catch {
       throw new Error(`[FlightResults.verifyResultShareButtonLabel] Result ${resultNumber} should show "${label}"; its buttons read ${JSON.stringify(labels)}.`);
     }
@@ -2734,17 +2752,7 @@ const FlightResults = {
   async removeSharedSelectionFromPricingOptions(page) {
     if (!page) throw new Error("[FlightResults.removeSharedSelectionFromPricingOptions] \"page\" is required.");
     const flightResultsPage = getPageObject(page, FlightResultsPage);
-    const before = await flightResultsPage.getFilledShareSlotLabels();
-    if (before.length === 0) throw new Error("[FlightResults.removeSharedSelectionFromPricingOptions] The share bar has no quote to remove.");
-    await flightResultsPage.clickNewFlowFooterShareButton();
-    try {
-      await flightResultsPage.waitForFilledShareSlotCount(before.length - 1, 15000);
-    } catch (err) {
-      throw new Error(`[FlightResults.removeSharedSelectionFromPricingOptions] "Added" did not remove a quote (${before.length} filled). Original: ${err.message}`);
-    }
-    const after = await flightResultsPage.getFilledShareSlotLabels();
-    const removedSlot = before.findIndex((label, i) => label !== after[i]) + 1;
-    return { removedSlot, remaining: after.length };
+    return removeSharedQuote(flightResultsPage, () => flightResultsPage.clickNewFlowFooterShareButton(), "removeSharedSelectionFromPricingOptions");
   },
 
   /**
@@ -2765,6 +2773,64 @@ const FlightResults = {
       );
     }
     return { slotPrice: quote.price, footerTotal };
+  },
+
+  /**
+   * Closes the new pricing options screen and waits for the results list it hides.
+   *
+   * @param {import('playwright').Page} page
+   */
+  async closeNewFlowPricingOptions(page) {
+    if (!page) throw new Error("[FlightResults.closeNewFlowPricingOptions] \"page\" is required.");
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    await flightResultsPage.clickNewFlowToolbarCloseButton();
+    await flightResultsPage.waitForFlightResults(15000);
+    return { closed: true };
+  },
+
+  // ===== RESULT CARD SHARE AFTER PRICING OPTIONS (bug 85761) =====
+
+  /**
+   * Clicks "+ Share" on a result card and waits for it to read "Added". Unlike addResultToShareBar it
+   * expects no new slot: a fare already shared is re-priced in its slot. Every slot is re-read.
+   *
+   * @param {import('playwright').Page} page
+   * @param {number} resultNumber - 1-based card position
+   * @param {Array<object>} quotes - shared quotes recorded so far, in slot order
+   * @returns {Promise<{quotes: Array<object>, filledBefore: number}>} a slot with no recorded quote is this card's
+   */
+  async clickResultShareButton(page, resultNumber, quotes = []) {
+    if (!page) throw new Error("[FlightResults.clickResultShareButton] \"page\" is required.");
+    if (!Number.isInteger(resultNumber) || resultNumber < 1) {
+      throw new Error(`[FlightResults.clickResultShareButton] resultNumber must be an integer >= 1, got: ${resultNumber}`);
+    }
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    const index = resultNumber - 1;
+    const flightNumbers = await flightResultsPage.getResultCardFlightNumbers(index);
+    const filledBefore = await flightResultsPage.getFilledShareSlotCount();
+
+    await flightResultsPage.clickResultCardShareButton(index);
+    await this.verifyResultShareButtonLabel(page, resultNumber, SHARE_ADDED_LABEL, SHARE_PRICING_TIMEOUT_MS);
+
+    const slots = (await flightResultsPage.getFilledShareSlotLabels()).map(parseShareSlotLabel);
+    logger.info("[Share] Result card Share clicked", { resultNumber, filledBefore, filledAfter: slots.length });
+    return { quotes: slots.map((slot, i) => ({ ...(quotes[i] || { resultNumber, flightNumbers }), ...slot })), filledBefore };
+  },
+
+  /**
+   * Clicks "Added" on a result card and waits for its quote to leave the share bar.
+   *
+   * @param {import('playwright').Page} page
+   * @param {number} resultNumber - 1-based card position
+   * @returns {Promise<{removedSlot: number, remaining: number}>} removedSlot is 1-based
+   */
+  async removeResultFromShareBar(page, resultNumber) {
+    if (!page) throw new Error("[FlightResults.removeResultFromShareBar] \"page\" is required.");
+    if (!Number.isInteger(resultNumber) || resultNumber < 1) {
+      throw new Error(`[FlightResults.removeResultFromShareBar] resultNumber must be an integer >= 1, got: ${resultNumber}`);
+    }
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    return removeSharedQuote(flightResultsPage, () => flightResultsPage.clickResultCardShareButton(resultNumber - 1), "removeResultFromShareBar");
   },
 
   /**
