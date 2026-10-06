@@ -816,6 +816,21 @@ async function selectTodayFromVisibleCalendar(
   throw new Error("Could not find a visible available date cell for today in the open calendar.");
 }
 
+// A search field renders its date without a year ("Fri, 01 Jan") and parseDateValue fills in the
+// current year, so a stay after New Year resolves to a month behind this forward-only calendar.
+// A date picked in a search form is never in the past: a yearless value is its next occurrence
+// on or after `notBefore` (today for the start date, the start date for the end date).
+function toUpcomingSearchDate(dateValue, notBefore) {
+  const date = parseDateValue(dateValue);
+  if (/\d{4}/.test(dateValue)) {
+    return date;
+  }
+  while (date < notBefore) {
+    date.setFullYear(date.getFullYear() + 1);
+  }
+  return date;
+}
+
 async function selectDatesByInputValues(
   page,
   {
@@ -823,8 +838,10 @@ async function selectDatesByInputValues(
     endDateValue = undefined,
   } = {},
 ) {
-  const startDate = parseDateValue(startDateValue);
-  const endDate = endDateValue ? parseDateValue(endDateValue) : undefined;
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const startDate = toUpcomingSearchDate(startDateValue, today);
+  const endDate = endDateValue ? toUpcomingSearchDate(endDateValue, startDate) : undefined;
 
   const startMonthTableIndex = await advanceCalendarUntilMonthVisible(page, startDate);
   await clickDayInVisibleMonth(page, startDate, startMonthTableIndex);
