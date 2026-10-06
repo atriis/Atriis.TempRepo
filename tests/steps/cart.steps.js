@@ -6,6 +6,7 @@ const Cart = require("@dsl/Cart");
 const Results = require("@dsl/Results");
 const CartPayment = require("@dsl/CartPayment");
 const Checkout = require("@dsl/Checkout");
+const PayloadValidation = require("@dsl/PayloadValidation");
 const DynamicAndReferenceFields = require("@dsl/DynamicAndReferenceFields");
 const { CartPage } = require("@pages/CartPage");
 const { CheckoutPage } = require("@pages/CheckoutPage");
@@ -3407,6 +3408,24 @@ Then("the daily rate is displayed under the price for the last car in cart", asy
 Then("the more details drawer shows a daily rate and subtotal consistent with {int} days", async function (numberOfDays) {
   logger.info("Verifying the more details price breakdown is internally consistent", { numberOfDays });
   this.moreDetailsPricePerDay = (await Cart.expectSubtotalDividedByDaysEqualsRate(this.page, numberOfDays)).pricePerDay;
+});
+
+// Bug 84260: the hotel More details drawer renders the cancellation policy SAVED on the trip, so the
+// cancellation information Sabre returned (Code 7 - cut-off time and penalty) must be in it, not
+// just the composed "Cancellation allowed <date> prior to arrival". Each Code 7 line is checked.
+Then("the more details should show the Sabre cancellation information from the captured HotelPriceCheck response", async function () {
+  const record = PayloadValidation.getCapturedPayload(this, "response", "HotelPriceCheck");
+  const lines = PayloadValidation.extractSabreHotelCancellationInformation(record);
+  if (lines.length === 0) {
+    throw new Error(
+      "The captured Sabre HotelPriceCheck response has no Cancellation information (AdditionalDetail Code 7) - " +
+      "pick a rate that carries one; there is nothing to verify on the trip.",
+    );
+  }
+  logger.info("Verifying More details shows the Sabre cancellation information", { lines });
+  for (const line of lines) {
+    await Cart.verifyOpenDrawerContainsText(this.page, line);
+  }
 });
 
 Then("the daily rate in more details should match the results and cart daily rate", async function () {

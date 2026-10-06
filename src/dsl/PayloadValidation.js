@@ -982,6 +982,34 @@ const PayloadValidation = {
     return parseJsonPayload(payloadRecord.payload, payloadRecord.source, payloadRecord.requestType);
   },
 
+  /**
+   * Sabre hotels return the full cancellation terms - the cut-off time and the penalty - only as
+   * free text, in an AdditionalDetail with Code 7 ("Cancellation information"). Sabre nests it under
+   * RatePlans.RatePlan[].RateInfo and repeats it under ConvertedRateInfo, so every AdditionalDetail
+   * below the rooms is collected. Returns the distinct text lines of a captured HotelPriceCheck
+   * response, or [] when Sabre sent none.
+   */
+  extractSabreHotelCancellationInformation(payloadRecord) {
+    const json = this.parseCapturedPayloadJson(payloadRecord);
+    const rooms = json?.HotelPriceCheckRS?.PriceCheckInfo?.HotelRateInfo?.Rooms?.Room || [];
+    const details = [];
+    const collect = (node) => {
+      if (Array.isArray(node)) {
+        node.forEach(collect);
+      } else if (node && typeof node === "object") {
+        details.push(...(node.AdditionalDetails?.AdditionalDetail || []));
+        Object.values(node).forEach(collect);
+      }
+    };
+    collect(rooms);
+    const lines = details
+      .filter((detail) => Number(detail?.Code) === 7)
+      .flatMap((detail) => (Array.isArray(detail.Text) ? detail.Text : [detail.Text]))
+      .map((text) => String(text || "").trim())
+      .filter(Boolean);
+    return [...new Set(lines)];
+  },
+
   async expectCapturedPayloadContains(page, world, source, requestType, expectedText) {
     if (!page) {
       throw new Error("page is required");
