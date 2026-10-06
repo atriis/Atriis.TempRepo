@@ -18,7 +18,6 @@ Feature: 65440 Amadeus - Booking successful with preferred seats
     And I filter airline results by "Alaska" checkbox
     And I add the first flight to cart
     Then the booking status should be "Pending booking"
-    And I add a credit card as payment method
     When I click seating in extras
     And I click add seats in extras
     And I wait for the seat map to load
