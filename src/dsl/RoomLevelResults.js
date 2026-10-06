@@ -11,7 +11,7 @@ const {
   buildGsaViolationText,
   splitByGsaLimit,
 } = require("@utils/gsaPerDiem.helper");
-const { splitByOopPrice } = require("@utils/hotelLowestFare.helper");
+const { splitByOopPrice, findClosestToOopPrice } = require("@utils/hotelLowestFare.helper");
 
 // Room-level supplier ids differ from the hotel-level ones for some suppliers, so this list
 // is deliberately its own: room cards render hCorpo under its Amadeus chain id, hotel cards
@@ -1244,6 +1244,56 @@ const RoomLevelResults = {
     });
 
     return breakdown;
+  },
+
+  /**
+   * Returns the room card priced closest below the given price, with its policy badge state.
+   * @param {import('playwright').Page} page
+   * @param {number} price - The price the room must be below
+   * @returns {Promise<{index: number, price: number, isOutOfPolicy: boolean}>}
+   */
+  async getRoomPricedClosestBelow(page, price) {
+    if (!page) throw new Error('[RoomLevelResults.getRoomPricedClosestBelow] "page" is required.');
+
+    const roomLevelResultsPage = getPageObject(page, RoomLevelResultsPage);
+
+    // Rooms stream in per supplier; wait so a later, closer room is not skipped.
+    const roomsFinishedLoading = await roomLevelResultsPage.waitForRoomsFinishedLoading();
+    if (!roomsFinishedLoading) {
+      logger.warn('Rooms were still loading when the room prices were read, so some rooms may not have been checked');
+    }
+
+    const rooms = await roomLevelResultsPage.getRoomPricesWithPolicyIndicator();
+    const { below: room } = findClosestToOopPrice(rooms, price);
+    if (!room) {
+      throw new Error(`[RoomLevelResults.getRoomPricedClosestBelow] No room is priced below ${price}.`);
+    }
+
+    logger.info('Found the room priced closest below the price', {
+      price,
+      position: room.index + 1,
+      roomPrice: room.price,
+      isOutOfPolicy: room.isOutOfPolicy,
+    });
+
+    return room;
+  },
+
+  /**
+   * Adds the room priced closest below the given price to the cart.
+   * @param {import('playwright').Page} page
+   * @param {number} price - The price the room must be below
+   * @returns {Promise<{index: number, price: number, isOutOfPolicy: boolean}>} The added room
+   */
+  async addRoomPricedClosestBelowToCart(page, price) {
+    const room = await this.getRoomPricedClosestBelow(page, price);
+
+    const roomLevelResultsPage = getPageObject(page, RoomLevelResultsPage);
+    await roomLevelResultsPage.clickAddToTripOnRoomByIndex(room.index);
+
+    // Adding a room can raise the conflicting-quotes modal, as the other add-to-cart flows do.
+    await Results.clickProceedConflictQuoteModal(page);
+    return room;
   },
 
   /**

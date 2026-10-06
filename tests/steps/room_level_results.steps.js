@@ -35,6 +35,11 @@ When("I add the first available room to my cart", async function () {
   await RoomLevelResults.addFirstHotelRoomLevelToCart(this.page);
 });
 
+When("I add the room priced closest below {int} to my cart", async function (price) {
+  logger.info("Adding the room priced closest below the price to cart", { price });
+  await RoomLevelResults.addRoomPricedClosestBelowToCart(this.page, price);
+});
+
 When("I add the first room to my cart from the terms and conditions dialog", async function () {
   logger.info("Adding first room to cart from the terms and conditions dialog");
   await RoomLevelResults.addRoomToCartFromTermsAndConditions(this.page);
@@ -505,6 +510,16 @@ Then("the out of policy indicator should not be visible in room level", async fu
     outOfPolicy.map((room) => `room ${room.index + 1} (${room.price})`),
     `Rooms showing an out of policy indicator, out of ${total} listed`,
   ).toEqual([]);
+});
+
+Then("the room priced closest below {int} should not be out of policy in room level", async function (limit) {
+  logger.info("Verifying OOP indicator is not visible on the room priced closest below the limit", { limit });
+  const room = await RoomLevelResults.getRoomPricedClosestBelow(this.page, limit);
+
+  expect(
+    room.isOutOfPolicy,
+    `Room ${room.index + 1} (${room.price}), the closest below the limit of ${limit}, shows an out of policy indicator`,
+  ).toBe(false);
 });
 
 // ========================================

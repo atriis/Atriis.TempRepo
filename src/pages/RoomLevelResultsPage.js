@@ -588,6 +588,26 @@ class RoomLevelResultsPage {
   }
 
   /**
+   * Clicks "Add to trip" on the room card at the given position.
+   * @param {number} index - 0-based room card position
+   */
+  async clickAddToTripOnRoomByIndex(index) {
+    if (!Number.isInteger(index) || index < 0) {
+      throw new Error(`index must be a non-negative integer, got: ${index}`);
+    }
+    const roomCard = this.page.locator(SELECTORS.ROOM_CARD).nth(index);
+    await roomCard.waitFor({ state: "visible", timeout: 30000 });
+    await roomCard.scrollIntoViewIfNeeded();
+
+    const addButton = roomCard
+      .locator("button")
+      .filter({ hasText: /add to trip/i })
+      .first();
+    await addButton.waitFor({ state: "visible", timeout: 15000 });
+    await addButton.click();
+  }
+
+  /**
    * Hovers the info icon of the first out of policy room card to open its violation tooltip.
    * Scoped to .price-details-oop rather than using CommonPage's page-wide OOP icon, because
    * room-deposit.vue renders its own .app-out-of-policy badge with an identical info icon.
