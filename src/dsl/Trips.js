@@ -6,6 +6,39 @@ const LoginPage = require("@pages/LoginPage");
 const { HomePage } = require("@pages/HomePage");
 const logger = require("@utils/logger").child("Trips");
 
+// Travel date presets as whole-day offsets from today, inclusive at both ends
+// (trip-monitor-filter.ts presetRange: "Next 7 days" is today .. today + 6).
+const TRAVEL_DATE_WINDOWS = {
+  "Today": [0, 0],
+  "Next 7 days": [0, 6],
+  "Next 30 days": [0, 29],
+  "Last 7 days": [-6, 0],
+  "Last 30 days": [-29, 0],
+};
+const MONTHS = { Jan: 0, Feb: 1, Mar: 2, Apr: 3, May: 4, Jun: 5, Jul: 6, Aug: 7, Sep: 8, Oct: 9, Nov: 10, Dec: 11 };
+
+// "Fri, 09 Oct 26 - Sat, 31 Oct 26" -> { start, end } as yyyymmdd numbers, or null.
+function parseCardDates(text) {
+  const dates = [...(text || "").matchAll(/(\d{1,2}) ([A-Z][a-z]{2}) (\d{2})/g)].map(
+    ([, d, m, y]) => (2000 + Number(y)) * 10000 + (MONTHS[m] + 1) * 100 + Number(d)
+  );
+  return dates.length && dates.every((n) => !Number.isNaN(n)) ? { start: dates[0], end: dates[dates.length - 1] } : null;
+}
+
+// The preset's first and last day as yyyymmdd numbers, from the BROWSER's today
+// so the window matches what the page computes.
+async function travelDateWindow(page, label) {
+  const offsets = TRAVEL_DATE_WINDOWS[label];
+  if (!offsets) {
+    throw new Error(`[Trips] Unknown travel date preset "${label}". Known: ${Object.keys(TRAVEL_DATE_WINDOWS).join(", ")}`);
+  }
+  return page.evaluate((offs) => offs.map((n) => {
+    const now = new Date();
+    const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() + n);
+    return d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate();
+  }), offsets);
+}
+
 /**
  * Trips DSL
  *
@@ -968,6 +1001,103 @@ const Trips = {
         `[Trips.checkTripsFilter] Failed to check the "${filterLabel}" filter on the trips page. Original: ${err.message}`
       );
     }
+  },
+  /**
+   * Sets the trips filter rail's "Travel date" select to a preset and waits for
+   * the list to settle.
+   *
+   * @param {import('@playwright/test').Page} page
+   * @param {string} label - visible preset label, e.g. "Next 7 days"
+   */
+  async setTravelDatePreset(page, label) {
+    if (!page) throw new Error('[Trips.setTravelDatePreset] page is required');
+    if (typeof label !== 'string' || label.length === 0) {
+      throw new Error('[Trips.setTravelDatePreset] "label" must be a non-empty string, got: ' + typeof label);
+    }
+    const tripsPage = getPageObject(page, TripsPage);
+    try {
+      await tripsPage.selectTravelDatePreset(label);
+      await tripsPage.waitForTripListSettled({ timeout: 60000 });
+    } catch (err) {
+      throw new Error(`[Trips.setTravelDatePreset] Failed to set the travel date to "${label}". Original: ${err.message}`);
+    }
+  },
+
+  /**
+   * Reads every trip the active list shows, across all pages, with the start and
+   * end dates its card displays.
+   *
+   * @param {import('@playwright/test').Page} page
+   * @returns {Promise<Array<{ tripId: string, dates: string | null, start: number | null, end: number | null }>>}
+   */
+  async readListedTrips(page) {
+    if (!page) throw new Error('[Trips.readListedTrips] page is required');
+    const tripsPage = getPageObject(page, TripsPage);
+    try {
+      await tripsPage.waitForTripListSettled({ timeout: 60000 });
+      const trips = await tripsPage.readAllListedTrips();
+      return trips.map((t) => ({ ...t, ...(parseCardDates(t.dates) || { start: null, end: null }) }));
+    } catch (err) {
+      throw new Error(`[Trips.readListedTrips] Failed to read the trips listed on the trips page. Original: ${err.message}`);
+    }
+  },
+
+  /**
+   * Verifies the list under a travel date preset is exactly the baseline trips
+   * whose start date falls inside the preset's days. The end date is ignored on
+   * purpose (AB#85818): a trip leaving inside the window is listed however long
+   * it lasts, and one that left before it is not, even if it returns inside it.
+   *
+   * Baseline trips whose card shows no dates cannot be judged and are left out of
+   * both sides of the comparison.
+   *
+   * @param {import('@playwright/test').Page} page
+   * @param {string} label - the preset that is applied, e.g. "Next 7 days"
+   * @param {Array<{ tripId: string, start: number | null }>} baseline - the same view under "Any Time"
+   * @returns {Promise<{ window: number[], listed: object[] }>}
+   */
+  async verifyTravelDateListsDeparturesInWindow(page, label, baseline) {
+    if (!page) throw new Error('[Trips.verifyTravelDateListsDeparturesInWindow] page is required');
+    if (!Array.isArray(baseline) || baseline.length === 0) {
+      throw new Error('[Trips.verifyTravelDateListsDeparturesInWindow] No baseline trips were noted under "Any Time" - note the listed trips first, in a view that has trips.');
+    }
+    const [from, to] = await travelDateWindow(page, label);
+    const listed = await this.readListedTrips(page);
+    const undated = new Set(baseline.filter((t) => t.start === null).map((t) => t.tripId));
+    const expected = baseline.filter((t) => t.start !== null && t.start >= from && t.start <= to).map((t) => t.tripId);
+    const shown = listed.map((t) => t.tripId).filter((id) => !undated.has(id));
+    const missing = expected.filter((id) => !shown.includes(id));
+    const extra = shown.filter((id) => !expected.includes(id));
+    logger.info('Travel date list compared', { label, from, to, baseline: baseline.length, expected: expected.length, listed: listed.length, undated: undated.size });
+    if (missing.length || extra.length) {
+      const describe = (ids) => ids.map((id) => `${id} (${(baseline.find((t) => t.tripId === id) || {}).dates})`).join(', ');
+      throw new Error(
+        `[Trips.verifyTravelDateListsDeparturesInWindow] Travel date "${label}" (${from}..${to}) should list every trip starting in that window and nothing else. ` +
+        `Missing: ${describe(missing) || 'none'}. Not expected: ${describe(extra) || 'none'}.`
+      );
+    }
+    return { window: [from, to], listed };
+  },
+
+  /**
+   * Verifies at least one listed trip ends after the preset's last day - the
+   * shape AB#85818 used to drop. Needs such a trip in the test user's data.
+   *
+   * @param {import('@playwright/test').Page} page
+   * @param {string} label - the preset that is applied, e.g. "Next 7 days"
+   */
+  async verifyListedTripReturnsAfterTravelDateWindow(page, label) {
+    if (!page) throw new Error('[Trips.verifyListedTripReturnsAfterTravelDateWindow] page is required');
+    const [, to] = await travelDateWindow(page, label);
+    const listed = await this.readListedTrips(page);
+    const after = listed.filter((t) => t.end !== null && t.end > to);
+    if (!after.length) {
+      throw new Error(
+        `[Trips.verifyListedTripReturnsAfterTravelDateWindow] No listed trip under "${label}" ends after ${to}. ` +
+        `Either the filter still drops such trips, or the test user no longer has a trip that starts inside the window and ends after it (test data).`
+      );
+    }
+    logger.info('Listed trips ending after the travel date window', { label, trips: after.map((t) => `${t.tripId} ${t.dates}`) });
   },
 };
 

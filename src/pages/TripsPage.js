@@ -156,6 +156,35 @@ const SELECTORS = {
   // the search-results pane the rebuild removed.
   SEARCH_RESULTS_HEADER:
     '.panel-head__count',
+  // The number alone inside SEARCH_RESULTS_HEADER (trip-list-panel.vue ->
+  // .panel-head__count-total): the total across every page, not the page's cards.
+  SEARCH_RESULTS_TOTAL:
+    '.panel-head__count-total',
+
+  // The "Travel date" preset select in the Trips dates group
+  // (trip-monitor-filter.vue -> p.filter-sub-title + el-select.date-preset). The
+  // group holds three .date-preset selects (Travel date, Trip Open Date, Time
+  // limit) and its testids are stripped from non-dev builds, so it is reached
+  // through the sub-title right above it.
+  TRAVEL_DATE_PRESET:
+    '.trip-monitor-filter p.filter-sub-title:text-is("Travel date") + .date-preset',
+  // An option in the open el-select dropdown (teleported to <body>).
+  SELECT_DROPDOWN_OPTION:
+    '.el-select-dropdown__item:visible',
+  // The selected value the travel date select shows when closed.
+  TRAVEL_DATE_PRESET_VALUE:
+    '.el-select__selected-item:not(.is-hidden), .el-select__placeholder',
+
+  // The trip's dates on a card, "Fri, 09 Oct 26 - Sat, 31 Oct 26"
+  // (trip-preview.vue -> p.trip-dates). Rendered only when the trip has products
+  // and both a start and an end date.
+  RESULT_CARD_TRIP_DATES:
+    '.trip-dates',
+  // The list's "next page" arrow (app-pagination.vue -> el-pagination).
+  TRIP_LIST_NEXT_PAGE:
+    '.trip-list-container .app-pagination .btn-next',
+  TRIP_LIST_FIRST_PAGE:
+    '.trip-list-container .app-pagination .el-pager li',
 
   // No-results block (app-no-results-filter.vue -> <h3>), shown when the active
   // view plus the applied search/filters match no trip.
@@ -899,6 +928,87 @@ class TripsPage {
         `[TripsPage.getResultTripForTraveller] No trip in the list named the traveller "${traveller}" within ${timeout}ms. The search may have returned other travellers' trips only. Original: ${err.message}`
       );
     }
+  }
+  /**
+   * Picks a preset in the "Travel date" select (e.g. "Next 7 days", "Any Time")
+   * and waits for the select to show it.
+   *
+   * @param {string} label - visible preset label
+   */
+  async selectTravelDatePreset(label) {
+    const select = this.page.locator(SELECTORS.TRAVEL_DATE_PRESET).first();
+    try {
+      await select.waitFor({ state: 'visible', timeout: 30000 });
+      await select.click({ timeout: 10000 });
+      await this.page
+        .locator(SELECTORS.SELECT_DROPDOWN_OPTION, { hasText: exactText(label) })
+        .first()
+        .click({ timeout: 10000 });
+      await select
+        .locator(SELECTORS.TRAVEL_DATE_PRESET_VALUE, { hasText: exactText(label) })
+        .first()
+        .waitFor({ state: 'visible', timeout: 10000 });
+    } catch (err) {
+      throw new Error(
+        `[TripsPage.selectTravelDatePreset] Could not set the Travel date select (${SELECTORS.TRAVEL_DATE_PRESET}) to "${label}". Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Returns the "Showing N trips" total as a number.
+   */
+  async getTripListTotal() {
+    await this.getSearchResultsHeader();
+    const text = await this.page.locator(SELECTORS.SEARCH_RESULTS_TOTAL).first().innerText();
+    const total = Number(text.trim());
+    if (!Number.isInteger(total)) {
+      throw new Error(`[TripsPage.getTripListTotal] The list total "${text}" is not a number.`);
+    }
+    return total;
+  }
+
+  /**
+   * Reads every card in the active list, page by page, then returns to page 1.
+   * Assumes the list has settled (waitForTripListSettled).
+   *
+   * @returns {Promise<Array<{ tripId: string, dates: string | null }>>} each card's
+   *   trip id and its raw dates line, or null when the card shows no dates.
+   */
+  async readAllListedTrips() {
+    const total = await this.getTripListTotal();
+    const trips = [];
+    for (let guard = 0; guard < 100 && trips.length < total; guard++) {
+      const cards = await this.page.locator(SELECTORS.RESULT_TRIP_CARD).evaluateAll(
+        (nodes, sel) => nodes.map((card) => ({
+          tripId: (card.querySelector(sel.id)?.textContent || '').trim(),
+          dates: card.querySelector(sel.dates)?.textContent?.replace(/\s+/g, ' ').replace('calendar_today', '').trim() || null,
+        })),
+        { id: SELECTORS.RESULT_CARD_TRIP_ID, dates: SELECTORS.RESULT_CARD_TRIP_DATES },
+      );
+      trips.push(...cards);
+      const next = this.page.locator(SELECTORS.TRIP_LIST_NEXT_PAGE).first();
+      if (trips.length >= total || !(await next.count()) || (await next.isDisabled())) {
+        break;
+      }
+      const firstId = cards[0]?.tripId;
+      await next.click({ timeout: 10000 });
+      await this.page.waitForFunction(
+        ({ sel, id }) => (document.querySelector(sel)?.textContent || '').trim() !== id,
+        { sel: `${SELECTORS.RESULT_TRIP_CARD} ${SELECTORS.RESULT_CARD_TRIP_ID}`, id: firstId },
+        { timeout: 10000 },
+      );
+    }
+    const first = this.page.locator(SELECTORS.TRIP_LIST_FIRST_PAGE).first();
+    if (await first.count()) {
+      await first.click({ timeout: 10000 }).catch(() => {});
+    }
+    if (trips.length !== total) {
+      throw new Error(
+        `[TripsPage.readAllListedTrips] The list header says ${total} trips but ${trips.length} cards were read across its pages.`
+      );
+    }
+    return trips;
   }
 }
 

@@ -243,3 +243,26 @@ Then("the scenario trip should show the {string} status in the trips search resu
   logger.info("Waiting for the scenario trip status in the trips search results", { tripId: this.tripId, status });
   await Trips.waitForTripStatusInSearchResults(this.page, String(this.tripId), status);
 });
+
+// ===== TRAVEL DATE (AB#85818) =====
+
+When("I note every trip listed on the trips page", async function () {
+  logger.info("Noting every trip listed on the trips page");
+  this.notedTrips = await Trips.readListedTrips(this.page);
+  logger.info("Noted trips", { count: this.notedTrips.length });
+});
+
+When("I set the trips travel date to {string}", async function (label) {
+  logger.info("Setting the trips travel date", { label });
+  await Trips.setTravelDatePreset(this.page, label);
+});
+
+Then("the trips page should list exactly the noted trips that start within {string}", async function (label) {
+  logger.info("Verifying the travel date list matches trips starting in the window", { label });
+  await Trips.verifyTravelDateListsDeparturesInWindow(this.page, label, this.notedTrips);
+});
+
+Then("at least one listed trip should end after the {string} window", async function (label) {
+  logger.info("Verifying a listed trip ends after the travel date window", { label });
+  await Trips.verifyListedTripReturnsAfterTravelDateWindow(this.page, label);
+});
