@@ -7,6 +7,7 @@
 
 module.exports = {
   Administration: require("./Administration"),
+  ApiV1Flights: require("./ApiV1Flights"),
   Chat: require("./Chat"),
   AmtrakResults: require("./AmtrakResults"),
   AmtrakSearch: require("./AmtrakSearch"),

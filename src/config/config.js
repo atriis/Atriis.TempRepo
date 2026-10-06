@@ -74,6 +74,13 @@ const config = {
     return getEnv("GENERAL_PASSWORD");
   },
 
+  // Public API V1 (the API the Amsalem website books through) is served by the Agency app service,
+  // not by the APIM gateway the app uses — /api/v1 answers 404 there. atriis-dev.app runs on
+  // Staging 3, whose Agency service is AgencyAPI2-stg.
+  get apiV1BaseUrl() {
+    return getOptionalEnv("AUTOMATION_AGENCY_API_V1_BASEURL", "https://agencyapi2-stg.azurewebsites.net/api/v1/");
+  },
+
   viewport: ACTIVE_VIEWPORT,
 
   // Legacy GTP front (AngularJS) used by agents to work requested trips. Only agent-assistance
