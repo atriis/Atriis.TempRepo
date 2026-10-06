@@ -14015,6 +14015,61 @@ const Cart = {
   },
 
   /**
+   * Quote-scoped counterpart of shareContactDetailsWithAirlineInCart, for a cart that holds more than
+   * one flight quote — e.g. a Separated Tickets selection, where every ticket is its own quote with its
+   * own consent row (#85837). The unscoped version always opens the first row on the page, and once
+   * quote 1 is held that row is the read-only "View" panel whose Save never enables.
+   * @param {import('playwright').Page} page
+   * @param {number} position - 1-based position of the flight quote card in the cart
+   * @param {string} email - Used only when the panel has no email yet
+   * @returns {Promise<{ answered: boolean }>}
+   */
+  async shareContactDetailsWithAirlineForQuote(page, position, email) {
+    if (!page) throw new Error("page is required");
+    if (!Number.isInteger(position) || position < 1) {
+      throw new Error("[Cart.shareContactDetailsWithAirlineForQuote] position must be a 1-based integer, got: " + position);
+    }
+    if (!email || typeof email !== "string") {
+      throw new Error("[Cart.shareContactDetailsWithAirlineForQuote] email must be a non-empty string, got: " + typeof email);
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+    const quoteCard = page.locator(CART_SELECTORS.FLIGHT_QUOTE_CARD).nth(position - 1);
+    await quoteCard.waitFor({ state: "visible", timeout: 30000 });
+
+    if (!(await cartPage.isFlightContactConsentRowPresent(3000, quoteCard))) {
+      const extrasArrow = quoteCard.locator(CART_SELECTORS.EXTRAS_ARROW_BUTTON).first();
+      const arrowClass = (await extrasArrow.getAttribute("class").catch(() => "")) || "";
+      if (!arrowClass.includes("is-active")) {
+        await extrasArrow.click();
+      }
+    }
+    if (!(await cartPage.isFlightContactConsentRowPresent(10000, quoteCard))) {
+      logger.warn("No \"Contact details for the airline\" row on this quote; nothing to answer.", { position });
+      return { answered: false };
+    }
+    await cartPage.openFlightContactConsentPanel(30000, quoteCard);
+
+    const checkbox = await cartPage.getFlightContactConsentCheckboxState(15000, quoteCard);
+    if (!checkbox.checked && !checkbox.disabled) {
+      await cartPage.clickFlightContactConsentCheckbox(15000, quoteCard);
+    }
+
+    const storedEmail = await cartPage.getFlightContactConsentEmailValue(15000, quoteCard);
+    if (!storedEmail) {
+      await cartPage.fillFlightContactConsentEmail(email, 15000, quoteCard);
+    }
+
+    await cartPage.saveFlightContactConsent(30000, quoteCard);
+    logger.info("Contact details for the airline saved on the quote", {
+      position,
+      mandatory: checkbox.disabled,
+      usedStoredEmail: Boolean(storedEmail),
+    });
+    return { answered: true };
+  },
+
+  /**
    * Verifies a baggage option is NOT listed on any baggage line of the open flight details drawer.
    * Matches the whole option label (price segment dropped) rather than single words, because the
    * allowance a leg keeps ("1PC") shares words like "BAG" with the option being checked. Throws when

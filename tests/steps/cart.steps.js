@@ -1722,6 +1722,13 @@ When("I share the contact details with the airline if requested using email {str
   await Cart.shareContactDetailsWithAirlineInCart(this.page, email);
 });
 
+// Use with "I hold quote {int}" when the cart holds more than one flight quote (Separated Tickets):
+// each quote has its own consent row, and the unscoped step above only ever answers the first one.
+When("I share the contact details with the airline for quote {int} if requested using email {string}", async function (position, email) {
+  logger.info("Sharing contact details with the airline on one quote", { position, email });
+  await Cart.shareContactDetailsWithAirlineForQuote(this.page, position, email);
+});
+
 // Word-matching counterpart of "the paid baggage should be displayed in flight details", for
 // suppliers that word the bag differently in Extras and in the drawer.
 Then("the added baggage should be displayed in flight details", async function () {

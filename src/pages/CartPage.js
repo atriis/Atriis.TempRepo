@@ -6403,10 +6403,11 @@ class CartPage {
    * the seller's IsGtpContactSharingConsentEnabled flag is on, so its absence is a valid state.
    * @param {number} timeout - How long to give the extras list to render the row
    * @returns {Promise<boolean>}
+   * @param {import('playwright').Locator|null} [scope] - Limit to one quote card (Separated Tickets carts hold one consent row per quote)
    */
-  async isFlightContactConsentRowPresent(timeout = 10000) {
+  async isFlightContactConsentRowPresent(timeout = 10000, scope = null) {
     try {
-      await this.page
+      await (scope ?? this.page)
         .locator(SELECTORS.FLIGHT_CONTACT_CONSENT_OPEN_BUTTON)
         .first()
         .waitFor({ state: 'visible', timeout });
@@ -6421,9 +6422,10 @@ class CartPage {
    * checkbox. The row fetches the stored answer on every open (an el-skeleton is shown meanwhile),
    * so the checkbox — not the click — marks the panel as ready to read.
    * @param {number} timeout
+   * @param {import('playwright').Locator|null} [scope] - Limit to one quote card (Separated Tickets carts hold one consent row per quote)
    */
-  async openFlightContactConsentPanel(timeout = 30000) {
-    const openButton = this.page.locator(SELECTORS.FLIGHT_CONTACT_CONSENT_OPEN_BUTTON).first();
+  async openFlightContactConsentPanel(timeout = 30000, scope = null) {
+    const openButton = (scope ?? this.page).locator(SELECTORS.FLIGHT_CONTACT_CONSENT_OPEN_BUTTON).first();
     try {
       await openButton.waitFor({ state: 'visible', timeout });
       await openButton.click();
@@ -6444,9 +6446,10 @@ class CartPage {
    * Reads the consent checkbox state in the open panel.
    * @param {number} timeout
    * @returns {Promise<{ checked: boolean, disabled: boolean }>}
+   * @param {import('playwright').Locator|null} [scope] - Limit to one quote card (Separated Tickets carts hold one consent row per quote)
    */
-  async getFlightContactConsentCheckboxState(timeout = 15000) {
-    const checkbox = this.page.locator(SELECTORS.FLIGHT_CONTACT_CONSENT_AGREE_CHECKBOX).first();
+  async getFlightContactConsentCheckboxState(timeout = 15000, scope = null) {
+    const checkbox = (scope ?? this.page).locator(SELECTORS.FLIGHT_CONTACT_CONSENT_AGREE_CHECKBOX).first();
     await checkbox.waitFor({ state: 'visible', timeout });
     const classes = (await checkbox.getAttribute('class')) || '';
     return { checked: classes.includes('is-checked'), disabled: classes.includes('is-disabled') };
@@ -6455,9 +6458,10 @@ class CartPage {
   /**
    * Clicks the consent checkbox in the open panel.
    * @param {number} timeout
+   * @param {import('playwright').Locator|null} [scope] - Limit to one quote card (Separated Tickets carts hold one consent row per quote)
    */
-  async clickFlightContactConsentCheckbox(timeout = 15000) {
-    const checkbox = this.page.locator(SELECTORS.FLIGHT_CONTACT_CONSENT_AGREE_CHECKBOX).first();
+  async clickFlightContactConsentCheckbox(timeout = 15000, scope = null) {
+    const checkbox = (scope ?? this.page).locator(SELECTORS.FLIGHT_CONTACT_CONSENT_AGREE_CHECKBOX).first();
     await checkbox.waitFor({ state: 'visible', timeout });
     await checkbox.click();
   }
@@ -6466,9 +6470,10 @@ class CartPage {
    * Reads the traveller email field of the open consent panel.
    * @param {number} timeout
    * @returns {Promise<string>}
+   * @param {import('playwright').Locator|null} [scope] - Limit to one quote card (Separated Tickets carts hold one consent row per quote)
    */
-  async getFlightContactConsentEmailValue(timeout = 15000) {
-    const input = this.page.locator(SELECTORS.FLIGHT_CONTACT_CONSENT_EMAIL_INPUT).first();
+  async getFlightContactConsentEmailValue(timeout = 15000, scope = null) {
+    const input = (scope ?? this.page).locator(SELECTORS.FLIGHT_CONTACT_CONSENT_EMAIL_INPUT).first();
     await input.waitFor({ state: 'visible', timeout });
     return ((await input.inputValue()) || '').trim();
   }
@@ -6477,12 +6482,13 @@ class CartPage {
    * Types the traveller email into the open consent panel.
    * @param {string} email
    * @param {number} timeout
+   * @param {import('playwright').Locator|null} [scope] - Limit to one quote card (Separated Tickets carts hold one consent row per quote)
    */
-  async fillFlightContactConsentEmail(email, timeout = 15000) {
+  async fillFlightContactConsentEmail(email, timeout = 15000, scope = null) {
     if (!email || typeof email !== 'string') {
       throw new Error('[CartPage.fillFlightContactConsentEmail] email must be a non-empty string, got: ' + typeof email);
     }
-    const input = this.page.locator(SELECTORS.FLIGHT_CONTACT_CONSENT_EMAIL_INPUT).first();
+    const input = (scope ?? this.page).locator(SELECTORS.FLIGHT_CONTACT_CONSENT_EMAIL_INPUT).first();
     await input.waitFor({ state: 'visible', timeout });
     await input.fill(email);
   }
@@ -6492,9 +6498,10 @@ class CartPage {
    * only proof the save landed: saveInfo() returns silently while vuelidate is invalid, leaving the
    * panel open with its fields marked.
    * @param {number} timeout
+   * @param {import('playwright').Locator|null} [scope] - Limit to one quote card (Separated Tickets carts hold one consent row per quote)
    */
-  async saveFlightContactConsent(timeout = 30000) {
-    const saveButton = this.page.locator(SELECTORS.FLIGHT_CONTACT_CONSENT_SAVE_BUTTON).first();
+  async saveFlightContactConsent(timeout = 30000, scope = null) {
+    const saveButton = (scope ?? this.page).locator(SELECTORS.FLIGHT_CONTACT_CONSENT_SAVE_BUTTON).first();
     try {
       await saveButton.waitFor({ state: 'visible', timeout });
       await saveButton.click();
@@ -6505,7 +6512,7 @@ class CartPage {
       );
     }
     try {
-      await this.page
+      await (scope ?? this.page)
         .locator(SELECTORS.FLIGHT_CONTACT_CONSENT_SUCCESS_ICON)
         .first()
         .waitFor({ state: 'visible', timeout });
