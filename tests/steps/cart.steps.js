@@ -864,6 +864,19 @@ Then("the seat map aisle should be displayed", async function () {
   logger.info("Seat map aisle verified", result);
 });
 
+Then("the seat map aisle should be drawn after columns {string} on every row", async function (columns) {
+  const expected = columns.split(",").map((c) => c.trim()).filter(Boolean);
+  logger.info("Verifying the seat map aisle columns", { expected });
+  const result = await Cart.verifySeatMapAisleAfterColumns(this.page, expected);
+  logger.info("Seat map aisle columns verified", result);
+});
+
+Then("the seat map should draw no aisle gap on any row", async function () {
+  logger.info("Verifying the seat map draws no aisle gap");
+  const result = await Cart.verifySeatMapAisleAfterColumns(this.page, []);
+  logger.info("Seat map has no aisle gap", result);
+});
+
 When("I click next flight button", async function () {
   logger.info("Clicking next flight button to advance to the next segment");
   const cartPage = getPageObject(this.page, CartPage);

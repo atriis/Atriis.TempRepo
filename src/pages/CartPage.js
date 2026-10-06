@@ -1199,6 +1199,9 @@ const SELECTORS = {
   // Aisle-marked seat cells — flight-deck.vue getSeatClass adds the `aisle` class to the seat wrapper
   // to render the aisle gap between seat blocks. ADO 72357/80662.
   SEAT_MAP_AISLE: '.deck-wrapper .aisle',
+  // One deck row per cabin row; its seat cells are the direct children holding a [data-seat-number]
+  // seat. The `aisle` class sits on the cell on the left of the aisle gap. ADO 85940.
+  SEAT_MAP_ROW: '.deck-wrapper .deck-row',
   // Visible seat tooltip container (Element Plus el-popper with light effect, visible state)
   SEAT_TOOLTIP_VISIBLE: '.el-popper.is-light:not([aria-hidden="true"])',
   // First available seat in the deck (has a seat number visible)
@@ -7812,6 +7815,24 @@ class CartPage {
    */
   async countAisleSeats() {
     return await this.page.locator(SELECTORS.SEAT_MAP_AISLE).count();
+  }
+
+  /**
+   * Reads every rendered seat-map row of the active leg: its row number, its seat letters in drawn
+   * order, and the letters whose cell carries the `aisle` class (the seat on the left of each aisle
+   * gap). Placeholder (no-seat) cells are included, so a short row still reports its column. ADO 85940.
+   * @returns {Promise<Array<{rowNumber: string, letters: string[], aisleAfter: string[]}>>}
+   */
+  async getSeatMapRowAisleLayouts() {
+    return await this.page.locator(SELECTORS.SEAT_MAP_ROW).evaluateAll((rows) => rows.map((row) => {
+      const cells = Array.from(row.children).filter((cell) => cell.querySelector('[data-seat-number]'));
+      const letterOf = (cell) => cell.querySelector('[data-seat-number]').getAttribute('data-seat-number');
+      return {
+        rowNumber: row.getAttribute('data-text1'),
+        letters: cells.map(letterOf),
+        aisleAfter: cells.filter((cell) => cell.classList.contains('aisle')).map(letterOf),
+      };
+    }));
   }
 
   /**

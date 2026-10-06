@@ -4372,6 +4372,45 @@ const Cart = {
   },
 
   /**
+   * Verifies the aisle gaps of the open seat map's active leg are drawn after exactly the expected
+   * columns on every row (e.g. ['C', 'H'] for a 3-3-3 cabin, [] for a Business cabin that draws no
+   * gap). ADO 85940: a narrowed exit row flagging its outer seats as aisle seats used to move the
+   * gap for the whole deck, so a Finnair A350 3-3-3 cabin was drawn as 2-4-3 (A B | C D E H | J K L).
+   * Works on the cart seat map and on the results seat preview — both render the same deck.
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @param {string[]} expectedAisleAfter - Seat letters expected on the left of each aisle gap
+   * @returns {Promise<{rowCount: number, layouts: string[]}>}
+   */
+  async verifySeatMapAisleAfterColumns(page, expectedAisleAfter) {
+    if (!page) throw new Error('page is required');
+    if (!Array.isArray(expectedAisleAfter)) {
+      throw new Error(`expectedAisleAfter must be an array, got: ${typeof expectedAisleAfter}`);
+    }
+    logger.info('Verifying the seat map aisle gaps on every row', { expectedAisleAfter });
+
+    const cartPage = getPageObject(page, CartPage);
+    await cartPage.waitForSeatMapToLoad();
+    const rows = await cartPage.getSeatMapRowAisleLayouts();
+
+    expect(rows.length, 'Expected the seat map to render at least one row').toBeGreaterThan(0);
+
+    const draw = (row) => row.letters.map((l) => (row.aisleAfter.includes(l) ? `${l} |` : l)).join(' ');
+    const layouts = [...new Set(rows.map(draw))];
+    const wrongRows = rows
+      .filter((row) => row.aisleAfter.join(',') !== expectedAisleAfter.join(','))
+      .map((row) => `row ${row.rowNumber}: ${draw(row)}`);
+
+    expect(
+      wrongRows,
+      `Expected the aisle gap after [${expectedAisleAfter.join(', ')}] on every row. Drawn layouts: ${layouts.join(' / ')}`,
+    ).toEqual([]);
+
+    logger.debug('Seat map aisle gaps verified', { rowCount: rows.length, layouts });
+    return { rowCount: rows.length, layouts };
+  },
+
+  /**
    * Selects the first available seat with a price (containing $, €, or £).
    * Clicks the .is-flex ancestor div which carries the Vue handleSeatSelect click handler.
    *
