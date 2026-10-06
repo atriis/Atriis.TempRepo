@@ -1379,6 +1379,11 @@ const SELECTORS = {
   // Recipient chips (trip-traveler-tag). app-share-quotes renders a mobile and a desktop
   // recipients-list, so callers filter this to the visible one.
   SHARE_RECIPIENT_CHIPS: '.app-share-quotes .recipients-list > *',
+  // Share dialog "Subject" field (app-share-quotes.vue -> el-input v-model="shareForm.subject"),
+  // prefilled from the server's email preview. Only the subject is a bare el-input directly in
+  // a .field > .control: the recipient one sits inside user-autocomplete, the language one inside
+  // el-select, and the message is an el-textarea — so this needs no localised label text.
+  SHARE_SUBJECT_INPUT: '.app-share-quotes .field > .control > .el-input input',
   // Hotel address in share email preview
   SHARE_EMAIL_HOTEL_ADDRESS: "[target='_blank']",
 
@@ -4366,6 +4371,25 @@ class CartPage {
     await button.waitFor({ state: "visible", timeout: 30_000 });
     await button.scrollIntoViewIfNeeded();
     await button.click();
+  }
+
+  /**
+   * Reads the current value of the open share dialog's "Subject" field.
+   * Scoped to :visible so a closed share dialog lingering in the DOM is never read.
+   *
+   * @returns {Promise<string>}
+   */
+  async getShareSubjectValue() {
+    const input = this.page.locator(SELECTORS.SHARE_SUBJECT_INPUT).filter({ visible: true }).first();
+    try {
+      await input.waitFor({ state: "visible", timeout: 30_000 });
+      return await input.inputValue();
+    } catch (err) {
+      throw new Error(
+        `[CartPage.getShareSubjectValue] Could not read the Subject field of the share dialog. ` +
+        `The share dialog may not be open or still loading. Original: ${err.message}`
+      );
+    }
   }
 
   // ===== OOP JUSTIFICATION =====

@@ -9124,6 +9124,35 @@ const Cart = {
   },
 
   /**
+   * Verifies the open share dialog's "Subject" field contains the expected text.
+   * The share dialog must already be open (via clickShareQuoteAndWaitForSubjectField or clickShareItineraryAndWaitForSubjectField).
+   * Polled because the field is prefilled from the server's email preview after the dialog renders.
+   * @param {import('playwright').Page} page
+   * @param {string} expectedSubject - The expected subject substring
+   */
+  async verifyShareSubjectContains(page, expectedSubject) {
+    if (!page) throw new Error('page is required');
+    if (typeof expectedSubject !== 'string' || !expectedSubject.trim()) {
+      throw new Error(
+        `[Cart.verifyShareSubjectContains] "expectedSubject" must be a non-empty string, got: ${expectedSubject}`
+      );
+    }
+    const cartPage = getPageObject(page, CartPage);
+    logger.debug('Reading the share dialog subject', { expectedSubject });
+    try {
+      await expect.poll(async () => cartPage.getShareSubjectValue(), { timeout: 30_000 }).toContain(expectedSubject);
+    } catch (err) {
+      // expect()'s own message never reaches the report, so the actual subject is carried in the throw.
+      const actualSubject = await cartPage.getShareSubjectValue().catch(() => '<unreadable>');
+      throw new Error(
+        `[Cart.verifyShareSubjectContains] The share dialog Subject does not contain "${expectedSubject}". ` +
+        `Actual subject: "${actualSubject}". A connecting itinerary titled by its stop instead of its ` +
+        `final destination fails here. Original: ${err.message}`
+      );
+    }
+  },
+
+  /**
    * Extracts the current hotel quote title from the cart.
    * @param {import('playwright').Page} page
    * @returns {Promise<string>}

@@ -384,6 +384,11 @@ When("I click the share itinerary button", async function () {
   await Cart.clickShareItineraryAndWaitForSubjectField(this.page);
 });
 
+Then("the itinerary email subject should contain {string}", async function (expectedSubject) {
+  logger.info("Verifying the share dialog email subject", { expectedSubject });
+  await Cart.verifyShareSubjectContains(this.page, expectedSubject);
+});
+
 When("I click the copy to clipboard button in the share dialog", async function () {
   logger.info("Clicking copy to clipboard button in share dialog");
   // Snapshot the URL before the copy action so a later step can assert the page did not
