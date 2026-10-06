@@ -419,6 +419,15 @@ class DynamicAndReferenceFieldsPage {
    * @returns {Promise<boolean>} True if the field is disabled
    */
   async isFieldDisabled(labelText, { timeout = 5000 } = {}) {
+    // The checkout reference questions mount a beat AFTER the booking-details heading. Wait for the
+    // labelled container to render first (as getFieldValueByLabel does) — otherwise
+    // fieldContainerByLabel snapshots 0 matches and falls through to the collapse-section fallback.
+    await this.page
+      .locator(SELECTORS.FIELD_CONTAINER)
+      .filter({ has: this.page.locator(SELECTORS.FIELD_LABEL).filter({ hasText: exactFieldLabelRegex(labelText) }), visible: true })
+      .first()
+      .waitFor({ state: 'visible', timeout: Math.max(timeout, 15000) })
+      .catch(() => {});
     const fieldContainer = await this.fieldContainerByLabel(labelText);
     await fieldContainer.waitFor({ state: 'visible', timeout });
     // Element Plus flags a disabled select via `is-disabled` on the .el-select root or its inner

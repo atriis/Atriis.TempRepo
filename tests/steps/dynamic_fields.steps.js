@@ -215,6 +215,16 @@ Then("the following reference fields should not be editable:", async function (d
   }
 });
 
+Then("the following reference fields should be editable:", async function (dataTable) {
+  const labels = dataTable.raw().map(row => row[0]);
+  logger.info("Verifying reference fields are editable", { labels });
+  const result = await DynamicAndReferenceFields.verifyReferenceFieldsEditable(this.page, labels);
+  const disabled = result.results.filter(r => !r.editable).map(r => r.label);
+  if (disabled.length > 0) {
+    throw new Error(`Reference fields should be editable but are disabled: ${disabled.join(', ')}`);
+  }
+});
+
 // Selects a dropdown option for a reference field WITHOUT clicking Proceed.
 // Use when filling multiple fields before a single Proceed click.
 // For a single-field flow that auto-proceeds, use: "I select the {string} reference field as {string} and proceed"

@@ -926,6 +926,28 @@ const DynamicAndReferenceFields = {
   },
 
   /**
+   * Verifies that specified reference fields are editable (enabled). Counterpart of
+   * verifyReferenceFieldsNotEditable; works anywhere the shared ReferenceField inputs render —
+   * the checkout reference questions and the My Profile dynamic fields alike.
+   * @param {import('playwright').Page} page
+   * @param {string[]} fieldLabels - Array of field label texts to check
+   * @returns {Promise<{allEditable: boolean, results: Array<{label: string, editable: boolean}>}>}
+   */
+  async verifyReferenceFieldsEditable(page, fieldLabels) {
+    if (!page) throw new Error('page is required');
+    if (!Array.isArray(fieldLabels)) throw new Error('fieldLabels must be an array');
+
+    const dynamicFieldsPage = getPageObject(page, DynamicAndReferenceFieldsPage);
+    const results = [];
+    for (const label of fieldLabels) {
+      const disabled = await dynamicFieldsPage.isFieldDisabled(label, { timeout: 15000 });
+      results.push({ label, editable: !disabled });
+    }
+    const allEditable = results.every(r => r.editable);
+    return { allEditable, results };
+  },
+
+  /**
    * Opens the named checkout reference-field dropdown and verifies it offers the expected option
    * display values, then closes it. Used to assert a dynamic field "displays value from Option, not
    * the GDS output code": the option labels shown are the Option display values — e.g. test 54444,
