@@ -36,16 +36,16 @@ Feature: 85849 Amadeus Cars - Delivery & Collection toggle and location search f
     Then the car "pick-up" location should use the "standard" location search and be empty
     And the car "drop-off" location should use the "standard" location search and be empty
     When I switch on the Delivery & Collection toggle
-    And I type "London" in the Delivery & Collection "pick-up" location
+    And I type "Glasgow, 101 Waterloo Street, Glasgow, GB" in the Delivery & Collection "pick-up" location
     And I select the first Delivery & Collection "pick-up" location
-    And I type "London" in the Delivery & Collection "drop-off" location
+    And I type "Glasgow" in the Delivery & Collection "drop-off" location
     # A different place than the pick-up, so the drop-off coordinates prove the return D&C pick is used
     And I select Delivery & Collection "drop-off" location number 2
     And I search for a car at the selected locations with 1 months ahead
     # Interim D&C search runs on the selected places' coordinates; Car_Availability on the D&C
     # location codes comes with US 84154
-    When I capture the "request" payload for request type "CarSearchV3" from Storage
-    Then the captured "request" payload for request type "CarSearchV3" should contain "\"PickupLatitudeReference\":{storedDcPickupLatitude}"
-    And the captured "request" payload for request type "CarSearchV3" should contain "\"PickupLongitudeReference\":{storedDcPickupLongitude}"
-    And the captured "request" payload for request type "CarSearchV3" should contain "\"DropoffLatitudeReference\":{storedDcDropoffLatitude}"
-    And the captured "request" payload for request type "CarSearchV3" should contain "\"DropoffLongitudeReference\":{storedDcDropoffLongitude}"
+    When I capture the "request" payload for request type "Amadeus4.Car_Availability" from Storage
+    Then the captured "request" payload for request type "Amadeus4.Car_Availability" should contain "PUP".block("locationType")
+    Then the captured "request" payload for request type "Amadeus4.Car_Availability" should contain "1A".block("code")
+    Then the captured "request" payload for request type "Amadeus4.Car_Availability" should contain "GLAC01".block("name")
+    
