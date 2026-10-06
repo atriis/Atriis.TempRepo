@@ -14958,6 +14958,20 @@ class CartPage {
     });
   }
 
+  /**
+   * Sets up a listener for the next /api/v3/quotes?tripId=...&getCancelled=true GET response,
+   * the call the trip page makes to load the trip's cancelled quotes.
+   * Must be called BEFORE the action that triggers the cart to load.
+   *
+   * @returns {Promise<import('@playwright/test').Response>}
+   */
+  captureCancelledQuotesApiResponse() {
+    return getNetworkInterceptor(this.page).waitForResponse({
+      urlIncludes: [config.quotesApiPath, 'tripId', 'getCancelled=true'],
+      method: 'GET',
+    });
+  }
+
   // ===== Additional items section =====
 
   /**

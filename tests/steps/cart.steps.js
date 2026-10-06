@@ -2526,6 +2526,14 @@ When("I navigate to the scenario trip", async function () {
   await Cart.navigateToTrip(this.page, tripId);
 });
 
+Then("the flight quote {int} in the intercepted response should show its markup converted at the fare rate", async function (quoteId) {
+  if (!this.lastInterceptedResponsePromise) {
+    throw new Error('No intercepted response found. Call "I start intercepting the {string} API response" before this step.');
+  }
+  logger.info("Verifying the flight quote markup is converted at the fare rate", { quoteId });
+  await Cart.verifyFlightQuoteMarkupConvertedAtFareRate(this.lastInterceptedResponsePromise, quoteId);
+});
+
 // ========================================
 // LOCKED TRIP (test 55667)
 // ========================================

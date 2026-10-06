@@ -33,6 +33,7 @@ setDefaultTimeout(120000);
 const SUPPORTED_APIS = {
   flightPricing: (page) => FlightPricing.startCapturingPricingResponse(page),
   quotes: (page) => Cart.startCapturingQuotesResponse(page),
+  cancelledQuotes: (page) => Cart.startCapturingCancelledQuotesResponse(page),
   flightSearch: (page) => FlightResults.startCapturingSearchResponse(page),
 };
 
@@ -41,7 +42,7 @@ const SUPPORTED_APIS = {
  * Stores the promise in this.lastInterceptedResponsePromise.
  * Also sets the legacy-named variable (e.g. this.flightPricingResponsePromise) for backward compat.
  *
- * Supported API names: flightPricing, quotes, flightSearch
+ * Supported API names: flightPricing, quotes, cancelledQuotes, flightSearch
  */
 When('I start intercepting the {string} API response', function (apiName) {
   if (!SUPPORTED_APIS[apiName]) {

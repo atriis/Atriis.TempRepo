@@ -16386,6 +16386,78 @@ const Cart = {
   },
 
   /**
+   * Starts capturing the next /api/v3/quotes?tripId=...&getCancelled=true GET response.
+   * Must be called BEFORE the action that navigates to the cart.
+   * Returns an unresolved Promise — do NOT await in the calling step.
+   *
+   * @param {import('playwright').Page} page
+   * @returns {Promise<import('@playwright/test').Response>}
+   */
+  startCapturingCancelledQuotesResponse(page) {
+    if (!page) throw new Error('page is required');
+    const cartPage = getPageObject(page, CartPage);
+    return cartPage.captureCancelledQuotesApiResponse();
+  },
+
+  /**
+   * Verifies a flight quote shown in another currency converts its fare management markup at the
+   * fare's own rate (ADO 84703). The fare rate is read from the quote itself (displayTax / tax), so
+   * every pricing line's DisplayMarkup must equal Markup x rate, and the quote's displayTotalPrice
+   * must equal its original-currency totalPrice x rate. Before the fix a markup with no markup
+   * currency was added to the display total unconverted.
+   *
+   * @param {Promise<import('@playwright/test').Response>} responsePromise - From a quotes capture
+   * @param {number} quoteId - The flight quote to check
+   * @returns {Promise<{rate: number, displayTotalPrice: number, totalPrice: number, markups: Array<{markup: number, displayMarkup: number}>}>}
+   */
+  async verifyFlightQuoteMarkupConvertedAtFareRate(responsePromise, quoteId) {
+    if (!responsePromise) {
+      throw new Error('[Cart.verifyFlightQuoteMarkupConvertedAtFareRate] No captured quotes response. Start intercepting it before opening the trip.');
+    }
+    if (typeof quoteId !== 'number' || quoteId <= 0) {
+      throw new Error(`[Cart.verifyFlightQuoteMarkupConvertedAtFareRate] quoteId must be a positive number, got: ${quoteId}`);
+    }
+    const response = await responsePromise;
+    const body = await response.json();
+    const quote = (body.flightQuotes || []).find((q) => q.quoteId === quoteId);
+    if (!quote) {
+      const ids = (body.flightQuotes || []).map((q) => q.quoteId);
+      throw new Error(`[Cart.verifyFlightQuoteMarkupConvertedAtFareRate] Flight quote ${quoteId} is not in the response. Quotes returned: [${ids.join(', ')}].`);
+    }
+    if (quote.displayCurrency === quote.originalCurrency) {
+      throw new Error(
+        `[Cart.verifyFlightQuoteMarkupConvertedAtFareRate] Quote ${quoteId} is shown in its own currency (${quote.displayCurrency}), ` +
+        `so no conversion is exercised. Use a user whose display currency differs from the fare currency.`
+      );
+    }
+    if (!(quote.tax > 0)) {
+      throw new Error(`[Cart.verifyFlightQuoteMarkupConvertedAtFareRate] Quote ${quoteId} has no tax (${quote.tax}) to read the fare rate from.`);
+    }
+
+    const rate = quote.displayTax / quote.tax;
+    const pricings = (quote.flightPricing || []).filter((p) => p.Markup > 0);
+    expect(pricings.length, `Quote ${quoteId} should have at least one pricing line with a markup`).toBeGreaterThan(0);
+
+    const markups = pricings.map((p, i) => {
+      expectNumbersToBeEqualWithTolerance(
+        p.DisplayMarkup, p.Markup * rate, 0.01,
+        `Quote ${quoteId} pricing ${i} DisplayMarkup (${quote.displayCurrency}) vs Markup ${p.Markup} ${quote.originalCurrency} x fare rate ${rate}`
+      );
+      return { markup: p.Markup, displayMarkup: p.DisplayMarkup };
+    });
+    expectNumbersToBeEqualWithTolerance(
+      quote.displayTotalPrice, quote.totalPrice * rate, 0.01,
+      `Quote ${quoteId} displayTotalPrice (${quote.displayCurrency}) vs totalPrice ${quote.totalPrice} ${quote.originalCurrency} x fare rate ${rate}`
+    );
+
+    logger.info('Flight quote markup is converted at the fare rate', {
+      quoteId, rate, displayCurrency: quote.displayCurrency, originalCurrency: quote.originalCurrency,
+      displayTotalPrice: quote.displayTotalPrice, totalPrice: quote.totalPrice, markups,
+    });
+    return { rate, displayTotalPrice: quote.displayTotalPrice, totalPrice: quote.totalPrice, markups };
+  },
+
+  /**
    * Hovers the trip-level three-dots actions icon and waits for the dropdown to appear.
    * Retries automatically when the el-dropdown is disabled during In Progress polling windows.
    * @param {import('playwright').Page} page
