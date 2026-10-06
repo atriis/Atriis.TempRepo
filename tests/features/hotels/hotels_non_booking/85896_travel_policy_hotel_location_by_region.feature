@@ -9,7 +9,9 @@ Feature: 85896 Travel Policy - Hotel location policy by region is correctly trig
     And I have added myself as the traveler
     When I search for a hotel in "new york" for 1 night
     And I wait to see view rates text in results page
-    And I select the first hotel result
+    Then the out of policy indicator should be visible in results
+    And the out of policy tooltip in results should be "Hotel location is not europe"
+    When I select the first hotel result
     And I wait for the first add to trip button to be visible in room level results
     Then the out of policy indicator should be visible in results
     And the out of policy tooltip in results should be "Hotel location is not europe"
