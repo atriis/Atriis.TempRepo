@@ -5291,6 +5291,17 @@ class CartPage {
       .first();
     await option.waitFor({ state: 'visible', timeout });
     await option.click();
+
+    // Let this popper finish closing: while it fades out it is still ':visible', so the next
+    // segment's `.last()` panel lookup would resolve to it and time out on "element is not stable".
+    // A multi-select keeps its popper open after a pick, so close it from its own trigger instead.
+    const closed = await this.page.locator(SELECTORS.BAGGAGE_DROPDOWN_PANEL).first()
+      .waitFor({ state: 'hidden', timeout: 3000 }).then(() => true, () => false);
+    if (!closed) {
+      await trigger.click();
+      await this.page.locator(SELECTORS.BAGGAGE_DROPDOWN_PANEL).first()
+        .waitFor({ state: 'hidden', timeout: 3000 }).catch(() => {});
+    }
   }
 
   /**
