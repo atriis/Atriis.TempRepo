@@ -2,6 +2,7 @@ const { expect } = require("@playwright/test");
 const { faker } = require("@faker-js/faker");
 const { getPageObject } = require("@utils/pageObjectCache");
 const ProfilePage = require("@pages/ProfilePage");
+const DynamicAndReferenceFieldsPage = require("@pages/DynamicAndReferenceFieldsPage");
 const LoginPage = require("@pages/LoginPage");
 // Only for the trip page this DSL returns to after closing a profile tab — the profile itself never
 // touches the search form. See closeTravelerProfileAndReturn. Destructured, unlike ProfilePage
@@ -2672,6 +2673,42 @@ const Profile = {
     }
 
     logger.info('[Profile.verifyDynamicFieldNotEditable] Dynamic profile field confirmed not editable');
+  },
+
+  /**
+   * Verifies EVERY dynamic profile field in the profile is editable. A booker with the
+   * "Can Edit Non Editable Dynamic Profile Fields" role edits dynamic fields regardless of their
+   * "Editable" configuration (input-basic.ts isEditable short-circuits to true), so none may be disabled.
+   */
+  async verifyAllDynamicFieldsEditable(page) {
+    if (!page) throw new Error('[Profile.verifyAllDynamicFieldsEditable] "page" is required.');
+
+    logger.debug('[Profile.verifyAllDynamicFieldsEditable] Verifying all dynamic profile fields are editable');
+
+    // The profile renders the same input-basic field components as checkout, so the per-field read
+    // is shared with DynamicAndReferenceFieldsPage, scoped to the profile's dynamic-fields container.
+    const container = await getPageObject(page, ProfilePage).getDynamicFieldContainer();
+    let fields;
+    try {
+      fields = await getPageObject(page, DynamicAndReferenceFieldsPage).getFieldEditability(container, { timeout: 10000 });
+    } catch (err) {
+      throw new Error(
+        `[Profile.verifyAllDynamicFieldsEditable] No dynamic reference fields rendered in the profile. Original: ${err.message}`
+      );
+    }
+
+    const locked = fields.filter((f) => !f.editable).map((f) => f.label || '(unlabelled)');
+    if (locked.length > 0) {
+      throw new Error(
+        `[Profile.verifyAllDynamicFieldsEditable] ${locked.length} of ${fields.length} dynamic profile field(s) are ` +
+        `not editable: ${locked.join(', ')}. The user may lack the "Can Edit Non Editable Dynamic Profile Fields" role.`
+      );
+    }
+
+    logger.info('[Profile.verifyAllDynamicFieldsEditable] All dynamic profile fields are editable', {
+      fields: fields.map((f) => f.label),
+    });
+    return { fields };
   },
 
   /**

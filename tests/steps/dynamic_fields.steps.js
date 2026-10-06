@@ -215,6 +215,11 @@ Then("the following reference fields should not be editable:", async function (d
   }
 });
 
+Then("all the fields in the {string} reference section should be editable", async function (sectionTitle) {
+  logger.info("Verifying all reference section fields are editable", { sectionTitle });
+  await DynamicAndReferenceFields.verifyReferenceSectionFieldsEditable(this.page, sectionTitle);
+});
+
 Then("the following reference fields should be editable:", async function (dataTable) {
   const labels = dataTable.raw().map(row => row[0]);
   logger.info("Verifying reference fields are editable", { labels });

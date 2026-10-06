@@ -3,7 +3,7 @@
  * Contains only UI-level interactions.
  */
 
-const { EL_SELECT_DISABLED_INNER } = require("@utils/elementPlus");
+const { EL_SELECT_DISABLED_INNER, EL_CONTROL_DISABLED } = require("@utils/elementPlus");
 
 const SELECTORS = {
   REFERENCE_FIELD_SECTION: '.general-section',
@@ -1528,9 +1528,66 @@ class DynamicAndReferenceFieldsPage {
    * @returns {Promise<string[]>} Clean field labels in DOM order; empty when the section is not rendered
    */
   async getReferenceSectionFieldLabels(sectionTitle) {
+    const rawTexts = await this.titledQuestionSection(sectionTitle, 'getReferenceSectionFieldLabels')
+      .locator(SELECTORS.SECTION_FIELD_LABEL)
+      .allTextContents();
+    return rawTexts.map((t) => cleanReferenceLabelText(t)).filter((t) => t.length > 0);
+  }
+
+  /**
+   * Reads, for every visible reference field in the checkout question section whose header shows
+   * sectionTitle, its label and whether its control is editable. Waits for the first field to render,
+   * since the section mounts a beat after the booking-details heading. Collapsed passenger accordions
+   * hide their fields, so expand them first (expandAllCollapsedTravelerSections) to include them.
+   *
+   * @param {string} sectionTitle - Section header title (e.g. "Travellers Reference Questions")
+   * @param {object} [options]
+   * @param {number} [options.timeout=20000]
+   * @returns {Promise<Array<{label: string, editable: boolean}>>} One entry per field, in DOM order
+   */
+  async getReferenceSectionFieldEditability(sectionTitle, { timeout = 20000 } = {}) {
+    const section = this.titledQuestionSection(sectionTitle, 'getReferenceSectionFieldEditability');
+    return this.getFieldEditability(section, { timeout });
+  }
+
+  /**
+   * Reads, for every visible reference field (input-dropdown/-textbox/-checkbox/-autocomplete/-textarea)
+   * inside scope, its label and whether its control is editable. The OBT binds `:disabled="!isEditable"`
+   * on every field type, so a field is editable when it carries none of the EL_CONTROL_DISABLED signals.
+   * Scoped to VISIBLE fields so hidden responsive duplicates are not double-counted. Shared by the
+   * checkout sections and the profile's dynamic fields, which render the same input-basic components.
+   *
+   * @param {import('playwright').Locator} scope - Container holding the fields
+   * @param {object} [options]
+   * @param {number} [options.timeout=20000]
+   * @returns {Promise<Array<{label: string, editable: boolean}>>} One entry per field, in DOM order
+   */
+  async getFieldEditability(scope, { timeout = 20000 } = {}) {
+    const fields = scope.locator(SELECTORS.FIELD_CONTAINER).filter({ visible: true });
+    await fields.first().waitFor({ state: 'visible', timeout });
+
+    const results = [];
+    for (const field of await fields.all()) {
+      const rawLabel = await field.locator('label.label').first().textContent().catch(() => '');
+      const editable = (await field.locator(EL_CONTROL_DISABLED).count()) === 0;
+      results.push({ label: cleanReferenceLabelText(rawLabel), editable });
+    }
+    return results;
+  }
+
+  /**
+   * Resolves the checkout question section (general or traveller) whose collapse header shows
+   * sectionTitle. The title match tolerates the "Travelers"/"Travellers" spelling difference between
+   * locales (en-US renders "Travelers Reference Questions").
+   *
+   * @param {string} sectionTitle
+   * @param {string} caller - Calling method name, for the validation error
+   * @returns {import('playwright').Locator}
+   */
+  titledQuestionSection(sectionTitle, caller) {
     if (!sectionTitle || typeof sectionTitle !== 'string') {
       throw new Error(
-        `[DynamicAndReferenceFieldsPage.getReferenceSectionFieldLabels] "sectionTitle" must be a non-empty string, got: ${typeof sectionTitle} (${sectionTitle})`
+        `[DynamicAndReferenceFieldsPage.${caller}] "sectionTitle" must be a non-empty string, got: ${typeof sectionTitle} (${sectionTitle})`
       );
     }
     const titleRegex = new RegExp(
@@ -1538,12 +1595,7 @@ class DynamicAndReferenceFieldsPage {
       'i'
     );
     const header = this.page.locator(SELECTORS.COLLAPSE_SECTION_HEADER).filter({ hasText: titleRegex });
-    const rawTexts = await this.page
-      .locator(SELECTORS.TITLED_QUESTION_SECTION)
-      .filter({ has: header })
-      .locator(SELECTORS.SECTION_FIELD_LABEL)
-      .allTextContents();
-    return rawTexts.map((t) => cleanReferenceLabelText(t)).filter((t) => t.length > 0);
+    return this.page.locator(SELECTORS.TITLED_QUESTION_SECTION).filter({ has: header });
   }
 
   /**

@@ -14,4 +14,13 @@
 const EL_SELECT_DISABLED_INNER =
   '.el-select__wrapper.is-disabled, .el-select__wrapper[aria-disabled="true"], .el-input.is-disabled';
 
-module.exports = { EL_SELECT_DISABLED_INNER };
+/**
+ * Any disabled control a reference field can render, matched as a DESCENDANT of the field container:
+ * a disabled el-select (root `is-disabled` plus the inner signals above), a disabled el-input /
+ * el-textarea (textbox, autocomplete, textarea fields), and a natively disabled `<input>` (checkbox
+ * fields render plain checkboxes with `:disabled`). A field with none of these is editable.
+ */
+const EL_CONTROL_DISABLED =
+  `.el-select.is-disabled, ${EL_SELECT_DISABLED_INNER}, .el-textarea.is-disabled, input[disabled], textarea[disabled]`;
+
+module.exports = { EL_SELECT_DISABLED_INNER, EL_CONTROL_DISABLED };

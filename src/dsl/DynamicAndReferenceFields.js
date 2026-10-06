@@ -926,6 +926,46 @@ const DynamicAndReferenceFields = {
   },
 
   /**
+   * Verifies EVERY reference field in the named checkout question section is editable. Expands
+   * collapsed passenger accordions first so every traveller's fields are checked, not just the first.
+   * @param {import('playwright').Page} page
+   * @param {string} sectionTitle - e.g. "Travellers Reference Questions"
+   * @returns {Promise<{fields: Array<{label: string, editable: boolean}>}>}
+   */
+  async verifyReferenceSectionFieldsEditable(page, sectionTitle) {
+    if (!page) throw new Error('[DynamicAndReferenceFields.verifyReferenceSectionFieldsEditable] "page" is required.');
+    if (!sectionTitle || typeof sectionTitle !== 'string') {
+      throw new Error(
+        `[DynamicAndReferenceFields.verifyReferenceSectionFieldsEditable] "sectionTitle" must be a non-empty string, got: ${typeof sectionTitle}`
+      );
+    }
+
+    const dynamicFieldsPage = getPageObject(page, DynamicAndReferenceFieldsPage);
+    await dynamicFieldsPage.expandAllCollapsedTravelerSections();
+
+    let fields;
+    try {
+      fields = await dynamicFieldsPage.getReferenceSectionFieldEditability(sectionTitle);
+    } catch (err) {
+      throw new Error(
+        `[DynamicAndReferenceFields.verifyReferenceSectionFieldsEditable] No reference fields rendered in the ` +
+        `"${sectionTitle}" section at checkout. Original: ${err.message}`
+      );
+    }
+
+    const locked = fields.filter((f) => !f.editable).map((f) => f.label || '(unlabelled)');
+    if (locked.length > 0) {
+      throw new Error(
+        `[DynamicAndReferenceFields.verifyReferenceSectionFieldsEditable] ${locked.length} of ${fields.length} field(s) ` +
+        `in "${sectionTitle}" are not editable: ${locked.join(', ')}.`
+      );
+    }
+
+    logger.info('All reference section fields are editable', { sectionTitle, fields: fields.map((f) => f.label) });
+    return { fields };
+  },
+
+  /**
    * Verifies that specified reference fields are editable (enabled). Counterpart of
    * verifyReferenceFieldsNotEditable; works anywhere the shared ReferenceField inputs render —
    * the checkout reference questions and the My Profile dynamic fields alike.

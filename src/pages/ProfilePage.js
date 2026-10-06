@@ -875,6 +875,26 @@ class ProfilePage {
     return true;
   }
 
+  /**
+   * Waits for the profile's dynamic reference fields section, scrolls it into view and returns it, so
+   * a caller can scope per-field reads (e.g. DynamicAndReferenceFieldsPage.getFieldEditability) to it.
+   * @returns {Promise<import('playwright').Locator>}
+   */
+  async getDynamicFieldContainer() {
+    const container = this.page.locator(SELECTORS.DYNAMIC_FIELD_CONTAINER).first();
+    try {
+      await container.waitFor({ state: 'visible', timeout: 10000 });
+      await container.scrollIntoViewIfNeeded();
+    } catch (err) {
+      throw new Error(
+        `[ProfilePage.getDynamicFieldContainer] The dynamic reference fields section did not appear ` +
+        `(selector: ${SELECTORS.DYNAMIC_FIELD_CONTAINER}). Ensure the Personal Details tab is open and the ` +
+        `logged-in user has dynamic profile fields configured. Original: ${err.message}`
+      );
+    }
+    return container;
+  }
+
   async clickPersonalDetailsTab() {
     try {
       const tab = this.page.locator(SELECTORS.PERSONAL_DETAILS_TAB);
