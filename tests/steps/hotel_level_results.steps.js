@@ -502,6 +502,26 @@ Then("only the hotels priced at or above the lowest fare out of policy price sho
   ).toEqual([]);
 });
 
+Then("only the hotels priced at or above {int} should be out of policy", async function (limit) {
+  logger.info("Verifying the out of policy indicator of every hotel against the price limit", { limit });
+
+  const breakdown = await HotelLevelResults.getHotelPolicyIndicatorsAgainstOopPrice(this.page, limit);
+  this.hotelCards = breakdown.hotels;
+
+  expect(
+    breakdown.atOrAboveOopPrice,
+    `No hotel is priced at or above the limit of ${limit}, so the indicator cannot be verified`,
+  ).toBeGreaterThan(0);
+  expect(
+    breakdown.missingIndicator.map((hotel) => `${hotel.name} (${hotel.price})`),
+    `Hotels priced at or above the limit of ${limit} without an out of policy indicator`,
+  ).toEqual([]);
+  expect(
+    breakdown.unexpectedIndicator.map((hotel) => `${hotel.name} (${hotel.price})`),
+    `Hotels priced below the limit of ${limit} showing an out of policy indicator`,
+  ).toEqual([]);
+});
+
 Then("the out of policy tooltip in hotel results should quote the hotel lowest fare margin", async function () {
   const lowestFare = getDynamicLowestFare(this);
   const expected = buildLowestFareViolationText(lowestFare);
@@ -513,6 +533,15 @@ Then("the out of policy tooltip in hotel results should quote the hotel lowest f
   const actual = await HotelLevelResults.hoverAndGetOOPTooltipTextOfHotel(this.page, lowestFare.outOfPolicyHotel.name);
 
   expect(normalizeText(actual)).toBe(expected);
+});
+
+When("I select the hotel priced closest below {int}", async function (limit) {
+  logger.info("Selecting the hotel priced closest below the limit", { limit });
+
+  if (!this.hotelCards) {
+    throw new Error("The hotel cards were not read yet — check the hotels against the limit before selecting one");
+  }
+  this.selectedHotel = await HotelLevelResults.selectHotelPricedClosestBelow(this.page, this.hotelCards, limit);
 });
 
 When("I select the most expensive in policy hotel", async function () {

@@ -238,5 +238,6 @@ module.exports = {
   calculateDynamicLowestFare,
   buildLowestFareViolationText,
   splitByOopPrice,
+  findClosestToOopPrice,
   findHotelsClosestToOopPrice,
 };

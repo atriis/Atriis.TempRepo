@@ -14,6 +14,7 @@ const {
 const {
   calculateDynamicLowestFare,
   findHotelsClosestToOopPrice,
+  findClosestToOopPrice,
   splitByOopPrice,
 } = require("@utils/hotelLowestFare.helper");
 const { fetchPayloadFromStorage } = require("@utils/payloadValidationClient");
@@ -1357,6 +1358,32 @@ const HotelLevelResults = {
   },
 
   /**
+   * Selects the hotel priced closest below a price limit and opens its rooms.
+   * @param {import('playwright').Page} page
+   * @param {Array<{name: string, price: number}>} hotels - Hotel cards already read from every results page
+   * @param {number} limit - The price limit
+   * @returns {Promise<{name: string, price: number}>} The selected hotel
+   */
+  async selectHotelPricedClosestBelow(page, hotels, limit) {
+    if (!page) throw new Error('[HotelLevelResults.selectHotelPricedClosestBelow] "page" is required.');
+    if (!Array.isArray(hotels) || hotels.length === 0) {
+      throw new Error(`[HotelLevelResults.selectHotelPricedClosestBelow] "hotels" must be a non-empty array, got: ${JSON.stringify(hotels)}`);
+    }
+    if (typeof limit !== 'number' || Number.isNaN(limit)) {
+      throw new Error(`[HotelLevelResults.selectHotelPricedClosestBelow] "limit" must be a number, got: ${limit}`);
+    }
+
+    const { below } = findClosestToOopPrice(hotels, limit);
+    if (!below) {
+      throw new Error(`[HotelLevelResults.selectHotelPricedClosestBelow] No hotel is priced below the limit of ${limit}.`);
+    }
+    logger.info('Selecting the hotel priced closest below the limit', { limit, hotel: below.name, price: below.price });
+
+    await this.selectHotelByName(page, below.name);
+    return { name: below.name, price: below.price };
+  },
+
+  /**
    * Hovers the first out of policy hotel card and reads its violation tooltip.
    * @param {import('playwright').Page} page
    * @param {object} allowance - Allowance from resolveGsaAllowance
@@ -1434,7 +1461,8 @@ const HotelLevelResults = {
    * @param {import('playwright').Page} page
    * @param {number} oopPrice - The price from which a hotel is out of policy
    * @returns {Promise<{total: number, atOrAboveOopPrice: number, belowOopPrice: number, withinRounding: number,
-   *                    missingIndicator: Array<object>, unexpectedIndicator: Array<object>}>}
+   *                    missingIndicator: Array<object>, unexpectedIndicator: Array<object>, hotels: Array<object>}>}
+   *          The breakdown, plus every hotel card read
    */
   async getHotelPolicyIndicatorsAgainstOopPrice(page, oopPrice) {
     if (!page) throw new Error('[HotelLevelResults.getHotelPolicyIndicatorsAgainstOopPrice] "page" is required.');
@@ -1456,7 +1484,7 @@ const HotelLevelResults = {
       withinRounding: breakdown.withinRounding,
     });
 
-    return breakdown;
+    return { ...breakdown, hotels };
   },
 
   /**

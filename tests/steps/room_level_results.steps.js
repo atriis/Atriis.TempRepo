@@ -535,6 +535,25 @@ Then("only the rooms priced at or above the lowest fare out of policy price shou
   ).toEqual([]);
 });
 
+Then("only the rooms priced at or above {int} should be out of policy", async function (limit) {
+  logger.info("Verifying the out of policy indicator of every room against the price limit", { limit });
+
+  const breakdown = await RoomLevelResults.getRoomPolicyIndicatorsAgainstOopPrice(this.page, limit);
+
+  expect(
+    breakdown.atOrAboveOopPrice,
+    `No room of ${this.selectedHotel?.name ?? "the selected hotel"} is priced at or above the limit of ${limit}, so the indicator cannot be verified`,
+  ).toBeGreaterThan(0);
+  expect(
+    breakdown.missingIndicator.map((room) => `room ${room.index + 1} (${room.price})`),
+    `Rooms priced at or above the limit of ${limit} without an out of policy indicator`,
+  ).toEqual([]);
+  expect(
+    breakdown.unexpectedIndicator.map((room) => `room ${room.index + 1} (${room.price})`),
+    `Rooms priced below the limit of ${limit} showing an out of policy indicator`,
+  ).toEqual([]);
+});
+
 Then("the out of policy tooltip in room level results should quote the hotel lowest fare margin", async function () {
   const expected = buildLowestFareViolationText(getDynamicLowestFare(this));
   logger.info("Verifying the out of policy tooltip in room level results quotes the hotel lowest fare margin", { expected });
