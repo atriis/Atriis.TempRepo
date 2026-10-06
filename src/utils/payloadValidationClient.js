@@ -342,6 +342,9 @@ async function fetchPayloadFromStorage({ source, requestType, tripId, transactio
   // so the token goes on every list call, not just the first. Sending it once and dropping it made
   // every retry a guaranteed 400 — the first attempt would 200 with the payload not yet written to
   // storage, and every attempt after it failed on auth rather than on the row being absent.
+  // The content download answers an anonymous caller the same way, so it takes the token from the
+  // start too: anonymous-first spent a guaranteed 400 + 2s on every payload, and a 429 on the
+  // authed retry that followed was outside the 429 branch.
   const listCallIncludeAuth = Boolean(token);
 
   function remainingTimeoutMs(operationName) {
@@ -650,7 +653,7 @@ async function fetchPayloadFromStorage({ source, requestType, tripId, transactio
         source,
         operationTimeoutMs: remainingTimeoutMs(`get content (${source})`),
         token,
-        includeAuth: false,
+        includeAuth: listCallIncludeAuth,
       });
       matches.push({
         payload,
@@ -685,7 +688,7 @@ async function fetchPayloadFromStorage({ source, requestType, tripId, transactio
     source,
     operationTimeoutMs: remainingTimeoutMs(`get content (${source})`),
     token,
-    includeAuth: false,
+    includeAuth: listCallIncludeAuth,
   });
 
   return {
@@ -735,7 +738,7 @@ async function downloadPayloadByRowKey({ tripId, rowKey, source, timeoutMs } = {
     source,
     operationTimeoutMs: timeoutMs ?? payloadValidation.timeoutMs,
     token,
-    includeAuth: false,
+    includeAuth: Boolean(token),
   });
 }
 

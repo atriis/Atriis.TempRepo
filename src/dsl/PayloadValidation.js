@@ -1289,9 +1289,13 @@ const PayloadValidation = {
         sid: identifiers.sid,
         returnAllMatches: true,
       });
-    } catch {
-      // Storage fallback unavailable — surface the original assertion error.
-      throw firstError;
+    } catch (fallbackError) {
+      // Storage fallback unavailable — surface the original assertion error, and say the other calls
+      // of this request type were never scanned so the failure is not read as "absent from all".
+      throw new Error(
+        `${firstError.message}. The other calls of request type "${requestType}" could not be scanned: ` +
+        `${fallbackError.message}`,
+      );
     }
 
     logger.debug(`Multi-match fallback: scanning ${multiMatchResult.metadata.returnedMatches} candidate(s) for requestType="${requestType}"`);
@@ -1862,9 +1866,13 @@ const PayloadValidation = {
         sid: identifiers.sid,
         returnAllMatches: true,
       });
-    } catch {
-      // Storage fallback unavailable — surface the original assertion error.
-      throw firstError;
+    } catch (fallbackError) {
+      // Storage fallback unavailable — surface the original assertion error, and say the other calls
+      // of this request type were never scanned so the failure is not read as "absent from all".
+      throw new Error(
+        `${firstError.message}. The other calls of request type "${requestType}" could not be scanned: ` +
+        `${fallbackError.message}`,
+      );
     }
 
     logger.debug(`Multi-match fallback: scanning ${multiMatchResult.metadata.returnedMatches} candidate(s) for requestType="${requestType}"`);
