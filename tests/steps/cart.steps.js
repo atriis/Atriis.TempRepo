@@ -896,6 +896,26 @@ Then("the yellow seat indicator should be visible after saving seats", async fun
   await Cart.verifyYellowSeatIndicatorVisible(this.page);
 });
 
+When("I start recording the flight seat map and seat save requests", function () {
+  logger.info("Recording FlightSeats seat map and seat save calls");
+  this.flightSeatsCalls = Cart.startRecordingFlightSeatsCalls(this.page);
+});
+
+Then("every flight seat map that offers seats should carry a seat cache key", async function () {
+  logger.info("Verifying every seat map that offers seats carries a seat cache key");
+  await Cart.verifyEverySeatMapWithSeatsHasCacheKey(this.flightSeatsCalls);
+});
+
+Then("the seat save request should include a seat for every flight", async function () {
+  logger.info("Verifying the seat save request holds a seat for every flight");
+  await Cart.verifySeatSaveCoversEveryFlight(this.flightSeatsCalls);
+});
+
+Then("the seating extras should show a {string} seat on every flight", async function (expectedStatus) {
+  logger.info("Verifying every flight in the seating extras shows a saved seat", { expectedStatus });
+  await Cart.verifyEveryFlightShowsSeatStatus(this.page, expectedStatus, this.flightSeatsCalls);
+});
+
 When("I open passenger info and acknowledge the warning {string}", async function (expectedMessage) {
   logger.info("Opening passenger info and acknowledging warning", { expectedMessage });
   await Cart.acknowledgePassengerInfoWarning(this.page, expectedMessage);

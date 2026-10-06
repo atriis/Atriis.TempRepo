@@ -150,6 +150,25 @@ class NetworkInterceptor {
   }
 
   /**
+   * Starts collecting EVERY response matching the rule, for flows that fire the same endpoint
+   * several times (one call per flight leg, then a save). A one-shot waitForResponse armed
+   * twice resolves both waits to the first call, so it cannot tell the calls apart.
+   * Call BEFORE the actions, read `responses` afterwards, and call `stop()` when done.
+   *
+   * @param {object} rule
+   * @returns {{ responses: import('@playwright/test').Response[], stop: () => void }}
+   */
+  collectResponses(rule) {
+    const matcher = buildMatcher(rule);
+    const responses = [];
+    const listener = async (response) => {
+      if (await matcher(response)) responses.push(response);
+    };
+    this.page.on("response", listener);
+    return { responses, stop: () => this.page.off("response", listener) };
+  }
+
+  /**
    * Arms a one-shot wait for the next REQUEST matching the rule.
    *
    * @param {object} rule

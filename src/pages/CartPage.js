@@ -1234,6 +1234,14 @@ const SELECTORS = {
   SEATING_EXTRAS_CLOSE_BUTTON: '.flight-seating .extras-card .btns button:has-text("Close")',
   // Per-passenger seat rows inside the expanded seating panel (flight-seating.vue .pax-seat-container)
   SEATING_PAX_SEAT_ROW: '.flight-seating .pax-seat-container .pax-seat',
+  // One tab per flight in the expanded seating panel (flight-seating.vue el-tabs.flight-cart-tabs,
+  // labelled "<origin> - <destination>"); only the active tab's pane is visible.
+  SEATING_FLIGHT_TAB: ".flight-seating .flight-cart-tabs .el-tabs__item",
+  SEATING_ACTIVE_FLIGHT_TAB: ".flight-seating .flight-cart-tabs .el-tabs__item.is-active",
+  // Seat number ("14E") and status text ("Pending confirmation") of a passenger row in the
+  // seating panel — relative to SEATING_PAX_SEAT_ROW (flight-seating.vue .seat-info-container)
+  SEATING_PAX_SELECTED_SEAT: ".selected-seat",
+  SEATING_PAX_SEAT_STATUS_MESSAGE: ".seat-info-container span.ml-2",
   // Per-passenger seat status icon in the expanded seating panel. flight-seating.vue's
   // seatIconByStatus maps SeatStatusType PendingApproval / PendingPayment to className
   // 'yellow' (a `schedule` icon) — this is the yellow indicator shown for saved-but-unpaid seats.
@@ -13599,6 +13607,55 @@ class CartPage {
       ));
 
     return { icons, rows };
+  }
+
+  /**
+   * Starts collecting every /api/v3/FlightSeats response: the seat map per flight
+   * (POST ?isMap=true), the saved-seat loads (GET) and the seat save (PUT).
+   * Call BEFORE the seat map is opened.
+   * @returns {{ responses: import('@playwright/test').Response[], stop: () => void }}
+   */
+  startCollectingFlightSeatsResponses() {
+    return getNetworkInterceptor(this.page).collectResponses({
+      urlIncludes: config.flightSeatsApiPath,
+      caseInsensitive: true,
+    });
+  }
+
+  /**
+   * Number of flight tabs in the expanded seating panel (one per flight of the quote).
+   * @returns {Promise<number>}
+   */
+  async getSeatingFlightTabCount() {
+    return this.page.locator(SELECTORS.SEATING_FLIGHT_TAB).count();
+  }
+
+  /**
+   * Opens the seating panel's tab for one flight and waits for it to become active.
+   * @param {number} tabIndex - 0-based flight index
+   * @returns {Promise<string>} the tab label, e.g. "NCE - BRU"
+   */
+  async selectSeatingFlightTab(tabIndex) {
+    const tab = this.page.locator(SELECTORS.SEATING_FLIGHT_TAB).nth(tabIndex);
+    const label = (await tab.innerText()).trim().replace(/\s+/g, " ");
+    await tab.click();
+    // Tied to the index, not the label: a trip can fly the same origin-destination twice.
+    await tab.and(this.page.locator(SELECTORS.SEATING_ACTIVE_FLIGHT_TAB))
+      .waitFor({ state: "visible", timeout: 10000 });
+    return label;
+  }
+
+  /**
+   * Reads the seat number and status text of every passenger row on the visible flight tab.
+   * @returns {Promise<Array<{ seat: string, status: string }>>}
+   */
+  async getVisibleSeatingPassengerSeats() {
+    const rows = this.page.locator(`${SELECTORS.SEATING_PAX_SEAT_ROW}:visible`);
+    await rows.first().waitFor({ state: "visible", timeout: 15000 });
+    return rows.evaluateAll((elements, sel) => elements.map((row) => ({
+      seat: (row.querySelector(sel.seat)?.textContent || "").trim(),
+      status: (row.querySelector(sel.status)?.textContent || "").trim().replace(/\s+/g, " "),
+    })), { seat: SELECTORS.SEATING_PAX_SELECTED_SEAT, status: SELECTORS.SEATING_PAX_SEAT_STATUS_MESSAGE });
   }
 
   // ===== TRAVELER INITIALS =====

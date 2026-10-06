@@ -136,6 +136,11 @@ const config = {
     return getOptionalEnv("FLIGHT_PRICING_SELECTION_API_PATH", "/api/v3/FlightPricingSelection");
   },
 
+  // OBT seat map (POST ?isMap=true), saved-seat load (GET ?quoteId=) and seat save (PUT).
+  get flightSeatsApiPath() {
+    return getOptionalEnv("FLIGHT_SEATS_API_PATH", "/api/v3/FlightSeats");
+  },
+
   get flightSearchApiPath() {
     return getOptionalEnv("FLIGHT_SEARCH_API_PATH", "/flightSearch");
   },

@@ -35,6 +35,43 @@ const UNREAD_MESSAGES_BANNER_TEXTS = [
   "Para prosseguir, reveja todas as mensagens não lidas",
 ];
 
+/**
+ * Splits the recorded /FlightSeats calls into seat maps (POST ?isMap=true, with their parsed
+ * bodies) and seat saves (PUT, with their parsed request bodies), and stops the recording.
+ * Only called once the seats have been saved, so nothing after this point is needed.
+ * @param {{ responses: import('@playwright/test').Response[], stop: () => void }} collector
+ * @returns {Promise<{ seatMaps: object[], saves: object[] }>}
+ */
+async function readFlightSeatsCalls(collector) {
+  if (!collector || !Array.isArray(collector.responses)) {
+    throw new Error("No FlightSeats recording found — start recording the seat map and seat save calls before opening the seat map");
+  }
+  collector.stop();
+  const seatMaps = [];
+  const saves = [];
+  for (const response of collector.responses) {
+    const request = response.request();
+    const method = request.method().toUpperCase();
+    if (method === "POST" && /isMap=true/i.test(response.url())) {
+      const body = await response.json().catch(() => null);
+      const rows = Array.isArray(body?.rows) ? body.rows : [];
+      const availableSeats = rows.flatMap((row) => row?.seats || []).filter((seat) => seat?.seatAvailability).length;
+      const requestBody = request.postDataJSON() || {};
+      seatMaps.push({
+        flight: `${requestBody.carrier || ""}${requestBody.flightNumber || ""}`,
+        rows: rows.length,
+        availableSeats,
+        cacheKey: body?.cacheKey,
+        segmentNumber: body?.segmentNumber,
+        showSeatmapUnavailableMessage: body?.showSeatmapUnavailableMessage,
+      });
+    } else if (method === "PUT") {
+      saves.push({ status: response.status(), segments: request.postDataJSON() });
+    }
+  }
+  return { seatMaps, saves };
+}
+
 // Journey legs of a round-trip rail quote, in the order eu-rail-seats.vue renders them: the API
 // returns the outbound leg first and the return leg second, matching the journey stepper's order.
 const RAIL_SEATING_LEG_INDEXES = [
@@ -4510,6 +4547,128 @@ const Cart = {
 
     logger.info('Yellow seat indicator is visible');
     return { visible: true };
+  },
+
+  /**
+   * Starts collecting every OBT /api/v3/FlightSeats call (seat map per flight, saved-seat
+   * loads, seat save). Call BEFORE the seat map is opened; pass the returned collector to
+   * verifyEverySeatMapWithSeatsHasCacheKey / verifySeatSaveCoversEveryFlight.
+   * @param {import('playwright').Page} page
+   * @returns {{ responses: import('@playwright/test').Response[], stop: () => void }}
+   */
+  startRecordingFlightSeatsCalls(page) {
+    if (!page) throw new Error("page is required");
+    const cartPage = getPageObject(page, CartPage);
+    return cartPage.startCollectingFlightSeatsResponses();
+  },
+
+  /**
+   * #85806 — every seat map that offers a selectable seat must carry the seat-cache key.
+   * A map returned with seats but no key lets OBT stamp an empty seatMapCacheKey on the
+   * selection, and saveSeats then silently drops that flight's seat.
+   * @param {{ responses: import('@playwright/test').Response[] }} collector
+   * @returns {Promise<{ seatMaps: object[] }>}
+   */
+  async verifyEverySeatMapWithSeatsHasCacheKey(collector) {
+    const { seatMaps } = await readFlightSeatsCalls(collector);
+    logger.info("Recorded flight seat maps", { seatMaps });
+
+    const offeringSeats = seatMaps.filter((map) => map.availableSeats > 0);
+    expect(
+      offeringSeats.length,
+      `Expected at least one seat map with a selectable seat, got: ${JSON.stringify(seatMaps)}`,
+    ).toBeGreaterThan(0);
+
+    const keyless = offeringSeats.filter((map) => !map.cacheKey || !map.segmentNumber);
+    expect(
+      keyless,
+      "Seat maps offered selectable seats without a cacheKey/segmentNumber — a seat picked there cannot be saved. " +
+      `All maps: ${JSON.stringify(seatMaps)}`,
+    ).toEqual([]);
+
+    return { seatMaps };
+  },
+
+  /**
+   * #85806 — the seat save must carry one entry, with a seat and a seat-cache key, for every
+   * flight whose seat map offered seats. Before the fix the PUT carried only the flights
+   * whose map had a key, so the other flight's seat vanished while the UI said "Saved".
+   * @param {{ responses: import('@playwright/test').Response[] }} collector
+   * @returns {Promise<{ segments: object[] }>}
+   */
+  async verifySeatSaveCoversEveryFlight(collector) {
+    const { seatMaps, saves } = await readFlightSeatsCalls(collector);
+    logger.info("Recorded seat saves", { saves });
+
+    expect(saves.length, `Expected one seat save (PUT FlightSeats), got ${saves.length}`).toBe(1);
+    const [save] = saves;
+    expect(save.status, `Seat save returned HTTP ${save.status}`).toBe(200);
+
+    const segments = Array.isArray(save.segments) ? save.segments : [];
+    const expectedFlights = [...new Set(seatMaps.filter((map) => map.availableSeats > 0).map((map) => map.flight))];
+    const savedFlights = segments.map((segment) => `${segment.carrier || ""}${segment.flightNumber || ""}`);
+    expect(
+      savedFlights.sort(),
+      `Seat save must hold a seat for every flight that offered seats. Expected flights ${JSON.stringify(expectedFlights)}, ` +
+      `saved ${JSON.stringify(segments.map((s) => ({ flightNumber: s.flightNumber, segmentNumber: s.segmentNumber, seats: (s.seats || []).map((x) => x.seatNumber) })))}`,
+    ).toEqual([...expectedFlights].sort());
+
+    for (const segment of segments) {
+      expect(segment.seatMapCacheKey, `Segment ${segment.segmentNumber} (flight ${segment.flightNumber}) has no seatMapCacheKey`).toBeTruthy();
+      expect((segment.seats || []).length, `Segment ${segment.segmentNumber} (flight ${segment.flightNumber}) carries no seat`).toBeGreaterThan(0);
+    }
+
+    return { segments, expectedFlightCount: expectedFlights.length };
+  },
+
+  /**
+   * Re-opens the seating extras panel and checks every flight tab shows each passenger's seat
+   * with the expected status. Closes the gap in verifySeatsSavedToTrip, which reads the first
+   * flight only — #85806 dropped one flight's seat while the other was kept.
+   * When the FlightSeats recording is passed, the panel must show one tab for every flight whose
+   * seat map offered seats, so a missing tab cannot make "every flight" pass on fewer flights.
+   * @param {import('playwright').Page} page
+   * @param {string} expectedStatus - e.g. "Pending confirmation"
+   * @param {{ responses: import('@playwright/test').Response[], stop: () => void }} [collector]
+   * @returns {Promise<{ flights: Array<{ flight: string, seats: object[] }> }>}
+   */
+  async verifyEveryFlightShowsSeatStatus(page, expectedStatus, collector) {
+    if (!page) throw new Error("page is required");
+    if (typeof expectedStatus !== "string" || !expectedStatus) throw new Error("expectedStatus must be a non-empty string");
+
+    const cartPage = getPageObject(page, CartPage);
+    await cartPage.reopenSeatingExtrasPanel();
+
+    const tabCount = await cartPage.getSeatingFlightTabCount();
+    expect(tabCount, "Seating panel shows no flight tabs").toBeGreaterThan(0);
+    if (collector) {
+      const { seatMaps } = await readFlightSeatsCalls(collector);
+      const flightsOfferingSeats = new Set(seatMaps.filter((map) => map.availableSeats > 0).map((map) => map.flight));
+      expect(
+        tabCount,
+        `Seating panel shows ${tabCount} flight tab(s) but ${flightsOfferingSeats.size} flight(s) offered seats: ${JSON.stringify([...flightsOfferingSeats])}`,
+      ).toBe(flightsOfferingSeats.size);
+    }
+
+    const flights = [];
+    for (let index = 0; index < tabCount; index += 1) {
+      const flight = await cartPage.selectSeatingFlightTab(index);
+      const seats = await cartPage.getVisibleSeatingPassengerSeats();
+      flights.push({ flight, seats });
+    }
+    logger.info("Seating panel per flight", { flights });
+
+    for (const { flight, seats } of flights) {
+      for (const { seat, status } of seats) {
+        expect(seat, `Flight ${flight}: a passenger has no saved seat. All flights: ${JSON.stringify(flights)}`).toMatch(/^\d+[A-Z]$/);
+        expect(
+          status.toLowerCase(),
+          `Flight ${flight}: seat ${seat} status is "${status}", expected "${expectedStatus}". All flights: ${JSON.stringify(flights)}`,
+        ).toContain(expectedStatus.toLowerCase());
+      }
+    }
+
+    return { flights };
   },
 
   /**
