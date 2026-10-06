@@ -2818,6 +2818,70 @@ const PayloadValidation = {
   },
 
   /**
+   * Asserts no two requests of the given type carry the same body, so the supplier never received
+   * the same call twice. `ignoredFields` names XML attributes / elements / JSON keys whose values
+   * change on every call (a timestamp) and would otherwise make true copies look distinct.
+   *
+   * Sabre RevalidateItinerary (bug 85439): for Southwest the agreement branches rendered the same
+   * request and each was sent, 54 rows holding 36 distinct bodies. Their BookingDateTime differs by
+   * the second they were built in, so it has to be ignored or the copies hide.
+   *
+   * The count is settled before downloading, so calls still being published are not missed.
+   */
+  async expectNoIdenticalRequestBodies(page, world, requestType, ignoredFields = []) {
+    if (!page) {
+      throw new Error("page is required");
+    }
+
+    assertWorld(world);
+    const normalizedRequestType = normalizeRequestType(requestType);
+
+    await settleRequestCount(
+      () => this.getRequestCount(world, normalizedRequestType),
+      { requestType: normalizedRequestType }
+    );
+
+    const result = await fetchAllRequestsForTrip(world, normalizedRequestType, "compare request bodies");
+    const stripIgnored = (payload) => ignoredFields.reduce((body, field) => {
+      const name = escapeRegex(field);
+      return body
+        .replace(new RegExp(`\\s${name}="[^"]*"`, "g"), "")
+        .replace(new RegExp(`<((?:[\\w-]+:)?${name})>[^<]*</\\1>`, "g"), "")
+        .replace(new RegExp(`"${name}"\\s*:\\s*("(?:[^"\\\\]|\\\\.)*"|[^,}\\]]*)`, "g"), `"${field}":null`);
+    }, String(payload ?? ""));
+
+    const timestampsByBody = new Map();
+    for (const match of result.matches) {
+      const body = stripIgnored(match.payload);
+      if (!timestampsByBody.has(body)) timestampsByBody.set(body, []);
+      timestampsByBody.get(body).push(`${match.metadata.requestType || normalizedRequestType} @ ${match.metadata.timestamp}`);
+    }
+
+    const duplicates = [...timestampsByBody.values()].filter((sent) => sent.length > 1);
+
+    logger.info(`Compared "${normalizedRequestType}" request bodies`, {
+      requests: result.matches.length,
+      distinctBodies: timestampsByBody.size,
+      identicalGroups: duplicates.length,
+      ignoredFields,
+    });
+    duplicates.forEach((sent) => logger.warn(`Identical "${normalizedRequestType}" body sent ${sent.length}x`, { sent }));
+
+    expect(
+      result.matches.length,
+      `No "${normalizedRequestType}" request was logged for this trip, so there was nothing to compare.`
+    ).toBeGreaterThan(0);
+
+    expect(
+      duplicates.length,
+      `Every "${normalizedRequestType}" request must have a different body` +
+      (ignoredFields.length ? ` (ignoring ${ignoredFields.join(", ")})` : "") +
+      `, but ${duplicates.length} body/bodies were sent more than once across ${result.matches.length} request(s):\n` +
+      duplicates.map((sent) => `  sent ${sent.length}x: ${sent.join(" | ")}`).join("\n")
+    ).toBe(0);
+  },
+
+  /**
    * Asserts the trip sent exactly `expectedCount` requests of the given type.
    *
    * Unlike expectRequestCountUnchanged() this is an absolute check and needs no baseline, so use

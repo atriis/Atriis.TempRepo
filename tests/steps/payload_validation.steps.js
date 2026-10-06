@@ -867,6 +867,22 @@ Then(
 );
 
 Then(
+  "no two {string} requests should have the same body ignoring {string}",
+  // Settling the count and paced downloads of every request outrun the 120 s default.
+  { timeout: 240000 },
+  async function (requestType, ignoredFieldList) {
+    const ignoredFields = ignoredFieldList.split(",").map((field) => field.trim()).filter(Boolean);
+    await runPayloadValidationStep(this, "expectNoIdenticalRequestBodies", {
+      requestType,
+      ignoredFields,
+    }, async () => {
+      logger.info("Validating no two requests share a body", { requestType, ignoredFields });
+      await PayloadValidation.expectNoIdenticalRequestBodies(this.page, this, requestType, ignoredFields);
+    });
+  }
+);
+
+Then(
   "in the captured {string} payload for request type {string}, path {string} should not contain {string}",
   async function (source, requestType, path, expectedValue) {
     await runPayloadValidationStep(this, "expectCapturedPayloadPathNotContains", {
