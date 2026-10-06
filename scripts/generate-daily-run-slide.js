@@ -25,24 +25,24 @@ const DEFAULTS = {
   // suite-transportation end.
   avgDuration: '2h',
   highlights: [
-    { value: '86',  label: 'New tests' },
+    { value: '95',  label: 'New tests' },
   ],
   // Breakdown under the headline: growth of the daily run during Sprint 20
   // (2026-09-23 to 2026-10-06), i.e. testsByDomain below minus the same
   // suite count at the end of Sprint 19 (882: 376/119/221/166). Includes
   // tests moved out of *_blocked folders into the run.
   newTestsByDomain: [
-    { name: 'Flights', value: 45 },
-    { name: 'Hotels', value: 17 },
+    { name: 'Flights', value: 49 },
+    { name: 'Hotels', value: 19 },
     { name: 'Transportation', value: 10 },
-    { name: 'Shell', value: 14 },
+    { name: 'Shell', value: 17 },
   ],
   // Tests (.feature files) per domain in the daily run: the files the four
   // suite workflows pick up on main at the end of Sprint 20 (2026-10-06).
   testsByDomain: {
-    Flights: 421,
-    Hotels: 136,
-    Shell: 235,
+    Flights: 425,
+    Hotels: 138,
+    Shell: 238,
     Transportation: 176,
   },
 };
