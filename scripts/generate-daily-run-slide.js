@@ -25,15 +25,15 @@ const DEFAULTS = {
   // suite-transportation end.
   avgDuration: '2h',
   highlights: [
-    { value: '82',  label: 'New tests' },
+    { value: '86',  label: 'New tests' },
   ],
-  // Breakdown under the headline. Kept separate from the domain bars above,
-  // which count the whole suite, not what the sprint added. Net new .feature
-  // files under tests/features during Sprint 20 (2026-09-23 to 2026-10-06):
-  // files added minus files deleted or merged away, renames not counted.
+  // Breakdown under the headline: growth of the daily run during Sprint 20
+  // (2026-09-23 to 2026-10-06), i.e. testsByDomain below minus the same
+  // suite count at the end of Sprint 19 (882: 376/119/221/166). Includes
+  // tests moved out of *_blocked folders into the run.
   newTestsByDomain: [
     { name: 'Flights', value: 45 },
-    { name: 'Hotels', value: 13 },
+    { name: 'Hotels', value: 17 },
     { name: 'Transportation', value: 10 },
     { name: 'Shell', value: 14 },
   ],
