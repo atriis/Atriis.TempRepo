@@ -1130,6 +1130,17 @@ Then('the pricing options brands should match the extFlightInfo brands in the Yp
   logger.info('Pricing options brands match the Ypsilon Fare responses', result);
 });
 
+// Reads the trip's request log, so it is skipped like every payload step when payload validation is off.
+Then('no fare in pricing options should be listed more times than Fusion returned it', async function () {
+  if (!config.payloadValidation.enabled) {
+    logger.warn('PAYLOAD_VALIDATION_ENABLED=false', { step: 'verifyPricingOptionsFaresNotListedMoreThanFusionReturned' });
+    return;
+  }
+  logger.info('Comparing pricing options fares with the Fusion CheckRouting responses');
+  const result = await FlightResults.verifyPricingOptionsFaresNotListedMoreThanFusionReturned(this.page, this);
+  logger.info('No pricing options fare is listed more times than Fusion returned it', result);
+});
+
 Then('the {string} text should be displayed in pricing options', async function (expectedText) {
   logger.info('Verifying text is displayed in pricing options', { expectedText });
   await FlightResults.verifyPricingOptionsHeaderContains(this.page, expectedText);

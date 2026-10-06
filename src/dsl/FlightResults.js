@@ -6401,6 +6401,119 @@ async verifyFareComponentTextColorInPricingOptions(page, expectedColor, index = 
   },
 
   /**
+   * Asserts no fare on the open leg of the classic Pricing Options drawer is listed more often than
+   * Fusion returned it (ADO 85300).
+   *
+   * Fusion files each fare as its own <Outward>/<Return> in the CheckRouting response, named by
+   * <SupplierClass> and tied to the flight by <FlightId><Code>. Two drawer rows with the same name,
+   * price and baggage are a duplicate outright. Rows that share a name but differ in baggage may be
+   * genuinely different fares, so those are only a duplicate when Fusion sent that fare fewer times
+   * than the drawer shows it. Counted per call and the highest count kept, because each search call
+   * returns the full fare list again.
+   *
+   * @param {import('playwright').Page} page
+   * @param {object} world - Cucumber world carrying the trip id
+   * @returns {Promise<{flight: string[], fares: object[], supplierCounts: object}>}
+   */
+  async verifyPricingOptionsFaresNotListedMoreThanFusionReturned(page, world) {
+    if (!page) {
+      throw new Error('[FlightResults.verifyPricingOptionsFaresNotListedMoreThanFusionReturned] "page" is required.');
+    }
+    if (!world) {
+      throw new Error('[FlightResults.verifyPricingOptionsFaresNotListedMoreThanFusionReturned] "world" is required to read the trip\'s CheckRouting responses.');
+    }
+
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    await flightResultsPage.waitForPricingOptionsDrawerLeg();
+    const fares = await flightResultsPage.getPricingOptionsLegFares();
+    const flight = await flightResultsPage.getPricingOptionsPreviewFlight();
+
+    const toDesignator = (code) => {
+      const match = String(code || '').replace(/\s+/g, '').match(/^([A-Z0-9]{2})(\d{1,4})$/i);
+      return match ? `${match[1].toUpperCase()}${Number(match[2])}` : null;
+    };
+    const designators = flight.flightNumbers.map((text) => {
+      const designator = toDesignator(text);
+      if (!designator) {
+        throw new Error(`[FlightResults.verifyPricingOptionsFaresNotListedMoreThanFusionReturned] Cannot read a flight number out of "${text}" in the pricing options flight preview.`);
+      }
+      return designator;
+    });
+    const date = parseFlightDate(flight.departureDateText);
+    if (!date) {
+      throw new Error(`[FlightResults.verifyPricingOptionsFaresNotListedMoreThanFusionReturned] Cannot read the departure date "${flight.departureDateText}" in the pricing options flight preview.`);
+    }
+    // Fusion writes dates as dd/mm/yyyy-hh:mm
+    const isDepartureDate = (fusionDate) => {
+      const [day, month, year] = String(fusionDate || '').split('-')[0].split('/').map(Number);
+      return day === date.day && month === date.month + 1 && (date.year === null || year === date.year);
+    };
+
+    const fareSpec = { fields: ['SupplierClass', 'DepartDate'], blocks: { FlightId: { fields: ['Code'] } } };
+    const { perCall } = await PayloadValidation.collectXmlBlockTreesPerCall(
+      world,
+      'CheckRouting',
+      { Outward: fareSpec, Return: fareSpec },
+      { source: 'response', purpose: 'count the fares Fusion returned for the flight in the pricing options drawer' },
+    );
+
+    const supplierCounts = {};
+    for (const call of perCall) {
+      const callCounts = {};
+      for (const fusionFare of [...call.Outward, ...call.Return]) {
+        const fareDesignators = fusionFare.FlightId.map((id) => toDesignator(id.Code[0]));
+        const isOpenedFlight = fareDesignators[0] === designators[0]
+          && isDepartureDate(fusionFare.DepartDate[0])
+          && designators.every((designator) => fareDesignators.includes(designator));
+        if (!isOpenedFlight) continue;
+        const name = String(fusionFare.SupplierClass[0] || '').trim();
+        callCounts[name] = (callCounts[name] || 0) + 1;
+      }
+      for (const [name, count] of Object.entries(callCounts)) {
+        supplierCounts[name] = Math.max(supplierCounts[name] || 0, count);
+      }
+    }
+
+    logger.info('[FusionFares] Pricing options fares vs the CheckRouting responses', {
+      flight: { ...flight, designators },
+      checkRoutingCalls: perCall.length,
+      fares,
+      supplierCounts,
+    });
+
+    // Thrown rather than expect(value, message): this repo's Playwright drops expect's message, and
+    // the lists below are what makes a failure readable.
+    if (Object.keys(supplierCounts).length === 0) {
+      throw new Error(
+        `No fare was found in the ${perCall.length} "CheckRouting" response(s) for ${designators.join('/')} ` +
+        `${flight.origin}-${flight.destination} on ${flight.departureDateText}, so there is nothing to compare the drawer against.`,
+      );
+    }
+
+    const rowsByKey = {};
+    const rowsByName = {};
+    for (const fare of fares) {
+      const key = `${fare.name} | ${fare.price} | ${fare.baggage}`;
+      rowsByKey[key] = (rowsByKey[key] || 0) + 1;
+      (rowsByName[fare.name] ||= []).push(fare);
+    }
+    const identicalRows = Object.entries(rowsByKey).filter(([, count]) => count > 1).map(([key, count]) => `${key} (x${count})`);
+    const overListed = Object.entries(rowsByName)
+      .filter(([name, rows]) => rows.length > (supplierCounts[name] || 0))
+      .map(([name, rows]) => `"${name}" shown ${rows.length}x, Fusion returned it ${supplierCounts[name] || 0}x: ${JSON.stringify(rows)}`);
+
+    if (identicalRows.length > 0 || overListed.length > 0) {
+      throw new Error(
+        `Pricing options for ${designators.join('/')} ${flight.origin}-${flight.destination} list a fare more than once. ` +
+        `Identical rows (name | price | baggage): ${JSON.stringify(identicalRows)}. ` +
+        `Shown more often than Fusion returned it: ${JSON.stringify(overListed)}.`,
+      );
+    }
+
+    return { flight: designators, fares, supplierCounts };
+  },
+
+  /**
    * Asserts the classic Pricing Options drawer offers exactly the brands Ypsilon returned for the
    * flight it is pricing (ADO 77108).
    *

@@ -5248,6 +5248,31 @@ async clickSelectForFareWithBaggagePricingOptions(baggageText) {
   }
 
   /**
+   * Returns the name, displayed price and baggage text of every fare card on the currently-active
+   * leg of the classic Pricing Options drawer, in display order. A card with no baggage line
+   * yields an empty baggage string.
+   * @param {number} timeout - Max wait time in ms (default: 60000)
+   * @returns {Promise<Array<{name: string, price: string, baggage: string}>>}
+   */
+  async getPricingOptionsLegFares(timeout = 60000) {
+    const cards = this.page.locator(SELECTORS.PRICING_OPTIONS_LEG_CARD);
+    await cards.first().waitFor({ state: 'visible', timeout });
+
+    const clean = (text) => String(text || '').replace(/\s+/g, ' ').trim();
+    const count = await cards.count();
+    const fares = [];
+    for (let i = 0; i < count; i += 1) {
+      const card = cards.nth(i);
+      const name = clean(await card.locator(SELECTORS.PRICING_OPTIONS_LEG_CARD_BRAND_NAME).first().textContent().catch(() => ''));
+      const price = clean(await card.locator(SELECTORS.PRICING_OPTIONS_CARD_PRICE).first().textContent().catch(() => ''));
+      // The baggage line is an icon span plus a text span; the icon's ligature reads as "luggage"
+      const baggage = clean((await card.locator(SELECTORS.PRICING_OPTIONS_BAGGAGE_CLASS).allTextContents()).join(' '));
+      fares.push({ name, price, baggage });
+    }
+    return fares;
+  }
+
+  /**
    * Returns the two texts naming the cabin the classic Pricing Options drawer is listing: the
    * "{cabin} pricing" heading above the fares and the active cabin tab's label.
    * @param {number} timeout - Max wait time in ms (default: 30000)
