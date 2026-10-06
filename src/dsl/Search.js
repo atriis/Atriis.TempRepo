@@ -717,7 +717,10 @@ const Search = {
     await searchPage.fillInRandomDateOfBirth(dateOfBirth);
     await searchPage.fillInRandomEmail(email);
     await searchPage.fillInRandomPhone(phone);
-    await searchPage.clickAddGuestButton();
+    const saved = await searchPage.clickAddGuestButtonAndWaitForSave(email);
+    if (!saved) {
+      logger.warn('Guest traveler save response not observed — a search clicked right away may be ignored', { firstName, lastName });
+    }
 
     const starIconVisible = await searchPage.isStarIconVisible();
     const selectedTravelerCount = await searchPage.getSelectedTravelerCount();

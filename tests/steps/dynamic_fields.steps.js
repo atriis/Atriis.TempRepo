@@ -124,6 +124,14 @@ Then("the reference fields popup should show the following labels:", async funct
   }
 });
 
+// Strict set check on ONE traveller's section of the Travellers Reference Questions: the listed fields
+// must all show and no other field may — proves conditional fields (PAR-only, guest-only) are scoped right.
+Then("the reference fields for traveler {string} in the popup should be exactly:", async function (travelerName, dataTable) {
+  const labels = dataTable.raw().map(row => row[0]);
+  logger.info("Verifying the traveller's reference field labels in the popup", { travelerName, labels });
+  await DynamicAndReferenceFields.verifyTravellerReferenceFieldLabelsExactly(this.page, travelerName, labels);
+});
+
 Then("the request assistance reference fields are displayed in the following order:", async function (dataTable) {
   const expectedOrder = dataTable.raw().map(row => row[0]);
   logger.info("Verifying request-assistance reference fields display order", { expectedOrder });

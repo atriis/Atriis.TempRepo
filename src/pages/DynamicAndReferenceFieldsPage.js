@@ -87,6 +87,10 @@ const SELECTORS = {
   // form of TRAVELER_QUESTIONS (which is prefixed with `.traveler-section`) so it can be chained off a
   // single passenger's `.el-collapse-item` to scope field reads to that traveller only.
   TRAVELER_QUESTIONS_BLOCK: '.traveler-questions',
+  // One field label per reference field inside a single passenger's `.traveler-questions` block
+  // (one `<article>` per field, each with a single `label.label`). Chained off that passenger's
+  // collapse item so another traveller's fields are never read.
+  TRAVELER_QUESTIONS_BLOCK_LABEL: '.traveler-questions article label.label',
   // A reference/dynamic field in an ERROR state: input-textbox.vue puts `is-danger` on the `.el-input`
   // and renders a `.form-validation-msg` under the same v-if (input.$invalid && $dirty, or markFields &&
   // $invalid). The inner `<p class="help">` (VALIDATION_ERROR) only appears when an errorField/required
@@ -1868,6 +1872,48 @@ class DynamicAndReferenceFieldsPage {
       if (text) return text;
     }
     return '';
+  }
+
+  /**
+   * Reads the labels of every reference field displayed in ONE traveller's section of the
+   * Travellers Reference Questions (reference-fields popup or checkout). Expands the collapsed
+   * passenger sections first (a section the user collapsed hides its fields) — then reads that traveller's own
+   * `.traveler-questions` block, so another traveller's fields are never counted. Returns immediately
+   * with whatever is rendered, so the caller can poll while the section finishes expanding.
+   *
+   * @param {string} travellerName - Traveller name as shown in the passenger header (e.g. "Jonathan Taylor")
+   * @param {object} [options]
+   * @param {number} [options.timeout=15000] - How long to wait for the passenger header to render
+   * @returns {Promise<string[]>} Clean field labels in DOM order ("*" marker and "info" text stripped)
+   */
+  async getTravellerReferenceFieldLabels(travellerName, { timeout = 15000 } = {}) {
+    if (!travellerName || typeof travellerName !== 'string') {
+      throw new Error(
+        `[DynamicAndReferenceFieldsPage.getTravellerReferenceFieldLabels] "travellerName" must be a non-empty string, got: ${typeof travellerName} (${travellerName})`
+      );
+    }
+    const header = this.page
+      .locator(SELECTORS.TRAVELER_FIELD_SECTION)
+      .locator(SELECTORS.COLLAPSE_SECTION_HEADER)
+      .filter({ hasText: nameContainsRegex(travellerName) })
+      .first();
+    try {
+      await header.waitFor({ state: 'attached', timeout });
+    } catch (err) {
+      throw new Error(
+        `[DynamicAndReferenceFieldsPage.getTravellerReferenceFieldLabels] No passenger header matching "${travellerName}" ` +
+        `rendered in the Travellers Reference Questions section (${SELECTORS.TRAVELER_FIELD_SECTION}) within ${timeout}ms. ` +
+        `That traveller may not be on the trip, or the reference-fields popup never opened. Original: ${err.message}`
+      );
+    }
+    await this.expandAllCollapsedTravelerSections();
+    // The header's parent is the passenger's `.el-collapse-item` ('..' is auto-detected as xpath).
+    const rawTexts = await header
+      .locator('..')
+      .locator(SELECTORS.TRAVELER_QUESTIONS_BLOCK_LABEL)
+      .filter({ visible: true })
+      .allInnerTexts();
+    return rawTexts.map((t) => cleanReferenceLabelText(t)).filter((t) => t.length > 0);
   }
 
   /**

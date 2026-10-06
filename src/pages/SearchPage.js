@@ -14,6 +14,9 @@ const { normalizeText } = require("@utils/text");
 const VISIBLE_SELECT_OPTION = ".el-select-dropdown:visible .el-select-dropdown__item";
 
 const SELECTORS = {
+  // URL fragment of the guest-traveller save request (add-guest-form.ts → trip.service addTraveler with
+  // AddTravelerType.Guest = 2). Used to wait for the guest save to complete before searching.
+  SAVE_GUEST_TRAVELER_URL_PART: "/saveTraveller?addTravellerType=2",
   // Traveler interaction
   ADD_TRAVELER_BUTTON: ".btn.btn--default.btn--size-default.btn--round.add-btn",
   // trip-traveler-tag.vue's empty-slot placeholder ("Select traveler"). Rendered instead of the
@@ -988,6 +991,38 @@ class SearchPage {
 
     await this.getAddGuestButton().click();
     await modal.waitFor({ state: 'hidden', timeout: 10000 });
+  }
+
+  /**
+   * Clicks "Add guest" and waits for the app's `saveTraveller` request to complete. The guest chip
+   * renders before the save resolves (trip.store keeps the traveller in `travelersInProcess` until
+   * then), and a Search clicked during that window is silently ignored — slow GDS-profile accounts
+   * (e.g. Galileo) keep the save pending for several seconds.
+   *
+   * Matches only THIS guest's save — a guest-type save (`addTravellerType=2`, AddTravelerType.Guest)
+   * whose body carries the guest's email — so a still-pending save of a traveller added just before
+   * (e.g. an autocomplete traveller on the same slow account) cannot end the wait early.
+   *
+   * @param {string} email - The guest's email as entered in the form (unique per generated guest)
+   * @param {object} [options]
+   * @param {number} [options.timeout=60000] - How long to wait for the save response
+   * @returns {Promise<boolean>} true when the save response arrived, false on timeout
+   */
+  async clickAddGuestButtonAndWaitForSave(email, { timeout = 60000 } = {}) {
+    if (!email || typeof email !== 'string') {
+      throw new Error(`[SearchPage.clickAddGuestButtonAndWaitForSave] "email" must be a non-empty string, got: ${typeof email}`);
+    }
+    const saved = this.page
+      .waitForResponse(
+        (res) =>
+          res.url().includes(SELECTORS.SAVE_GUEST_TRAVELER_URL_PART) &&
+          (res.request().postData() || '').includes(email),
+        { timeout }
+      )
+      .then(() => true)
+      .catch(() => false);
+    await this.clickAddGuestButton();
+    return saved;
   }
 
   /**

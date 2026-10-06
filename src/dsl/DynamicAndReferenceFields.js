@@ -1309,6 +1309,58 @@ const DynamicAndReferenceFields = {
   },
 
   /**
+   * Verifies ONE traveller's section of the Travellers Reference Questions shows exactly the expected
+   * reference fields — no more, no fewer. Used for fields with a display condition (e.g. shown only
+   * when the traveller has a PAR profile, or only for guests): the strict set check proves each
+   * conditional field appears for the travellers it applies to AND is hidden for the others.
+   * Comparison is order-independent, whitespace-normalized and case-insensitive (the popup
+   * capitalizes labels via CSS).
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @param {string} travellerName - Traveller name as shown in the passenger header (e.g. "Jonathan Taylor")
+   * @param {string[]} expectedLabels - The reference field labels that traveller should see
+   * @returns {Promise<{travellerName: string, labels: string[]}>} The labels read from the traveller's section
+   */
+  async verifyTravellerReferenceFieldLabelsExactly(page, travellerName, expectedLabels) {
+    if (!page) throw new Error('[DynamicAndReferenceFields.verifyTravellerReferenceFieldLabelsExactly] "page" is required.');
+    if (!travellerName || typeof travellerName !== 'string') {
+      throw new Error(
+        `[DynamicAndReferenceFields.verifyTravellerReferenceFieldLabelsExactly] "travellerName" must be a non-empty string, got: ${typeof travellerName}`
+      );
+    }
+    if (!Array.isArray(expectedLabels) || expectedLabels.length === 0) {
+      throw new Error(
+        `[DynamicAndReferenceFields.verifyTravellerReferenceFieldLabelsExactly] "expectedLabels" must be a non-empty array, got: ${typeof expectedLabels}`
+      );
+    }
+
+    const dynamicFieldsPage = getPageObject(page, DynamicAndReferenceFieldsPage);
+    const normalize = (s) => (s || '').replace(/\s+/g, ' ').trim().toLowerCase();
+    const expected = sortAlphabetically(expectedLabels.map(normalize));
+
+    logger.debug('Verifying traveller reference field labels', { travellerName, expectedLabels });
+
+    // The passenger sections expand with an animation and their fields settle a beat after the popup
+    // opens — poll the traveller's label set until it matches, then report the last read on failure.
+    let actual = [];
+    await expect
+      .poll(async () => {
+        actual = await dynamicFieldsPage.getTravellerReferenceFieldLabels(travellerName);
+        return sortAlphabetically(actual.map(normalize));
+      }, {
+        timeout: 30000,
+        message:
+          `[DynamicAndReferenceFields.verifyTravellerReferenceFieldLabelsExactly] Traveller "${travellerName}" should see ` +
+          `exactly these reference fields: [${expectedLabels.join(', ')}]. A missing field means its display condition ` +
+          `did not match this traveller; an extra field means a conditional field leaked into their section.`,
+      })
+      .toEqual(expected);
+
+    logger.info('Traveller reference field labels match', { travellerName, labels: actual });
+    return { travellerName, labels: actual };
+  },
+
+  /**
    * Selects the first available Financial Reference code from the modal
    * (cart.financialReferenceModal) that appears after clicking "Proceed to checkout"
    * when the user has financialReferenceCodes configured.
