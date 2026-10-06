@@ -233,6 +233,19 @@ class CheckoutPage {
   }
 
   /**
+   * Waits for the checkout's submit CTA in whichever variant the trip renders: a booking button
+   * (Finalize / Book and Finalize / Book Now) or, for a trip that needs approval, "Send for approval" /
+   * "Submit for Approval". Use when the caller only needs the checkout to be ready, not a specific CTA.
+   */
+  async waitForCheckoutSubmitButton() {
+    await this.page.waitForSelector(
+      `${SELECTORS.FINALIZE_BUTTON}, ${SELECTORS.BOOK_AND_FINALIZE_BUTTON}, ${SELECTORS.BOOK_NOW_BUTTON}, ` +
+        SELECTORS.SEND_FOR_APPROVAL_BUTTON,
+      { timeout: 30000 },
+    );
+  }
+
+  /**
    * Clicks the appropriate finalize button.
    * Tries multiple button text variants (for different suppliers).
    * Falls back to a generic button if none of the expected labels are found.

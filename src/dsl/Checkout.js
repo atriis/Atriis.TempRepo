@@ -397,8 +397,8 @@ const Checkout = {
     // Intentional wait required for UI stability before interacting, so test is not flaky
     await page.waitForTimeout(4000);
 
-    // Wait for a valid finalize button variant
-    await checkoutPage.waitForBookAndFinalizeButton();
+    // Wait for the checkout CTA — a finalize/book variant, or the approval button on approval trips
+    await checkoutPage.waitForCheckoutSubmitButton();
     await commonPage.clickTripCart();
 
     // Confirm trip overview is displayed

@@ -19,15 +19,33 @@ const ManualQuoteSearch = {
    *
    * @param {Object} page - Playwright page instance
    * @param {string} routeInput - Route identifier (e.g., "LHR-JFK")
-   * @param {number} departureIndex - Index of departure date in calendar
-   * @param {number} returnIndex - Index of return date in calendar
+   * @param {Object} [options]
+   * @param {number} [options.departureIndex] - Index of departure date in calendar; the return date
+   *   is always 5 available days after it
+   * @param {string} [options.carrierName="TAP Air Portugal (TP)"] - Carrier as listed in the carrier
+   *   dropdown, ending in its IATA code in parentheses (e.g. "British Airways (BA)"); the code also
+   *   fills the carrier locator field
    */
   async searchAndAddFlightManualQuote(
     page,
     routeInput = flightRoutes.defaultRoute,
-    departureIndex = SEARCH_DEFAULTS.FLIGHT.DEPARTURE_INDEX,
-    returnIndex = SEARCH_DEFAULTS.FLIGHT.RETURN_INDEX,
+    {
+      departureIndex = SEARCH_DEFAULTS.FLIGHT.DEPARTURE_INDEX,
+      carrierName = "TAP Air Portugal (TP)",
+    } = {},
   ) {
+    if (typeof carrierName !== "string") {
+      throw new Error(
+        `[ManualQuoteSearch.searchAndAddFlightManualQuote] "carrierName" must be a string, got: ${typeof carrierName}`,
+      );
+    }
+    const carrierCode = /\(([A-Z0-9]{2})\)\s*$/.exec(carrierName)?.[1];
+    if (!carrierCode) {
+      throw new Error(
+        `[ManualQuoteSearch.searchAndAddFlightManualQuote] "carrierName" must end with its 2-character IATA code ` +
+          `in parentheses, e.g. "British Airways (BA)", got: ${JSON.stringify(carrierName)}`,
+      );
+    }
     const { from, to } = resolveRoute(routeInput, flightRoutes.routes, "flight");
     logger.info("Starting manual quote flight search", { from, to });
 
@@ -66,9 +84,9 @@ const ManualQuoteSearch = {
     });
 
     // Fill in carrier details
-    await manualQuoteSearchPage.typeCarrierLocator("TP");
-    await manualQuoteSearchPage.typeCarrierName("TAP Air Portugal (TP)");
-    await manualQuoteSearchPage.clickCarrierDropdownOption("TAP Air Portugal (TP)");
+    await manualQuoteSearchPage.typeCarrierLocator(carrierCode);
+    await manualQuoteSearchPage.typeCarrierName(carrierName);
+    await manualQuoteSearchPage.clickCarrierDropdownOption(carrierName);
 
     // Set default times (required by UI to enable submission)
     await manualQuoteSearchPage.clickStartTime();

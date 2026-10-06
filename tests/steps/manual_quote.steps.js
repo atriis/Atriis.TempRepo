@@ -15,6 +15,13 @@ When("I add a flight manual quote from {string} to {string}", async function (fr
   await ManualQuoteSearch.searchAndAddFlightManualQuote(this.page, { from, to });
 });
 
+// Carrier is the dropdown display name ending in its IATA code, e.g. "British Airways (BA)" — for
+// scenarios whose reference-field conditions depend on the airline (the default quote uses TAP).
+When("I add a flight manual quote from {string} to {string} with carrier {string}", async function (from, to, carrierName) {
+  logger.info("Adding one-way flight manual quote with carrier", { from, to, carrierName });
+  await ManualQuoteSearch.searchAndAddFlightManualQuote(this.page, { from, to }, { carrierName });
+});
+
 When("I add a flight manual quote from {string} to {string} round trip", async function (from, to) {
   logger.info("Adding round-trip flight manual quote", { from, to });
   await ManualQuoteSearch.searchAndAddFlightManualQuoteRoundTrip(this.page, { from, to });

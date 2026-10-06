@@ -47,6 +47,13 @@ const SELECTORS = {
   // one `section.traveler-questions` inside each passenger's collapse-item under `section.traveler-section`).
   // Counting these blocks that contain a given field label yields how many travellers show that field.
   TRAVELER_QUESTIONS: '.traveler-section .traveler-questions',
+  // The two titled checkout question sections: general-reference-field.vue renders
+  // `section.general-section` ("General Reference Questions") and traveler-reference-field.vue renders
+  // `section.traveler-section` ("Travellers Reference Questions"). Each carries its title in its outer
+  // el-collapse header, so a section is resolved by filtering on that header text.
+  TITLED_QUESTION_SECTION: 'section.general-section, section.traveler-section',
+  // One label per reference field inside a titled question section (one `<article>` per field).
+  SECTION_FIELD_LABEL: 'article label.label',
   // One field label per configured general reference field, in admin-configured order: the
   // general-reference-field component renders `.general-questions` with one `<article>` per field
   // (v-for over generalQuestions), each carrying a single `label.label` (FIELD_LABEL).
@@ -1496,6 +1503,38 @@ class DynamicAndReferenceFieldsPage {
     } catch {
       return false;
     }
+  }
+
+  /**
+   * Reads the labels of every reference field rendered inside the checkout question section whose
+   * header shows sectionTitle ("General Reference Questions" or "Travellers Reference Questions").
+   * Reads `attached` labels via textContent rather than visible ones, because the traveller section
+   * nests one accordion per passenger and a collapsed passenger's fields are in the DOM but hidden.
+   * Returns immediately with whatever is rendered so a caller can poll while the form builds.
+   *
+   * The title match tolerates the "Travelers"/"Travellers" spelling difference between locales
+   * (en-US renders "Travelers Reference Questions").
+   *
+   * @param {string} sectionTitle - Section header title
+   * @returns {Promise<string[]>} Clean field labels in DOM order; empty when the section is not rendered
+   */
+  async getReferenceSectionFieldLabels(sectionTitle) {
+    if (!sectionTitle || typeof sectionTitle !== 'string') {
+      throw new Error(
+        `[DynamicAndReferenceFieldsPage.getReferenceSectionFieldLabels] "sectionTitle" must be a non-empty string, got: ${typeof sectionTitle} (${sectionTitle})`
+      );
+    }
+    const titleRegex = new RegExp(
+      sectionTitle.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/travel+ers/i, 'Travel+ers'),
+      'i'
+    );
+    const header = this.page.locator(SELECTORS.COLLAPSE_SECTION_HEADER).filter({ hasText: titleRegex });
+    const rawTexts = await this.page
+      .locator(SELECTORS.TITLED_QUESTION_SECTION)
+      .filter({ has: header })
+      .locator(SELECTORS.SECTION_FIELD_LABEL)
+      .allTextContents();
+    return rawTexts.map((t) => cleanReferenceLabelText(t)).filter((t) => t.length > 0);
   }
 
   /**

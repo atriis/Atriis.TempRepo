@@ -1838,6 +1838,109 @@ const DynamicAndReferenceFields = {
     }
   },
 
+  /**
+   * Verifies the checkout question section titled sectionTitle (e.g. "General Reference Questions",
+   * "Travellers Reference Questions") shows every given field label. Scoped to that one section, so a
+   * field configured for a different section does not satisfy the check — the point of "show only in
+   * case" conditions is WHERE a field lands as much as whether it lands. Polls because the sections
+   * mount asynchronously after the "Booking details" heading.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} sectionTitle
+   * @param {string[]} labels - Field labels that must be shown in the section (case-insensitive)
+   * @returns {Promise<{labels: string[]}>} The labels the section displayed
+   */
+  async verifyReferenceSectionShowsFields(page, sectionTitle, labels) {
+    if (!page) throw new Error('[DynamicAndReferenceFields.verifyReferenceSectionShowsFields] "page" is required.');
+    if (!sectionTitle || typeof sectionTitle !== 'string') {
+      throw new Error(
+        `[DynamicAndReferenceFields.verifyReferenceSectionShowsFields] "sectionTitle" must be a non-empty string, got: ${typeof sectionTitle} (${sectionTitle})`
+      );
+    }
+    if (!Array.isArray(labels) || labels.length === 0) {
+      throw new Error('[DynamicAndReferenceFields.verifyReferenceSectionShowsFields] "labels" must be a non-empty array.');
+    }
+
+    const checkoutPage = getPageObject(page, CheckoutPage);
+    const dynamicFieldsPage = getPageObject(page, DynamicAndReferenceFieldsPage);
+    await checkoutPage.waitForBookingDetailsText();
+
+    const missingFrom = (shown) => {
+      const shownLower = shown.map((s) => s.toLowerCase());
+      return labels.filter((label) => !shownLower.includes(label.toLowerCase()));
+    };
+
+    try {
+      await expect
+        .poll(async () => missingFrom(await dynamicFieldsPage.getReferenceSectionFieldLabels(sectionTitle)), {
+          timeout: 20000,
+        })
+        .toHaveLength(0);
+    } catch (err) {
+      const shown = await dynamicFieldsPage.getReferenceSectionFieldLabels(sectionTitle);
+      throw new Error(
+        `[DynamicAndReferenceFields.verifyReferenceSectionShowsFields] The "${sectionTitle}" section should show ` +
+        `[${labels.join(', ')}], but these are missing: [${missingFrom(shown).join(', ')}]. The section shows: ` +
+        `[${shown.join(', ') || 'none — the section is not rendered'}]. Original: ${err.message}`
+      );
+    }
+
+    const shown = await dynamicFieldsPage.getReferenceSectionFieldLabels(sectionTitle);
+    logger.info('Reference section shows the expected fields', { sectionTitle, labels, shown });
+    return { labels: shown };
+  },
+
+  /**
+   * Verifies the checkout question section titled sectionTitle does NOT show any of the given field
+   * labels. Waits for the section to render its fields first: reading an empty, half-mounted section
+   * would pass vacuously. The section must therefore show at least one field — pair this with
+   * verifyReferenceSectionShowsFields for the same section.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} sectionTitle
+   * @param {string[]} labels - Field labels that must NOT be shown in the section (case-insensitive)
+   * @returns {Promise<{labels: string[]}>} The labels the section displayed
+   */
+  async verifyReferenceSectionDoesNotShowFields(page, sectionTitle, labels) {
+    if (!page) throw new Error('[DynamicAndReferenceFields.verifyReferenceSectionDoesNotShowFields] "page" is required.');
+    if (!sectionTitle || typeof sectionTitle !== 'string') {
+      throw new Error(
+        `[DynamicAndReferenceFields.verifyReferenceSectionDoesNotShowFields] "sectionTitle" must be a non-empty string, got: ${typeof sectionTitle} (${sectionTitle})`
+      );
+    }
+    if (!Array.isArray(labels) || labels.length === 0) {
+      throw new Error('[DynamicAndReferenceFields.verifyReferenceSectionDoesNotShowFields] "labels" must be a non-empty array.');
+    }
+
+    const checkoutPage = getPageObject(page, CheckoutPage);
+    const dynamicFieldsPage = getPageObject(page, DynamicAndReferenceFieldsPage);
+    await checkoutPage.waitForBookingDetailsText();
+
+    try {
+      await expect
+        .poll(async () => (await dynamicFieldsPage.getReferenceSectionFieldLabels(sectionTitle)).length, { timeout: 20000 })
+        .toBeGreaterThan(0);
+    } catch (err) {
+      throw new Error(
+        `[DynamicAndReferenceFields.verifyReferenceSectionDoesNotShowFields] The "${sectionTitle}" section rendered no ` +
+        `fields, so the absence of [${labels.join(', ')}] cannot be told apart from a section that never loaded. ` +
+        `Original: ${err.message}`
+      );
+    }
+
+    const shown = await dynamicFieldsPage.getReferenceSectionFieldLabels(sectionTitle);
+    const shownLower = shown.map((s) => s.toLowerCase());
+    const leaked = labels.filter((label) => shownLower.includes(label.toLowerCase()));
+    expect(
+      leaked,
+      `[DynamicAndReferenceFields.verifyReferenceSectionDoesNotShowFields] The "${sectionTitle}" section should not ` +
+      `show [${labels.join(', ')}], but it shows: [${leaked.join(', ')}]. All labels in the section: [${shown.join(', ')}].`
+    ).toHaveLength(0);
+
+    logger.info('Reference section hides the given fields', { sectionTitle, labels, shown });
+    return { labels: shown };
+  },
+
 };
 
 // Export DynamicAndReferenceFields DSL for use in tests

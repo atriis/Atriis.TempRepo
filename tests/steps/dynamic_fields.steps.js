@@ -388,6 +388,21 @@ Then("the {string} reference section is displayed", async function (sectionTitle
   await DynamicAndReferenceFields.verifyReferenceSectionDisplayed(this.page, sectionTitle);
 });
 
+// Section-scoped checkout field presence: the field must render inside the named section (e.g.
+// "General Reference Questions" vs "Travellers Reference Questions"), not merely somewhere on the page.
+// Used by "show only in case" display conditions, where the section a field lands in is part of the rule.
+Then("the {string} reference section should show the fields:", async function (sectionTitle, dataTable) {
+  const labels = dataTable.raw().map(row => row[0]);
+  logger.info("Verifying reference section shows fields", { sectionTitle, labels });
+  await DynamicAndReferenceFields.verifyReferenceSectionShowsFields(this.page, sectionTitle, labels);
+});
+
+Then("the {string} reference section should not show the fields:", async function (sectionTitle, dataTable) {
+  const labels = dataTable.raw().map(row => row[0]);
+  logger.info("Verifying reference section does not show fields", { sectionTitle, labels });
+  await DynamicAndReferenceFields.verifyReferenceSectionDoesNotShowFields(this.page, sectionTitle, labels);
+});
+
 // Verifies a specific traveller's block in the Travellers Reference Questions section shows the two
 // named dynamic fields (e.g. "Payment Group" dropdown and "Bank account" textbox).
 Then("the reference fields for traveller {string} show {string} and {string}", async function (travellerName, field1, field2) {
