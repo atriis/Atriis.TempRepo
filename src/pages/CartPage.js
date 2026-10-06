@@ -243,7 +243,8 @@ const SELECTORS = {
   FLIGHT_PRICE_BREAKDOWN_SUBTOTAL_PASSENGERS: '.passengers',
   FLIGHT_PRICE_BREAKDOWN_TOTAL: '.summary-and-actions .amount',
   FLIGHT_CO2_TOOLTIP_TRIGGER_IN_CART: '.flight-quote-card .co2-emissions-label .info-icon',
-  FLIGHT_CO2_TOOLTIP_TRIGGER_IN_MORE_DETAILS: "[aria-label='More details'] .co2-emissions-label .info-icon",
+  // Scoped by the flight card drawer's class: AB#84760 retitled it "Flight Details", so aria-label 'More details' no longer matches.
+  FLIGHT_CO2_TOOLTIP_TRIGGER_IN_MORE_DETAILS: '.app-drawer.flight-details-drawer .co2-emissions-label .info-icon',
   FLIGHT_CO2_TOOLTIP_DESCRIPTION: '.co2-emissions-tooltip .emission-description-bold',
   FLIGHT_QUOTE_CARD: '.flight-quote-card',
   FLIGHT_QUOTE_SEGMENT: '.flight-info.cart-format',
