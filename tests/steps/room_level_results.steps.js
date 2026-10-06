@@ -497,6 +497,16 @@ Then("the out of policy tooltip in room level results should quote the GSA night
   expect(actual).toBe(expected);
 });
 
+Then("the out of policy indicator should not be visible in room level", async function () {
+  logger.info("Verifying OOP indicator is not visible on any room in room level results");
+  const { total, outOfPolicy } = await RoomLevelResults.getOutOfPolicyRoomsInRoomLevelResults(this.page);
+
+  expect(
+    outOfPolicy.map((room) => `room ${room.index + 1} (${room.price})`),
+    `Rooms showing an out of policy indicator, out of ${total} listed`,
+  ).toEqual([]);
+});
+
 // ========================================
 // HOTEL LOWEST FARE TRAVEL POLICY
 // ========================================

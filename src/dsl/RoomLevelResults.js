@@ -1262,6 +1262,34 @@ const RoomLevelResults = {
   },
 
   /**
+   * Returns the listed room cards that show an out of policy badge.
+   * @param {import('playwright').Page} page
+   * @returns {Promise<{total: number, outOfPolicy: Array<{index: number, price: number}>}>}
+   *          Room count and the out of policy rooms (0-based card position and price)
+   */
+  async getOutOfPolicyRoomsInRoomLevelResults(page) {
+    if (!page) throw new Error('[RoomLevelResults.getOutOfPolicyRoomsInRoomLevelResults] "page" is required.');
+
+    const roomLevelResultsPage = getPageObject(page, RoomLevelResultsPage);
+
+    // Rooms stream in per supplier; wait so later rooms are not skipped by the check.
+    const roomsFinishedLoading = await roomLevelResultsPage.waitForRoomsFinishedLoading();
+    if (!roomsFinishedLoading) {
+      logger.warn('Rooms were still loading when the policy badges were read, so some rooms may not have been checked');
+    }
+
+    const rooms = await roomLevelResultsPage.getRoomPricesWithPolicyIndicator();
+    if (rooms.length === 0) {
+      throw new Error('[RoomLevelResults.getOutOfPolicyRoomsInRoomLevelResults] No room results are loaded to check.');
+    }
+
+    const outOfPolicy = rooms
+      .filter((room) => room.isOutOfPolicy)
+      .map(({ index, price }) => ({ index, price }));
+    return { total: rooms.length, outOfPolicy };
+  },
+
+  /**
    * Adds the first out of policy room to the cart.
    * @param {import('playwright').Page} page
    */

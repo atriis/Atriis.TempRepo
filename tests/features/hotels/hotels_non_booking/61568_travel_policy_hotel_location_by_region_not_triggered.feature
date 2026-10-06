@@ -6,7 +6,7 @@
 # Created: 2025-05-02T05:15:56Z
 # Updated: 2025-05-02T05:48:56Z
 
-@regression @travel_policy @hotel @shell
+@regression @travel_policy @hotel @provider:bookingcom
 Feature: 61568 Travel Policy - Hotel location policy is correctly triggered
 
   As a corporate traveler
@@ -18,7 +18,8 @@ Feature: 61568 Travel Policy - Hotel location policy is correctly triggered
     And I have added myself as the traveler
     When I search for a hotel in "Pino Alto, Spain" for 1 night
     And I wait to see view rates text in results page
-    When I sort hotel results by "Price"
     And I select the first hotel result
+    And I wait for the first add to trip button to be visible in room level results
+    Then the out of policy indicator should not be visible in room level
     And I add a refundable room to my cart
     Then the out of policy indicator should not be visible in cart
