@@ -1,11 +1,9 @@
 /* eslint-disable */
 // Generates a single executive PowerPoint slide: "Test Automation Update".
 //
-// Every test count on the slide is MEASURED from this repo at run time — the
-// nightly chain (suite-flights -> suite-hotels -> suite-shell ->
-// suite-transportation) is the source of truth, so the slide cannot drift from
-// what actually runs. Only the figures CI does not record (passing rate and the
-// sprint highlights) are constants, at the top of this file.
+// The per-domain test counts (.feature files) are constants at the top of this
+// file, with the passing rate and the sprint highlights. The
+// suite and blocked counts are still measured from this repo at run time.
 //
 // Usage:
 //   node scripts/generate-daily-run-slide.js
@@ -21,22 +19,31 @@ const WORKFLOW_DIR = path.join(REPO_ROOT, '.github', 'workflows');
 // ---------------------------------------------------------------------------
 const DEFAULTS = {
   passingRate: 75,
-  sprint: 19,
+  sprint: 20,
   // Wall-clock for the WHOLE chain, not one leg: the four suites run in
   // sequence, so measure from the suite-flights start to the
   // suite-transportation end.
   avgDuration: '2h',
   highlights: [
-    { value: '32',  label: 'New tests' },
+    { value: '130',  label: 'New tests' },
   ],
   // Breakdown under the headline. Kept separate from the domain bars above,
-  // which count the whole suite, not what the sprint added.
+  // which count the whole suite, not what the sprint added. New .feature files
+  // added to main from 2026-09-13 to 2026-10-06; renamed hybrids not counted.
   newTestsByDomain: [
-    { name: 'Flights', value: 24 },
-    { name: 'Hotels', value: 2 },
-    { name: 'Transportation', value: 2 },
-    { name: 'Shell', value: 4 },
+    { name: 'Flights', value: 83 },
+    { name: 'Hotels', value: 11 },
+    { name: 'Transportation', value: 14 },
+    { name: 'Shell', value: 22 },
   ],
+  // Tests (.feature files) per domain in the daily run, as reported for the
+  // 2026-10-05 morning batch.
+  testsByDomain: {
+    Flights: 414,
+    Hotels: 126,
+    Shell: 240,
+    Transportation: 216,
+  },
 };
 
 // ---------------------------------------------------------------------------
@@ -65,7 +72,8 @@ function parseArgs(argv) {
 // ---------------------------------------------------------------------------
 // Counting. One .feature FILE is one test — never a cucumber pickle count: the
 // Scenario Outlines in the suites expand into several runs each and would
-// overstate the inventory.
+// overstate the inventory. The domain bars use DEFAULTS.testsByDomain; the
+// count measured here from the suite workflows is only printed as a cross-check.
 // ---------------------------------------------------------------------------
 const DOMAIN_WORKFLOWS = [
   { name: 'Flights', file: 'suite-flights.yml' },
@@ -118,21 +126,19 @@ function collectDomains() {
     // A path can appear twice when a suite is sharded across two legs
     // (flights_general_non_booking is), and its features must be counted once.
     const unique = [...new Set(paths)];
-    const tests = unique.reduce((sum, p) => sum + countTestPath(p), 0);
-    return { name, tests, suites: paths.length, paths: unique.length };
+    const measured = unique.reduce((sum, p) => sum + countTestPath(p), 0);
+    const tests = DEFAULTS.testsByDomain[name];
+    if (!Number.isFinite(tests)) throw new Error(`No test count for ${name} in DEFAULTS.testsByDomain`);
+    return { name, tests, measured, suites: paths.length, paths: unique.length };
   });
 }
 
-// Blocked = .feature files inside a *_blocked FOLDER. A file merely NAMED
-// *_blocked.feature outside one is not blocked.
-function countBlocked(dir, inBlocked = false) {
-  let total = 0;
-  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-    const full = path.join(dir, entry.name);
-    if (entry.isDirectory()) total += countBlocked(full, inBlocked || entry.name.endsWith('_blocked'));
-    else if (inBlocked && entry.name.endsWith('.feature')) total += 1;
-  }
-  return total;
+// Blocked = every .feature file the suite workflows do not run: the *_blocked
+// folders plus any file no suite picks up (smoke.feature, cars/payload_test).
+// Measured against the suite count, not DEFAULTS.testsByDomain.
+function countOutsideRun(domains) {
+  const all = countFeaturesRecursive(path.join(REPO_ROOT, 'tests', 'features'));
+  return all - domains.reduce((a, d) => a + d.measured, 0);
 }
 
 // ---------------------------------------------------------------------------
@@ -173,7 +179,7 @@ function build(opts) {
   const domains = collectDomains();
   const totalTests = domains.reduce((a, d) => a + d.tests, 0);
   const totalSuites = domains.reduce((a, d) => a + d.suites, 0);
-  const blocked = countBlocked(path.join(REPO_ROOT, 'tests', 'features'));
+  const blocked = countOutsideRun(domains);
   const passed = Math.round((totalTests * opts.rate) / 100);
   const failed = totalTests - passed;
   const PptxGenJS = loadPptxGenJS();
@@ -239,8 +245,19 @@ function build(opts) {
   // Bars are share of the total, NOT share of the largest domain: the trailing
   // note reads as a share of the total, so scaling to the max made a 41% bar
   // fill the whole track. Full track = 100% of the daily run.
+  const ROW_STEP = 0.80;
+  // Rounding each share on its own can add up to 101% (414/126/240/216 did), so
+  // floor them all and hand the missing points to the largest remainders.
+  const exact = domains.map((d) => (d.tests / totalTests) * 100);
+  const shares = exact.map(Math.floor);
+  const missing = 100 - shares.reduce((a, s) => a + s, 0);
+  exact
+    .map((e, i) => ({ i, rem: e - Math.floor(e) }))
+    .sort((a, b) => b.rem - a.rem)
+    .slice(0, missing)
+    .forEach(({ i }) => { shares[i] += 1; });
   domains.forEach((d, i) => {
-    const ry = 3.15 + i * 0.80;
+    const ry = 3.15 + i * ROW_STEP;
     slide.addText(d.name, {
       x: LX, y: ry, w: 1.6, h: 0.36,
       fontSize: 12, bold: true, color: COLORS.ink, valign: 'middle', fontFace: FONT,
@@ -257,13 +274,13 @@ function build(opts) {
       x: TRACK_X + TRACK_W + 0.1, y: ry, w: 0.6, h: 0.36,
       fontSize: 12, bold: true, color: COLORS.ink, align: 'right', valign: 'middle', fontFace: FONT,
     });
-    slide.addText(`${Math.round((d.tests / totalTests) * 100)}%`, {
+    slide.addText(`${shares[i]}%`, {
       x: TRACK_X + TRACK_W + 0.75, y: ry, w: 0.6, h: 0.36,
       fontSize: 9, color: COLORS.sub, valign: 'middle', fontFace: FONT,
     });
   });
 
-  const totalY = 3.15 + domains.length * 0.80 + 0.06;
+  const totalY = 3.15 + domains.length * ROW_STEP + 0.06;
   slide.addShape(pptx.ShapeType.line, {
     x: LX, y: totalY, w: 6.3, h: 0,
     line: { color: COLORS.border, width: 1 },
@@ -344,8 +361,10 @@ function build(opts) {
 
   DEFAULTS.highlights.forEach((h, i) => {
     const hy = CARD_Y + 0.46 + i * ROW_H;
+    // 0.75 wide and unwrapped: at 0.5 a three-digit value broke onto two lines.
+    // Right-aligned, so it still ends where the label starts.
     slide.addText(h.value, {
-      x: RX + 0.2, y: hy, w: 0.5, h: 0.34,
+      x: RX + 0.05, y: hy, w: 0.75, h: 0.34, wrap: false,
       fontSize: 20, bold: true, color: COLORS.green, align: 'right', valign: 'middle', fontFace: FONT,
     });
     slide.addText(h.label, {
@@ -384,11 +403,12 @@ function main() {
   const opts = parseArgs(process.argv.slice(2));
   const { pptx, domains, totalTests, totalSuites, blocked, passed, failed } = build(opts);
 
-  console.log('Measured from the nightly suite workflows:');
+  console.log('Tests by domain (measured from the suite workflows in brackets):');
   domains.forEach((d) => {
-    console.log(`  ${d.name.padEnd(15)} ${String(d.tests).padStart(4)} tests  (${d.suites} suites)`);
+    console.log(`  ${d.name.padEnd(15)} ${String(d.tests).padStart(4)} tests  (${d.measured} measured, ${d.suites} suites)`);
   });
-  console.log(`  ${'TOTAL'.padEnd(15)} ${String(totalTests).padStart(4)} tests  (${totalSuites} suites)`);
+  const totalMeasured = domains.reduce((a, d) => a + d.measured, 0);
+  console.log(`  ${'TOTAL'.padEnd(15)} ${String(totalTests).padStart(4)} tests  (${totalMeasured} measured, ${totalSuites} suites)`);
   console.log(`  blocked, outside the run: ${blocked}`);
   console.log(`  at ${opts.rate}%: ${passed} passed / ${failed} to analyse`);
 
