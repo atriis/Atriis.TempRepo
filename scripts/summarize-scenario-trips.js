@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 /**
- * Write one row per scenario of this job's cucumber run — status, scenario, location and the
- * trip number(s) it touched — to the GitHub job summary, so every run and rerun job shows its
- * trip numbers for passed and failed tests alike without waiting for the domain report.
+ * Write one row per scenario of this job's cucumber run — status, scenario, location, the
+ * trip number(s) it touched and, for a failed scenario, its error — to the GitHub job summary,
+ * so every run and rerun job shows its trip numbers for passed and failed tests alike, and why
+ * the failed ones failed, without waiting for the domain report.
  *
  * Run it AFTER cucumber-js (and the deferred payload verifier, which can turn a passed scenario
  * into a failed one) has exited — the JSON report is only written at the very end.
@@ -64,11 +65,37 @@ const tripIdsOf = (el) => {
   return [...ids].join(", ");
 };
 
+// A scenario stopped by a known supplier booking error ends 'pending' with no error message;
+// the step attaches the supplier's own words as a 'BOOKING_ERROR:' text embedding.
+const bookingErrorOf = (el) => {
+  for (const step of el.steps || []) {
+    for (const emb of step.embeddings || []) {
+      const m = embeddedText(emb, "BOOKING_ERROR:").match(/BOOKING_ERROR:([\s\S]+)/);
+      if (m) return m[1].split("\n")[0].trim();
+    }
+  }
+  return "";
+};
+
+const failedStepOf = (el) => (el.steps || []).find((s) => s.result && FAIL_STATUSES.has(s.result.status));
+
 const statusOf = (el) => {
   const steps = el.steps || [];
-  if (steps.some((s) => s.result && FAIL_STATUSES.has(s.result.status))) return "failed";
+  if (failedStepOf(el)) return "failed";
   if (steps.every((s) => !s.result || s.result.status === "skipped")) return "skipped";
   return "passed";
+};
+
+// First line of the failing step's error, else the supplier booking error, else the step it
+// stopped on — same read as the suite and rerun domain reports.
+const errorOf = (el) => {
+  const bad = failedStepOf(el);
+  if (!bad) return "";
+  return (
+    (bad.result.error_message || "").split("\n")[0] ||
+    bookingErrorOf(el) ||
+    `${bad.result.status} step: ${`${bad.keyword || ""}${bad.name || ""}`.trim()}`
+  );
 };
 
 const out = ["", `### ${TITLE}`, ""];
@@ -91,7 +118,7 @@ if (features) {
     const uri = String(feature.uri || "").replace(/\\/g, "/");
     for (const el of feature.elements || []) {
       if (el.type !== "scenario") continue;
-      rows.push({ status: statusOf(el), name: el.name || "", loc: `${uri}:${el.line || ""}`, trips: tripIdsOf(el) });
+      rows.push({ status: statusOf(el), name: el.name || "", loc: `${uri}:${el.line || ""}`, trips: tripIdsOf(el), err: errorOf(el) });
     }
   }
   rows.sort((a, b) => ORDER[a.status] - ORDER[b.status] || a.loc.localeCompare(b.loc));
@@ -99,10 +126,10 @@ if (features) {
   const count = (st) => rows.filter((r) => r.status === st).length;
   out.push(`${rows.length} scenario(s): ✅ ${count("passed")} passed · ❌ ${count("failed")} failed · ⏭️ ${count("skipped")} skipped`, "");
   if (rows.length > 0) {
-    out.push("| | Scenario | Location | Trip # |");
-    out.push("|---|----------|----------|--------|");
+    out.push("| | Scenario | Location | Trip # | Error |");
+    out.push("|---|----------|----------|--------|-------|");
     for (const r of rows) {
-      out.push(`| ${ICON[r.status]} | ${esc(r.name)} | ${esc(r.loc)} | ${esc(r.trips || "—")} |`);
+      out.push(`| ${ICON[r.status]} | ${esc(r.name)} | ${esc(r.loc)} | ${esc(r.trips || "—")} | ${r.status === "failed" ? esc(r.err) : "—"} |`);
     }
   }
 }
