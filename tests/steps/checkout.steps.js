@@ -129,6 +129,11 @@ Then("a booking error message should be displayed", async function () {
   await Checkout.verifyBookingErrorMessage(this.page);
 });
 
+Then("a booking error message containing {string} should be displayed", async function (expectedErrorText) {
+  logger.info("Verifying booking error message text", { expectedErrorText });
+  await Checkout.verifyBookingErrorMessage(this.page, expectedErrorText);
+});
+
 // Arms the network interceptor before Book & Finalize so the POST /booking answer is not missed.
 When("I start intercepting the booking response", function () {
   logger.info("Starting booking API response capture");
