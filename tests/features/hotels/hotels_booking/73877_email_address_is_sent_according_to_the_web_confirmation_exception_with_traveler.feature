@@ -27,7 +27,7 @@ Feature: 73877 Email adress is sent according to the web confirmation - exceptio
     And I complete the booking
     Then the booking status should be "Confirmed"
     Then I successfully cancel the trip
-    When I capture the "response" payload for request type "hotelRes" from Storage
-    Then the captured "response" payload for request type "hotelRes" should contain "Eliyahu@Tel.com".block("ResGuests")
-    And the captured "response" payload for request type "hotelRes" should contain "Eliyahu@Tel.com".block("ResGlobalInfo")
+    When I capture the "request" payload for request type "hotelRes" from Storage
+    Then the captured "request" payload for request type "hotelRes" should contain "Eliyahu@Tel.com".block("ResGuests")
+    And the captured "request" payload for request type "hotelRes" should contain "Eliyahu@Tel.com".block("ResGlobalInfo")
 
