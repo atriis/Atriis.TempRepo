@@ -58,11 +58,13 @@ repo standardizes on `az`. If you must use a PAT instead, set
 pulled with `gh run download`.
 
 **Runtime:** Node.js (`node`). All temp files (scripts + JSON + the downloaded
-artifacts) live in an OS-temp working dir, **outside the repo**:
-`$env:TEMP\ado-testplan-sync\`. It's created on demand (`New-Item -Force` /
-`gh run download --dir` make it). When writing the scripts with a file tool,
-resolve `$env:TEMP` to its absolute path first. Never write temp files into the
-`c:\DEV\Atriis.Test.Automation` repo.
+artifacts) live in a **per-run** OS-temp working dir, **outside the repo**:
+`$work = "$env:TEMP\ado-testplan-sync\run-$RUN"` (set in Phase 0). Each sync owns
+its own folder, so two syncs of different runs can execute at the same time
+without overwriting or deleting each other's files — never write to, or clean up,
+the shared `ado-testplan-sync` root or another run's folder. When writing the
+scripts with a file tool, resolve `$work` to its absolute path first. Never write
+temp files into the `c:\DEV\Atriis.Test.Automation` repo.
 
 ## Pipeline
 
@@ -88,8 +90,15 @@ gh run list --limit 10
 If `planId` was not given, ask for it. You can list recent plans read-only with
 the fetch script's list mode if helpful, or just ask.
 
-Extract the numeric run id and plan id (from URLs if pasted). Then obtain the
-token (see Auth prerequisite above) before Phase 2.
+Extract the numeric run id and plan id (from URLs if pasted), then create this
+run's working dir — every later phase reads and writes only inside `$work`:
+
+```powershell
+$work = "$env:TEMP\ado-testplan-sync\run-$RUN"
+New-Item -ItemType Directory -Force $work | Out-Null
+```
+
+Then obtain the token (see Auth prerequisite above) before Phase 2.
 
 **The run must be a `main` run.** Results from a branch run reflect that branch's
 feature files, not the tests of record. Check the branch before doing any work:
@@ -111,7 +120,7 @@ subfolders. The matching key is the **leading number** of
 `<testcase classname="...">` — cucumber writes the feature title (prefixed with
 its ADO test-case id, e.g. `29426 Sabre - ...`) into `classname`.
 
-Write this script to `$env:TEMP\ado-testplan-sync\_temp_gh_parse.js`:
+Write this script to `$work\_temp_gh_parse.js`:
 
 ```js
 const fs = require('fs');
@@ -200,14 +209,14 @@ console.log(JSON.stringify({ fileCount: files.length, results, skipped }));
 Run:
 
 ```powershell
-$dest = "$env:TEMP\ado-testplan-sync\gh-run-$RUN"
+$dest = "$work\gh-run"
 New-Item -ItemType Directory -Force $dest | Out-Null
 # Only the JUnit artifacts (one "<suite_id>-results" per suite). This avoids
 # pulling the heavy -traces / -screenshots artifacts. (The glob also matches
 # "<suite_id>-allure-results"; harmless — the parser only reads cucumber-junit*.xml.)
 gh run download $RUN --dir $dest --pattern "*-results"
-$parseRaw = node $env:TEMP\ado-testplan-sync\_temp_gh_parse.js $dest
-[System.IO.File]::WriteAllText("$env:TEMP\ado-testplan-sync\_temp_parse.json", $parseRaw, (New-Object System.Text.UTF8Encoding $false))
+$parseRaw = node $work\_temp_gh_parse.js $dest
+[System.IO.File]::WriteAllText("$work\_temp_parse.json", $parseRaw, (New-Object System.Text.UTF8Encoding $false))
 ```
 
 (`$RUN` is the resolved numeric run id.) Results are already deduplicated by
@@ -253,7 +262,7 @@ Treat a feature as hybrid if **any** of these is true:
 3. its filename contains "hybrid",
 4. its `# Labels:` header comment lists `hybrid`.
 
-Write this script to `$env:TEMP\ado-testplan-sync\_temp_gh_hybrid.js`:
+Write this script to `$work\_temp_gh_hybrid.js`:
 
 ```js
 const fs = require('fs');
@@ -324,7 +333,6 @@ or on uncommitted edits to a feature file. Export `tests/features` from
 
 ```powershell
 $repo = "c:\DEV\Atriis.Test.Automation"
-$work = "$env:TEMP\ado-testplan-sync"
 $featuresSrc = "$work\main-features"
 
 # Refresh origin/main. If the fetch fails (offline / auth), WARN and continue with
@@ -350,7 +358,7 @@ which revision the hybrid set came from.
 
 ## Phase 2: Fetch plan structure
 
-Write this script to `$env:TEMP\ado-testplan-sync\_temp_gh_fetch.js`:
+Write this script to `$work\_temp_gh_fetch.js`:
 
 ```js
 const https = require('https');
@@ -420,7 +428,7 @@ main().catch(e => { console.error(e.message); process.exit(1); });
 Run:
 
 ```powershell
-node $env:TEMP\ado-testplan-sync\_temp_gh_fetch.js $PLAN $env:TEMP\ado-testplan-sync\_temp_fetch.json
+node $work\_temp_gh_fetch.js $PLAN $work\_temp_fetch.json
 ```
 
 Stop and show the error to the user if the script fails.
@@ -431,7 +439,7 @@ Always show this preview and wait for explicit confirmation before writing
 anything to ADO. Build the update set with this script — it cross-references the
 parse results against the plan and applies the protected-outcome rule.
 
-Write this script to `$env:TEMP\ado-testplan-sync\_temp_gh_diff.js`:
+Write this script to `$work\_temp_gh_diff.js`:
 
 ```js
 const fs = require('fs');
@@ -493,7 +501,7 @@ console.log(JSON.stringify({
 Run:
 
 ```powershell
-$diffRaw = node $env:TEMP\ado-testplan-sync\_temp_gh_diff.js $env:TEMP\ado-testplan-sync\_temp_parse.json $env:TEMP\ado-testplan-sync\_temp_fetch.json $env:TEMP\ado-testplan-sync\_temp_hybrid.json $env:TEMP\ado-testplan-sync\_temp_updates.json
+$diffRaw = node $work\_temp_gh_diff.js $work\_temp_parse.json $work\_temp_fetch.json $work\_temp_hybrid.json $work\_temp_updates.json
 ```
 
 Classification (checked in this order):
@@ -558,7 +566,7 @@ Never do this unprompted.
 
 ## Phase 4: PATCH test point outcomes
 
-Write this script to `$env:TEMP\ado-testplan-sync\_temp_gh_push.js`:
+Write this script to `$work\_temp_gh_push.js`:
 
 ```js
 const https = require('https');
@@ -625,7 +633,7 @@ main().catch(e => { console.error(e.message); process.exit(1); });
 Run:
 
 ```powershell
-$pushRaw = node $env:TEMP\ado-testplan-sync\_temp_gh_push.js $PLAN $env:TEMP\ado-testplan-sync\_temp_updates.json 2>&1
+$pushRaw = node $work\_temp_gh_push.js $PLAN $work\_temp_updates.json 2>&1
 $jsonLine = ($pushRaw | Where-Object { $_ -match '^\{' }) -join ''
 $stats = $jsonLine | ConvertFrom-Json
 ```
@@ -634,24 +642,15 @@ $stats = $jsonLine | ConvertFrom-Json
 
 Delete temp files:
 
+Delete only this run's folder — never the shared `ado-testplan-sync` root or a
+sibling `run-*` folder, which may belong to a sync running in another session:
+
 ```powershell
-Remove-Item $env:TEMP\ado-testplan-sync\_temp_gh_parse.js  -ErrorAction SilentlyContinue
-Remove-Item $env:TEMP\ado-testplan-sync\_temp_gh_fetch.js  -ErrorAction SilentlyContinue
-Remove-Item $env:TEMP\ado-testplan-sync\_temp_gh_diff.js   -ErrorAction SilentlyContinue
-Remove-Item $env:TEMP\ado-testplan-sync\_temp_gh_push.js   -ErrorAction SilentlyContinue
-Remove-Item $env:TEMP\ado-testplan-sync\_temp_gh_hybrid.js -ErrorAction SilentlyContinue
-Remove-Item $env:TEMP\ado-testplan-sync\_temp_parse.json   -ErrorAction SilentlyContinue
-Remove-Item $env:TEMP\ado-testplan-sync\_temp_fetch.json   -ErrorAction SilentlyContinue
-Remove-Item $env:TEMP\ado-testplan-sync\_temp_hybrid.json  -ErrorAction SilentlyContinue
-Remove-Item $env:TEMP\ado-testplan-sync\_temp_updates.json -ErrorAction SilentlyContinue
-Remove-Item $env:TEMP\ado-testplan-sync\_temp_updates-hybrid.json -ErrorAction SilentlyContinue
-Remove-Item $env:TEMP\ado-testplan-sync\main-features.tar -ErrorAction SilentlyContinue
 # Remove-Item -Recurse can return before Windows releases the directory handle,
-# leaving the (now empty) root behind. Retry once; a leftover empty dir is
-# harmless either way — Phase 1b recreates it.
-Remove-Item $env:TEMP\ado-testplan-sync\main-features -Recurse -Force -ErrorAction SilentlyContinue
-Remove-Item $env:TEMP\ado-testplan-sync\main-features -Recurse -Force -ErrorAction SilentlyContinue
-Remove-Item $env:TEMP\ado-testplan-sync\gh-run-$RUN -Recurse -Force -ErrorAction SilentlyContinue
+# leaving the (now empty) folder behind. Retry once; a leftover empty dir is
+# harmless either way — Phase 0 recreates it.
+Remove-Item $work -Recurse -Force -ErrorAction SilentlyContinue
+Remove-Item $work -Recurse -Force -ErrorAction SilentlyContinue
 ```
 
 Print the final summary:
@@ -687,7 +686,7 @@ Errors                    {N}    (after 5 retries)
   requires an explicit Yes at the checkpoint.
 - **`main` is the source of truth for the tests** — both the test inventory
   (`onMain`) and the hybrid set are read from `origin/main`, exported with
-  `git archive` into `$env:TEMP\ado-testplan-sync\main-features\`. Never the local
+  `git archive` into `$work\main-features\`. Never the local
   working tree, never the run's own commit. The decisions must be identical no
   matter which branch is checked out or what is uncommitted. Show the `main` SHA
   in the preview.
@@ -703,14 +702,16 @@ Errors                    {N}    (after 5 retries)
 - Auth is a **Bearer token from `az account get-access-token`** (resource
   `499b84ac-1321-427f-aa17-267ca6975798`), stored in `$env:ADO_TOKEN`. Fail with a
   clear message (and tell the user to `az login`) if it's empty.
-- Use Node.js — write scripts as `.js` files to `$env:TEMP\ado-testplan-sync\`. Never embed
+- Use Node.js — write scripts as `.js` files to `$work\`. Never embed
   multiline JavaScript in a PowerShell here-string.
 - Save JSON without BOM: `[System.IO.File]::WriteAllText(path, data, (New-Object System.Text.UTF8Encoding $false))`.
 - Retry each PATCH up to 5 times with a 15-second delay.
 - Accept a URL or numeric id for both run and plan — extract the run id from
   `/actions/runs/<id>` and the plan id from the `planId=` query parameter.
-- Delete all temp files (and the downloaded `gh-run-*` folder) on completion or error.
-- **Never write to the `Atriis.Test.Automation` repo** — all temp files go in `$env:TEMP\ado-testplan-sync\`.
+- **One working dir per run** — `$work = "$env:TEMP\ado-testplan-sync\run-$RUN"`.
+  Concurrent syncs must not share files; never read, write or delete outside `$work`.
+- Delete `$work` (scripts, JSON, `gh-run`, `main-features`) on completion or error.
+- **Never write to the `Atriis.Test.Automation` repo** — all temp files go in `$work\`.
 
 ## Relationship to `scripts/sync-results-to-ado-testplan.js`
 
