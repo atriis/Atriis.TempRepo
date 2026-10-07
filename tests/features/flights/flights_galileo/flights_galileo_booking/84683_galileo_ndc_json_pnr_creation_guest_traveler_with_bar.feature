@@ -56,10 +56,10 @@ Feature: 84683 Galileo NDC - JSON PNR Creation - Guest traveler with BAR
     And I store the value at path "OfferQueryBuildFromCatalogProductOfferings.BuildFromCatalogProductOfferingsRequest.CatalogProductOfferingsIdentifier.Identifier.value" from the captured "request" payload for request type "UAPI TVP NDC Flight Price (JSON Booking)" as "catalogProductOfferingsIdentifier"
     And I store the value at path "OfferQueryBuildFromCatalogProductOfferings.BuildFromCatalogProductOfferingsRequest.CatalogProductOfferingSelection[0].CatalogProductOfferingIdentifier.Identifier.value" from the captured "request" payload for request type "UAPI TVP NDC Flight Price (JSON Booking)" as "catalogProductOfferingIdentifier"
     And I store the value at path "OfferQueryBuildFromCatalogProductOfferings.BuildFromCatalogProductOfferingsRequest.CatalogProductOfferingSelection[0].ProductIdentifier[0].Identifier.value" from the captured "request" payload for request type "UAPI TVP NDC Flight Price (JSON Booking)" as "productIdentifier"
-    When I capture the "response" payload for request type "UAPI TVP NDC Flight Search  (Flight Search)" from Storage
-    Then the captured "response" payload for request type "UAPI TVP NDC Flight Search  (Flight Search)" should contain "{catalogProductOfferingsIdentifier}"
-    And the captured "response" payload for request type "UAPI TVP NDC Flight Search  (Flight Search)" should contain "{catalogProductOfferingIdentifier}"
-    And the captured "response" payload for request type "UAPI TVP NDC Flight Search  (Flight Search)" should contain "{productIdentifier}"
+    When I capture the "response" payload for request type "UAPI TVP NDC Flight Search *(Flight Search)" from Storage
+    Then the captured "response" payload for request type "UAPI TVP NDC Flight Search *(Flight Search)" should contain "{catalogProductOfferingsIdentifier}"
+    And the captured "response" payload for request type "UAPI TVP NDC Flight Search *(Flight Search)" should contain "{catalogProductOfferingIdentifier}"
+    And the captured "response" payload for request type "UAPI TVP NDC Flight Search *(Flight Search)" should contain "{productIdentifier}"
 
     # Add Traveler - the guest's details are entered manually, and the response returns a unique
     # traveler identifier. .split(" ") checks the given name and surname independently, which the

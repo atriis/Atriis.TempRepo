@@ -66,10 +66,10 @@ Feature: 84898 Galileo NDC - JSON PNR Creation - Traveler with BAR and PAR
     And I store the value at path "OfferQueryBuildFromCatalogProductOfferings.BuildFromCatalogProductOfferingsRequest.CatalogProductOfferingsIdentifier.Identifier.value" from the captured "request" payload for request type "UAPI TVP NDC Flight Price (JSON Booking)" as "catalogProductOfferingsIdentifier"
     And I store the value at path "OfferQueryBuildFromCatalogProductOfferings.BuildFromCatalogProductOfferingsRequest.CatalogProductOfferingSelection[0].CatalogProductOfferingIdentifier.Identifier.value" from the captured "request" payload for request type "UAPI TVP NDC Flight Price (JSON Booking)" as "catalogProductOfferingIdentifier"
     And I store the value at path "OfferQueryBuildFromCatalogProductOfferings.BuildFromCatalogProductOfferingsRequest.CatalogProductOfferingSelection[0].ProductIdentifier[0].Identifier.value" from the captured "request" payload for request type "UAPI TVP NDC Flight Price (JSON Booking)" as "productIdentifier"
-    When I capture the "response" payload for request type "UAPI TVP NDC Flight Search  (Flight Search)" from Storage
-    Then the captured "response" payload for request type "UAPI TVP NDC Flight Search  (Flight Search)" should contain "{catalogProductOfferingsIdentifier}"
-    And the captured "response" payload for request type "UAPI TVP NDC Flight Search  (Flight Search)" should contain "{catalogProductOfferingIdentifier}"
-    And the captured "response" payload for request type "UAPI TVP NDC Flight Search  (Flight Search)" should contain "{productIdentifier}"
+    When I capture the "response" payload for request type "UAPI TVP NDC Flight Search *(Flight Search)" from Storage
+    Then the captured "response" payload for request type "UAPI TVP NDC Flight Search *(Flight Search)" should contain "{catalogProductOfferingsIdentifier}"
+    And the captured "response" payload for request type "UAPI TVP NDC Flight Search *(Flight Search)" should contain "{catalogProductOfferingIdentifier}"
+    And the captured "response" payload for request type "UAPI TVP NDC Flight Search *(Flight Search)" should contain "{productIdentifier}"
 
     # Commit Booking - the reservation comes back with the 1G PNR. The response carries several
     # Locators (the TP vendor locator among them), so the block is pinned by source rather than by
