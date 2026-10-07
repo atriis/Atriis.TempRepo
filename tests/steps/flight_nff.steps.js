@@ -466,3 +466,17 @@ Then(
     logger.info("[NewFlightFlow] Every brand card shows the Direct Rate badge", result);
   },
 );
+
+// ===== Bug 85762: no NDC label or untranslated key on the brand cards =====
+
+Then("no brand card header should show the NDC label", { timeout: 300000 }, async function () {
+  logger.info("[NewFlightFlow] Verifying no brand card header shows the NDC label");
+  const result = await FlightResults.verifyNoBrandCardHeaderShowsNdcLabel(this.page);
+  logger.info("[NewFlightFlow] No brand card header shows the NDC label", result);
+});
+
+Then("no untranslated text key should be shown on the pricing options screen", async function () {
+  logger.info("[NewFlightFlow] Verifying the pricing options screen shows no untranslated keys");
+  const result = await FlightResults.verifyNoUntranslatedKeysOnPricingOptions(this.page);
+  logger.info("[NewFlightFlow] No untranslated keys on the pricing options screen", result);
+});

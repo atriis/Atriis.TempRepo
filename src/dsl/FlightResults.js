@@ -9385,6 +9385,78 @@ async verifyFareComponentTextColorInPricingOptions(page, expectedColor, index = 
     });
     return { cardsChecked: cards.length, cabinsRead, legsRead };
   },
+
+  /**
+   * Bug 85762: AB#85404 added a plane icon + the text "flight.ndc" to the header of every NDC brand
+   * card. The translation key was missing, so the raw key was shown, and the label was then removed.
+   * Verifies no brand card header carries a "flight" icon or a raw "flight."/"common." key, across
+   * every cabin tab and leg. The bottom-right Direct Rate badge is out of scope (see
+   * verifyEveryBrandCardShowsDirectRateLabel).
+   *
+   * @param {import('playwright').Page} page
+   * @returns {Promise<{cardsChecked: number, cabinsRead: string[], legsRead: number[]}>}
+   */
+  async verifyNoBrandCardHeaderShowsNdcLabel(page) {
+    if (!page) {
+      throw new Error("[FlightResults.verifyNoBrandCardHeaderShowsNdcLabel] page is required");
+    }
+
+    const { cards, cabinsRead, legsRead } = await this.readBrandCardsAcrossCabinTabs(page);
+    if (cards.length === 0) {
+      throw new Error("[FlightResults.verifyNoBrandCardHeaderShowsNdcLabel] No brand cards were read on the pricing options screen.");
+    }
+
+    const offenders = cards
+      .filter((card) => card.headerIcons.includes("flight") || /(?:flight|common)\.[a-z]\w*/.test(card.headerText))
+      .map((card) =>
+        `leg ${card.legIndex} ${card.cabinName || ""} ${card.brandName} ${card.priceText || ""}: header "${card.headerText}", icons [${card.headerIcons.join(", ")}]`
+          .replace(/\s+/g, " "),
+      );
+    if (offenders.length > 0) {
+      throw new Error(
+        `[FlightResults.verifyNoBrandCardHeaderShowsNdcLabel] No brand card header should show the NDC label (plane icon / "flight.ndc"), ` +
+        `but ${offenders.length} of ${cards.length} did:\n${offenders.join("\n")}`,
+      );
+    }
+
+    logger.info("[FlightResults.verifyNoBrandCardHeaderShowsNdcLabel] No brand card header shows the NDC label", {
+      cardsChecked: cards.length,
+      cabinsRead,
+      legsRead,
+    });
+    return { cardsChecked: cards.length, cabinsRead, legsRead };
+  },
+
+  /**
+   * Verifies the new-flight-flow pricing options screen shows no untranslated i18n key. vue-i18n
+   * prints a missing key verbatim (bug 85762: "flight.ndc"), so any "<namespace>.<key>" text from
+   * the OBT locale's namespaces on screen is a missing translation.
+   *
+   * @param {import('playwright').Page} page
+   * @returns {Promise<{charsScanned: number}>}
+   */
+  async verifyNoUntranslatedKeysOnPricingOptions(page) {
+    if (!page) {
+      throw new Error("[FlightResults.verifyNoUntranslatedKeysOnPricingOptions] page is required");
+    }
+
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    const text = await flightResultsPage.getNewFlightFlowPricingOptionsText();
+    // No leading word boundary: an inline icon ligature runs into the label in innerText ("flightflight.ndc").
+    const rawKeyPattern =
+      /(?:flight|common|btn|filter|cart|trip|product|products|validation|agreement|alert|rate|link|loader)\.[a-z][A-Za-z0-9]*\b/g;
+    const rawKeys = [...new Set(text.match(rawKeyPattern) || [])];
+    if (rawKeys.length > 0) {
+      throw new Error(
+        `[FlightResults.verifyNoUntranslatedKeysOnPricingOptions] The pricing options screen shows untranslated keys: ${rawKeys.join(", ")}`,
+      );
+    }
+
+    logger.info("[FlightResults.verifyNoUntranslatedKeysOnPricingOptions] No untranslated keys on the pricing options screen", {
+      charsScanned: text.length,
+    });
+    return { charsScanned: text.length };
+  },
 }
 
 module.exports = FlightResults;

@@ -224,6 +224,14 @@ const SELECTORS = {
   NEW_FLOW_BRAND_CARD_AGREEMENTS: '.agreements',
   // The bottom-right badge of an NDC brand card (brand.isDirectRate): carrier logo or plane icon + "Direct Rate".
   NEW_FLOW_BRAND_CARD_DIRECT_RATE_TEXT: ".extra-info .badges-container .direct-rate .is-sentence-case",
+  // The top of a brand card: brand name, cabin class, and the .agreements badge slot. Bug 85762: AB#85404
+  // put a plane icon + "flight.ndc" here on NDC cards; the label was removed, so a "flight" icon ligature
+  // in the header is the regression signal. The bottom Direct Rate badge also uses that ligature,
+  // which is why this is scoped to the header.
+  NEW_FLOW_BRAND_CARD_HEADER: '.header',
+  NEW_FLOW_BRAND_CARD_HEADER_ICON: '.header .material-symbols-outlined',
+  // The new-flight-flow pricing options container. :visible skips the hidden mobile-dialog copy.
+  NEW_FLOW_FLIGHT_SELECTION: '.flight-selection:visible',
   // Brand-class carousel arrows (app-carousel.vue, Flicking). The strip free-scrolls a fixed step
   // per click and gets the disabled class once the camera reaches the end of its range. The
   // data-testids (common.app-carousel.next-arrow) are stripped from the build — key on the class.
@@ -5923,6 +5931,19 @@ async clickSelectForFareWithBaggagePricingOptions(baggageText) {
   }
 
   /**
+   * Returns the visible text of the new-flight-flow pricing options screen (both legs, the
+   * filters and the footer), for checks that scan the whole screen such as untranslated keys.
+   *
+   * @param {number} [timeout] - Max wait for the screen to be visible.
+   * @returns {Promise<string>}
+   */
+  async getNewFlightFlowPricingOptionsText(timeout = 30000) {
+    const screen = this.page.locator(SELECTORS.NEW_FLOW_FLIGHT_SELECTION).first();
+    await screen.waitFor({ state: 'visible', timeout });
+    return screen.innerText();
+  }
+
+  /**
    * Reads every brand card across all legs in the new-flight-flow brand-selection view.
    * For each card it returns the leg index (0 = outbound, 1 = inbound, ...), the card index
    * within that leg, the brand name, and the raw feature-badge texts (the baggage / change /
@@ -5932,7 +5953,7 @@ async clickSelectForFareWithBaggagePricingOptions(baggageText) {
    * the DOM, it holds no business logic.
    *
    * @param {number} [timeout] - Max wait for the first brand card to appear.
-   * @returns {Promise<Array<{legIndex: number, cardIndex: number, brandName: string|null, priceText: string|null, directRateText: string|null, featureTexts: string[]}>>}
+   * @returns {Promise<Array<{legIndex: number, cardIndex: number, brandName: string|null, priceText: string|null, directRateText: string|null, headerText: string, headerIcons: string[], featureTexts: string[]}>>}
    */
   async getPerLegBrandCardFeatureTexts(timeout = 30000) {
     const legs = this.page.locator(SELECTORS.NEW_FLOW_BRAND_LEG);
@@ -5974,12 +5995,21 @@ async clickSelectForFareWithBaggagePricingOptions(baggageText) {
         const directRateText = (await directRateEl.count()) > 0
           ? (await directRateEl.first().innerText()).trim()
           : null;
+        const headerEl = card.locator(SELECTORS.NEW_FLOW_BRAND_CARD_HEADER);
+        const headerText = (await headerEl.count()) > 0
+          ? (await headerEl.first().innerText()).replace(/\s+/g, ' ').trim()
+          : '';
+        const headerIcons = (await card.locator(SELECTORS.NEW_FLOW_BRAND_CARD_HEADER_ICON).allTextContents())
+          .map((t) => t.trim())
+          .filter((t) => t.length > 0);
         cardsByLeg.push({
           legIndex,
           cardIndex,
           brandName,
           priceText,
           directRateText,
+          headerText,
+          headerIcons,
           featureTexts: rawFeatureTexts.map((t) => t.trim()).filter((t) => t.length > 0),
         });
       }
