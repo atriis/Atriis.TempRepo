@@ -17951,6 +17951,61 @@ const Cart = {
     return { message: actual };
   },
 
+  /**
+   * Reads the frequent flyer accounts each passenger carries in every NDC booking request logged
+   * for the trip - one entry per call, one passenger per <Pax>, one account per
+   * <LoyaltyProgramAccount> inside it. Guards ADO 79170: Amadeus NDC sent the same FQTV more than
+   * once for a traveller in OrderCreate.
+   *
+   * Per call and per passenger on purpose: a total count across the request would pass when one
+   * traveller carries the account twice and another carries none.
+   *
+   * @param {object} world - Cucumber world holding the trip id
+   * @param {string} requestType - e.g. "Amadeus4.NDC.AMA_TravelOrderCreateRQ (Booking NDC)"
+   * @returns {Promise<{perCall: Array<Array<{paxId: string|null, name: string, accounts: Array<{number: string|null, airline: string|null}>}>>}>}
+   */
+  async collectFrequentFlyerAccountsPerPassenger(world, requestType) {
+    if (!world || typeof world !== 'object') {
+      throw new Error('[Cart.collectFrequentFlyerAccountsPerPassenger] "world" must be the Cucumber world, got: ' + typeof world);
+    }
+    if (!requestType || typeof requestType !== 'string') {
+      throw new Error('[Cart.collectFrequentFlyerAccountsPerPassenger] "requestType" must be a non-empty string, got: ' + typeof requestType);
+    }
+
+    const { perCall } = await PayloadValidation.collectXmlBlockTreesPerCall(
+      world,
+      requestType,
+      {
+        Pax: {
+          fields: ['PaxID', 'GivenName', 'Surname'],
+          blocks: { LoyaltyProgramAccount: { fields: ['AccountNumber', 'AirlineDesigCode'] } },
+        },
+      },
+      { source: 'request', purpose: 'read the frequent flyer accounts sent for each passenger' }
+    );
+
+    const passengersPerCall = perCall.map((call) =>
+      call.Pax.map((pax) => ({
+        paxId: pax.PaxID[0] || null,
+        name: `${pax.GivenName[0] || ''} ${pax.Surname[0] || ''}`.trim(),
+        accounts: pax.LoyaltyProgramAccount.map((account) => ({
+          number: account.AccountNumber[0] || null,
+          airline: account.AirlineDesigCode[0] || null,
+        })),
+      }))
+    );
+
+    logger.info('[Cart.collectFrequentFlyerAccountsPerPassenger] Frequent flyer accounts per passenger', {
+      requestType,
+      calls: passengersPerCall.length,
+      passengers: passengersPerCall.map((call) =>
+        call.map((pax) => `${pax.paxId} ${pax.name}: ${pax.accounts.map((a) => `${a.airline}/${a.number}`).join(', ') || 'none'}`)
+      ),
+    });
+
+    return { perCall: passengersPerCall };
+  },
+
 };
 
 

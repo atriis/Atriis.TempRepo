@@ -1139,6 +1139,28 @@ Then("I successfully cancel the trip", async function () {
   expect(result.messageVisible, "Cancellation confirmation message should be visible").toBe(true);
 });
 
+// Guards ADO 79170: each traveller's FQTV must be sent exactly once in the booking request -
+// checked per passenger, since a total would pass when one carries it twice and another none.
+Then(
+  "every one of the {int} passengers in the {string} request should carry their frequent flyer number exactly once",
+  async function (expectedPassengers, requestType) {
+    const { perCall } = await Cart.collectFrequentFlyerAccountsPerPassenger(this, requestType);
+    expect(perCall.length, `No "${requestType}" request was logged for the trip`).toBeGreaterThan(0);
+
+    perCall.forEach((passengers, callIndex) => {
+      const call = `"${requestType}" request #${callIndex + 1}`;
+      expect(passengers.length, `${call} should name ${expectedPassengers} passengers`).toBe(expectedPassengers);
+      for (const pax of passengers) {
+        const numbers = pax.accounts.map((account) => `${account.airline}/${account.number}`);
+        expect(
+          numbers,
+          `${call}: ${pax.paxId} ${pax.name} should carry exactly one frequent flyer number, got ${JSON.stringify(numbers)}`
+        ).toHaveLength(1);
+      }
+    });
+  }
+);
+
 Then("I successfully cancel the trip with 60 seconds wait", async function () {
   logger.info("Cancelling the trip successfully after a 60-second wait");
   const result = await Cart.cancelTripStrictWithWait(this.page, 60000);
