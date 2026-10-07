@@ -414,7 +414,16 @@ async function fetchPayloadFromStorage({ source, requestType, tripId, transactio
       const listUrl = new URL("/api/distributor-requests", baseUrl);
       listUrl.searchParams.set("tripId", tripIdString);
       if (continuationToken) listUrl.searchParams.set("continuationToken", continuationToken);
-      const body = await fetchJson(listUrl.toString(), remainingTimeoutMs(operationName), operationName, token, includeAuth);
+      let body;
+      try {
+        body = await fetchJson(listUrl.toString(), remainingTimeoutMs(operationName), operationName, token, includeAuth);
+      } catch (error) {
+        // A scenario that reads several payloads lists the trip once per read; the burst draws a 429
+        // here too (trip 3922899, #84683). Same single backoff as the content downloads.
+        if (!(error instanceof HttpError && error.statusCode === 429)) throw error;
+        await sleepWithinBudget(RATE_LIMIT_BACKOFF_MS, `${operationName} retry after 429`);
+        body = await fetchJson(listUrl.toString(), remainingTimeoutMs(operationName), operationName, token, includeAuth);
+      }
       if (Array.isArray(body)) return body;
       const entries = body?.entries ?? body?.Entries ?? [];
       allEntries.push(...entries);
