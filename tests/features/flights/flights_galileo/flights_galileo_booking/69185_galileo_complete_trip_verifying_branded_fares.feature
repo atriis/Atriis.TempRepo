@@ -15,7 +15,7 @@ Feature: 69185 Galileo - Complete trip booking verifying branded fares
   Scenario: Branded fares displayed in results, pricing options, cart and after hold
     Given I am logged in as "bsgalileoflight@galileoflight.com" booking a new trip
     And I have added a random guest traveler
-    When I search for a one way flight from "AMS" to "DOH"
+    When I search for a one way flight from "LIS" to "DOH"
     And flight results should be available
     And I click to open flight details
     And I open branded fares from flight details
