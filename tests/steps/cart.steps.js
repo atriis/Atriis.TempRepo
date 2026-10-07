@@ -4050,6 +4050,30 @@ Then('the change and cancellation fees in the price breakdown should match the c
   this.attach(`Mini rules (MiniRule_GetFromPricing):\n${result.miniRules.join('\n')}`, 'text/plain');
 });
 
+// Separated tickets: one MiniRule_GetFromPricing per ticket, captured with "I capture every "response"
+// payload for request type "Amadeus4.MiniRule_GetFromPricing" sent since the noted time from Storage".
+// Table: | route | validating carrier | - the route as the reply names it (city codes, e.g. FRA-NYC).
+Then('the change and cancellation fees of each ticket in the price breakdown should match its captured mini rules plus the agency fare rules markup:', async function (dataTable) {
+  if (!this.agencyFareRulesMarkup) {
+    throw new Error('No agency fare rules markup is known. Run "I use the current agency fare rules markup as the expected markup" first.');
+  }
+  const tickets = dataTable.hashes().map((row) => ({
+    route: String(row.route || '').trim().toUpperCase(),
+    validatingCarrier: String(row['validating carrier'] || '').trim().toUpperCase(),
+  }));
+  const replies = PayloadValidation.getCapturedPayloadSet(this, 'response', 'Amadeus4.MiniRule_GetFromPricing');
+  logger.info('Verifying each ticket in the price breakdown against its captured mini rules plus the agency markup', {
+    tickets,
+    replies: replies.map((reply) => reply.rowKey),
+    markup: this.agencyFareRulesMarkup,
+  });
+  const results = await Cart.verifyMiniRuleFeesPerTicketInPriceBreakdown(this.page, replies, tickets, this.agencyFareRulesMarkup);
+  this.attach(
+    results.map((result) => `${result.route} (${result.validatingCarrier}):\n${result.miniRules.join('\n')}`).join('\n\n'),
+    'text/plain'
+  );
+});
+
 Then('{string} should be visible in price breakdown', async function (label) {
   logger.info('Verifying row is visible in price breakdown', { label });
   await Cart.verifyPriceBreakdownRowVisible(this.page, label);

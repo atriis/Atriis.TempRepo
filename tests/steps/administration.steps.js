@@ -612,6 +612,18 @@ When("I open the Agency Fare Rules Management in the legacy GTP administration",
   logger.info("Agency fare rules found before the scenario changes anything", { agencyId, rules });
 });
 
+// Read-only: expects the markup the agency already has, so the scenario never changes shared configuration.
+When("I use the current agency fare rules markup as the expected markup", async function () {
+  if (!this.originalAgencyFareRules) {
+    throw new Error(
+      '[administration.steps] The agency fare rules were not read. Run "I open the Agency Fare Rules Management in ' +
+      'the legacy GTP administration" first.'
+    );
+  }
+  this.agencyFareRulesMarkup = this.originalAgencyFareRules;
+  logger.info("Expecting the agency's current fare rules markup", { markup: this.agencyFareRulesMarkup });
+});
+
 When("I set the agency fare rules markup in the legacy GTP administration:", async function (dataTable) {
   const page = requireAgentAdminPage(this);
   if (!this.originalAgencyFareRules) {

@@ -19,8 +19,44 @@ const { expectNumbersToBeEqualWithTolerance } = require("../assertions/numberAss
 const { parseAmountText } = require("@utils/dom");
 const { normalizeText, extractDateTokens, escapeRegex, stripWhitespaceAndLowercase, sortAlphabetically } = require("@utils/text");
 const { extractPdfText, countLetters, assertPdfTextIsReadable, containsAmount, findCurrencyAmounts } = require("@utils/pdf");
-const { expectedPriceBreakdownFees, readDisplayedFee, summariseMiniRuleGroups } = require("@utils/amadeusMiniRules");
+const { expectedPriceBreakdownFees, readDisplayedFee, summariseMiniRuleGroups, miniRuleReplyRoutes } = require("@utils/amadeusMiniRules");
 const logger = require("@utils/logger").child("Cart-DSL");
+
+/**
+ * Compares the four fee sections of one price breakdown segment with what a MiniRule_GetFromPricing
+ * reply plus the agency fare rules markup says they must show.
+ *
+ * @param {{change: {before: string, after: string}, cancel: {before: string, after: string}}} texts - The segment's fee texts
+ * @param {string} miniRuleReplyXml - The MiniRule_GetFromPricing response
+ * @param {{change?: object, cancel?: object}} markup - Agency markup per fee: { amount, markupType, currency }
+ * @returns {{miniRules: string[], fees: object, withMarkup: object, expected: object, displayed: object, mismatches: string[]}}
+ */
+function compareMiniRuleFees(texts, miniRuleReplyXml, markup) {
+  const { parsed, fees, withMarkup, expected } = expectedPriceBreakdownFees(miniRuleReplyXml, markup);
+  const displayed = {
+    change: { before: readDisplayedFee(texts.change.before), after: readDisplayedFee(texts.change.after) },
+    cancel: { before: readDisplayedFee(texts.cancel.before), after: readDisplayedFee(texts.cancel.after) },
+  };
+
+  const mismatches = [];
+  for (const fee of ['change', 'cancel']) {
+    for (const when of ['before', 'after']) {
+      const want = expected[fee][when];
+      const got = displayed[fee][when];
+      const same = want.state === got.state && (want.state !== 'amount' || Math.abs(want.amount - got.amount) < 0.005);
+      if (!same) {
+        mismatches.push(
+          `${fee === 'change' ? 'Change' : 'Cancellation'} fee ${when} departure: expected ` +
+          `${want.state === 'amount' ? want.amount.toFixed(2) : `"${want.text}"`} ` +
+          `(mini rules ${fees[fee][when]} + markup ${markup[fee] ? `${markup[fee].amount} ${markup[fee].currency}` : 'none'}), ` +
+          `shown "${got.text}"`
+        );
+      }
+    }
+  }
+
+  return { miniRules: summariseMiniRuleGroups(parsed), fees, withMarkup, expected, displayed, mismatches };
+}
 
 // Every translation the app ships for `validation.unReadMessages1` (Atriis.OBT/src/assets/locale/*.json)
 // — the distinctive half of the checkout-blocking unread-notifications banner in trip-cart.vue. Listed
@@ -3498,35 +3534,12 @@ const Cart = {
       throw new Error(`markup must be an object with the change/cancel agency markup, got: ${typeof markup}`);
     }
 
-    const { parsed, fees, withMarkup, expected } = expectedPriceBreakdownFees(miniRuleReplyXml, markup);
-    const miniRules = summariseMiniRuleGroups(parsed);
-
     const cartPage = getPageObject(page, CartPage);
     const texts = await cartPage.getFlightPriceBreakdownChangeAndCancelFeeTexts();
-    const displayed = {
-      change: { before: readDisplayedFee(texts.change.before), after: readDisplayedFee(texts.change.after) },
-      cancel: { before: readDisplayedFee(texts.cancel.before), after: readDisplayedFee(texts.cancel.after) },
-    };
+    const { miniRules, fees, withMarkup, expected, displayed, mismatches } = compareMiniRuleFees(texts, miniRuleReplyXml, markup);
 
     logger.info('Mini rules read from the MiniRule_GetFromPricing reply', { miniRules, feesBeforeMarkup: fees, feesWithMarkup: withMarkup });
     logger.info('Mini rule fees shown in the price breakdown', { texts });
-
-    const mismatches = [];
-    for (const fee of ['change', 'cancel']) {
-      for (const when of ['before', 'after']) {
-        const want = expected[fee][when];
-        const got = displayed[fee][when];
-        const same = want.state === got.state && (want.state !== 'amount' || Math.abs(want.amount - got.amount) < 0.005);
-        if (!same) {
-          mismatches.push(
-            `${fee === 'change' ? 'Change' : 'Cancellation'} fee ${when} departure: expected ` +
-            `${want.state === 'amount' ? want.amount.toFixed(2) : `"${want.text}"`} ` +
-            `(mini rules ${fees[fee][when]} + markup ${markup[fee] ? `${markup[fee].amount} ${markup[fee].currency}` : 'none'}), ` +
-            `shown "${got.text}"`
-          );
-        }
-      }
-    }
 
     if (mismatches.length > 0) {
       throw new Error(
@@ -3538,6 +3551,89 @@ const Cart = {
 
     logger.info('Price breakdown mini rule fees match the mini rules plus the agency markup', { expected });
     return { miniRules, fees, expected, displayed };
+  },
+
+  /**
+   * Verifies the change and cancellation fees of every ticket of a separated-tickets quote in the open
+   * flight price breakdown. Each ticket is priced by its own MiniRule_GetFromPricing call: the reply is
+   * matched to its ticket by the route it prices (the first fare component's city pair, e.g. "FRA-NYC"),
+   * and the price breakdown segment by its validating carrier.
+   *
+   * @param {import('playwright').Page} page
+   * @param {Array<{payload: string, rowKey?: string}>} miniRuleReplies - Every MiniRule_GetFromPricing response of the add to cart
+   * @param {Array<{route: string, validatingCarrier: string}>} tickets - One entry per ticket
+   * @param {{change?: object, cancel?: object}} markup - Agency markup per fee: { amount, markupType, currency }
+   * @returns {Promise<Array<{route: string, validatingCarrier: string, miniRules: string[], expected: object, displayed: object}>>}
+   */
+  async verifyMiniRuleFeesPerTicketInPriceBreakdown(page, miniRuleReplies, tickets, markup) {
+    if (!page) throw new Error('page is required');
+    if (!Array.isArray(miniRuleReplies) || miniRuleReplies.length === 0) {
+      throw new Error('miniRuleReplies must be a non-empty array of captured MiniRule_GetFromPricing responses');
+    }
+    if (!Array.isArray(tickets) || tickets.length === 0) {
+      throw new Error('tickets must be a non-empty array of { route, validatingCarrier }');
+    }
+    if (!markup || typeof markup !== 'object') {
+      throw new Error(`markup must be an object with the change/cancel agency markup, got: ${typeof markup}`);
+    }
+
+    const replies = miniRuleReplies.map((reply) => ({ ...reply, routes: miniRuleReplyRoutes(reply.payload) }));
+    const cartPage = getPageObject(page, CartPage);
+    const segments = await cartPage.getFlightPriceBreakdownChangeAndCancelFeeTextsPerTicket();
+    logger.info('Mini rule replies and price breakdown segments found', {
+      replies: replies.map((reply) => ({ rowKey: reply.rowKey, routes: reply.routes })),
+      segments,
+    });
+
+    const problems = [];
+    if (replies.length !== tickets.length) {
+      problems.push(`${tickets.length} tickets expected one MiniRule_GetFromPricing reply each, but ${replies.length} were logged ` +
+        `(routes: ${replies.map((reply) => reply.routes.join('+') || '?').join(', ')})`);
+    }
+    if (segments.length !== tickets.length) {
+      problems.push(`${tickets.length} tickets expected one price breakdown segment each, but ${segments.length} are shown ` +
+        `(${segments.map((segment) => segment.heading).join(', ')})`);
+    }
+
+    const results = [];
+    for (const ticket of tickets) {
+      const label = `Ticket ${ticket.route} (${ticket.validatingCarrier})`;
+      const ticketReplies = replies.filter((reply) => reply.routes[0] === ticket.route);
+      const ticketSegments = segments.filter((segment) => segment.validatingCarrier === ticket.validatingCarrier);
+      if (ticketReplies.length !== 1) {
+        problems.push(`${label}: expected one MiniRule_GetFromPricing reply pricing ${ticket.route}, found ${ticketReplies.length}`);
+        continue;
+      }
+      if (ticketSegments.length !== 1) {
+        problems.push(`${label}: expected one price breakdown segment validated by ${ticket.validatingCarrier}, found ${ticketSegments.length}`);
+        continue;
+      }
+
+      const comparison = compareMiniRuleFees(ticketSegments[0], ticketReplies[0].payload, markup);
+      logger.info(`${label}: mini rules and price breakdown fees`, {
+        rowKey: ticketReplies[0].rowKey,
+        miniRules: comparison.miniRules,
+        feesBeforeMarkup: comparison.fees,
+        feesWithMarkup: comparison.withMarkup,
+        shown: { change: ticketSegments[0].change, cancel: ticketSegments[0].cancel },
+      });
+      problems.push(...comparison.mismatches.map((mismatch) => `${label}: ${mismatch}`));
+      results.push({ ...ticket, miniRules: comparison.miniRules, expected: comparison.expected, displayed: comparison.displayed });
+    }
+
+    if (problems.length > 0) {
+      const miniRules = results.map((result) => `${result.route} (${result.validatingCarrier}):\n    ${result.miniRules.join('\n    ')}`);
+      throw new Error(
+        `[Cart.verifyMiniRuleFeesPerTicketInPriceBreakdown] The price breakdown mini rules do not match each ticket's ` +
+        `MiniRule_GetFromPricing reply plus the agency fare rules markup:\n  - ${problems.join('\n  - ')}\n` +
+        `Mini rules:\n  ${miniRules.join('\n  ')}`
+      );
+    }
+
+    logger.info('Every ticket in the price breakdown matches its mini rules plus the agency markup', {
+      tickets: results.map(({ route, validatingCarrier, expected }) => ({ route, validatingCarrier, expected })),
+    });
+    return results;
   },
 
   async verifyPriceBreakdownRowVisible(page, label) {

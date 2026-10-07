@@ -815,6 +815,109 @@ const PayloadValidation = {
   },
 
   /**
+   * Captures EVERY payload of a request type logged for the trip at or after `notBefore`, for a flow
+   * that sends one call per item on purpose - e.g. one MiniRule_GetFromPricing per ticket of a
+   * separated-tickets quote, where the latest call alone would check only one ticket.
+   *
+   * The calls of one action are published to the log asynchronously, so the count is polled until it
+   * stops changing before the bodies are downloaded. Stored on the world under
+   * `capturedPayloadSets["<source>::<requestType>"]`; read it back with {@link getCapturedPayloadSet}.
+   *
+   * @param {object} world - Cucumber world
+   * @param {string} source - "request" or "response"
+   * @param {string} requestType - e.g. "Amadeus4.MiniRule_GetFromPricing"
+   * @param {Date} notBefore - From "I note the time before new payload requests are sent"
+   * @param {{tripId?: string, transactionId?: string, sid?: string}} [options]
+   * @returns {Promise<Array<{payload: string, rowKey: string, timestamp: string}>>} Oldest first
+   */
+  async capturePayloadsSentSince(world, source, requestType, notBefore, options = {}) {
+    assertWorld(world);
+    if (!(notBefore instanceof Date) || Number.isNaN(notBefore.getTime())) {
+      throw new Error(
+        `[PayloadValidation.capturePayloadsSentSince] no valid start time was noted, got: ${notBefore}. ` +
+        `Run "I note the time before new payload requests are sent" before the action.`
+      );
+    }
+
+    const normalizedSource = normalizeSource(source);
+    const normalizedRequestType = normalizeRequestType(requestType);
+    const filters = {
+      source: normalizedSource,
+      requestType: normalizedRequestType,
+      tripId: options.tripId,
+      transactionId: options.transactionId,
+      sid: options.sid,
+      notBefore,
+    };
+
+    const countRequests = async () => {
+      try {
+        const listing = await fetchPayloadFromStorage({ ...filters, listOnly: true, timeoutMs: INSPECT_ALL_TIMEOUT_MS });
+        return listing.entries.length;
+      } catch (error) {
+        if (isNoPayloadFoundError(error)) return 0;
+        throw error;
+      }
+    };
+    const count = await settleRequestCount(countRequests, { requestType: normalizedRequestType });
+    if (count === 0) {
+      throw new Error(
+        `[PayloadValidation.capturePayloadsSentSince] No "${normalizedRequestType}" ${normalizedSource} was logged ` +
+        `for trip ${options.tripId} at or after ${notBefore.toISOString()}.`
+      );
+    }
+
+    const result = await fetchPayloadFromStorage({
+      ...filters,
+      returnAllMatches: true,
+      maxMatches: MAX_REQUESTS_TO_INSPECT,
+      timeoutMs: INSPECT_ALL_TIMEOUT_MS,
+    });
+    if (result.metadata.totalMatches > result.metadata.returnedMatches) {
+      throw new Error(
+        `[PayloadValidation.capturePayloadsSentSince] only ${result.metadata.returnedMatches} of ` +
+        `${result.metadata.totalMatches} "${normalizedRequestType}" ${normalizedSource}s were downloaded.`
+      );
+    }
+
+    const payloads = result.matches
+      .map((match) => ({ payload: match.payload, rowKey: match.metadata.rowKey, timestamp: match.metadata.timestamp }))
+      .sort((left, right) => new Date(left.timestamp) - new Date(right.timestamp));
+
+    world.capturedPayloadSets = world.capturedPayloadSets || {};
+    world.capturedPayloadSets[buildKey(normalizedSource, normalizedRequestType)] = payloads;
+    logger.info("Captured every payload sent since the noted time", {
+      source: normalizedSource,
+      requestType: normalizedRequestType,
+      notBefore: notBefore.toISOString(),
+      count: payloads.length,
+      rowKeys: payloads.map((entry) => entry.rowKey),
+    });
+    return payloads;
+  },
+
+  /**
+   * Reads back the payloads stored by {@link capturePayloadsSentSince}.
+   *
+   * @param {object} world - Cucumber world
+   * @param {string} source - "request" or "response"
+   * @param {string} requestType
+   * @returns {Array<{payload: string, rowKey: string, timestamp: string}>}
+   */
+  getCapturedPayloadSet(world, source, requestType) {
+    assertWorld(world);
+    const key = buildKey(normalizeSource(source), normalizeRequestType(requestType));
+    const payloads = world.capturedPayloadSets?.[key];
+    if (!payloads) {
+      throw new Error(
+        `[PayloadValidation.getCapturedPayloadSet] No "${key}" payloads were captured. Run ` +
+        `"I capture every ${source} payload for request type "${requestType}" sent since the noted time from Storage" first.`
+      );
+    }
+    return payloads;
+  },
+
+  /**
    * Capture the counterpart of the payload captured most recently for `previousSource`.
    *
    * Why this exists: {@link capturePayloadByRequestType} always takes the LATEST call of a request

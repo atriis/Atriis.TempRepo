@@ -362,6 +362,24 @@ function expectedPriceBreakdownFees(replyXml, markup = {}) {
 }
 
 /**
+ * The fare components a MiniRule_GetFromPricing reply prices, as "ORIGIN-DESTINATION" in document
+ * order (fareComponentInfo/originAndDestination). Amadeus names a city here, not an airport: a
+ * Frankfurt - New York JFK fare component reads "FRA-NYC".
+ *
+ * @param {string} replyXml - The logged MiniRule_GetFromPricing response
+ * @returns {string[]} e.g. ["FRA-NYC"]
+ */
+function miniRuleReplyRoutes(replyXml) {
+  const routes = [];
+  for (const component of blocks(replyXml, "fareComponentInfo")) {
+    const originAndDestination = firstValue(component, "originAndDestination");
+    if (originAndDestination === undefined) continue;
+    routes.push(`${firstValue(originAndDestination, "origin") || "?"}-${firstValue(originAndDestination, "destination") || "?"}`);
+  }
+  return routes;
+}
+
+/**
  * One line per rule group with the values a tester reads in the logger (BDX/ADX/BDA/ADA per FC).
  *
  * @param {{change: object[], cancel: object[]}} parsed
@@ -391,5 +409,6 @@ module.exports = {
   describeFee,
   readDisplayedFee,
   expectedPriceBreakdownFees,
+  miniRuleReplyRoutes,
   summariseMiniRuleGroups,
 };
