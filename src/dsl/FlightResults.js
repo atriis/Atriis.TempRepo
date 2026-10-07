@@ -2401,6 +2401,91 @@ const FlightResults = {
   },
 
   /**
+   * Asserts every by-schedule leg card offers the share-mode leg CTA, and neither a booking action
+   * nor the complete-search "Pricing Options" button (US 85522).
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} shareLabel - e.g. "Share"
+   * @returns {Promise<{cardsChecked: number}>}
+   */
+  async verifyEveryScheduleLegOffersShare(page, shareLabel) {
+    if (!page) throw new Error('[FlightResults.verifyEveryScheduleLegOffersShare] "page" is required.');
+    // Visible buttons only: every card also renders the mobile share and pricing-options buttons, hidden on desktop.
+    const cards = await getPageObject(page, FlightResultsPage).getResultCardButtonLabels({ visibleOnly: true });
+    const wrong = cards
+      .map((labels, i) => ({ result: i + 1, labels }))
+      .filter(({ labels }) => !hasLabel(labels, shareLabel) || hasLabel(labels, 'Pricing Options')
+        || BOOKING_ACTION_LABELS.some((booking) => hasLabel(labels, booking)));
+    if (cards.length === 0 || wrong.length > 0) {
+      throw new Error(
+        `[FlightResults.verifyEveryScheduleLegOffersShare] Every by-schedule leg should offer only "${shareLabel}" ` +
+        `(no "Pricing Options", no ${BOOKING_ACTION_LABELS.map((l) => `"${l}"`).join('/')}). ` +
+        `${cards.length} cards read; wrong: ${JSON.stringify(wrong.slice(0, 5))}`
+      );
+    }
+    return { cardsChecked: cards.length };
+  },
+
+  /**
+   * Clicks a by-schedule leg card's "+ Share" and waits for the next leg or, after the last leg, the
+   * new pricing options screen.
+   *
+   * @param {import('playwright').Page} page
+   * @param {number} resultNumber - 1-based card position
+   * @returns {Promise<{resultNumber: number, flightNumbers: string[], openedPricingOptions: boolean}>}
+   */
+  async shareScheduleLeg(page, resultNumber) {
+    if (!page) throw new Error('[FlightResults.shareScheduleLeg] "page" is required.');
+    if (!Number.isInteger(resultNumber) || resultNumber < 1) {
+      throw new Error(`[FlightResults.shareScheduleLeg] resultNumber must be an integer >= 1, got: ${resultNumber}`);
+    }
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    const flightNumbers = await flightResultsPage.getResultCardFlightNumbers(resultNumber - 1);
+    const firstCardBefore = (await flightResultsPage.getResultCardFlightNumbers(0)).join(',');
+    await flightResultsPage.clickResultCardLegButton(resultNumber - 1);
+    let openedPricingOptions = false;
+    try {
+      await expect.poll(async () => {
+        openedPricingOptions = await flightResultsPage.isNewFlowPricingScreenVisible();
+        if (openedPricingOptions) return true;
+        const firstCardNow = await flightResultsPage.getResultCardFlightNumbers(0).catch(() => []);
+        return firstCardNow.length > 0 && firstCardNow.join(',') !== firstCardBefore;
+      }, { timeout: 60000 }).toBe(true);
+    } catch {
+      throw new Error(`[FlightResults.shareScheduleLeg] "+ Share" on leg result ${resultNumber} opened neither the next leg nor pricing options.`);
+    }
+    logger.info('[Share] By-schedule leg shared', { resultNumber, flightNumbers, openedPricingOptions });
+    return { resultNumber, flightNumbers, openedPricingOptions };
+  },
+
+  /**
+   * Closes the new pricing options screen and starts the by-schedule selection over from the first leg.
+   *
+   * @param {import('playwright').Page} page
+   */
+  async startOverFromPricingOptions(page) {
+    if (!page) throw new Error('[FlightResults.startOverFromPricingOptions] "page" is required.');
+    await getPageObject(page, FlightResultsPage).closeNewFlowPricingAndStartOver();
+    return { startedOver: true };
+  },
+
+  /**
+   * Asserts the share bar holds exactly `count` quotes and that no two of them are the same quote.
+   *
+   * @param {import('playwright').Page} page
+   * @param {number} count
+   * @returns {Promise<{labels: string[]}>}
+   */
+  async verifyShareBarHoldsDistinctQuotes(page, count) {
+    if (!page) throw new Error('[FlightResults.verifyShareBarHoldsDistinctQuotes] "page" is required.');
+    const labels = await getPageObject(page, FlightResultsPage).getFilledShareSlotLabels();
+    if (labels.length !== count || new Set(labels).size !== count) {
+      throw new Error(`[FlightResults.verifyShareBarHoldsDistinctQuotes] The share bar should hold ${count} different quotes, but holds: ${JSON.stringify(labels)}`);
+    }
+    return { labels };
+  },
+
+  /**
    * Asserts the share bar heading reads "{selected} of {max} selected".
    *
    * @param {import('playwright').Page} page

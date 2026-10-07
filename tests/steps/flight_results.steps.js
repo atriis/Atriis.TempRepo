@@ -1582,6 +1582,34 @@ When("I remove flight result {int} from the share bar with its Added button", as
   this.sharedQuotes.splice(removedSlot - 1, 1);
 });
 
+// ===== SHARE ON BY-SCHEDULE RESULTS (US 85522) =====
+
+Then('every by-schedule leg result should offer {string} instead of its booking action', async function (shareLabel) {
+  logger.info('Verifying every by-schedule leg offers the share-mode leg CTA', { shareLabel });
+  const result = await FlightResults.verifyEveryScheduleLegOffersShare(this.page, shareLabel);
+  logger.info('By-schedule leg CTAs verified', result);
+});
+
+// Each leg's flights are collected so the quote shared from pricing options is checked against every leg.
+When('I share by-schedule leg result {int}', { timeout: 120000 }, async function (resultNumber) {
+  logger.info('Sharing a by-schedule leg result', { resultNumber });
+  const leg = await FlightResults.shareScheduleLeg(this.page, resultNumber);
+  this.scheduleShareFlightNumbers = [...(this.scheduleShareFlightNumbers || []), ...leg.flightNumbers];
+  this.pricingOptionsResult = { resultNumber, flightNumbers: [...this.scheduleShareFlightNumbers] };
+});
+
+When('I close pricing options and start over', async function () {
+  logger.info('Closing pricing options and starting the by-schedule selection over');
+  await FlightResults.startOverFromPricingOptions(this.page);
+  this.scheduleShareFlightNumbers = [];
+});
+
+Then('the share bar should hold {int} different quotes', async function (count) {
+  logger.info('Verifying the share bar holds different quotes', { count });
+  const result = await FlightResults.verifyShareBarHoldsDistinctQuotes(this.page, count);
+  logger.info('Share bar quotes verified', result);
+});
+
 // ========================================
 // STOPOVER INDICATOR
 // ========================================

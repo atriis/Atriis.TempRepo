@@ -310,6 +310,10 @@ const SELECTORS = {
   FIRST_FLIGHT_RESULT_AMOUNT: '.flight-list .flight-preview .price-wrapper .amount',
   // Share mode (US 84219): data-testids are stripped outside local builds. The tooltip is teleported to <body>.
   RESULT_CARD_SHARE_BUTTON: '.flight-extra-info button.share-btn',
+  // By-schedule leg CTA (US 85522): "Select flight", or "+ Share" in share mode. Same button, relabelled.
+  RESULT_CARD_LEG_BUTTON: '.flight-extra-info button.add-to-trip',
+  NEW_FLOW_PRICING_SCREEN: '.flight-selection',
+  NEW_FLOW_CLOSE_AND_START_OVER: '.flight-selection button[aria-label="Close and start over"]',
   RESULT_CARD_PRICE_AMOUNT: '.price-wrapper .amount',
   SHARE_SLOT_FILLED: '.share-bar .flight-share-tags .selected-item',
   SHARE_SLOT_TOOLTIP: '.share-tag-popper',
@@ -4074,18 +4078,21 @@ async clickSelectForFareWithBaggagePricingOptions(baggageText) {
 
   /**
    * Button labels of every result card, icon ligatures stripped (e.g. "add Share" -> "Share").
+   * @param {{visibleOnly?: boolean}} [options] - visibleOnly drops buttons hidden by CSS, e.g. the
+   *   mobile share and pricing-options buttons every card also renders on desktop
    * @returns {Promise<string[][]>} One array of labels per card, in list order
    */
-  async getResultCardButtonLabels() {
+  async getResultCardButtonLabels({ visibleOnly = false } = {}) {
     await this.page.locator(SELECTORS.FLIGHT_PREVIEW).first().waitFor({ state: 'visible', timeout: 30000 });
-    return this.page.locator(SELECTORS.FLIGHT_PREVIEW).evaluateAll((cards, iconSelector) =>
+    return this.page.locator(SELECTORS.FLIGHT_PREVIEW).evaluateAll((cards, [iconSelector, onlyVisible]) =>
       cards.map((card) => [...card.querySelectorAll('button')]
+        .filter((button) => !onlyVisible || button.checkVisibility())
         .map((button) => {
           const clone = button.cloneNode(true);
           clone.querySelectorAll(iconSelector).forEach((icon) => icon.remove());
           return clone.textContent.replace(/\s+/g, ' ').trim();
         })
-        .filter(Boolean)), SELECTORS.MATERIAL_ICON);
+        .filter(Boolean)), [SELECTORS.MATERIAL_ICON, visibleOnly]);
   }
 
   /**
@@ -4118,6 +4125,33 @@ async clickSelectForFareWithBaggagePricingOptions(baggageText) {
     const button = this.page.locator(SELECTORS.FLIGHT_PREVIEW).nth(index).locator(SELECTORS.RESULT_CARD_SHARE_BUTTON).first();
     await button.scrollIntoViewIfNeeded();
     await button.click({ timeout: 15000 });
+  }
+
+  /**
+   * Clicks a by-schedule result card's leg CTA ("Select flight", or "+ Share" in share mode).
+   * @param {number} index - Zero-based card index
+   */
+  async clickResultCardLegButton(index) {
+    const button = this.page.locator(SELECTORS.FLIGHT_PREVIEW).nth(index).locator(SELECTORS.RESULT_CARD_LEG_BUTTON).first();
+    await button.scrollIntoViewIfNeeded();
+    await button.click({ timeout: 15000 });
+  }
+
+  /**
+   * Whether the new-flow pricing options screen is open.
+   * @returns {Promise<boolean>}
+   */
+  async isNewFlowPricingScreenVisible() {
+    return this.page.locator(SELECTORS.NEW_FLOW_PRICING_SCREEN).first().isVisible();
+  }
+
+  /**
+   * Closes the new-flow pricing options screen with its X and confirms "Start over" in the dialog.
+   */
+  async closeNewFlowPricingAndStartOver() {
+    await this.page.locator(SELECTORS.NEW_FLOW_CLOSE_AND_START_OVER).first().click({ timeout: 15000 });
+    await this.page.getByRole('button', { name: 'Start over', exact: true }).filter({ visible: true }).first().click({ timeout: 15000 });
+    await this.page.locator(SELECTORS.FLIGHT_PREVIEW).first().waitFor({ state: 'visible', timeout: 60000 });
   }
 
   /**
