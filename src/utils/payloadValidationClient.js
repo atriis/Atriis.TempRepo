@@ -20,9 +20,10 @@ const logger = require("@utils/logger").child("PayloadValidationClient");
 // seen landing ~18s after the booking completes, which 3 attempts 1s apart could never reach.
 const DEFAULT_LOOKUP_ATTEMPTS = 8;
 const DEFAULT_LOOKUP_RETRY_MS = 3000;
-// The internal API rate-limits bursts: downloads are spaced, and a 429 is given one longer pause.
+// The internal API rate-limits bursts: downloads are spaced, and a 429 gets growing pauses.
 const BULK_DOWNLOAD_SPACING_MS = 250;
 const RATE_LIMIT_BACKOFF_MS = 5000;
+const RATE_LIMIT_RETRIES = 3;
 // The list endpoint pages at 200 entries; 20 pages covers any single trip seen so far.
 const MAX_LIST_PAGES = 20;
 const LIST_PAGE_SPACING_MS = 250;
@@ -248,15 +249,23 @@ async function downloadPayload({ baseUrl, tripId, rowKey, source, operationTimeo
       );
     } else if (error instanceof HttpError && error.statusCode === 429) {
       // Downloading every payload of a busy trip - Amadeus prices a selection once per fare family,
-      // dozens of calls - is answered with a rate limit. One backoff clears it.
-      await sleepWithinBudget(RATE_LIMIT_BACKOFF_MS, `get content (${source}) retry after 429`);
-      responseJson = await fetchJson(
-        url.toString(),
-        remainingTimeoutMs(`get content (${source}) retry after 429`),
-        `get content (${source}) retry after 429`,
-        token,
-        includeAuth
-      );
+      // dozens of calls - is answered with a rate limit. One backoff usually clears it, but a busy
+      // staging (59206: 14 PNR_AddMultiElements) can still answer 429, so the pause grows per retry.
+      for (let attempt = 1; ; attempt++) {
+        await sleepWithinBudget(RATE_LIMIT_BACKOFF_MS * attempt, `get content (${source}) retry after 429`);
+        try {
+          responseJson = await fetchJson(
+            url.toString(),
+            remainingTimeoutMs(`get content (${source}) retry after 429`),
+            `get content (${source}) retry after 429`,
+            token,
+            includeAuth
+          );
+          break;
+        } catch (retryError) {
+          if (attempt >= RATE_LIMIT_RETRIES || !(retryError instanceof HttpError && retryError.statusCode === 429)) throw retryError;
+        }
+      }
     } else {
       throw error;
     }
