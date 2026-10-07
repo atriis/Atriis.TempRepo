@@ -779,6 +779,36 @@ Then(
   }
 );
 
+// "Sent before ticketing" checks: only calls logged before the first anchor call count, so a remark
+// written after DocIssuance_IssueCombined fails the step. One table row per text; each must be in
+// at least one of those calls. The calls are downloaded once per (type, anchor) pair per scenario,
+// and waiting for the anchor plus paced downloads outrun the 120 s default.
+const SENT_BEFORE_STEP_TIMEOUT_MS = 300000;
+
+Then(
+  "the {string} requests sent before {string} should contain:",
+  { timeout: SENT_BEFORE_STEP_TIMEOUT_MS },
+  async function (requestType, anchorRequestType, dataTable) {
+    const texts = dataTable.raw().map((row) => row[0]);
+    await runPayloadValidationStep(this, "expectPayloadsSentBeforeContain", { requestType, anchorRequestType }, async () => {
+      logger.info("Validating texts are sent before the anchor request", { requestType, anchorRequestType, texts });
+      await PayloadValidation.expectPayloadsSentBeforeContain(this, requestType, anchorRequestType, texts);
+    });
+  }
+);
+
+Then(
+  "the {string} requests sent before {string} should not contain:",
+  { timeout: SENT_BEFORE_STEP_TIMEOUT_MS },
+  async function (requestType, anchorRequestType, dataTable) {
+    const texts = dataTable.raw().map((row) => row[0]);
+    await runPayloadValidationStep(this, "expectPayloadsSentBeforeNotContain", { requestType, anchorRequestType }, async () => {
+      logger.info("Validating texts are not sent before the anchor request", { requestType, anchorRequestType, texts });
+      await PayloadValidation.expectPayloadsSentBeforeContain(this, requestType, anchorRequestType, texts, { shouldContain: false });
+    });
+  }
+);
+
 Then(
   "every {string} request should contain {string}",
   async function (requestType, parameterName) {

@@ -1,6 +1,6 @@
 require("module-alias/register");
 const { expect } = require("@playwright/test");
-const { fetchPayloadFromStorage, buildRequestTypeMatcher } = require("@utils/payloadValidationClient");
+const { fetchPayloadFromStorage, downloadPayloadByRowKey, buildRequestTypeMatcher } = require("@utils/payloadValidationClient");
 const logger = require("@utils/logger").child("PayloadValidation-DSL");
 
 // Request-count polling. Distributor logs are published asynchronously, so counts are read
@@ -529,6 +529,16 @@ function normalizeForContains(value) {
     .replace(/\s+/g, " ")
     .trim()
     .toLowerCase();
+}
+
+// The five predefined XML entities. &amp; goes last so "&amp;lt;" decodes to "&lt;", not "<".
+function decodeXmlEntities(value) {
+  return String(value || "")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, "\"")
+    .replace(/&apos;/g, "'")
+    .replace(/&amp;/g, "&");
 }
 
 function stripParentheticalQualifiers(value) {
@@ -2588,6 +2598,149 @@ const PayloadValidation = {
     });
 
     return { payloads };
+  },
+
+  /**
+   * Returns every payload of a type logged before the trip's FIRST call of the anchor type, oldest
+   * first - for "remarks are written before ticketing" checks, where the same text sent only after
+   * DocIssuance_IssueCombined must not count. Waits for the anchor, so a flow that never reached it
+   * fails here instead of passing on an empty set.
+   *
+   * Lists the trip and downloads only the calls before the anchor, paced, and caches them on the
+   * world: a scenario usually asserts several texts on the same pair, and re-downloading every
+   * body per assertion is what earns the internal API's 429.
+   *
+   * @param {object} world
+   * @param {string} requestType - e.g. "Amadeus4.PNR_AddMultiElements"
+   * @param {string} anchorRequestType - e.g. "Amadeus4.DocIssuance_IssueCombined"
+   * @returns {Promise<{calls: Array<{timestamp: Date, payload: string}>, anchorTimestamp: Date}>}
+   */
+  async collectPayloadsSentBefore(world, requestType, anchorRequestType) {
+    assertWorld(world);
+    const normalizedRequestType = normalizeRequestType(requestType);
+    const normalizedAnchorType = normalizeRequestType(anchorRequestType);
+    const cacheKey = `${normalizedRequestType}<${normalizedAnchorType}`;
+    world.payloadsSentBefore = world.payloadsSentBefore || {};
+    if (world.payloadsSentBefore[cacheKey]) return world.payloadsSentBefore[cacheKey];
+
+    const identifiers = getScenarioIdentifiers(world);
+    if (!identifiers.tripId) {
+      throw new Error(
+        `Cannot read "${normalizedRequestType}" requests sent before "${normalizedAnchorType}": no trip id is available on the world context.`
+      );
+    }
+
+    await this.waitForRequestType(world, normalizedAnchorType);
+
+    const listFor = (type) => fetchPayloadFromStorage({
+      source: "request",
+      requestType: type,
+      tripId: identifiers.tripId,
+      transactionId: identifiers.transactionId,
+      sid: identifiers.sid,
+      listOnly: true,
+      timeoutMs: INSPECT_ALL_TIMEOUT_MS,
+    });
+
+    const anchorEntries = (await listFor(normalizedAnchorType)).entries;
+    const anchorTimestamp = new Date(Math.min(...anchorEntries.map((entry) => new Date(entry.timestamp).getTime())));
+    const entriesBefore = (await listFor(normalizedRequestType)).entries
+      .filter((entry) => new Date(entry.timestamp) < anchorTimestamp)
+      .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+
+    if (entriesBefore.length > MAX_REQUESTS_TO_INSPECT) {
+      throw new Error(
+        `Cannot read "${normalizedRequestType}" requests sent before "${normalizedAnchorType}": ` +
+        `${entriesBefore.length} were logged, more than MAX_REQUESTS_TO_INSPECT (${MAX_REQUESTS_TO_INSPECT}).`
+      );
+    }
+
+    const download = async (entry) => {
+      // The client already retries a 429 once after 5 s; a second (type, anchor) pair read straight
+      // after the first still drew one on trip 3923235, so back off longer before giving up.
+      for (const backoffMs of [15000, 30000, null]) {
+        try {
+          return await downloadPayloadByRowKey({
+            tripId: identifiers.tripId,
+            rowKey: entry.rowKey,
+            source: "request",
+            timeoutMs: INSPECT_ALL_TIMEOUT_MS,
+          });
+        } catch (error) {
+          if (error?.statusCode !== 429 || backoffMs === null) throw error;
+          logger.warn("Rate limited downloading a payload, backing off", { rowKey: entry.rowKey, backoffMs });
+          await sleep(backoffMs);
+        }
+      }
+    };
+
+    const calls = [];
+    for (const [index, entry] of entriesBefore.entries()) {
+      // Paced: a burst of downloads is what earns the rate limit in the first place.
+      if (index > 0) await sleep(1500);
+      calls.push({ timestamp: new Date(entry.timestamp), payload: await download(entry) });
+    }
+
+    logger.info("Collected payloads sent before the anchor request", {
+      requestType: normalizedRequestType,
+      anchorRequestType: normalizedAnchorType,
+      anchorTimestamp: anchorTimestamp.toISOString(),
+      calls: calls.length,
+    });
+
+    world.payloadsSentBefore[cacheKey] = { calls, anchorTimestamp };
+    return world.payloadsSentBefore[cacheKey];
+  },
+
+  /**
+   * Asserts each text appears (or, with shouldContain false, appears in none) of the calls of a type
+   * logged before the first anchor call. Payloads are XML-unescaped first so a remark is written in
+   * the feature as the agent typed it ("Corp & Special"), not as the wire carries it ("&amp;").
+   * Matching ignores case and collapses whitespace, as the other "should contain" checks do.
+   * Reports every failing text at once rather than stopping at the first.
+   */
+  async expectPayloadsSentBeforeContain(world, requestType, anchorRequestType, expectedTexts, { shouldContain = true } = {}) {
+    if (!Array.isArray(expectedTexts) || expectedTexts.length === 0) {
+      throw new Error("expectedTexts must be a non-empty array");
+    }
+
+    const { calls, anchorTimestamp } = await this.collectPayloadsSentBefore(world, requestType, anchorRequestType);
+    if (shouldContain && calls.length === 0) {
+      throw new Error(
+        `No "${requestType}" request was sent before "${anchorRequestType}" (first sent ${anchorTimestamp.toISOString()}).`
+      );
+    }
+
+    const searchable = calls.map((call) => ({
+      timestamp: call.timestamp,
+      text: normalizeForContains(decodeXmlEntities(call.payload)),
+    }));
+
+    const failures = [];
+    for (const expectedText of expectedTexts) {
+      const needle = normalizeForContains(expectedText);
+      const hits = searchable.filter((call) => call.text.includes(needle));
+      if (shouldContain && hits.length === 0) {
+        failures.push(`"${expectedText}" is in none of them`);
+      } else if (!shouldContain && hits.length > 0) {
+        failures.push(`"${expectedText}" is in the calls sent at ${hits.map((hit) => hit.timestamp.toISOString()).join(", ")}`);
+      }
+    }
+
+    if (failures.length > 0) {
+      throw new Error(
+        `Checked the ${calls.length} "${requestType}" request(s) sent before "${anchorRequestType}" ` +
+        `(first sent ${anchorTimestamp.toISOString()}), expecting each text to be ${shouldContain ? "present" : "absent"}:\n  ` +
+        failures.join("\n  ")
+      );
+    }
+
+    logger.info(`Every text is ${shouldContain ? "present in" : "absent from"} the requests sent before the anchor`, {
+      requestType,
+      anchorRequestType,
+      calls: calls.length,
+      texts: expectedTexts,
+    });
   },
 
   /**
