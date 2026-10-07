@@ -15,7 +15,7 @@ Feature: 50848 Flights - Disclaimer in mini rule icon cart and PO email
   Scenario: Disclaimer is displayed in price breakdown and price offer email
     Given I am logged in as "ruimariano@amadeus.com" booking a new trip
     And I have added myself as the traveler
-    When I search for a round trip flight from "LON" to "MAD"
+    When I search for a round trip flight from "LON" to "BCN"
     And I filter results by carrier "BA"
     And I add the first flight to cart
     Then the booking status should be "Pending booking"
