@@ -344,7 +344,10 @@ const SELECTORS = {
 
   // Codeshare / Operated by
   FLIGHT_OPERATOR: '.flight-operator',
-  FLIGHT_OPERATOR_IN_DRAWER: '.app-drawer.flight-details-drawer .flight-operator',
+  // Legacy drawer reuses flight-preview's `.flight-operator`; the redesigned drawer (remote flag
+  // IsFlightDetailsRedesignEnabled, flight-details-segment-card.vue) renders `.fd-card__operated-by`.
+  FLIGHT_OPERATOR_IN_DRAWER:
+    '.app-drawer.flight-details-drawer .flight-operator, .app-drawer.flight-details-drawer .fd-card__operated-by',
   OPERATED_BY_TEXT: 'Operated by',
 
   // Branded fares
