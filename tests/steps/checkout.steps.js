@@ -107,6 +107,11 @@ When('I click "Don\'t share the contact details with airlines" checkbox in check
   await Checkout.clickContactDetailsCheckbox(this.page);
 });
 
+When("I share the contact details with airlines in checkout", async function () {
+  logger.info('Making sure "Don\'t share the contact details with airlines" is unchecked');
+  await Checkout.shareContactDetailsWithAirlines(this.page);
+});
+
 
 
 When("I send booking for approval", { timeout: CHECKOUT_STEP_TIMEOUT_MS }, async function () {

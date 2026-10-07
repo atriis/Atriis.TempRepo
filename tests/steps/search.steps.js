@@ -75,6 +75,7 @@ Given("I have added traveler by name {string}", async function (travelerName) {
 // The generated name is kept on the World as `lastAddedGuestName`: the app titles a share-quotes
 // email "Share quotes for <traveller> <dates>", with no trip number anywhere in it, so this name is
 // the only token that tells this run's mail apart in a shared test inbox. See tests/steps/email.steps.js.
+// The generated email and phone are kept too, as the contact expected in the supplier's CTCE/CTCM SSRs.
 Given("I have added a random guest traveler", async function () {
   logger.info("Adding random guest traveler");
   const result = await Search.addRandomGuest(this.page);
@@ -82,6 +83,8 @@ Given("I have added a random guest traveler", async function () {
   this.guestTravelerCount = (this.guestTravelerCount ?? 0) + 1;
   this.selectedTravelerCount = result.selectedTravelerCount;
   this.lastAddedGuestName = `${result.guestData.firstName} ${result.guestData.lastName}`;
+  this.lastAddedGuestEmail = result.guestData.email;
+  this.lastAddedGuestPhone = result.guestData.phone;
 });
 
 Given("I have added a random guest traveler with phone type {string}", async function (phoneType) {

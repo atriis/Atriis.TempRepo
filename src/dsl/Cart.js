@@ -17951,6 +17951,42 @@ const Cart = {
     return { message: actual };
   },
 
+  /**
+   * Reads the contact SSRs (CTCE, CTCM, CTCR) sent to the GDS in every request of a type logged
+   * for the trip - one entry per <ssr> block, so each type stays paired with its own freetext.
+   * Guards ADO 45741: Amadeus must send the traveller's email as CTCE and mobile as CTCM.
+   *
+   * @param {object} world - Cucumber world holding the trip id
+   * @param {string} requestType - e.g. "Amadeus4.PNR_AddMultiElements"
+   * @returns {Promise<{ssrs: Array<{type: string, freetext: string|null}>}>}
+   */
+  async collectContactSsrs(world, requestType) {
+    if (!world || typeof world !== 'object') {
+      throw new Error('[Cart.collectContactSsrs] "world" must be the Cucumber world, got: ' + typeof world);
+    }
+    if (!requestType || typeof requestType !== 'string') {
+      throw new Error('[Cart.collectContactSsrs] "requestType" must be a non-empty string, got: ' + typeof requestType);
+    }
+
+    const { blocks } = await PayloadValidation.collectXmlBlockFieldsForTrip(
+      world,
+      requestType,
+      'ssr',
+      ['type', 'freetext'],
+      { source: 'request', purpose: 'read the contact SSRs sent to the GDS' }
+    );
+
+    const ssrs = blocks.filter((ssr) => /^CTC[EMR]$/i.test(ssr.type || ''));
+
+    logger.info('[Cart.collectContactSsrs] Contact SSRs sent', {
+      requestType,
+      ssrBlocks: blocks.length,
+      contactSsrs: ssrs.map((ssr) => `${ssr.type}: ${ssr.freetext}`),
+    });
+
+    return { ssrs };
+  },
+
 };
 
 

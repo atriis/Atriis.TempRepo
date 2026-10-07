@@ -1139,6 +1139,35 @@ Then("I successfully cancel the trip", async function () {
   expect(result.messageVisible, "Cancellation confirmation message should be visible").toBe(true);
 });
 
+// Guards ADO 45741: the guest's email goes out as CTCE written the GDS way ("@" -> "//", "_" -> "..",
+// "-" -> "./", as AmadeusGeneral builds it) and their mobile as CTCM digits only, no hyphens. The
+// mobile may gain a country code in front, so CTCM is matched on its ending.
+Then(
+  "the {string} request should send the guest traveler's email as CTCE and their phone as CTCM digits only",
+  async function (requestType) {
+    expect(this.lastAddedGuestEmail, "No guest email on the World - add a random guest traveler first").toBeTruthy();
+    expect(this.lastAddedGuestPhone, "No guest phone on the World - add a random guest traveler first").toBeTruthy();
+
+    const expectedCtce = this.lastAddedGuestEmail.replace(/@/g, "//").replace(/_/g, "..").replace(/-/g, "./").toUpperCase();
+    const phoneDigits = this.lastAddedGuestPhone.replace(/\D/g, "");
+
+    const { ssrs } = await Cart.collectContactSsrs(this, requestType);
+    const ctce = ssrs.filter((ssr) => ssr.type.toUpperCase() === "CTCE").map((ssr) => ssr.freetext || "");
+    const ctcm = ssrs.filter((ssr) => ssr.type.toUpperCase() === "CTCM").map((ssr) => ssr.freetext || "");
+
+    expect(ctce.length, `No CTCE SSR in any "${requestType}" request for the trip`).toBeGreaterThan(0);
+    for (const freetext of ctce) {
+      expect(freetext.toUpperCase(), `CTCE should be "${this.lastAddedGuestEmail}" with "//" instead of "@"`).toBe(expectedCtce);
+    }
+
+    expect(ctcm.length, `No CTCM SSR in any "${requestType}" request for the trip`).toBeGreaterThan(0);
+    for (const freetext of ctcm) {
+      expect(freetext, `CTCM should hold digits only, no hyphens or spaces`).toMatch(/^\d+$/);
+      expect(freetext.endsWith(phoneDigits), `CTCM "${freetext}" should end with the guest's phone "${phoneDigits}"`).toBe(true);
+    }
+  }
+);
+
 Then("I successfully cancel the trip with 60 seconds wait", async function () {
   logger.info("Cancelling the trip successfully after a 60-second wait");
   const result = await Cart.cancelTripStrictWithWait(this.page, 60000);
