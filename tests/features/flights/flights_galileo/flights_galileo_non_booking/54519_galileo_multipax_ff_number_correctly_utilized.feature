@@ -19,11 +19,11 @@ Feature: 54519 Galileo - FF number correctly utilized for multiple pax
     # The second traveller's chip renders after its profile finishes loading; searching before it is
     # committed runs the search with one passenger and the results never resolve for the pair.
     And the traveler name "Shawn Craig" should be visible in the travelers list
-    When I search for a one way flight from "ORD" to "LAS"
+    When I search for a one way flight from "MAD" to "MEX"
     And flight results should be available
-    And I filter results by carrier "AA"
+    And I filter results by carrier "Iberia"
     And I add the first flight to cart
     Then the booking status should be "Pending Booking"
     When I click frequent flyer in extras
-    Then the FQTV should show "AA - 1234567" for "James Root"
-    Then the FQTV should show "AA-******010" for "Shawn Craig"
+    Then the FQTV should show "IB - 1234567" for "James Root"
+    Then the FQTV should show "IB-******010" for "Shawn Craig"
