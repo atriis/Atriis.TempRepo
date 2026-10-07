@@ -1139,6 +1139,36 @@ Then("I successfully cancel the trip", async function () {
   expect(result.messageVisible, "Cancellation confirmation message should be visible").toBe(true);
 });
 
+// Guards ADO 59206: in a multi-pax Amadeus booking every traveller gets their own contact SSRs,
+// each exactly once across the trip - counted per passenger, since a total would pass when one
+// traveller carries an element twice and another none.
+Then(
+  "every one of the {int} passengers in the {string} requests should carry each of {string} exactly once",
+  async function (expectedPassengers, requestType, ssrTypes) {
+    const types = ssrTypes.split(",").map((type) => type.trim()).filter(Boolean);
+    const { perCall } = await Cart.collectAmadeusContactElementsPerPassenger(this, requestType);
+    const elements = perCall.flat();
+    const sent = perCall
+      .map((call, i) => `#${i + 1}: ${call.map((e) => `${e.type}->${e.passengerRefs.join(",")}`).join(" ") || "none"}`)
+      .join("\n");
+
+    expect(
+      elements.filter((e) => e.passengerRefs.length !== 1),
+      `Every contact SSR should name exactly one passenger. Sent:\n${sent}`
+    ).toEqual([]);
+
+    const passengers = [...new Set(elements.map((e) => e.passengerRefs[0]))];
+    expect(passengers, `Contact SSRs should reach ${expectedPassengers} passengers. Sent:\n${sent}`).toHaveLength(expectedPassengers);
+
+    for (const passenger of passengers) {
+      for (const type of types) {
+        const count = elements.filter((e) => e.type === type && e.passengerRefs[0] === passenger).length;
+        expect(count, `${passenger} should carry ${type} exactly once. Sent:\n${sent}`).toBe(1);
+      }
+    }
+  }
+);
+
 Then("I successfully cancel the trip with 60 seconds wait", async function () {
   logger.info("Cancelling the trip successfully after a 60-second wait");
   const result = await Cart.cancelTripStrictWithWait(this.page, 60000);

@@ -17951,6 +17951,63 @@ const Cart = {
     return { message: actual };
   },
 
+  /**
+   * Reads the contact SSRs (CTCE, CTCM, CTCR) sent to Amadeus in every PNR_AddMultiElements call
+   * logged for the trip - one entry per call, one element per <dataElementsIndiv>, each with the
+   * passengers it is attached to through <referenceForDataElement> (e.g. "PT2"). Guards ADO 59206:
+   * in a multi-pax booking each traveller must get their own CTCE and CTCM, once.
+   *
+   * Every other data element (TK, RF, AP, DOCS, FQTV...) is dropped, so the caller only sees the
+   * contact elements.
+   *
+   * @param {object} world - Cucumber world holding the trip id
+   * @param {string} requestType - e.g. "Amadeus4.PNR_AddMultiElements"
+   * @returns {Promise<{perCall: Array<Array<{type: string, passengerRefs: string[]}>>}>}
+   */
+  async collectAmadeusContactElementsPerPassenger(world, requestType) {
+    if (!world || typeof world !== 'object') {
+      throw new Error('[Cart.collectAmadeusContactElementsPerPassenger] "world" must be the Cucumber world, got: ' + typeof world);
+    }
+    if (!requestType || typeof requestType !== 'string') {
+      throw new Error('[Cart.collectAmadeusContactElementsPerPassenger] "requestType" must be a non-empty string, got: ' + typeof requestType);
+    }
+
+    const { perCall } = await PayloadValidation.collectXmlBlockTreesPerCall(
+      world,
+      requestType,
+      {
+        dataElementsIndiv: {
+          blocks: {
+            ssr: { fields: ['type'] },
+            referenceForDataElement: { blocks: { reference: { fields: ['qualifier', 'number'] } } },
+          },
+        },
+      },
+      { source: 'request', purpose: 'read the contact SSRs sent for each passenger' }
+    );
+
+    const contactElementsPerCall = perCall.map((call) =>
+      call.dataElementsIndiv
+        .map((element) => ({
+          type: (element.ssr[0] && element.ssr[0].type[0]) || null,
+          passengerRefs: element.referenceForDataElement.flatMap((refs) =>
+            refs.reference.map((ref) => `${ref.qualifier[0] || ''}${ref.number[0] || ''}`)
+          ),
+        }))
+        .filter((element) => /^CTC[EMR]$/.test(element.type || ''))
+    );
+
+    logger.info('[Cart.collectAmadeusContactElementsPerPassenger] Contact SSRs per passenger', {
+      requestType,
+      calls: contactElementsPerCall.length,
+      elements: contactElementsPerCall.map((call) =>
+        call.map((element) => `${element.type} -> ${element.passengerRefs.join(',') || 'no passenger'}`)
+      ),
+    });
+
+    return { perCall: contactElementsPerCall };
+  },
+
 };
 
 
