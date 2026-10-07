@@ -436,6 +436,12 @@ When('I select the published fare for every direction from pricing options', asy
   logger.info('Published fare selected on every direction', result);
 });
 
+When('I select the first agreement fare for every direction from pricing options', async function () {
+  logger.info('Selecting the first agreement fare on every direction from pricing options');
+  const result = await FlightResults.selectFirstAgreementFareOnEveryLeg(this.page);
+  logger.info('Agreement fare selected on every direction', result);
+});
+
 When("I click to open the second fare rules from pricing options modal", async function () {
   logger.info("Clicking to open the second fare rules from pricing options modal");
   await FlightResults.clickToOpenSecondFareRulesFromPricingOptions(this.page);

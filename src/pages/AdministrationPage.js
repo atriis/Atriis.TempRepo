@@ -262,7 +262,32 @@ const SELECTORS = {
   AGREEMENT_COMMENT_INPUT: "[ng-required='isCommentRequired()']",
   // Save button on the agreement detail form (shares the onSaveClicked handler used elsewhere)
   AGREEMENT_SAVE_BTN: "[data-ng-click='onSaveClicked()']",
+
+  // --- Agency Fare Rules Management (agent GTP Admin Center, test 43181) ---
+  // One row per fee type, ordered by FeeType: row 0 = Change fee, row 1 = Cancellation fee
+  // (AgencyFareRulesManagement.cshtml). Each row has a Markup input and two select2 dropdowns.
+  AGENCY_FARE_RULE_ROWS: "[data-ng-repeat^='rule in selectedFareRules']",
+  AGENCY_FARE_RULE_AMOUNT_INPUT: "input[name='amount']",
+  AGENCY_FARE_RULE_MARKUP_TYPE_FIELD: ".admin-field:has(select[name='type'])",
+  AGENCY_FARE_RULE_CURRENCY_FIELD: ".admin-field:has(select[data-ng-model='rule.Currency'])",
+  AGENCY_FARE_RULE_CURRENCY_SELECT: "select[data-ng-model='rule.Currency']",
+  // select2 (v3) parts: the trigger inside a field, the chosen text, and the one open dropdown
+  // (moved to <body> while open; a closed drop keeps .select2-drop-active, so only :visible tells the
+  // open one apart). Never the #s2id_autogenN ids — they change per page load.
+  SELECT2_TRIGGER: ".select2-choice",
+  SELECT2_CHOSEN: ".select2-chosen",
+  SELECT2_ACTIVE_DROP: ".select2-drop-active:visible",
+  SELECT2_ACTIVE_SEARCH_INPUT: ".select2-drop-active:visible .select2-input",
+  SELECT2_ACTIVE_RESULT_LABEL: ".select2-drop-active:visible .select2-result-label",
+  // Page-level change reason and Save shared by every GTP Admin Center editor
+  ADMIN_MODIFICATION_COMMENT_INPUT: "[ng-model='modificationReason']",
+  ADMIN_PAGE_SAVE_BTN: "[data-ng-click='onSaveClicked()']",
 };
+
+// The admin's own API calls behind the Agency Fare Rules Management section. They are read, not
+// called: the section requests the saved rules on every visit and posts the changed ones on Save.
+const AGENCY_FARE_RULES_GET_URL = /\/api\/AgencyFareRulesManagementService\/GetAgencyFareRulesManagement/i;
+const AGENCY_FARE_RULES_SAVE_URL = /\/api\/AgencyFareRulesManagementService\/SaveAgencyFareRulesManagement/i;
 
 class AdministrationPage {
   constructor(page) {
@@ -2729,6 +2754,191 @@ class AdministrationPage {
         `[AdministrationPage.clickSaveAgreement] Could not click Save on the agreement detail form ` +
         `(selector: ${SELECTORS.AGREEMENT_SAVE_BTN}). ` +
         `The form may be invalid — a change comment is mandatory. Original: ${err.message}`
+      );
+    }
+  }
+
+  // --- Agency Fare Rules Management (agent GTP Admin Center, test 43181) ---
+
+  /**
+   * Waits for the agency GTP Admin Center to render its left menu after entering it by URL.
+   */
+  async waitForAgencyAdminMenuReady({ timeout = 60000 } = {}) {
+    try {
+      await this.page.waitForLoadState('domcontentloaded', { timeout });
+      await this.page.locator(SELECTORS.ADMIN_SECTION_MENU_ITEM).first().waitFor({ state: 'attached', timeout });
+      await this.page.waitForFunction(() => window.location.hash.includes('/Agency/'), null, { timeout });
+    } catch (err) {
+      throw new Error(
+        `[AdministrationPage.waitForAgencyAdminMenuReady] The agency GTP Admin Center did not render its menu ` +
+        `(selector: ${SELECTORS.ADMIN_SECTION_MENU_ITEM}). The agent may lack administration rights. ` +
+        `Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Opens Fare Management > Agency Fare Rules Management from the left menu and returns the rules the
+   * section loaded (the GetAgencyFareRulesManagement response body - one entry per saved fee type).
+   *
+   * @returns {Promise<Array<{FeeType:number, Amount:number, MarkupType:number, Currency:string}>>}
+   */
+  async openAgencyFareRulesManagementFromMenu({ timeout = 60000 } = {}) {
+    const sectionTitle = 'Agency Fare Rules Management';
+    const loaded = this.page.waitForResponse(
+      (response) => AGENCY_FARE_RULES_GET_URL.test(response.url()) && response.request().method() === 'GET',
+      { timeout },
+    );
+    loaded.catch(() => {}); // awaited below; keeps an early failure from going unhandled
+
+    try {
+      const sectionLink = this.page.locator(`${SELECTORS.ADMIN_SECTION_MENU_ITEM}[title='${sectionTitle}']`).first();
+      if (!(await sectionLink.isVisible().catch(() => false))) {
+        // The section sits under the collapsed "Fare Management" group until it is expanded.
+        await this.clickAdminSectionByTitle('Fare Management');
+      }
+      await this.clickAdminSectionByTitle(sectionTitle);
+      await this.dismissUnsavedItemsDialogIfPresent();
+      const response = await loaded;
+      const rules = await response.json();
+      await this.page.locator(SELECTORS.AGENCY_FARE_RULE_ROWS).nth(1)
+        .locator(SELECTORS.AGENCY_FARE_RULE_AMOUNT_INPUT).waitFor({ state: 'visible', timeout });
+      return Array.isArray(rules) ? rules : [];
+    } catch (err) {
+      throw new Error(
+        `[AdministrationPage.openAgencyFareRulesManagementFromMenu] Could not open "${sectionTitle}" or read the ` +
+        `rules it loaded (rows: ${SELECTORS.AGENCY_FARE_RULE_ROWS}). Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Number of currencies the given row's Currency dropdown offers. The section binds the list once
+   * (`currency in ::currencies`), so when the currencies arrive after the first render it stays
+   * EMPTY for that visit - see Administration.openAgencyFareRulesManagement.
+   *
+   * @param {number} rowIndex - 0 = Change fee, 1 = Cancellation fee
+   */
+  async countAgencyFareRuleCurrencyOptions(rowIndex) {
+    const select = this.page.locator(SELECTORS.AGENCY_FARE_RULE_ROWS).nth(rowIndex)
+      .locator(SELECTORS.AGENCY_FARE_RULE_CURRENCY_SELECT);
+    return select.evaluate((element) => element.options.length);
+  }
+
+  /**
+   * Fills the Markup amount of one fee row.
+   *
+   * @param {number} rowIndex - 0 = Change fee, 1 = Cancellation fee
+   * @param {number|string} amount
+   */
+  async fillAgencyFareRuleAmount(rowIndex, amount) {
+    const input = this.page.locator(SELECTORS.AGENCY_FARE_RULE_ROWS).nth(rowIndex)
+      .locator(SELECTORS.AGENCY_FARE_RULE_AMOUNT_INPUT);
+    try {
+      await input.fill(String(amount), { timeout: 10000 });
+      await input.press('Tab');
+    } catch (err) {
+      throw new Error(
+        `[AdministrationPage.fillAgencyFareRuleAmount] Could not set the Markup of fare rule row ${rowIndex} to ` +
+        `"${amount}" (selector: ${SELECTORS.AGENCY_FARE_RULE_AMOUNT_INPUT}). Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Picks an option in one of a fee row's select2 dropdowns by its label, typing into the dropdown's
+   * search box first so a long list (currencies) is narrowed to the wanted entry.
+   *
+   * @param {number} rowIndex - 0 = Change fee, 1 = Cancellation fee
+   * @param {string} fieldSelector - The .admin-field holding the dropdown
+   * @param {string} searchText - What to type into the select2 search box
+   * @param {RegExp} labelPattern - The option label to click
+   */
+  async selectAgencyFareRuleOption(rowIndex, fieldSelector, searchText, labelPattern) {
+    const field = this.page.locator(SELECTORS.AGENCY_FARE_RULE_ROWS).nth(rowIndex).locator(fieldSelector);
+    try {
+      await field.locator(SELECTORS.SELECT2_TRIGGER).click({ timeout: 10000 });
+      await this.page.locator(SELECTORS.SELECT2_ACTIVE_DROP).waitFor({ state: 'visible', timeout: 10000 });
+      await this.page.locator(SELECTORS.SELECT2_ACTIVE_SEARCH_INPUT).pressSequentially(searchText, { delay: 50 });
+      await this.page.locator(SELECTORS.SELECT2_ACTIVE_RESULT_LABEL).filter({ hasText: labelPattern }).first()
+        .click({ timeout: 10000 });
+      await this.page.locator(SELECTORS.SELECT2_ACTIVE_DROP).waitFor({ state: 'hidden', timeout: 10000 });
+    } catch (err) {
+      // Leave no dropdown open: its mask would swallow every later click on the page.
+      await this.page.keyboard.press('Escape').catch(() => {});
+      throw new Error(
+        `[AdministrationPage.selectAgencyFareRuleOption] Could not pick ${labelPattern} in fare rule row ${rowIndex} ` +
+        `(field: ${fieldSelector}, dropdown: ${SELECTORS.SELECT2_ACTIVE_DROP}). Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Picks the Markup Type ("Fixed Value" / "Percentage") of one fee row.
+   * @param {number} rowIndex - 0 = Change fee, 1 = Cancellation fee
+   * @param {string} label
+   */
+  async selectAgencyFareRuleMarkupType(rowIndex, label) {
+    const exact = new RegExp(`^\\s*${String(label).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*$`, 'i');
+    await this.selectAgencyFareRuleOption(rowIndex, SELECTORS.AGENCY_FARE_RULE_MARKUP_TYPE_FIELD, label, exact);
+  }
+
+  /**
+   * Picks the Currency of one fee row by its ISO code (options read "EUR €", "USD $", ...).
+   * @param {number} rowIndex - 0 = Change fee, 1 = Cancellation fee
+   * @param {string} code - e.g. "EUR"
+   */
+  async selectAgencyFareRuleCurrency(rowIndex, code) {
+    const startsWithCode = new RegExp(`^\\s*${String(code).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`);
+    await this.selectAgencyFareRuleOption(rowIndex, SELECTORS.AGENCY_FARE_RULE_CURRENCY_FIELD, code, startsWithCode);
+  }
+
+  /**
+   * Reads what one fee row currently shows: Markup amount, Markup Type label and Currency label.
+   *
+   * @param {number} rowIndex - 0 = Change fee, 1 = Cancellation fee
+   * @returns {Promise<{amount: string, markupType: string, currency: string}>}
+   */
+  async getAgencyFareRuleRowValues(rowIndex) {
+    const row = this.page.locator(SELECTORS.AGENCY_FARE_RULE_ROWS).nth(rowIndex);
+    const chosen = async (fieldSelector) =>
+      ((await row.locator(fieldSelector).locator(SELECTORS.SELECT2_CHOSEN).first().textContent()) ?? '')
+        .replace(/\s+/g, ' ').trim();
+    return {
+      amount: await row.locator(SELECTORS.AGENCY_FARE_RULE_AMOUNT_INPUT).inputValue(),
+      markupType: await chosen(SELECTORS.AGENCY_FARE_RULE_MARKUP_TYPE_FIELD),
+      currency: await chosen(SELECTORS.AGENCY_FARE_RULE_CURRENCY_FIELD),
+    };
+  }
+
+  /**
+   * Enters the change reason and clicks Save, returning the SaveAgencyFareRulesManagement exchange.
+   *
+   * @param {string} comment - Modification comment recorded with the change
+   * @returns {Promise<{status: number, requestBody: string, responseBody: string}>}
+   */
+  async saveAgencyFareRules(comment, { timeout = 30000 } = {}) {
+    const saveButton = this.page.locator(SELECTORS.ADMIN_PAGE_SAVE_BTN).first();
+    try {
+      await this.page.locator(SELECTORS.ADMIN_MODIFICATION_COMMENT_INPUT).first().fill(comment, { timeout: 10000 });
+      await saveButton.waitFor({ state: 'visible', timeout });
+      await this.page.waitForFunction((button) => !button.disabled, await saveButton.elementHandle(), { timeout });
+      const saved = this.page.waitForResponse(
+        (response) => AGENCY_FARE_RULES_SAVE_URL.test(response.url()),
+        { timeout },
+      );
+      await saveButton.click({ timeout: 10000 });
+      const response = await saved;
+      return {
+        status: response.status(),
+        requestBody: response.request().postData() ?? '',
+        responseBody: await response.text().catch(() => ''),
+      };
+    } catch (err) {
+      throw new Error(
+        `[AdministrationPage.saveAgencyFareRules] Saving the agency fare rules did not reach the server ` +
+        `(Save: ${SELECTORS.ADMIN_PAGE_SAVE_BTN}, comment: ${SELECTORS.ADMIN_MODIFICATION_COMMENT_INPUT}). ` +
+        `Save stays disabled while the form is invalid or unchanged. Original: ${err.message}`
       );
     }
   }

@@ -2832,6 +2832,190 @@ const Administration = {
     logger.info(`[Administration.verifyAgreementTooltipValue] Agreement tooltip reads "${actual}"`);
     return { expectedTooltip, actual };
   },
+
+  // --- Agency Fare Rules Management (agent GTP Admin Center, test 43181) ---
+
+  /**
+   * Opens Fare Management > Agency Fare Rules Management in the agency GTP Admin Center and returns
+   * the rules currently saved for the agency.
+   *
+   * Product race, worked around here: the section binds its Currency list once
+   * (`currency in ::currencies`). When the currencies arrive after that first render - typical on a
+   * freshly loaded admin page - both Currency dropdowns stay EMPTY for the visit, and no rule can be
+   * saved with a currency. Leaving the section and coming back reuses the now-cached list, so the
+   * section is reopened until its dropdowns are populated.
+   *
+   * @param {import('playwright').Page} adminPage - The agent's GTP Admin Center page
+   * @returns {Promise<{change: object|null, cancel: object|null}>} Each fee as
+   *   { amount, markupType: "Fixed Value"|"Percentage", currency }, or null when none is saved
+   */
+  async openAgencyFareRulesManagement(adminPage) {
+    if (!adminPage) {
+      throw new Error('[Administration.openAgencyFareRulesManagement] "adminPage" is required.');
+    }
+
+    const page = getPageObject(adminPage, AdministrationPage);
+    let currencyCounts = [];
+
+    for (let attempt = 1; attempt <= AGENCY_FARE_RULES_OPEN_ATTEMPTS; attempt += 1) {
+      const savedRules = await page.openAgencyFareRulesManagementFromMenu();
+      currencyCounts = [
+        await page.countAgencyFareRuleCurrencyOptions(AGENCY_FARE_RULE_FEES.change.rowIndex),
+        await page.countAgencyFareRuleCurrencyOptions(AGENCY_FARE_RULE_FEES.cancel.rowIndex),
+      ];
+
+      if (currencyCounts.every((count) => count > 0)) {
+        const rules = toAgencyFareRules(savedRules);
+        logger.info('[Administration.openAgencyFareRulesManagement] Agency Fare Rules Management is open', { attempt, rules });
+        return rules;
+      }
+
+      logger.warn(
+        '[Administration.openAgencyFareRulesManagement] The Currency dropdowns rendered empty (one-time binding ' +
+        'raced the currency list) - leaving the section and reopening it',
+        { attempt, currencyCounts },
+      );
+      await page.clickAdminSectionByTitle(AGENCY_FARE_RULES_DETOUR_SECTION);
+      await page.dismissUnsavedItemsDialogIfPresent();
+    }
+
+    throw new Error(
+      `[Administration.openAgencyFareRulesManagement] After ${AGENCY_FARE_RULES_OPEN_ATTEMPTS} visits the Agency Fare ` +
+      `Rules Management Currency dropdowns still offer no currency (options per row: ${JSON.stringify(currencyCounts)}). ` +
+      `A markup cannot be saved with a currency in this state.`
+    );
+  },
+
+  /**
+   * Sets the agency fare rules markup on the open Agency Fare Rules Management section and saves it.
+   * A fee left out of `rules` is not touched. A fee given as null is set to a 0 Fixed Value markup:
+   * the section has no way to delete a saved rule, and 0 adds nothing (ApplyFixedAdminFee).
+   *
+   * @param {import('playwright').Page} adminPage - The agent's GTP Admin Center page
+   * @param {{change?: object|null, cancel?: object|null}} rules - { amount, markupType, currency } per fee
+   * @param {string} comment - Modification comment recorded with the change
+   * @returns {Promise<{status: number, requestBody: string, responseBody: string}>}
+   */
+  async setAgencyFareRules(adminPage, rules, comment) {
+    if (!adminPage) {
+      throw new Error('[Administration.setAgencyFareRules] "adminPage" is required.');
+    }
+    if (!rules || typeof rules !== 'object') {
+      throw new Error(`[Administration.setAgencyFareRules] "rules" must be an object, got: ${typeof rules}`);
+    }
+    if (!comment || typeof comment !== 'string') {
+      throw new Error(`[Administration.setAgencyFareRules] "comment" must be a non-empty string, got: ${typeof comment}`);
+    }
+
+    const page = getPageObject(adminPage, AdministrationPage);
+
+    for (const [fee, rule] of Object.entries(rules)) {
+      const row = AGENCY_FARE_RULE_FEES[fee];
+      if (!row) {
+        throw new Error(`[Administration.setAgencyFareRules] Unknown fee "${fee}". Use one of: ${Object.keys(AGENCY_FARE_RULE_FEES).join(', ')}`);
+      }
+      const target = rule || { amount: 0, markupType: MARKUP_TYPE_LABELS[1], currency: null };
+
+      await page.fillAgencyFareRuleAmount(row.rowIndex, target.amount);
+      await page.selectAgencyFareRuleMarkupType(row.rowIndex, target.markupType);
+      if (target.currency) {
+        await page.selectAgencyFareRuleCurrency(row.rowIndex, target.currency);
+      }
+
+      const shown = await page.getAgencyFareRuleRowValues(row.rowIndex);
+      logger.info(`[Administration.setAgencyFareRules] ${row.label} set`, { target, shown });
+    }
+
+    const result = await page.saveAgencyFareRules(comment);
+    if (result.status !== 200) {
+      throw new Error(
+        `[Administration.setAgencyFareRules] Saving the agency fare rules answered HTTP ${result.status}. ` +
+        `Sent: ${result.requestBody}. Answer: ${result.responseBody.slice(0, 500)}`
+      );
+    }
+
+    logger.info('[Administration.setAgencyFareRules] Agency fare rules saved', { sent: result.requestBody });
+    return result;
+  },
+
+  /**
+   * Reopens Agency Fare Rules Management (so the rules are read back from the server, not from the
+   * form just edited) and asserts each given fee holds the expected markup.
+   *
+   * @param {import('playwright').Page} adminPage - The agent's GTP Admin Center page
+   * @param {{change?: object|null, cancel?: object|null}} expected - { amount, markupType, currency } per
+   *   fee; null means "no markup" (no saved rule, or a saved 0)
+   * @returns {Promise<{change: object|null, cancel: object|null}>} The rules read back
+   */
+  async verifyAgencyFareRules(adminPage, expected) {
+    if (!adminPage) {
+      throw new Error('[Administration.verifyAgencyFareRules] "adminPage" is required.');
+    }
+    if (!expected || typeof expected !== 'object') {
+      throw new Error(`[Administration.verifyAgencyFareRules] "expected" must be an object, got: ${typeof expected}`);
+    }
+
+    const page = getPageObject(adminPage, AdministrationPage);
+    await page.clickAdminSectionByTitle(AGENCY_FARE_RULES_DETOUR_SECTION);
+    await page.dismissUnsavedItemsDialogIfPresent();
+    const saved = await this.openAgencyFareRulesManagement(adminPage);
+
+    const mismatches = [];
+    for (const [fee, want] of Object.entries(expected)) {
+      const got = saved[fee];
+      const matches = want
+        ? Boolean(got) && Number(got.amount) === Number(want.amount) && got.markupType === want.markupType &&
+          (!want.currency || got.currency === want.currency)
+        : !got || Number(got.amount) === 0;
+      if (!matches) {
+        mismatches.push(`${AGENCY_FARE_RULE_FEES[fee].label}: expected ${JSON.stringify(want)}, saved ${JSON.stringify(got)}`);
+      }
+    }
+
+    if (mismatches.length > 0) {
+      throw new Error(
+        `[Administration.verifyAgencyFareRules] The agency fare rules read back from the server differ from what was ` +
+        `saved: ${mismatches.join('; ')}`
+      );
+    }
+
+    logger.info('[Administration.verifyAgencyFareRules] Agency fare rules read back as expected', { saved });
+    return saved;
+  },
 };
+
+// --- Agency Fare Rules Management helpers (test 43181) ---
+
+// Fee rows of the section, ordered by the backend's AdministrationFeeType (ChangeFee = 0, CancellationFee = 1).
+const AGENCY_FARE_RULE_FEES = {
+  change: { rowIndex: 0, feeType: 0, label: 'Change fee' },
+  cancel: { rowIndex: 1, feeType: 1, label: 'Cancellation fee' },
+};
+// MarkupType enum as the section labels it.
+const MARKUP_TYPE_LABELS = { 0: 'Percentage', 1: 'Fixed Value' };
+const AGENCY_FARE_RULES_OPEN_ATTEMPTS = 4;
+// Any other section works as the detour that makes the section reload; this one is light.
+const AGENCY_FARE_RULES_DETOUR_SECTION = 'Lowest Fares';
+
+/**
+ * Maps the section's GetAgencyFareRulesManagement answer onto { change, cancel }.
+ * @param {Array<{FeeType:number, Amount:number, MarkupType:number, Currency:string}>} apiRules
+ */
+function toAgencyFareRules(apiRules) {
+  const byFeeType = (feeType) => {
+    const rule = apiRules.find((entry) => Number(entry.FeeType) === feeType);
+    return rule
+      ? {
+          amount: Number(rule.Amount),
+          markupType: MARKUP_TYPE_LABELS[Number(rule.MarkupType)] ?? String(rule.MarkupType),
+          currency: rule.Currency ?? null,
+        }
+      : null;
+  };
+  return {
+    change: byFeeType(AGENCY_FARE_RULE_FEES.change.feeType),
+    cancel: byFeeType(AGENCY_FARE_RULE_FEES.cancel.feeType),
+  };
+}
 
 module.exports = Administration;

@@ -1,6 +1,6 @@
 require("module-alias/register");
-const { When, Then } = require("@cucumber/cucumber");
-const { Administration } = require("@dsl");
+const { When, Then, After } = require("@cucumber/cucumber");
+const { Administration, LegacyGtp } = require("@dsl");
 const logger = require("@utils/logger").child("Administration");
 
 // --- Administration portal navigation ---
@@ -515,4 +515,144 @@ When("I save the agreement in the administration", async function () {
 Then("the agreement tooltip should display {string} in the administration", async function (expectedTooltip) {
   logger.info("Verifying the agreement tooltip value in administration", { expectedTooltip });
   await Administration.verifyAgreementTooltipValue(this.adminPage, expectedTooltip);
+});
+
+// --- Agency Fare Rules Management markup in the legacy GTP administration (test 43181) ---
+//
+// The agency fare rules markup is shared, live configuration of a dev agency, so a scenario that
+// changes it owns putting it back. The first reading of the section is kept as the agency's real
+// state (this.originalAgencyFareRules); the moment a change is about to be saved, a restore is owed
+// (this.agencyFareRulesRestoreOwed). The explicit restore step settles it, and the After hook below
+// settles it whenever a scenario fails or stops before reaching that step.
+
+const AGENCY_FARE_RULE_FEE_NAMES = { "change fee": "change", "cancellation fee": "cancel" };
+const AGENCY_FARE_RULES_COMMENT = "Automation ADO 43181";
+
+function requireAgentAdminPage(world) {
+  if (!world.legacyGtpPage) {
+    throw new Error(
+      '[administration.steps] No legacy GTP tab on the World. Run "I log in to legacy GTP as the agent ..." first.'
+    );
+  }
+  return world.legacyGtpPage;
+}
+
+/**
+ * Reads the markup table: | fee | markup | markup type | currency |, one row per fee
+ * ("Change fee" / "Cancellation fee").
+ */
+function parseAgencyFareRulesTable(dataTable) {
+  const rules = {};
+  for (const row of dataTable.hashes()) {
+    const fee = AGENCY_FARE_RULE_FEE_NAMES[String(row.fee || "").trim().toLowerCase()];
+    if (!fee) {
+      throw new Error(
+        `[administration.steps] Unknown fee "${row.fee}" in the markup table. Use "Change fee" or "Cancellation fee".`
+      );
+    }
+    const amount = Number.parseFloat(row.markup);
+    if (Number.isNaN(amount)) {
+      throw new Error(`[administration.steps] The markup "${row.markup}" for ${row.fee} is not a number.`);
+    }
+    rules[fee] = { amount, markupType: String(row["markup type"]).trim(), currency: String(row.currency).trim() };
+  }
+  return rules;
+}
+
+function sameAgencyFareRules(left, right) {
+  return ["change", "cancel"].every((fee) => JSON.stringify(left?.[fee] ?? null) === JSON.stringify(right?.[fee] ?? null));
+}
+
+/**
+ * Puts the agency fare rules back to what the scenario first read. Re-enters the admin from the
+ * landing page, so it works whatever state the agent tab was left in; signs the agent back in on a
+ * fresh tab when the original one is gone.
+ */
+async function restoreAgencyFareRules(world) {
+  let page = world.legacyGtpPage;
+  if (!page || page.isClosed()) {
+    if (!world.browser || !world.legacyGtpAgentEmail) {
+      throw new Error(
+        "[administration.steps] The agency fare rules must be restored, but neither the agent tab nor a browser " +
+        `to reopen it is available. Restore them by hand to: ${JSON.stringify(world.originalAgencyFareRules)}`
+      );
+    }
+    const session = await LegacyGtp.createAgentSession(world.browser);
+    world.legacyGtpContext = session.context;
+    world.legacyGtpPage = page = session.page;
+    await LegacyGtp.loginAsAgent(page, world.legacyGtpAgentEmail);
+  }
+
+  await LegacyGtp.openAgencyAdministration(page);
+  const current = await Administration.openAgencyFareRulesManagement(page);
+  if (sameAgencyFareRules(current, world.originalAgencyFareRules)) {
+    logger.info("Agency fare rules already match their original values — nothing to restore", { current });
+  } else {
+    await Administration.setAgencyFareRules(page, world.originalAgencyFareRules, `${AGENCY_FARE_RULES_COMMENT} - restore`);
+  }
+  const restored = await Administration.verifyAgencyFareRules(page, world.originalAgencyFareRules);
+  world.agencyFareRulesRestoreOwed = false;
+  logger.info("Agency fare rules restored to their original values", {
+    original: world.originalAgencyFareRules,
+    changedTo: world.agencyFareRulesMarkup,
+    readBack: restored,
+  });
+  return restored;
+}
+
+When("I open the Agency Fare Rules Management in the legacy GTP administration", async function () {
+  const page = requireAgentAdminPage(this);
+  logger.info("Opening Fare Management > Agency Fare Rules Management in the legacy GTP administration");
+  const { agencyId } = await LegacyGtp.openAgencyAdministration(page);
+  const rules = await Administration.openAgencyFareRulesManagement(page);
+  // Only the FIRST reading is the agency's real state; a later one may already be this scenario's change.
+  if (!this.originalAgencyFareRules) {
+    this.originalAgencyFareRules = rules;
+  }
+  logger.info("Agency fare rules found before the scenario changes anything", { agencyId, rules });
+});
+
+When("I set the agency fare rules markup in the legacy GTP administration:", async function (dataTable) {
+  const page = requireAgentAdminPage(this);
+  if (!this.originalAgencyFareRules) {
+    throw new Error(
+      '[administration.steps] The original agency fare rules were not recorded. Run "I open the Agency Fare Rules ' +
+      'Management in the legacy GTP administration" first, so the change can be undone.'
+    );
+  }
+  const markup = parseAgencyFareRulesTable(dataTable);
+  logger.info("Setting the agency fare rules markup", { markup, original: this.originalAgencyFareRules });
+
+  // Owed BEFORE the save: a save that lands but whose answer is lost must still be undone.
+  this.agencyFareRulesRestoreOwed = true;
+  await Administration.setAgencyFareRules(page, markup, AGENCY_FARE_RULES_COMMENT);
+  this.agencyFareRulesMarkup = markup;
+});
+
+Then("the agency fare rules markup should be saved in the legacy GTP administration", async function () {
+  if (!this.agencyFareRulesMarkup) {
+    throw new Error('[administration.steps] No markup was set. Run "I set the agency fare rules markup ..." first.');
+  }
+  logger.info("Verifying the agency fare rules markup was saved", { markup: this.agencyFareRulesMarkup });
+  await Administration.verifyAgencyFareRules(requireAgentAdminPage(this), this.agencyFareRulesMarkup);
+});
+
+When("I restore the original agency fare rules markup in the legacy GTP administration", async function () {
+  if (!this.originalAgencyFareRules) {
+    throw new Error("[administration.steps] The original agency fare rules were never recorded, so there is nothing to restore.");
+  }
+  logger.info("Restoring the original agency fare rules", { original: this.originalAgencyFareRules });
+  await restoreAgencyFareRules(this);
+});
+
+// Hooks in step files run before the support hooks.js teardown, so the browser is still open here.
+After({ name: "Restore the agency fare rules markup", timeout: 240000 }, async function () {
+  if (!this.agencyFareRulesRestoreOwed) {
+    return;
+  }
+  logger.warn("The scenario ended with the agency fare rules still changed — restoring them in teardown", {
+    original: this.originalAgencyFareRules,
+    changedTo: this.agencyFareRulesMarkup,
+  });
+  await restoreAgencyFareRules(this);
 });

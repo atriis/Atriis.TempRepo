@@ -3080,6 +3080,54 @@ const FlightResults = {
   },
 
   /**
+   * Selects, on every leg tab of the open pricing-options drawer, the first fare that carries an
+   * agreement (the agreement logo in its card header). "Add to trip" only enables once every leg has
+   * a fare, and a leg with no agreement fare fails here, naming the leg - an agreement-fare test must
+   * not silently fall back to a public fare.
+   *
+   * @param {import('playwright').Page} page
+   * @returns {Promise<{ selected: true, legs: Array<{leg: number, index: number, brand: string}> }>}
+   */
+  async selectFirstAgreementFareOnEveryLeg(page) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    // Count the leg tabs only once the first leg's priced cards are up: the tab strip renders with
+    // them, and counting earlier reads 0 tabs and treats a round trip as one leg. A single-leg
+    // product renders no tab strip, so 0 tabs means one leg.
+    await flightResultsPage.getPricingOptionCardAgreements();
+    const legCount = Math.max(await flightResultsPage.getPricingOptionsTabCount(), 1);
+    const legs = [];
+
+    for (let leg = 0; leg < legCount; leg += 1) {
+      const cards = await flightResultsPage.getPricingOptionCardAgreements();
+      const selectButtons = await flightResultsPage.countPricingOptionSelectButtons();
+      if (selectButtons !== cards.length) {
+        throw new Error(
+          `[FlightResults.selectFirstAgreementFareOnEveryLeg] Leg ${leg + 1} shows ${cards.length} fare cards but ` +
+          `${selectButtons} "Select" buttons, so a card cannot be chosen by its position.`
+        );
+      }
+
+      const index = cards.findIndex((card) => card.hasAgreement);
+      if (index === -1) {
+        throw new Error(
+          `[FlightResults.selectFirstAgreementFareOnEveryLeg] No agreement fare on leg ${leg + 1} of ${legCount}. ` +
+          `Fares offered: ${JSON.stringify(cards.map((card) => card.brand))}`
+        );
+      }
+
+      logger.info('Selecting the first agreement fare of the leg', { leg: leg + 1, index, brand: cards[index].brand });
+      await flightResultsPage.clickSelectButtonInPricingOptionsModal(index);
+      legs.push({ leg: leg + 1, index, brand: cards[index].brand });
+    }
+
+    return { selected: true, legs };
+  },
+
+  /**
    * Selects the fare matching the target price on every leg tab of the open pricing-options modal,
    * since "Add to trip" stays disabled until each tab has a fare and the tab count varies per run.
    * @param {import('playwright').Page} page

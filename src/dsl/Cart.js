@@ -19,6 +19,7 @@ const { expectNumbersToBeEqualWithTolerance } = require("../assertions/numberAss
 const { parseAmountText } = require("@utils/dom");
 const { normalizeText, extractDateTokens, escapeRegex, stripWhitespaceAndLowercase, sortAlphabetically } = require("@utils/text");
 const { extractPdfText, countLetters, assertPdfTextIsReadable, containsAmount, findCurrencyAmounts } = require("@utils/pdf");
+const { expectedPriceBreakdownFees, readDisplayedFee, summariseMiniRuleGroups } = require("@utils/amadeusMiniRules");
 const logger = require("@utils/logger").child("Cart-DSL");
 
 // Every translation the app ships for `validation.unReadMessages1` (Atriis.OBT/src/assets/locale/*.json)
@@ -3479,6 +3480,64 @@ const Cart = {
       beforeDepartureText,
       afterDepartureText,
     };
+  },
+
+  /**
+   * Verifies the change and cancellation fees, before and after departure, in the open flight price
+   * breakdown against an Amadeus MiniRule_GetFromPricing reply plus the agency fare rules markup.
+   * The expected values come from src/utils/amadeusMiniRules.js, which mirrors the backend.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} miniRuleReplyXml - The captured MiniRule_GetFromPricing response
+   * @param {{change?: object, cancel?: object}} markup - Agency markup per fee: { amount, markupType, currency }
+   * @returns {Promise<{miniRules: string[], fees: object, expected: object, displayed: object}>}
+   */
+  async verifyMiniRuleFeesInPriceBreakdown(page, miniRuleReplyXml, markup) {
+    if (!page) throw new Error('page is required');
+    if (!markup || typeof markup !== 'object') {
+      throw new Error(`markup must be an object with the change/cancel agency markup, got: ${typeof markup}`);
+    }
+
+    const { parsed, fees, withMarkup, expected } = expectedPriceBreakdownFees(miniRuleReplyXml, markup);
+    const miniRules = summariseMiniRuleGroups(parsed);
+
+    const cartPage = getPageObject(page, CartPage);
+    const texts = await cartPage.getFlightPriceBreakdownChangeAndCancelFeeTexts();
+    const displayed = {
+      change: { before: readDisplayedFee(texts.change.before), after: readDisplayedFee(texts.change.after) },
+      cancel: { before: readDisplayedFee(texts.cancel.before), after: readDisplayedFee(texts.cancel.after) },
+    };
+
+    logger.info('Mini rules read from the MiniRule_GetFromPricing reply', { miniRules, feesBeforeMarkup: fees, feesWithMarkup: withMarkup });
+    logger.info('Mini rule fees shown in the price breakdown', { texts });
+
+    const mismatches = [];
+    for (const fee of ['change', 'cancel']) {
+      for (const when of ['before', 'after']) {
+        const want = expected[fee][when];
+        const got = displayed[fee][when];
+        const same = want.state === got.state && (want.state !== 'amount' || Math.abs(want.amount - got.amount) < 0.005);
+        if (!same) {
+          mismatches.push(
+            `${fee === 'change' ? 'Change' : 'Cancellation'} fee ${when} departure: expected ` +
+            `${want.state === 'amount' ? want.amount.toFixed(2) : `"${want.text}"`} ` +
+            `(mini rules ${fees[fee][when]} + markup ${markup[fee] ? `${markup[fee].amount} ${markup[fee].currency}` : 'none'}), ` +
+            `shown "${got.text}"`
+          );
+        }
+      }
+    }
+
+    if (mismatches.length > 0) {
+      throw new Error(
+        `[Cart.verifyMiniRuleFeesInPriceBreakdown] The price breakdown mini rules do not match the ` +
+        `MiniRule_GetFromPricing reply plus the agency fare rules markup:\n  - ${mismatches.join('\n  - ')}\n` +
+        `Mini rules:\n  ${miniRules.join('\n  ')}`
+      );
+    }
+
+    logger.info('Price breakdown mini rule fees match the mini rules plus the agency markup', { expected });
+    return { miniRules, fees, expected, displayed };
   },
 
   async verifyPriceBreakdownRowVisible(page, label) {

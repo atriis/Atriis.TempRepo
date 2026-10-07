@@ -38,6 +38,8 @@ When("I log in to legacy GTP as the agent {string}", async function (email) {
   const session = await LegacyGtp.createAgentSession(this.browser);
   this.legacyGtpContext = session.context;
   this.legacyGtpPage = session.page;
+  // Kept so teardown can sign the same agent back in if this tab is gone (see administration.steps.js).
+  this.legacyGtpAgentEmail = email;
   await LegacyGtp.loginAsAgent(this.legacyGtpPage, email);
 });
 

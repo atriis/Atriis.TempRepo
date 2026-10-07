@@ -7,6 +7,7 @@
  */
 const { getPageObject } = require("@utils/pageObjectCache");
 const { LegacyGtpPage } = require("@pages/LegacyGtpPage");
+const AdministrationPage = require("@pages/AdministrationPage");
 const config = require("@config/config");
 const sessionOptions = require("@utils/sessionOptions");
 const logger = require("@utils/logger").child("LegacyGtp");
@@ -95,6 +96,36 @@ const LegacyGtp = {
       );
     }
     return { loggedIn: true, email };
+  },
+
+  /**
+   * Takes the signed-in agent from the legacy GTP landing page into their agency's GTP Admin Center
+   * (the "UNIGLOBE ALL Agencies" account for uniglobe@noam.com), following the landing page's own
+   * administration link so the agency id is never hard-coded.
+   *
+   * @param {import('@playwright/test').Page} page - The legacy GTP tab of a signed-in agent
+   * @returns {Promise<{agencyId: string, url: string}>}
+   */
+  async openAgencyAdministration(page) {
+    if (!page) throw new Error('[LegacyGtp.openAgencyAdministration] "page" is required.');
+
+    const legacyGtpPage = getPageObject(page, LegacyGtpPage);
+    try {
+      await page.goto(config.legacyGtpUrl, { waitUntil: "domcontentloaded" });
+      const href = await legacyGtpPage.getAgencyAdministrationHref();
+      const url = new URL(href, config.legacyGtpUrl).href;
+      await page.goto(url, { waitUntil: "domcontentloaded" });
+      await getPageObject(page, AdministrationPage).waitForAgencyAdminMenuReady();
+
+      const agencyId = (href.match(/\/AgencyAdministration\/(\d+)/) || [])[1] || "";
+      logger.info("Agency GTP Admin Center is open", { agencyId, url });
+      return { agencyId, url };
+    } catch (err) {
+      throw new Error(
+        `[LegacyGtp.openAgencyAdministration] Could not open the agency administration from the legacy GTP ` +
+        `landing page (${config.legacyGtpUrl}). Original: ${err.message}`
+      );
+    }
   },
 
   /**
