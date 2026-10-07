@@ -3456,6 +3456,36 @@ const FlightResults = {
     await flightResultsPage.waitForFareRulesNote();
   },
 
+  /**
+   * Opens the fare rules of the first flight result without an agreement badge (a public fare).
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @returns {Promise<void>}
+   */
+  async clickToOpenFareRulesForFirstResultWithoutAgreement(page) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    await flightResultsPage.clickFareRulesButtonInFirstResultWithoutAgreement();
+    await flightResultsPage.waitForFareRulesNote();
+  },
+
+  /**
+   * Selects, by schedule, the first flight result without an agreement badge (a public fare).
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @returns {Promise<{selected: boolean}>}
+   */
+  async selectFirstSegmentWithoutAgreementBySchedule(page) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    await flightResultsPage.clickSelectButtonInFirstResultWithoutAgreement();
+    return { selected: true };
+  },
+
   async clickToOpenFlightDetails(page) {
     if (!page) {
       throw new Error('page is required');

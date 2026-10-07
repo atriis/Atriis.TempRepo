@@ -395,6 +395,9 @@ const SELECTORS = {
   // Marine Fare icon (flight-preview.vue / flight-by-schedule-pricing-option.vue)
   // Uses anchor material icon + "Marine fare" text — no data-testid available
   MARINE_FARE_ANCHOR_ICON: 'span.material-symbols-outlined:has-text("anchor")',
+  // The top bar of a flight result card (flight-preview.vue): score, and the card's own agreement or
+  // marine-fare badge — unlike the footer's "Marine fare inside pricing options" hint.
+  FLIGHT_INFO_TOP_BAR: '.flight-info-top-bar',
 
   // Advisory icons in flight preview segment (flight-preview-segment.vue)
   // Orange material icons for train/bus transportation advisories. The stop-over advisory
@@ -4491,6 +4494,65 @@ async clickSelectForFareWithBaggagePricingOptions(baggageText) {
     } catch {
       return false;
     }
+  }
+
+  /**
+   * Gets the first flight result card that carries no agreement badge. flight-preview.vue renders
+   * .agreement-icon for every agreement fare and an "anchor" ligature for a marine (PTC) fare, so a
+   * card with neither is a public fare — the only kind Amadeus fare rules price with pricingOptionKey RP
+   * (an agreement fare is priced with RW / RU, a marine fare with PAX / PTC / PSO / RU).
+   * Both badges are read from the card's top bar only: a public fare card can also carry a
+   * "Marine fare inside pricing options" anchor in its footer, which is about another fare.
+   * @returns {import('@playwright/test').Locator}
+   */
+  getFirstResultWithoutAgreement() {
+    const topBar = SELECTORS.FLIGHT_INFO_TOP_BAR;
+    return this.page
+      .locator(SELECTORS.FLIGHT_PREVIEW)
+      .filter({ hasNot: this.page.locator(`${topBar} ${SELECTORS.AGREEMENT_ICON}`) })
+      .filter({ hasNot: this.page.locator(`${topBar} ${SELECTORS.MARINE_FARE_ANCHOR_ICON}`) })
+      .first();
+  }
+
+  /**
+   * Waits for the first result without an agreement badge, failing with a test-data hint when every
+   * loaded result carries an agreement.
+   * @param {number} timeout - Max wait time in ms (default: 60000)
+   * @returns {Promise<import('@playwright/test').Locator>}
+   */
+  async waitForFirstResultWithoutAgreement(timeout = 60000) {
+    // The cards render before their agreement badges, so wait for a loaded card's fare rules button
+    // before filtering — filtering placeholder cards would wrongly match an agreement fare.
+    await this.waitForFareRulesButton(0, timeout);
+
+    const result = this.getFirstResultWithoutAgreement();
+    try {
+      await result.waitFor({ state: 'visible', timeout: 15000 });
+    } catch {
+      throw new Error(
+        '[FlightResultsPage.waitForFirstResultWithoutAgreement] Every flight result carries an agreement or marine fare badge — ' +
+        'no public fare to select. Use a carrier, route or user whose results include a fare without an agreement.'
+      );
+    }
+    return result;
+  }
+
+  /**
+   * Opens the fare rules of the first result without an agreement badge.
+   * @param {number} timeout - Max wait time in ms (default: 60000)
+   */
+  async clickFareRulesButtonInFirstResultWithoutAgreement(timeout = 60000) {
+    const result = await this.waitForFirstResultWithoutAgreement(timeout);
+    await result.locator(SELECTORS.FARE_RULES_BUTTON).first().click({ timeout: 10000 });
+  }
+
+  /**
+   * Clicks "Select" on the first by-schedule result without an agreement badge.
+   * @param {number} timeout - Max wait time in ms (default: 60000)
+   */
+  async clickSelectButtonInFirstResultWithoutAgreement(timeout = 60000) {
+    const result = await this.waitForFirstResultWithoutAgreement(timeout);
+    await result.locator(`${SELECTORS.RESULTS_BUTTON}:has-text("Select")`).first().click({ timeout: 10000 });
   }
 
   /**

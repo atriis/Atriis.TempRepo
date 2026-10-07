@@ -75,6 +75,16 @@ When("I select one flight segment by schedule", async function () {
   await FlightResults.selectOneSegmentBySchedule(this.page);
 });
 
+When("I select the first flight segment without an agreement by schedule", async function () {
+  logger.info("Selecting the first flight segment without an agreement by schedule");
+  await FlightResults.selectFirstSegmentWithoutAgreementBySchedule(this.page);
+});
+
+When("I click to open fare rules for the first result without an agreement", async function () {
+  logger.info("Clicking to open fare rules for the first result without an agreement");
+  await FlightResults.clickToOpenFareRulesForFirstResultWithoutAgreement(this.page);
+});
+
 When("I wait for the change flight button to be visible", async function () {
   logger.info("Waiting for change flight button to appear");
   const flightResultsPage = getPageObject(this.page, FlightResultsPage);
