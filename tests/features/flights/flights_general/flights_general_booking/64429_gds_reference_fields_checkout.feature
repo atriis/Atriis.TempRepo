@@ -14,7 +14,7 @@ Feature: 64429 GDS Flights - Only GDS reference fields displayed in checkout
   Scenario: Only GDS reference fields are displayed in checkout
     Given I am logged in as "georgebush@reffieldsgds.com" booking a new trip
     And I have added myself as the traveler
-    When I search for a one way flight from "PAR" to "GRU"
+    When I search for a one way flight from "DOH" to "LIS"
     And I add the first flight to cart
     And I proceed to checkout
     Then the following checkout reference fields should be visible:
