@@ -24,6 +24,11 @@ Feature: 85533 GroundScope - Flight number typed at search is kept on an airport
     And I fill credit card cvv if needed
     And I proceed to checkout
     And I complete the booking
+    When I capture the "request" payload for request type "GroundScopeBookingResponse" from Storage
+    Then the captured "request" payload for request type "GroundScopeBookingResponse" should contain "Pickup flight: BA 8495".block("driverNotes")
+    When I capture the "response" payload for request type "GroundScopeBookingDetailsResponse" from Storage
+    Then the captured "response" payload for request type "GroundScopeBookingDetailsResponse" should contain "Pickup flight: BA 8495".block("driverNotes")
     When I capture the "response" payload for request type "GetQuotesV3" from Storage
-    Then the captured "response" payload for request type "GetQuotesV3" should contain "BA8495".block("flightNumber")
+    Then the captured "response" payload for request type "GetQuotesV3" should contain "8495".block("flightNumber")
+    Then the captured "response" payload for request type "GetQuotesV3" should contain "BA".block("airLine")
     And I successfully cancel the trip
