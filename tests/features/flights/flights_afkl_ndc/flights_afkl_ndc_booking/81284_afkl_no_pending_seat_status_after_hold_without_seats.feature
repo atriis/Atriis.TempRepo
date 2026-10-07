@@ -14,9 +14,9 @@ Feature: 81284 AFKL - No pending seat validation when booking without seats
   Scenario: Held AFKL NDC trip with no seats selected shows no pending seating status
     Given I am logged in as "afklRules@ams.corp" booking a new trip
     And I have added a random guest traveler
-    When I search for a round trip flight from "AMS" to "GRU"
+    When I search for a round trip flight from "AMS" to "PAR"
     And flight results should be available
-    And I filter results by carrier "kl"
+    And I filter airline results by "KLM" checkbox
     And I select the first flight result in new flight flow
     And I select the outbound first option from pricing options page
     And I select the inbound first option from pricing options page
