@@ -15,7 +15,7 @@ Feature: 69252 Galileo - Fare rules displayed in multi-city search
   Scenario: Fare rules visible in results, pricing options, flight details and cart for multi-city
     Given I am logged in as "bsgalileoflight@galileoflight.com" booking a new trip
     And I have added myself as the traveler
-    When I search for a multi-city flight with legs "IAH-DFW, MIA-IAH, ORD-IAH"
+    When I search for a multi-city flight with legs "LIS-MAD, MAD-BOG, BOG-LON"
     And flight results should be available
     And I click to open fare rules
     Then I should see the fare rules note about strictest terms
@@ -38,12 +38,12 @@ Feature: 69252 Galileo - Fare rules displayed in multi-city search
     Then I should see the fare rules note about strictest terms
     When I close fare rules window
     And I select the first option from pricing options
-    Then I should see the heading "Flight To Houston"
+    Then I should see the heading "Flight To Bogota"
     When I click to open fare rules from modal
     Then I should see the fare rules note about strictest terms
     When I close fare rules window
     And I select the first option from pricing options
-    Then I should see the heading "Flight To Houston"
+    Then I should see the heading "Flight To London"
     When I click to open fare rules from modal
     Then I should see the fare rules note about strictest terms
     When I close fare rules window
