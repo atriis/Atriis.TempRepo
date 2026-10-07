@@ -3128,6 +3128,63 @@ const FlightResults = {
   },
 
   /**
+   * By schedule: on the leg being chosen, finds the first result whose Pricing Options hold an agreement
+   * fare (handshake / agency logo, never the marine anchor) whose tooltip contains `tooltipText`, and
+   * selects that fare. Results are tried in their displayed order, so filter them first (e.g. by carrier).
+   * A special-PTC fare such as MIS often hides behind the public fare on the result card itself, which is
+   * why every result's Pricing Options is opened. Fails, listing what each result offered, when no result
+   * has such a fare - a special-fare test must not silently fall back to a public fare.
+   * The drawer stays open on the selected fare; confirm the leg with its bottom "Select" next.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} tooltipText - Text the agreement tooltip must contain, e.g. "PTC: MIS"
+   * @param {{maxResults?: number}} [options] - How many results to open at most (default: 6)
+   * @returns {Promise<{result: number, index: number, brand: string, tooltip: string}>}
+   */
+  async selectBySchedulePricingOptionWithAgreementTooltip(page, tooltipText, { maxResults = 6 } = {}) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+    if (!tooltipText || typeof tooltipText !== 'string') {
+      throw new Error(`tooltipText must be a non-empty string, got: ${typeof tooltipText}`);
+    }
+    if (!Number.isInteger(maxResults) || maxResults < 1) {
+      throw new Error(`maxResults must be an integer >= 1, got: ${maxResults}`);
+    }
+
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    await flightResultsPage.waitForFlightResults(90000);
+    await flightResultsPage.waitForPricingOptionsButton(0, 90000);
+    const resultCount = Math.min(maxResults, await flightResultsPage.getPricingOptionsButtonCount());
+    const wanted = tooltipText.toLowerCase();
+    const offered = [];
+
+    for (let result = 0; result < resultCount; result += 1) {
+      await flightResultsPage.clickPricingOptionsButton(result);
+      const cards = await flightResultsPage.getPricingOptionCardAgreementTooltips();
+      const index = cards.findIndex((card) => card.badge === 'agreement' && card.tooltip.toLowerCase().includes(wanted));
+
+      if (index !== -1) {
+        const chosen = { result: result + 1, index, brand: cards[index].brand, tooltip: cards[index].tooltip };
+        logger.info('Selecting the agreement fare whose tooltip matches', { tooltipText, ...chosen });
+        await flightResultsPage.clickSelectButtonInPricingOptionCardByIndex(index);
+        return chosen;
+      }
+
+      offered.push({
+        result: result + 1,
+        fares: cards.map((card) => `${card.brand} [${card.badge ?? 'public'}] ${card.tooltip || card.tooltipError || ''}`.trim()),
+      });
+      await flightResultsPage.closePricingOptionsDrawer();
+    }
+
+    throw new Error(
+      `[FlightResults.selectBySchedulePricingOptionWithAgreementTooltip] None of the first ${resultCount} results on this ` +
+      `leg offers an agreement fare whose tooltip contains "${tooltipText}". Pricing options seen: ${JSON.stringify(offered)}`
+    );
+  },
+
+  /**
    * Selects the fare matching the target price on every leg tab of the open pricing-options modal,
    * since "Add to trip" stays disabled until each tab has a fare and the tab count varies per run.
    * @param {import('playwright').Page} page

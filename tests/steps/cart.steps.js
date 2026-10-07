@@ -4035,19 +4035,34 @@ Then('the price breakdown should show subtotal and non-refundable cancellation b
   await Cart.verifyNonRefundableMiniRulesInPriceBreakdown(this.page);
 });
 
-// Needs the MiniRule_GetFromPricing response captured from Storage (payload_validation.steps.js) and
-// the agency markup set by "I set the agency fare rules markup in the legacy GTP administration:".
+// Compares the open price breakdown with the MiniRule_GetFromPricing response captured from Storage
+// (payload_validation.steps.js) plus the given agency markup, and attaches the mini rules read.
+async function verifyPriceBreakdownAgainstCapturedMiniRules(world, markup) {
+  const record = PayloadValidation.getCapturedPayload(world, 'response', 'Amadeus4.MiniRule_GetFromPricing');
+  logger.info('Verifying the price breakdown mini rules against the captured mini rules', { rowKey: record.rowKey, markup });
+  const result = await Cart.verifyMiniRuleFeesInPriceBreakdown(world.page, record.payload, markup);
+  world.attach(`Mini rules (MiniRule_GetFromPricing):\n${result.miniRules.join('\n')}`, 'text/plain');
+}
+
+// Needs the agency markup set by "I set the agency fare rules markup in the legacy GTP administration:".
 Then('the change and cancellation fees in the price breakdown should match the captured mini rules plus the agency fare rules markup', async function () {
   if (!this.agencyFareRulesMarkup) {
     throw new Error('No agency fare rules markup is known. Run "I set the agency fare rules markup in the legacy GTP administration:" first.');
   }
-  const record = PayloadValidation.getCapturedPayload(this, 'response', 'Amadeus4.MiniRule_GetFromPricing');
-  logger.info('Verifying the price breakdown mini rules against the captured mini rules plus the agency markup', {
-    rowKey: record.rowKey,
-    markup: this.agencyFareRulesMarkup,
-  });
-  const result = await Cart.verifyMiniRuleFeesInPriceBreakdown(this.page, record.payload, this.agencyFareRulesMarkup);
-  this.attach(`Mini rules (MiniRule_GetFromPricing):\n${result.miniRules.join('\n')}`, 'text/plain');
+  await verifyPriceBreakdownAgainstCapturedMiniRules(this, this.agencyFareRulesMarkup);
+});
+
+// Needs the markup removed by "I remove the agency fare rules markup in the legacy GTP administration",
+// so no markup can apply.
+Then('the change and cancellation fees in the price breakdown should match the captured mini rules without any markup', async function () {
+  const markup = this.agencyFareRulesMarkup;
+  if (!markup || markup.change || markup.cancel) {
+    throw new Error(
+      'The agency fare rules markup was not removed in this scenario. Run "I remove the agency fare rules markup in ' +
+      `the legacy GTP administration" first. Markup known: ${JSON.stringify(markup ?? null)}`
+    );
+  }
+  await verifyPriceBreakdownAgainstCapturedMiniRules(this, {});
 });
 
 Then('{string} should be visible in price breakdown', async function (label) {

@@ -2039,8 +2039,8 @@ class FlightResultsPage {
   /**
    * Waits for and clicks the Select button inside the pricing-option card at the given
    * zero-based position. Card-scoped (like the by-text variant), so it never hits the
-   * by-schedule drawer's bottom "Select" confirm button, and it does not wait for a leg-tab
-   * check - the by-schedule drawer has no leg tabs.
+   * by-schedule drawer's bottom "Select" confirm button. It waits for the card's own "Unselect"
+   * state, not a leg-tab check, so it does not depend on the drawer's tab strip.
    *
    * @param {number} index - Zero-based card position.
    */
@@ -2114,6 +2114,66 @@ class FlightResultsPage {
     return this.getPricingOptionsOverlay()
       .getByRole('button', { name: SELECTORS.PRICING_OPTIONS_SELECT_BUTTON_NAME, exact: true })
       .count();
+  }
+
+  /**
+   * Describes each pricing-option card on the current leg, in order, with the badge in its header and
+   * that badge's tooltip. leg-pricing-option.vue renders a marine (SEA) fare as an "anchor" .agreement-icon
+   * and every other agreement as the handshake / agency logo .agreement-icon; the tooltip is the
+   * agreement's text (e.g. "Agency Private Fare; PTC: MIS"), shown only while the icon is hovered.
+   *
+   * @param {number} timeout - Max wait for the cards to render (default: 120000)
+   * @returns {Promise<Array<{brand: string, badge: 'agreement'|'marine'|null, tooltip: string, tooltipError?: string}>>}
+   *   tooltipError says why no tooltip was read (the hover failed, or the agreement has no tooltip text).
+   */
+  async getPricingOptionCardAgreementTooltips(timeout = 120000) {
+    // Waits for real prices (never the loading skeleton) and reads each card's brand and agreement presence.
+    const agreements = await this.getPricingOptionCardAgreements(timeout);
+    const cards = this.getPricingOptionsCards();
+    const tooltips = this.page.locator(SELECTORS.EL_POPPER_VISIBLE);
+    const result = [];
+
+    for (let i = 0; i < agreements.length; i += 1) {
+      const { brand, hasAgreement } = agreements[i];
+      if (!hasAgreement) {
+        result.push({ brand, badge: null, tooltip: '' });
+        continue;
+      }
+
+      const card = cards.nth(i);
+      const badge = (await card.locator(SELECTORS.MARINE_FARE_ANCHOR_ICON).count()) > 0 ? 'marine' : 'agreement';
+      const icon = card.locator(SELECTORS.AGREEMENT_ICON).first();
+      const entry = { brand, badge, tooltip: '' };
+      try {
+        await icon.scrollIntoViewIfNeeded({ timeout: 5000 }).catch(() => {});
+        await icon.hover({ timeout: 10000 });
+        await tooltips.last().waitFor({ state: 'visible', timeout: 5000 });
+        entry.tooltip = ((await tooltips.last().innerText()) ?? '').replace(/\s+/g, ' ').trim();
+      } catch (err) {
+        entry.tooltipError = err.message.split('\n')[0];
+      } finally {
+        // Move off the icon and let the tooltip close, so the next card never reads this one's text.
+        await this.page.mouse.move(0, 0);
+        await tooltips.first().waitFor({ state: 'hidden', timeout: 5000 }).catch(() => {});
+      }
+      result.push(entry);
+    }
+    return result;
+  }
+
+  /**
+   * Closes the open pricing-options drawer with Escape and waits for it to go.
+   */
+  async closePricingOptionsDrawer(timeout = 15000) {
+    try {
+      await this.page.keyboard.press('Escape');
+      await this.waitForPricingOptionsOverlayHidden(timeout);
+    } catch (err) {
+      throw new Error(
+        `[FlightResultsPage.closePricingOptionsDrawer] The pricing options drawer did not close on Escape ` +
+        `(overlay: ${SELECTORS.PRICING_OPTIONS_OVERLAY}). Original: ${err.message}`
+      );
+    }
   }
 
   /**

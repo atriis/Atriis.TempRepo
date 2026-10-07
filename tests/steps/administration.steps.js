@@ -517,7 +517,7 @@ Then("the agreement tooltip should display {string} in the administration", asyn
   await Administration.verifyAgreementTooltipValue(this.adminPage, expectedTooltip);
 });
 
-// --- Agency Fare Rules Management markup in the legacy GTP administration (test 43181) ---
+// --- Agency Fare Rules Management markup in the legacy GTP administration (tests 43181, 43182) ---
 //
 // The agency fare rules markup is shared, live configuration of a dev agency, so a scenario that
 // changes it owns putting it back. The first reading of the section is kept as the agency's real
@@ -526,7 +526,7 @@ Then("the agreement tooltip should display {string} in the administration", asyn
 // settles it whenever a scenario fails or stops before reaching that step.
 
 const AGENCY_FARE_RULE_FEE_NAMES = { "change fee": "change", "cancellation fee": "cancel" };
-const AGENCY_FARE_RULES_COMMENT = "Automation ADO 43181";
+const AGENCY_FARE_RULES_COMMENT = "Automation - agency fare rules markup test";
 
 function requireAgentAdminPage(world) {
   if (!world.legacyGtpPage) {
@@ -627,6 +627,32 @@ When("I set the agency fare rules markup in the legacy GTP administration:", asy
   this.agencyFareRulesRestoreOwed = true;
   await Administration.setAgencyFareRules(page, markup, AGENCY_FARE_RULES_COMMENT);
   this.agencyFareRulesMarkup = markup;
+});
+
+When("I remove the agency fare rules markup in the legacy GTP administration", async function () {
+  const page = requireAgentAdminPage(this);
+  if (!this.originalAgencyFareRules) {
+    throw new Error(
+      '[administration.steps] The original agency fare rules were not recorded. Run "I open the Agency Fare Rules ' +
+      'Management in the legacy GTP administration" first, so the change can be undone.'
+    );
+  }
+  logger.info("Removing the agency fare rules markup", { original: this.originalAgencyFareRules });
+  // Owed BEFORE any save: a save that lands but whose answer is lost must still be undone. When nothing
+  // was saved, restoreAgencyFareRules finds the rules unchanged and saves nothing.
+  this.agencyFareRulesRestoreOwed = true;
+  const { rules } = await Administration.removeAgencyFareRulesMarkup(
+    page,
+    this.originalAgencyFareRules,
+    `${AGENCY_FARE_RULES_COMMENT} - remove markup`
+  );
+  this.agencyFareRulesMarkup = rules;
+});
+
+Then("the agency fare rules should have no markup in the legacy GTP administration", async function () {
+  const expected = this.agencyFareRulesMarkup ?? { change: null, cancel: null };
+  logger.info("Verifying the agency fare rules carry no markup", { expected });
+  await Administration.verifyAgencyFareRules(requireAgentAdminPage(this), expected);
 });
 
 Then("the agency fare rules markup should be saved in the legacy GTP administration", async function () {

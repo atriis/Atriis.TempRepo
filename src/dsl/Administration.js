@@ -2982,6 +2982,37 @@ const Administration = {
     logger.info('[Administration.verifyAgencyFareRules] Agency fare rules read back as expected', { saved });
     return saved;
   },
+
+  /**
+   * Removes the agency fare rules markup on the open Agency Fare Rules Management section. The section
+   * cannot delete a saved rule, so each fee is saved as 0 Fixed Value, which the backend adds as nothing
+   * (FareRulesManagementEngine.ApplyFixedAdminFee also keeps "no charge" as no charge). Saves nothing
+   * when no fee carries an amount: Save stays disabled on an unchanged form.
+   *
+   * @param {import('playwright').Page} adminPage - The agent's GTP Admin Center page
+   * @param {{change: object|null, cancel: object|null}} currentRules - The rules the section shows now
+   * @param {string} comment - Modification comment recorded with the change
+   * @returns {Promise<{removed: boolean, rules: {change: null, cancel: null}}>}
+   */
+  async removeAgencyFareRulesMarkup(adminPage, currentRules, comment) {
+    if (!adminPage) {
+      throw new Error('[Administration.removeAgencyFareRulesMarkup] "adminPage" is required.');
+    }
+    if (!currentRules || typeof currentRules !== 'object') {
+      throw new Error(`[Administration.removeAgencyFareRulesMarkup] "currentRules" must be an object, got: ${typeof currentRules}`);
+    }
+
+    const noMarkup = { change: null, cancel: null };
+    const hasMarkup = Object.keys(AGENCY_FARE_RULE_FEES).some((fee) => Number(currentRules[fee]?.amount ?? 0) !== 0);
+    if (!hasMarkup) {
+      logger.info('[Administration.removeAgencyFareRulesMarkup] The agency has no fare rules markup to remove', { currentRules });
+      return { removed: false, rules: noMarkup };
+    }
+
+    await this.setAgencyFareRules(adminPage, noMarkup, comment);
+    logger.info('[Administration.removeAgencyFareRulesMarkup] Agency fare rules markup removed', { previous: currentRules });
+    return { removed: true, rules: noMarkup };
+  },
 };
 
 // --- Agency Fare Rules Management helpers (test 43181) ---

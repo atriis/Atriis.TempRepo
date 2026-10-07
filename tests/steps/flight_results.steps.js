@@ -442,6 +442,16 @@ When('I select the first agreement fare for every direction from pricing options
   logger.info('Agreement fare selected on every direction', result);
 });
 
+// By schedule: opens each result's Pricing Options in turn (up to 6); confirm the leg afterwards with
+// "I confirm the pricing option for the current segment".
+// Each drawer may wait up to 2 min for its prices, plus a hover per agreement card.
+const AGREEMENT_TOOLTIP_SCAN_STEP_TIMEOUT_MS = 15 * 60 * 1000;
+When('I select the agreement fare with tooltip {string} from the pricing options of the results', { timeout: AGREEMENT_TOOLTIP_SCAN_STEP_TIMEOUT_MS }, async function (tooltipText) {
+  logger.info('Selecting the agreement fare with a matching tooltip from the results pricing options', { tooltipText });
+  const result = await FlightResults.selectBySchedulePricingOptionWithAgreementTooltip(this.page, tooltipText);
+  logger.info('Agreement fare selected', result);
+});
+
 When("I click to open the second fare rules from pricing options modal", async function () {
   logger.info("Clicking to open the second fare rules from pricing options modal");
   await FlightResults.clickToOpenSecondFareRulesFromPricingOptions(this.page);
