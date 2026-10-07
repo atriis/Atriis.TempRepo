@@ -34,7 +34,7 @@ Feature: 82675 Travelfusion - Management markup of 50% applied on the Aer Lingus
     And I wait for the change flight button to be visible
 
     # Condor is not, so it earns no markup - and the mixed carriers split the trip into two tickets
-    When I filter results by carrier "Condor"
+    When I filter airline results by "Condor" checkbox
     And I start intercepting the "flightPricing" API response
     And I click to open first pricing options
     Then the markup in the flight pricing response should be "0"
