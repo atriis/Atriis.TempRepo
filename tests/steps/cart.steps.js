@@ -2120,6 +2120,11 @@ Then("the last quote destination should contain {string}", async function (city)
   await Cart.verifyLastQuoteDestination(this.page, city);
 });
 
+Then("the last quote destination should contain either {string} or {string}", async function (firstCity, secondCity) {
+  logger.info("Verifying last quote destination contains either city", { firstCity, secondCity });
+  await Cart.verifyLastQuoteDestinationIsEither(this.page, [firstCity, secondCity]);
+});
+
 // Title and drop-off are populated from different fields of the quote, so a title that already
 // names the destination does not prove the drop-off does — which is what an edited search has to
 // show. Assert both together rather than trusting the title alone.

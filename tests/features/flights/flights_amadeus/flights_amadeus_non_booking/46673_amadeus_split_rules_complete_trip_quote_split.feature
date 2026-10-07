@@ -20,4 +20,4 @@ Feature: 46673 Amadeus - Split rules complete trip quote is split correctly
     And I add the first flight to cart
     Then the booking status should be "Pending booking"
     Then the first quote destination should contain "Dallas"
-    And the last quote destination should contain "Worcester"
+    And the last quote destination should contain either "Boston" or "Worcester"

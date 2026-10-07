@@ -7274,6 +7274,27 @@ const Cart = {
   },
 
   /**
+   * Verifies the last quote's title names any one of the given cities. For a return leg whose
+   * arrival airport varies with the supplier's ranking (BOS vs ORH for a Boston-area origin),
+   * so the assertion pins the area rather than whichever airport ranked first that day.
+   * @param {import('playwright').Page} page
+   * @param {string[]} cities
+   */
+  async verifyLastQuoteDestinationIsEither(page, cities) {
+    if (!page) throw new Error('page is required');
+    if (!Array.isArray(cities) || cities.length === 0 || cities.some(c => !c || typeof c !== 'string')) {
+      throw new Error('cities must be a non-empty array of non-empty strings');
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+    const actualTitle = await cartPage.getLastQuoteTitleText();
+    // Thrown rather than asserted through expect(): a custom expect() message never reaches the report.
+    if (!cities.some(city => actualTitle.toLowerCase().includes(city.toLowerCase()))) {
+      throw new Error(`Expected the last quote title to contain one of [${cities.join(', ')}], but it was "${actualTitle}".`);
+    }
+  },
+
+  /**
    * Verifies the drop-off address on the last quote card carries the expected location.
    *
    * The card's title and its drop-off leg are populated from different fields of the quote, so a
