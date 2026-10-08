@@ -71,6 +71,13 @@ When("I complete the booking with Fusion credit card verification inside the 3DS
   logger.info("Fusion 3DS verification result", this.fusion3dsVerification);
 });
 
+// For Travelfusion accounts whose verification page refuses to load inside OBT's iframe (#48241, staging NL).
+When("I complete the booking with Fusion credit card verification in a new tab", { timeout: CHECKOUT_STEP_TIMEOUT_MS + 240000 }, async function () {
+  logger.info("Completing Fusion booking with card verification in a new tab");
+  this.fusion3dsVerification = await Checkout.bookAndFinalizeWithFusionCardVerificationInNewTab(this.page);
+  logger.info("Fusion 3DS new-tab verification result", this.fusion3dsVerification);
+});
+
 Then("the Fusion card verification should return to OBT and close by itself", async function () {
   const result = this.fusion3dsVerification;
   if (!result) {

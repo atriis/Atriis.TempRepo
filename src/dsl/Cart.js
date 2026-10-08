@@ -3507,6 +3507,38 @@ const Cart = {
   },
 
   /**
+   * Verifies the value shown next to "CC Charge" in the open flight price breakdown.
+   * Before ticketing an airline that charges per card type shows "TBD" there.
+   * @param {import('playwright').Page} page
+   * @param {string} expectedValue
+   */
+  async verifyPriceBreakdownCcChargeValue(page, expectedValue) {
+    if (!page) throw new Error('page is required');
+    if (!expectedValue || typeof expectedValue !== 'string') {
+      throw new Error(`expectedValue must be a non-empty string, got: ${typeof expectedValue}`);
+    }
+    const cartPage = getPageObject(page, CartPage);
+    const valueText = await cartPage.getFlightPriceBreakdownCcChargeValueText();
+    logger.info('CC Charge value in price breakdown', { valueText, expectedValue });
+    expect(valueText, `CC Charge in price breakdown should be "${expectedValue}"`).toBe(expectedValue);
+    return valueText;
+  },
+
+  /**
+   * Hovers the CC Charge info icon and returns the lines of the tooltip it opens.
+   * @param {import('playwright').Page} page
+   * @returns {Promise<string[]>}
+   */
+  async hoverPriceBreakdownCcChargeInfo(page) {
+    if (!page) throw new Error('page is required');
+    const cartPage = getPageObject(page, CartPage);
+    await cartPage.hoverFlightPriceBreakdownCcChargeInfoIcon();
+    const items = await cartPage.getVisibleTooltipItems();
+    logger.info('CC Charge tooltip lines', { items });
+    return items;
+  },
+
+  /**
    * Puts a trip on hold and returns the new status.
    * 
    * Flow:

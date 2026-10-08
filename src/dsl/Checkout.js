@@ -214,6 +214,30 @@ const Checkout = {
   },
 
   /**
+   * Books, completes the Fusion 3DS verification in a new tab (the modal's "click here" fallback),
+   * then opens the trip cart. Use where the supplier page refuses to load inside OBT's iframe.
+   * @param {import('playwright').Page} page
+   * @returns {Promise<{finalized: boolean, tripId: string, verificationUrl: string, returnUrl: string}>}
+   */
+  async bookAndFinalizeWithFusionCardVerificationInNewTab(page) {
+    if (!page) throw new Error('page is required');
+
+    const checkoutPage = getPageObject(page, CheckoutPage);
+    const cartPage = getPageObject(page, CartPage);
+
+    await Checkout.bookTripWithoutNavigatingToTripOverview(page);
+    const verification = await checkoutPage.completeFusionCardVerificationInNewTab();
+
+    const tripUrl = new URL(page.url());
+    tripUrl.pathname = `/trips/${verification.tripId}/cart`;
+    tripUrl.search = '';
+    await page.goto(tripUrl.href, { waitUntil: 'domcontentloaded' });
+    await cartPage.waitForTripOverviewTitle();
+
+    return { finalized: true, ...verification };
+  },
+
+  /**
    * Finalizes Ypsilon flight booking with 3DS SCA verification,
    * then navigates to the trip overview page.
    * The 3DS challenge is rendered in an iframe where the test code is entered.

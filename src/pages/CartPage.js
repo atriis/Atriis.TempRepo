@@ -248,6 +248,11 @@ const SELECTORS = {
   FLIGHT_PRICE_BREAKDOWN_SUBTOTAL_ROW: '.rate-information .amounts .subtotal',
   FLIGHT_PRICE_BREAKDOWN_SUBTOTAL_PASSENGERS: '.passengers',
   FLIGHT_PRICE_BREAKDOWN_TOTAL: '.summary-and-actions .amount',
+  // The optional-services row reuses the .cc-charge class, so callers filter by the 'CC Charge' label.
+  FLIGHT_PRICE_BREAKDOWN_CC_CHARGE_ROW: '.rate-information .cc-charge',
+  FLIGHT_PRICE_BREAKDOWN_INFO_ICON: '.info-icon',
+  // Element Plus teleports tooltips to <body>; only the open one has aria-hidden="false".
+  VISIBLE_TOOLTIP_ITEM: '.el-popper.el-tooltip[aria-hidden="false"] li',
   FLIGHT_CO2_TOOLTIP_TRIGGER_IN_CART: '.flight-quote-card .co2-emissions-label .info-icon',
   // Scoped by the flight card drawer's class: AB#84760 retitled it "Flight Details", so aria-label 'More details' no longer matches.
   FLIGHT_CO2_TOOLTIP_TRIGGER_IN_MORE_DETAILS: '.app-drawer.flight-details-drawer .co2-emissions-label .info-icon',
@@ -5190,6 +5195,55 @@ class CartPage {
     }
 
     return parseAmountText(await amount.textContent(), `${label} amount`);
+  }
+
+  /**
+   * Gets the CC Charge row of the open flight price breakdown drawer.
+   * Before ticketing the row shows the text "TBD" instead of an amount.
+   *
+   * @returns {import('playwright').Locator}
+   */
+  getFlightPriceBreakdownCcChargeRow() {
+    return this.page.locator(SELECTORS.FLIGHT_PRICE_BREAKDOWN_DRAWER).first()
+      .locator(SELECTORS.FLIGHT_PRICE_BREAKDOWN_CC_CHARGE_ROW)
+      .filter({ hasText: 'CC Charge' })
+      .first();
+  }
+
+  /**
+   * Gets the value shown next to the CC Charge label (e.g. "TBD" or "€1.60").
+   *
+   * @param {{ timeout?: number }} options
+   * @returns {Promise<string>}
+   */
+  async getFlightPriceBreakdownCcChargeValueText({ timeout = 10000 } = {}) {
+    const row = this.getFlightPriceBreakdownCcChargeRow();
+    await row.waitFor({ state: 'visible', timeout });
+    const rowText = (await row.innerText()).replace(/\s+/g, ' ').trim();
+    return rowText.replace(/^CC Charge/i, '').replace(/\binfo\b/gi, '').replace(/\s+/g, ' ').trim();
+  }
+
+  /**
+   * Hovers the info icon next to the CC Charge label, which opens the list of charges per card type.
+   *
+   * @param {{ timeout?: number }} options
+   */
+  async hoverFlightPriceBreakdownCcChargeInfoIcon({ timeout = 10000 } = {}) {
+    const icon = this.getFlightPriceBreakdownCcChargeRow().locator(SELECTORS.FLIGHT_PRICE_BREAKDOWN_INFO_ICON).first();
+    await icon.waitFor({ state: 'visible', timeout });
+    await icon.hover();
+  }
+
+  /**
+   * Gets the list items of the tooltip that is currently open.
+   *
+   * @param {{ timeout?: number }} options
+   * @returns {Promise<string[]>}
+   */
+  async getVisibleTooltipItems({ timeout = 10000 } = {}) {
+    const items = this.page.locator(SELECTORS.VISIBLE_TOOLTIP_ITEM);
+    await items.first().waitFor({ state: 'visible', timeout });
+    return (await items.allInnerTexts()).map((text) => text.replace(/\s+/g, ' ').trim()).filter(Boolean);
   }
 
   async isPriceBreakdownRowVisible(label, timeout = 10000) {

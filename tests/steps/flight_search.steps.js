@@ -42,6 +42,18 @@ When('I search for a one way flight from {string} to {string} in {int} days', as
   await FlightSearch.searchFlightOneWayWithDaysFromNow(this.page, { from, to }, { departureDaysFromNow });
 });
 
+// For full purchases that repeat on the same traveller: Travelfusion refuses a second booking of the
+// same flight, date and passenger as "Duplicate bookings found", so a fixed date fails every rerun.
+When('I search for a one way flight from {string} to {string} on a random day between {int} and {int} days from now', async function (from, to, minDays, maxDays) {
+  if (minDays < 1 || maxDays < minDays) {
+    throw new Error(`Invalid day range ${minDays}-${maxDays}: need 1 <= min <= max`);
+  }
+  const departureDaysFromNow = minDays + Math.floor(Math.random() * (maxDays - minDays + 1));
+  logger.info('Searching for one-way flight on a random day', { from, to, minDays, maxDays, departureDaysFromNow });
+  this.departureDaysFromNow = departureDaysFromNow;
+  await FlightSearch.searchFlightOneWayWithDaysFromNow(this.page, { from, to }, { departureDaysFromNow });
+});
+
 When('I search for a same day round trip flight from {string} to {string}', async function (from, to) {
   logger.info('Searching for same-day round-trip flight', { from, to });
   await FlightSearch.searchFlightRoundTripSameDay(this.page, { from, to });

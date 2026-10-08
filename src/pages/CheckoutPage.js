@@ -584,6 +584,67 @@ class CheckoutPage {
   }
 
   /**
+   * Completes the Fusion 3DS verification in a NEW TAB, as the modal's "click here" fallback intends.
+   *
+   * On some Travelfusion accounts (e.g. the NL one on staging) the verification link is
+   * `3ds-initiate`, whose Content-Security-Policy `frame-ancestors` forbids framing by OBT, so the
+   * modal's iframe stays blank and the in-iframe flow can never complete. The same page is opened in
+   * a new tab of the logged-in context instead. That page auto-posts to Travelfusion's
+   * `3ds-simulate`; its submit completes the verification on the supplier side. The modal is closed
+   * with its X afterwards — the tab has no parent window to notify, so the trip status does not
+   * change on this page.
+   *
+   * @param {number} timeout - Max wait for the verification title.
+   * @param {number} finaliseTimeout - Max wait for Travelfusion to answer the 3DS finalise.
+   * @returns {Promise<{tripId: string, verificationUrl: string, returnUrl: string}>}
+   */
+  async completeFusionCardVerificationInNewTab(timeout = 90000, finaliseTimeout = 180000) {
+    await waitForText(this.page, SELECTORS.FUSION_VERIFICATION_TITLE, 'Card verification needed!', timeout);
+
+    const tripIdMatch = new URL(this.page.url()).pathname.match(/\/trips\/(\d+)/);
+    if (!tripIdMatch) {
+      throw new Error('completeFusionCardVerificationInNewTab: could not extract trip ID from URL: ' + this.page.url());
+    }
+    const tripId = tripIdMatch[1];
+
+    await this.openFusion3dsDialog();
+
+    // The "click here" link binds :src instead of :href and has no click handler (fusion-3ds.vue),
+    // so it opens nothing. Open the iframe's own URL in a new tab, which is what the link means to do.
+    const iframe = this.page.locator(SELECTORS.FUSION_3DS_IFRAME).first();
+    await iframe.waitFor({ state: 'attached', timeout: 30000 });
+    const verificationUrl = await iframe.getAttribute('src');
+    if (!verificationUrl || !/^https?:\/\//.test(verificationUrl)) {
+      throw new Error(`completeFusionCardVerificationInNewTab: the 3DS iframe has no usable src (trip ${tripId}): "${verificationUrl}"`);
+    }
+    const verificationTab = await this.page.context().newPage();
+    await verificationTab.goto(verificationUrl, { waitUntil: 'domcontentloaded', timeout: 60000 });
+    // 3ds-initiate auto-posts to 3ds-simulate after ~1.5s; only the simulator has the submit.
+    await verificationTab.waitForURL(/3ds-simulate/, { timeout: 60000 });
+    const submit = verificationTab.locator(SELECTORS.FUSION_3DS_SIMULATE_SUBMIT).first();
+    await submit.waitFor({ state: 'visible', timeout: 60000 });
+    await submit.click({ noWaitAfter: true });
+    // The 3ds-finalise POST is answered slowly (1-2 min on staging) and closing the tab before it
+    // is answered aborts it, which leaves the quote "In progress" for good. Wait until the tab has
+    // left Travelfusion (its answer redirects back to OBT); ticketing itself happens later in the
+    // background, so callers check it with a deferred payload check (docs/DeferredPayloadChecks.md).
+    await verificationTab.waitForURL((url) => !/(^|\.)travelfusion\.com$/i.test(url.hostname), {
+      timeout: finaliseTimeout,
+      waitUntil: 'load',
+    }).catch((error) => {
+      throw new Error(`completeFusionCardVerificationInNewTab: Travelfusion did not answer the 3DS finalise within ${Math.round(finaliseTimeout / 1000)}s (trip ${tripId}, still on ${verificationTab.url()}): ${error.message}`);
+    });
+    const returnUrl = verificationTab.url();
+
+    const closeButton = this.page.locator(SELECTORS.FUSION_3DS_DIALOG_CLOSE_BUTTON).first();
+    if (await closeButton.isVisible().catch(() => false)) {
+      await closeButton.click();
+    }
+
+    return { tripId, verificationUrl, returnUrl };
+  }
+
+  /**
    * Waits until the email input has a non-empty value, then returns it.
    * Uses polling because the Contact Details section is auto-populated asynchronously.
    * @param {number} timeout - Max wait time in ms (default: 15000)

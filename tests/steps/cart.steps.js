@@ -4104,6 +4104,26 @@ Then('{string} should be visible in price breakdown', async function (label) {
   await Cart.verifyPriceBreakdownRowVisible(this.page, label);
 });
 
+// #48241 — before ticketing, an airline that charges per card type shows "TBD" as the CC Charge.
+Then('the CC Charge in price breakdown should be {string}', async function (expectedValue) {
+  logger.info('Verifying CC Charge value in price breakdown', { expectedValue });
+  await Cart.verifyPriceBreakdownCcChargeValue(this.page, expectedValue);
+});
+
+When('I hover over the CC Charge info icon in price breakdown', async function () {
+  logger.info('Hovering CC Charge info icon in price breakdown');
+  this.ccChargeTooltipItems = await Cart.hoverPriceBreakdownCcChargeInfo(this.page);
+});
+
+Then('the CC Charge tooltip should contain {string}', function (expectedText) {
+  if (!Array.isArray(this.ccChargeTooltipItems)) {
+    throw new Error("No CC Charge tooltip captured. Run 'When I hover over the CC Charge info icon in price breakdown' first.");
+  }
+  logger.info('Verifying CC Charge tooltip line', { expectedText, items: this.ccChargeTooltipItems });
+  const match = this.ccChargeTooltipItems.find((item) => item.toLowerCase().includes(expectedText.toLowerCase()));
+  expect(match, `CC Charge tooltip should contain "${expectedText}". Lines: ${JSON.stringify(this.ccChargeTooltipItems)}`).toBeTruthy();
+});
+
 Then('{string} amount should match a currency format', async function (label) {
   logger.info('Verifying amount matches currency format', { label });
   const currencyPattern = /^[$€£]\d{1,3}(,\d{3})*\.\d{2}$/;
