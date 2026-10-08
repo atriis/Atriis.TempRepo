@@ -159,6 +159,62 @@ function parseFlightDate(text) {
   };
 }
 
+// What to read out of a Fusion CheckRouting / ProcessDetails response to find the bags a fare
+// includes: each <Router> names the leg it searched (<RequestedLocations><Origin><Code>), and its
+// <Feature Type="HoldBag"> lists <Option Value="price"> entries described by <Condition Type Value/>.
+const FUSION_HOLD_BAG_SPEC = {
+  Router: {
+    blocks: {
+      RequestedLocations: { blocks: { Origin: { fields: ['Code'] } } },
+      Feature: {
+        attributes: ['Type'],
+        blocks: { Option: { attributes: ['Value'], blocks: { Condition: { attributes: ['Type', 'Value'] } } } },
+      },
+    },
+  },
+};
+
+/**
+ * Lists the baggage labels the UI should show for a fare's included bags, read from the free
+ * (Value 0.00) HoldBag options Fusion filed for that fare. Following the display rule in ADO
+ * test case 71005: one bag reads "1PC 20KG", more than one reads "2PC (35KG Total)", because
+ * MaxWeight is the total of all pieces.
+ *
+ * Only options for the leg's origin and, when given, the operator and the fare's segment count are kept.
+ * SupplierClass carries one brand per segment ("Regular fare,Regular fare" on a connection), and
+ * brand names are compared ignoring case (Fusion "IndiGo UpFront", UI "Indigo Upfront").
+ * A label list rather than one label: ProcessDetails can file the same brand twice with
+ * different allowances (Stretch 1x30 Kg and 2x30 Kg), and either is a correct reading.
+ *
+ * @param {Array<{Router: object[]}>} perCall - from PayloadValidation.collectXmlBlockTreesPerCall with FUSION_HOLD_BAG_SPEC
+ * @param {{brand: string, origin: string, segments?: number, operatorCode?: string}} fare
+ * @returns {string[]} distinct expected labels, upper case
+ */
+function fusionIncludedBagLabels(perCall, { brand, origin, segments, operatorCode }) {
+  const same = (a, b) => String(a || '').trim().toLowerCase() === String(b || '').trim().toLowerCase();
+  const labels = new Set();
+  for (const call of perCall) {
+    for (const router of call.Router) {
+      const routerOrigins = router.RequestedLocations.flatMap((locations) => locations.Origin.flatMap((o) => o.Code));
+      if (!routerOrigins.some((code) => same(code, origin))) continue;
+      for (const feature of router.Feature.filter((f) => f.Type === 'HoldBag')) {
+        for (const option of feature.Option) {
+          if (Number(option.Value) !== 0) continue;
+          const conditions = Object.fromEntries(option.Condition.map((c) => [c.Type, c.Value]));
+          const classes = String(conditions.SupplierClass || '').split(',');
+          if ((segments && classes.length !== segments) || !classes.every((name) => same(name, brand))) continue;
+          if (operatorCode && !String(conditions.OperatorCode || '').split(',').some((code) => same(code, operatorCode))) continue;
+          const quantity = Number(conditions.MaxQuantity);
+          const weight = String(conditions.MaxWeight || '').replace(/\s+/g, '').toUpperCase();
+          if (!quantity || !weight) continue;
+          labels.add(quantity > 1 ? `${quantity}PC (${weight} TOTAL)` : `${quantity}PC ${weight}`);
+        }
+      }
+    }
+  }
+  return [...labels];
+}
+
 /**
  * Parses one "HH:mm · EEE, dd MMM yy" line from the flight details drawer into its time and its
  * date. The date half is delegated to parseFlightDate, so the drawer and the results card — which
@@ -6596,6 +6652,124 @@ async verifyFareComponentTextColorInPricingOptions(page, expectedColor, index = 
     }
 
     return { flight: designators, fares, supplierCounts };
+  },
+
+  /**
+   * Asserts every fare on the open leg of the classic Pricing Options drawer shows the bags Fusion
+   * includes in it, as filed in the CheckRouting HoldBag feature (ADO test case 71005).
+   *
+   * The expected label is built from the free HoldBag options for the fare's brand, the opened
+   * flight's operator and origin, so the check follows the supplier when an airline changes its
+   * allowance instead of pinning today's weights. See fusionIncludedBagLabels for the matching rule.
+   *
+   * @param {import('playwright').Page} page
+   * @param {object} world - Cucumber world carrying the trip id
+   * @returns {Promise<{flight: object, fares: Array<{name: string, baggage: string, expected: string[]}>}>}
+   */
+  async verifyPricingOptionsBaggageMatchesFusionHoldBag(page, world) {
+    if (!page) {
+      throw new Error('[FlightResults.verifyPricingOptionsBaggageMatchesFusionHoldBag] "page" is required.');
+    }
+    if (!world) {
+      throw new Error('[FlightResults.verifyPricingOptionsBaggageMatchesFusionHoldBag] "world" is required to read the trip\'s CheckRouting responses.');
+    }
+
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    await flightResultsPage.waitForPricingOptionsDrawerLeg();
+    const fares = await flightResultsPage.getPricingOptionsLegFares();
+    const flight = await flightResultsPage.getPricingOptionsPreviewFlight();
+    const operatorCode = String(flight.flightNumbers[0] || '').replace(/\s+/g, '').slice(0, 2).toUpperCase();
+    if (!/^[A-Z0-9]{2}$/.test(operatorCode) || !flight.origin) {
+      throw new Error(`[FlightResults.verifyPricingOptionsBaggageMatchesFusionHoldBag] Cannot read the flight number and origin of the opened flight: ${JSON.stringify(flight)}.`);
+    }
+
+    const { perCall } = await PayloadValidation.collectXmlBlockTreesPerCall(
+      world,
+      'CheckRouting',
+      FUSION_HOLD_BAG_SPEC,
+      { source: 'response', purpose: 'read the bags Fusion includes in each fare in the pricing options drawer' },
+    );
+
+    const compared = fares.map((fare) => ({
+      ...fare,
+      expected: fusionIncludedBagLabels(perCall, {
+        brand: fare.name,
+        origin: flight.origin,
+        segments: flight.flightNumbers.length,
+        operatorCode,
+      }),
+    }));
+    logger.info('[FusionHoldBag] Pricing options baggage vs the CheckRouting HoldBag feature', {
+      flight,
+      checkRoutingCalls: perCall.length,
+      compared,
+    });
+
+    if (compared.length === 0) {
+      throw new Error(`No fare is listed in the pricing options drawer for ${flight.flightNumbers.join('/')} ${flight.origin}-${flight.destination}.`);
+    }
+    const normalize = (text) => String(text || '').replace(/\s+/g, ' ').trim().toUpperCase();
+    const withoutHoldBag = compared.filter((fare) => fare.expected.length === 0);
+    const mismatched = compared.filter((fare) => fare.expected.length > 0
+      && !fare.expected.some((label) => normalize(fare.baggage).includes(label)));
+
+    // Thrown rather than expect(value, message): this repo's Playwright drops expect's message.
+    if (withoutHoldBag.length > 0 || mismatched.length > 0) {
+      throw new Error(
+        `Pricing options baggage for ${flight.flightNumbers.join('/')} ${flight.origin}-${flight.destination} does not match ` +
+        `the bags Fusion includes in the ${perCall.length} CheckRouting response(s). ` +
+        `Fares with no free HoldBag option for their brand: ${JSON.stringify(withoutHoldBag.map((fare) => fare.name))}. ` +
+        `Fares showing other baggage: ${JSON.stringify(mismatched.map(({ name, baggage, expected }) => ({ name, baggage, expected })))}.`,
+      );
+    }
+
+    return { flight, fares: compared };
+  },
+
+  /**
+   * Asserts the open flight details drawer in the cart shows the bags Fusion includes in the
+   * booked fare, as filed in the ProcessDetails HoldBag feature (ADO test case 71005). ProcessDetails
+   * prices only the selected flight, so the brand and the leg's origin are enough to find its bags.
+   *
+   * @param {import('playwright').Page} page
+   * @param {object} world - Cucumber world carrying the trip id
+   * @param {string} brand - fare name as shown in pricing options, e.g. "Regular Fare"
+   * @param {string} origin - departure airport of the leg, e.g. "DEL"
+   * @returns {Promise<{expected: string[]}>}
+   */
+  async verifyFlightDetailsBaggageMatchesFusionHoldBag(page, world, brand, origin) {
+    if (!page) {
+      throw new Error('[FlightResults.verifyFlightDetailsBaggageMatchesFusionHoldBag] "page" is required.');
+    }
+    if (!world) {
+      throw new Error('[FlightResults.verifyFlightDetailsBaggageMatchesFusionHoldBag] "world" is required to read the trip\'s ProcessDetails responses.');
+    }
+    if (!brand || !origin) {
+      throw new Error(`[FlightResults.verifyFlightDetailsBaggageMatchesFusionHoldBag] "brand" and "origin" are required, got: ${brand}, ${origin}`);
+    }
+
+    const { perCall } = await PayloadValidation.collectXmlBlockTreesPerCall(
+      world,
+      'ProcessDetails',
+      FUSION_HOLD_BAG_SPEC,
+      { source: 'response', purpose: `read the bags Fusion includes in the ${brand} fare from ${origin}` },
+    );
+    const expected = fusionIncludedBagLabels(perCall, { brand, origin });
+    if (expected.length === 0) {
+      throw new Error(`No free HoldBag option for the "${brand}" fare from ${origin} in the ${perCall.length} ProcessDetails response(s), so there is nothing to compare flight details against.`);
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+    let drawerText = '';
+    await expect(async () => {
+      drawerText = String(await cartPage.getFlightDetailsDrawerText()).replace(/\s+/g, ' ').toUpperCase();
+      if (!expected.some((label) => drawerText.includes(label))) {
+        throw new Error(`Flight details should show one of ${JSON.stringify(expected)} for the "${brand}" fare from ${origin}. Drawer text: ${drawerText.slice(0, 600)}`);
+      }
+    }).toPass({ timeout: 15000 });
+
+    logger.info('[FusionHoldBag] Flight details baggage matches the ProcessDetails HoldBag feature', { brand, origin, expected, processDetailsCalls: perCall.length });
+    return { expected };
   },
 
   /**

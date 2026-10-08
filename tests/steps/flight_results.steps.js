@@ -1141,6 +1141,28 @@ Then('no fare in pricing options should be listed more times than Fusion returne
   logger.info('No pricing options fare is listed more times than Fusion returned it', result);
 });
 
+// Reads the trip's request log, so it is skipped like every payload step when payload validation is off.
+Then('every fare in pricing options should show the baggage Fusion includes in it in CheckRouting', async function () {
+  if (!config.payloadValidation.enabled) {
+    logger.warn('PAYLOAD_VALIDATION_ENABLED=false', { step: 'verifyPricingOptionsBaggageMatchesFusionHoldBag' });
+    return;
+  }
+  logger.info('Comparing pricing options baggage with the Fusion CheckRouting HoldBag feature');
+  const result = await FlightResults.verifyPricingOptionsBaggageMatchesFusionHoldBag(this.page, this);
+  logger.info('Pricing options baggage matches the Fusion CheckRouting HoldBag feature', result);
+});
+
+// Reads the trip's request log, so it is skipped like every payload step when payload validation is off.
+Then('the flight details should show the baggage Fusion includes in the {string} fare from {string} in ProcessDetails', async function (brand, origin) {
+  if (!config.payloadValidation.enabled) {
+    logger.warn('PAYLOAD_VALIDATION_ENABLED=false', { step: 'verifyFlightDetailsBaggageMatchesFusionHoldBag', brand, origin });
+    return;
+  }
+  logger.info('Comparing flight details baggage with the Fusion ProcessDetails HoldBag feature', { brand, origin });
+  const result = await FlightResults.verifyFlightDetailsBaggageMatchesFusionHoldBag(this.page, this, brand, origin);
+  logger.info('Flight details baggage matches the Fusion ProcessDetails HoldBag feature', result);
+});
+
 Then('the {string} text should be displayed in pricing options', async function (expectedText) {
   logger.info('Verifying text is displayed in pricing options', { expectedText });
   await FlightResults.verifyPricingOptionsHeaderContains(this.page, expectedText);
