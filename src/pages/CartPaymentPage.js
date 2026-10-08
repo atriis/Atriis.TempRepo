@@ -59,6 +59,10 @@ const SELECTORS = {
   // `el-card.box-card`, and the wrapper gains the `selected-card` class when chosen.
   // Used by name-based selection helpers as a fallback when no checkbox/radio matches the card name.
   SELECT_CREDIT_CARD_BOX: '.box-card',
+  // Name block of each entry in the select-credit-card drawer, scoped to the drawer so the trip overview's own
+  // `.credit-card .card-name` (the currently selected FOP) is not counted. Credit cards render a second line
+  // "**** **** **** NNNN"; Invoice and virtual cards render the name only.
+  SELECT_CREDIT_CARD_BOX_NAME: '.select-credit-card .box-card .card-name',
 
   // "Expiration date" label in the "Add card details" form. The month and year selects sit under
   // this single label (the year column's own label is a non-breaking space), so the label plus the
@@ -177,6 +181,17 @@ class CartPaymentPage {
    */
   getCardList() {
     return this.page.locator(SELECTORS.CARD_NAME_LIST);
+  }
+
+  /**
+   * Returns the text of every payment method listed in the select-credit-card drawer.
+   * Waits for the first entry so the drawer's loading skeleton has been replaced.
+   * @returns {Promise<string[]>}
+   */
+  async getFopPanelCardTexts() {
+    const names = this.page.locator(SELECTORS.SELECT_CREDIT_CARD_BOX_NAME);
+    await names.first().waitFor({ state: 'visible' });
+    return (await names.allInnerTexts()).map(text => text.trim());
   }
 
   /**

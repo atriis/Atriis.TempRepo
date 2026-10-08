@@ -18,6 +18,6 @@ Feature: 60657 Amadeus Light Ticketing - Invoice is not displayed as FOP
     And I filter results by carrier "FR"
     And I add the first flight to cart
     Then the booking status should be "Pending booking"
-    When I click add payment method button
+    When I click to edit the card
     Then the card "visa (not default)" should be visible
-    Then 1 payment cards should be visible in the FOP panel
+    And only credit cards should be displayed in the FOP panel and not invoice

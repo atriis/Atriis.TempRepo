@@ -131,6 +131,11 @@ Then("{int} payment cards should be visible in the FOP panel", async function (c
   await CartPayment.verifyCardCount(this.page, count);
 });
 
+Then("only credit cards should be displayed in the FOP panel and not invoice", async function () {
+  logger.info("Verifying only credit cards are displayed in the FOP panel and not invoice");
+  await CartPayment.verifyOnlyCreditCardsInFopPanel(this.page);
+});
+
 Then("payment restriction text should be visible", async function () {
   logger.info("Verifying payment restriction text is visible");
   await CartPayment.verifyPaymentRestrictionFieldVisible(this.page);
