@@ -3616,6 +3616,30 @@ const FlightResults = {
     return actualMessage;
   },
 
+  /**
+   * Verifies the title of the results seat drawer. ADO 35605: the drawer opened from the
+   * results card's "Seats" button must be titled "Seats availability".
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @param {string} expectedTitle - Exact expected title
+   * @returns {Promise<{title: string}>}
+   */
+  async verifySeatMapDrawerTitle(page, expectedTitle) {
+    if (!page) throw new Error('page is required');
+    if (typeof expectedTitle !== 'string' || !expectedTitle.trim()) {
+      throw new Error(`expectedTitle must be a non-empty string, got: ${typeof expectedTitle}`);
+    }
+
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    const title = await flightResultsPage.getSeatMapDrawerTitle();
+
+    if (title !== expectedTitle.trim()) {
+      throw new Error(`The results seat drawer is titled "${title}", expected "${expectedTitle}".`);
+    }
+
+    return { title };
+  },
+
 async clickToOpenFareRulesFromResultsModal(page) {
   if (!page) {
     throw new Error('page is required');

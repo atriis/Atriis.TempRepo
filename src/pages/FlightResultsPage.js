@@ -2878,6 +2878,17 @@ class FlightResultsPage {
     return (await message.textContent()).trim();
   }
 
+  /**
+   * Gets the title of the results seat drawer (the el-drawer header, "Seats availability" on desktop).
+   * @param {number} timeout - Max wait time in ms (default: 30000)
+   * @returns {Promise<string>}
+   */
+  async getSeatMapDrawerTitle(timeout = 30000) {
+    const title = this.page.locator(SELECTORS.SEAT_MAP_DRAWER).locator(SELECTORS.FD_PANEL_TITLE).first();
+    await title.waitFor({ state: 'visible', timeout });
+    return ((await title.innerText()) ?? '').replace(/\s+/g, ' ').trim();
+  }
+
 async clickAddToTripButtonPricingOptionsModal() {
   if (await this.isBySchedulePricingPageVisible()) {
     await this.clickAddToTripButtonBySchedulePricingPage();

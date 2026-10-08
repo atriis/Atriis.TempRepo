@@ -771,6 +771,12 @@ Then("the seat map should be displayed in results", async function () {
   await FlightResults.verifySeatMapDisplayedInResults(this.page);
 });
 
+Then("the seat map drawer title should be {string}", async function (expectedTitle) {
+  logger.info("Verifying the results seat drawer title", { expectedTitle });
+  const result = await FlightResults.verifySeatMapDrawerTitle(this.page, expectedTitle);
+  logger.info("Results seat drawer title verified", result);
+});
+
 When("I close the seat map drawer in results", async function () {
   logger.info("Closing the results seat map drawer");
   await FlightResults.closeSeatMapDrawerInResults(this.page);
