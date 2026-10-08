@@ -1717,6 +1717,18 @@ Then('the flight price breakdown should match the totals for the selected travel
   logger.info('Flight price breakdown totals verified', result);
 });
 
+// Pins the breakdown footer to an exact amount, e.g. a manual quote's base fare, so an added markup
+// fails the step even when the breakdown lines still add up to the cart total (test 86277).
+Then('the flight price breakdown total should be {float}', async function (expectedTotal) {
+  logger.info('Verifying flight price breakdown total', { expectedTotal });
+  const cartPage = getPageObject(this.page, CartPage);
+  const breakdownTotal = await cartPage.getFlightPriceBreakdownTotal();
+  expect(
+    Math.abs(breakdownTotal - expectedTotal),
+    `Breakdown footer total (${breakdownTotal}) should be ${expectedTotal}`,
+  ).toBeLessThanOrEqual(0.01);
+});
+
 Then("passport details are displayed as {string}", async function (expectedText) {
   logger.info("Asserting passport details are displayed", { expectedText });
   const actualText = await Cart.getPassportDetailsText(this.page, 0);
