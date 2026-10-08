@@ -1311,6 +1311,30 @@ Then("the branded fares drawer should show each attribute only once", async func
   await FlightResults.verifyBrandedFaresAttributesListedOnce(this.page);
 });
 
+When("I open branded fares for the {string} fare from pricing options", async function (brandName) {
+  logger.info("Opening branded fares for a named fare from pricing options", { brandName });
+  await FlightResults.openBrandedFaresForBrandFromPricingOptions(this.page, brandName);
+});
+
+When("I open branded fares for the {string} brand from flight details", async function (brandName) {
+  logger.info("Opening branded fares for a named brand from flight details", { brandName });
+  await FlightResults.openBrandedFaresForBrandFromFlightDetails(this.page, brandName);
+});
+
+// Classic Sabre brands. Run "I note the time before new payload requests are sent" right before
+// opening the brand, so only the calls that opening fired are compared. With payload validation
+// off, the drawer is still required to show a feature list titled with the brand.
+Then("the branded fares drawer should show the {string} features Sabre filed for that brand", async function (brandName) {
+  if (!config.payloadValidation.enabled) {
+    logger.warn("PAYLOAD_VALIDATION_ENABLED=false - checking the drawer without the Sabre responses", { step: "verifyBrandedFaresMatchSabreBrandFeatures" });
+  }
+  logger.info("Comparing the branded fares drawer with the Sabre brand features", { brandName });
+  const result = await FlightResults.verifyBrandedFaresMatchSabreBrandFeatures(this.page, this, brandName, {
+    compareWithSabre: config.payloadValidation.enabled,
+  });
+  logger.info("Branded fares drawer matches the Sabre brand features", result);
+});
+
 Then("the carrier name in more details should be {string}", async function (expectedName) {
   logger.info("Verifying carrier name in more details", { expectedName });
   await FlightResults.verifyCarrierNameInDetails(this.page, expectedName);

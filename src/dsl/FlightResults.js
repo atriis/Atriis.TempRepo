@@ -786,6 +786,71 @@ function expectedAttributesForBrand(brands, brandName) {
   return expected;
 }
 
+// Classic Sabre files brand features in the RevalidateItinerary response (an OTA_AirLowFareSearchRS):
+// one <BrandFeatures> list of <BrandFeature Id Application ServiceGroup CommercialName/>, and per
+// fare component the ids that apply to its brand as <BrandFeatureRef FeatureId/>. Opening a brand
+// fires one call per agreement variant; FlightBrandindDetailsV3 is logged once they have returned.
+const SABRE_REVALIDATE_REQUEST_TYPE = 'RevalidateItinerary*';
+const SABRE_BRAND_DETAILS_REQUEST_TYPE = 'FlightBrandindDetailsV3*';
+
+// What TMC2 shows of a Sabre brand feature (BrandFeatureServiceGroups): Free and Chargeable
+// features only - Not offered (N) is dropped - in these service groups, under these headings.
+const SABRE_SHOWN_APPLICATIONS = { F: 'free', C: 'chargeable' };
+const SABRE_SERVICE_GROUP_NAMES = {
+  BF: 'Branded Fare',
+  BG: 'Baggage',
+  FF: 'Frequent Flyer',
+  GT: 'Ground Transportation',
+  IE: 'In-flight entertainment, including meals, drinks, and internet access etc.',
+  LG: 'Lounge Access',
+  ML: 'Meal/Beverage',
+  SA: 'Pre-reserved seat assignments',
+  TS: 'Travel Services',
+  UP: 'Upgrades',
+};
+
+function readXmlTagAttributes(tag) {
+  const attributes = {};
+  for (const [, name, value] of tag.matchAll(/([\w:]+)="([^"]*)"/g)) attributes[name] = value;
+  return attributes;
+}
+
+/** "branded fare|free|changeable ticket" - one shown line, compared without case or punctuation. */
+function sabreBrandFeatureKey(group, section, name) {
+  return `${attributeKey(group)}|${section}|${attributeKey(name)}`;
+}
+
+/**
+ * Every fare component of one Sabre RevalidateItinerary response, with the brand features its
+ * BrandFeatureRef ids resolve to, reduced to what the drawer should show. Ids are numbered per
+ * response, so they are only ever resolved against the list of the response they came from.
+ */
+function collectSabreBrandFareComponents(xml) {
+  const features = new Map();
+  for (const [tag] of String(xml || '').matchAll(/<(?:\w+:)?BrandFeature\s[^>]*>/g)) {
+    const attributes = readXmlTagAttributes(tag);
+    if (attributes.Id) features.set(attributes.Id, attributes);
+  }
+
+  const components = [];
+  for (const [, openAttributes, body] of String(xml || '').matchAll(/<(?:\w+:)?FareComponent\s([^>]*[^/])>([\s\S]*?)<\/(?:\w+:)?FareComponent>/g)) {
+    const attributes = readXmlTagAttributes(openAttributes);
+    const ids = [...body.matchAll(/<(?:\w+:)?BrandFeatureRef\s[^>]*FeatureId="(\d+)"/g)].map((m) => m[1]);
+    if (ids.length === 0) continue;
+
+    const shown = new Map();
+    for (const id of ids) {
+      const feature = features.get(id);
+      const section = feature && SABRE_SHOWN_APPLICATIONS[feature.Application];
+      const group = feature && SABRE_SERVICE_GROUP_NAMES[feature.ServiceGroup];
+      if (!section || !group) continue;
+      shown.set(sabreBrandFeatureKey(group, section, feature.CommercialName), `${group} / ${section}: ${feature.CommercialName}`);
+    }
+    components.push({ brandName: attributes.BrandName || '', brandId: attributes.BrandID || '', shown });
+  }
+  return components;
+}
+
 // The Amadeus NDC offer message that carries what the airline filed per brand. The trip logs it in
 // two flavours - "NDC Search Upsell" holds every brand combination of the itinerary, "Flight Price
 // (Brand Info)" prices one combination per rendered card - and both are read: which flavour fed a
@@ -5006,6 +5071,149 @@ async verifyFareComponentTextColorInPricingOptions(page, expectedColor, index = 
     ).toEqual([]);
 
     return { brandName: sections.brandName, chargeableChecked: chargeable.length };
+  },
+
+  /**
+   * Opens the branded fares drawer of the fare card named `brandName` in the pricing options drawer.
+   * @param {import('playwright').Page} page
+   * @param {string} brandName - e.g. "CHOICE"
+   */
+  async openBrandedFaresForBrandFromPricingOptions(page, brandName) {
+    if (!page) throw new Error('[FlightResults.openBrandedFaresForBrandFromPricingOptions] "page" is required, got: ' + typeof page);
+    if (!brandName || typeof brandName !== 'string') {
+      throw new Error('[FlightResults.openBrandedFaresForBrandFromPricingOptions] "brandName" must be a non-empty string, got: ' + typeof brandName);
+    }
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    await flightResultsPage.clickBrandNameInPricingOptionsByName(brandName);
+    await flightResultsPage.waitForBrandedFaresDrawer();
+  },
+
+  /**
+   * Opens the branded fares drawer of the brand named `brandName` from an open flight details
+   * drawer (results or cart). On a round trip each leg's brand has its own button.
+   * @param {import('playwright').Page} page
+   * @param {string} brandName - e.g. "BASIC"
+   */
+  async openBrandedFaresForBrandFromFlightDetails(page, brandName) {
+    if (!page) throw new Error('[FlightResults.openBrandedFaresForBrandFromFlightDetails] "page" is required, got: ' + typeof page);
+    if (!brandName || typeof brandName !== 'string') {
+      throw new Error('[FlightResults.openBrandedFaresForBrandFromFlightDetails] "brandName" must be a non-empty string, got: ' + typeof brandName);
+    }
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    await flightResultsPage.clickBrandNameButtonInDetailsByName(brandName);
+    await flightResultsPage.waitForBrandedFaresDrawer();
+  },
+
+  /**
+   * Verifies the open branded fares drawer shows `brandName` with exactly the features Sabre filed
+   * for that brand: per service group, the Free and Chargeable lines of the brand's BrandFeatureRef
+   * ids in a RevalidateItinerary response.
+   *
+   * The responses read are the ones logged since "I note the time before new payload requests are
+   * sent", i.e. the calls opening this brand fired. A brand is filed once per fare component and
+   * per agreement variant, so the drawer passes when it equals any one filing of that brand; a
+   * drawer that shows another brand's features (bug 82085) or none (bug 86388) equals none of them.
+   * When the opening fired no call that files the brand, every RevalidateItinerary of the trip is
+   * read instead.
+   *
+   * With `compareWithSabre: false` (payload validation switched off) the logs are not read: the
+   * drawer must still show a feature list titled `brandName`.
+   *
+   * @param {import('playwright').Page} page
+   * @param {object} world - Cucumber world holding payloadRequestsNotBefore
+   * @param {string} brandName - e.g. "CHOICE"
+   * @param {{compareWithSabre?: boolean}} [options]
+   * @returns {Promise<{brandName: string, linesChecked: number, filingsCompared: number}>}
+   */
+  async verifyBrandedFaresMatchSabreBrandFeatures(page, world, brandName, { compareWithSabre = true } = {}) {
+    const caller = '[FlightResults.verifyBrandedFaresMatchSabreBrandFeatures]';
+    if (!page) throw new Error(`${caller} "page" is required, got: ${typeof page}`);
+    if (!world || typeof world !== 'object') throw new Error(`${caller} "world" must be the Cucumber world, got: ${typeof world}`);
+    if (!brandName || typeof brandName !== 'string') throw new Error(`${caller} "brandName" must be a non-empty string, got: ${typeof brandName}`);
+
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    const drawer = await flightResultsPage.getBrandFeatureGroups();
+
+    const wanted = normalizeBrandName(brandName);
+    if (!compareWithSabre) {
+      if (drawer.unavailable) {
+        throw new Error(`${caller} The branded fares drawer for "${brandName}" shows "Brand information is currently unavailable".`);
+      }
+      expect(normalizeBrandName(drawer.brandName), `${caller} The branded fares drawer opened for "${brandName}" is titled "${drawer.brandName}"`).toBe(wanted);
+      const linesChecked = drawer.groups.reduce((n, g) => n + g.free.length + g.chargeable.length, 0);
+      expect(linesChecked, `${caller} The branded fares drawer for "${brandName}" lists no features`).toBeGreaterThan(0);
+      return { brandName, linesChecked, filingsCompared: 0 };
+    }
+
+    const filingsIn = (calls) => calls.flatMap((call) => collectSabreBrandFareComponents(call.payload)
+      .filter((c) => normalizeBrandName(c.brandName) === wanted || normalizeBrandName(c.brandId) === wanted)
+      .map((c) => ({ ...c, rowKey: call.metadata?.rowKey, requestType: call.metadata?.requestType })));
+
+    let filings = filingsIn(await PayloadValidation.collectPayloadsSentSince(
+      world, 'response', SABRE_REVALIDATE_REQUEST_TYPE, world.payloadRequestsNotBefore,
+      { anchorRequestType: SABRE_BRAND_DETAILS_REQUEST_TYPE },
+    ));
+    let scope = 'the calls opening the brand fired';
+    if (filings.length === 0) {
+      logger.warn('No RevalidateItinerary sent since the noted time files this brand; reading the whole trip', { brandName });
+      filings = filingsIn(await PayloadValidation.collectPayloadsSentSince(
+        world, 'response', SABRE_REVALIDATE_REQUEST_TYPE, new Date(0),
+      ));
+      scope = 'every RevalidateItinerary of the trip';
+    }
+
+    if (drawer.unavailable) {
+      throw new Error(
+        `${caller} The branded fares drawer for "${brandName}" shows "Brand information is currently unavailable", ` +
+        `but Sabre filed the brand's features in ${filings.length} fare component(s) of ${scope}` +
+        `${filings[0] ? ` (e.g. ${filings[0].requestType}: ${[...filings[0].shown.values()].join('; ')})` : ''}.`
+      );
+    }
+
+    expect(
+      normalizeBrandName(drawer.brandName),
+      `${caller} The branded fares drawer opened for "${brandName}" is titled "${drawer.brandName}"`
+    ).toBe(wanted);
+
+    if (filings.length === 0) {
+      throw new Error(
+        `${caller} No RevalidateItinerary response of the trip files a fare component branded "${brandName}" with ` +
+        `brand features, so the drawer cannot be compared. Check that the trip is a classic Sabre one and the brand name is right.`
+      );
+    }
+
+    const shownLines = new Map();
+    for (const { group, free, chargeable } of drawer.groups) {
+      for (const name of free) shownLines.set(sabreBrandFeatureKey(group, 'free', name), `${group} / free: ${name}`);
+      for (const name of chargeable) shownLines.set(sabreBrandFeatureKey(group, 'chargeable', name), `${group} / chargeable: ${name}`);
+    }
+
+    const diffs = filings.map((filing) => ({
+      filing,
+      missing: [...filing.shown].filter(([key]) => !shownLines.has(key)).map(([, line]) => line),
+      extra: [...shownLines].filter(([key]) => !filing.shown.has(key)).map(([, line]) => line),
+    }));
+    const match = diffs.find((d) => d.missing.length === 0 && d.extra.length === 0);
+
+    logger.info('Compared the branded fares drawer with the Sabre brand features', {
+      brandName,
+      drawerLines: shownLines.size,
+      filingsCompared: filings.length,
+      scope,
+      matchedRowKey: match?.filing.rowKey || null,
+    });
+
+    if (!match) {
+      const closest = diffs.reduce((best, d) => (d.missing.length + d.extra.length < best.missing.length + best.extra.length ? d : best));
+      throw new Error(
+        `${caller} The branded fares drawer for "${brandName}" matches none of the ${filings.length} filing(s) of the ` +
+        `brand in ${scope}. Closest is ${closest.filing.requestType} (row ${closest.filing.rowKey}):\n` +
+        `- filed by Sabre but not shown: ${closest.missing.join('; ') || '(none)'}\n` +
+        `- shown but not filed for this brand: ${closest.extra.join('; ') || '(none)'}`
+      );
+    }
+
+    return { brandName, linesChecked: shownLines.size, filingsCompared: filings.length };
   },
 
   /**
