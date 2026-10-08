@@ -842,6 +842,32 @@ Then(
   }
 );
 
+async function expectRequestCountContaining(world, expectedCount, requestType, expectedTexts) {
+  await runPayloadValidationStep(world, "expectRequestCountContaining", {
+    requestType,
+    expectedTexts,
+    expectedCount,
+  }, async () => {
+    logger.info("Validating how many requests carry the text", { requestType, expectedTexts, expectedCount });
+    await PayloadValidation.expectRequestCountContaining(world.page, world, requestType, expectedTexts, expectedCount);
+  });
+}
+
+Then(
+  "exactly {int} {string} requests should contain {string}",
+  async function (expectedCount, requestType, expectedText) {
+    await expectRequestCountContaining(this, expectedCount, requestType, [expectedText]);
+  }
+);
+
+// Both texts in the SAME request - e.g. the RW upsell call that also carries FFH.
+Then(
+  "exactly {int} {string} requests should contain both {string} and {string}",
+  async function (expectedCount, requestType, firstText, secondText) {
+    await expectRequestCountContaining(this, expectedCount, requestType, [firstText, secondText]);
+  }
+);
+
 Then(
   "every {string} request should contain {string}",
   async function (requestType, parameterName) {

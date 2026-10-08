@@ -3087,6 +3087,66 @@ const PayloadValidation = {
   },
 
   /**
+   * Asserts how many requests of a type carry ALL of the given texts - e.g. that of the
+   * Fare_PriceUpsellWithoutPNR calls an agreement search makes, exactly one is the RW call cloned
+   * with FFH. Several texts so a scenario can pin them to the SAME call, which two separate counts
+   * cannot.
+   *
+   * Plain substrings, not a parameter lookup: what tells the calls apart is a value
+   * (<pricingOptionKey>FFH</pricingOptionKey>), and every call carries the same key name.
+   *
+   * The total is settled first, so calls the flow sends in parallel are all counted.
+   */
+  async expectRequestCountContaining(page, world, requestType, expectedTexts, expectedCount) {
+    if (!page) {
+      throw new Error("page is required");
+    }
+
+    assertWorld(world);
+    const normalizedRequestType = normalizeRequestType(requestType);
+
+    const texts = [].concat(expectedTexts);
+    if (texts.length === 0 || texts.some((text) => !text || typeof text !== "string")) {
+      throw new Error("expectedTexts must be one or more non-empty strings");
+    }
+
+    const expected = Number(expectedCount);
+    if (!Number.isInteger(expected) || expected < 0) {
+      throw new Error(`expectedCount must be a non-negative integer, got: ${expectedCount}`);
+    }
+
+    await settleRequestCount(
+      () => this.getRequestCount(world, normalizedRequestType),
+      { requestType: normalizedRequestType }
+    );
+
+    const description = texts.map((text) => `"${text}"`).join(" and ");
+    const result = await fetchAllRequestsForTrip(
+      world,
+      normalizedRequestType,
+      `count the requests carrying ${description}`
+    );
+
+    const matching = result.matches.filter((match) => {
+      const payload = String(match.payload || "");
+      return texts.every((text) => payload.includes(text));
+    });
+
+    logger.info(`Counted "${normalizedRequestType}" requests carrying the text`, {
+      expectedTexts: texts,
+      requests: result.matches.length,
+      matching: matching.length,
+      expected,
+    });
+
+    expect(
+      matching.length,
+      `Expected exactly ${expected} of the ${result.matches.length} "${normalizedRequestType}" request(s) ` +
+      `to contain ${description}, but ${matching.length} did.`
+    ).toBe(expected);
+  },
+
+  /**
    * Builds the inventory of every request type the trip logged, without downloading any payload.
    *
    * This is the capture half of an ABSENCE check. Capturing by request type cannot serve one:
