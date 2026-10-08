@@ -256,7 +256,163 @@ const ParallelSearch = {
 
     return { expectedExplanation, actualTooltip };
   },
+
+  /**
+   * Starts recording the calls of a flight + hotel parallel search: every FlightSelect and
+   * /hotelsearch request (start, end, the cache key sent and the cache key returned) and times in ms from this call. Arm it on flight results BEFORE the
+   * flight is added to the trip; the verify* methods below read the returned recorder.
+   *
+   * A /hotelsearch sent WITHOUT a cache key is a fresh supplier search (several seconds); hotel
+   * results then sends the key it returned to read the results.
+   *
+   * @param {import("playwright").Page} page
+   * @returns {{calls: object[], whenSettled: () => Promise<void>, stop: () => void}}
+   */
+  startRecordingParallelHotelSearch(page) {
+    if (!page) throw new Error("[ParallelSearch.startRecordingParallelHotelSearch] \"page\" is required.");
+
+    const t0 = Date.now();
+    const calls = [];
+    const pendingBodies = [];
+    const byRequest = new Map();
+    const kindOf = (url) => {
+      const { pathname } = new URL(url);
+      if (/\/hotelsearch$/i.test(pathname)) return "hotelsearch";
+      if (/\/FlightSelect$/i.test(pathname)) return "FlightSelect";
+      return null;
+    };
+
+    const onRequest = (request) => {
+      const kind = kindOf(request.url());
+      if (!kind || request.method() === "OPTIONS") return;
+      let sentCacheKey = null;
+      if (kind === "hotelsearch") {
+        try {
+          sentCacheKey = JSON.parse(request.postData() || "{}").cacheKey || null;
+        } catch {
+          sentCacheKey = null;
+        }
+      }
+      const call = { kind, start: Date.now() - t0, end: null, status: null, sentCacheKey, returnedCacheKey: null, hotelsCount: null };
+      calls.push(call);
+      byRequest.set(request, call);
+      logger.debug("Parallel search call started", { kind, start: call.start, hasCacheKey: !!sentCacheKey });
+    };
+    const onDone = (request) => {
+      const call = byRequest.get(request);
+      if (!call) return;
+      call.end = Date.now() - t0;
+      pendingBodies.push((async () => {
+        const response = await request.response().catch(() => null);
+        call.status = response ? response.status() : "failed";
+        if (call.kind === "hotelsearch" && response) {
+          const body = await response.json().catch(() => null);
+          call.returnedCacheKey = body?.cacheKey || null;
+          call.hotelsCount = Array.isArray(body?.hotels) ? body.hotels.length : null;
+        }
+        logger.debug("Parallel search call finished", { kind: call.kind, end: call.end, status: call.status, hotelsCount: call.hotelsCount });
+      })());
+    };
+
+    page.on("request", onRequest);
+    page.on("requestfinished", onDone);
+    page.on("requestfailed", onDone);
+
+    return {
+      calls,
+      whenSettled: () => Promise.all(pendingBodies).then(() => {}),
+      stop: () => {
+        page.off("request", onRequest);
+        page.off("requestfinished", onDone);
+        page.off("requestfailed", onDone);
+      },
+    };
+  },
+
+  /**
+   * Verifies the fresh hotel search (/hotelsearch without a cache key) started together with
+   * FlightSelect instead of after it returned (AB#85879): it must start before FlightSelect ends
+   * and within maxStartGapMs of FlightSelect starting.
+   *
+   * @param {object} recorder - from startRecordingParallelHotelSearch
+   * @param {object} [options]
+   * @param {number} [options.maxStartGapMs=2000]
+   * @returns {Promise<{flightSelect: object, freshHotelSearch: object}>}
+   */
+  async verifyHotelSearchStartedWithFlightSelect(recorder, { maxStartGapMs = 2000 } = {}) {
+    const { flightSelect, freshHotelSearch } = await settledParallelCalls(recorder, "verifyHotelSearchStartedWithFlightSelect");
+    logger.info("FlightSelect and fresh hotel search timing (ms from recording start)", {
+      flightSelect: [flightSelect.start, flightSelect.end],
+      freshHotelSearch: [freshHotelSearch.start, freshHotelSearch.end],
+    });
+
+    expect(
+      freshHotelSearch.start,
+      `[ParallelSearch.verifyHotelSearchStartedWithFlightSelect] The hotel search started at +${freshHotelSearch.start} ms, ` +
+      `after FlightSelect returned at +${flightSelect.end} ms: it waited for FlightSelect instead of running alongside it.`,
+    ).toBeLessThan(flightSelect.end);
+    expect(
+      Math.abs(freshHotelSearch.start - flightSelect.start),
+      `[ParallelSearch.verifyHotelSearchStartedWithFlightSelect] The hotel search started ${freshHotelSearch.start - flightSelect.start} ms ` +
+      `away from FlightSelect (+${flightSelect.start} ms); expected both to start together (within ${maxStartGapMs} ms).`,
+    ).toBeLessThanOrEqual(maxStartGapMs);
+
+    return { flightSelect, freshHotelSearch };
+  },
+
+  /**
+   * Verifies hotel results read the results of the parallel search: a later /hotelsearch sent the
+   * cache key the fresh search returned, and it returned hotels.
+   *
+   * @param {object} recorder - from startRecordingParallelHotelSearch
+   * @returns {Promise<{cacheKey: string, hotelsCount: number}>}
+   */
+  async verifyHotelResultsReusedParallelCacheKey(recorder) {
+    const { freshHotelSearch } = await settledParallelCalls(recorder, "verifyHotelResultsReusedParallelCacheKey");
+    if (!freshHotelSearch.returnedCacheKey) {
+      throw new Error(`[ParallelSearch.verifyHotelResultsReusedParallelCacheKey] The fresh hotel search returned no cache key (status ${freshHotelSearch.status}).`);
+    }
+    const reuse = recorder.calls.find((call) => call.kind === "hotelsearch" && call.sentCacheKey === freshHotelSearch.returnedCacheKey);
+    if (!reuse) {
+      throw new Error(
+        "[ParallelSearch.verifyHotelResultsReusedParallelCacheKey] No /hotelsearch sent the cache key returned by the parallel search. " +
+        `Sent keys: ${JSON.stringify(recorder.calls.filter((call) => call.kind === "hotelsearch").map((call) => call.sentCacheKey))}`,
+      );
+    }
+    logger.info("Hotel results reused the parallel search cache key", { start: reuse.start, hotelsCount: reuse.hotelsCount });
+
+    expect(
+      reuse.hotelsCount,
+      "[ParallelSearch.verifyHotelResultsReusedParallelCacheKey] The /hotelsearch that sent the parallel cache key returned no hotels.",
+    ).toBeGreaterThan(0);
+
+    return { cacheKey: reuse.sentCacheKey, hotelsCount: reuse.hotelsCount };
+  },
 };
+
+/**
+ * Waits for the recorder's response bodies to be read and returns the FlightSelect call and the
+ * first fresh /hotelsearch (no cache key) that started after it was armed.
+ *
+ * @param {object} recorder
+ * @param {string} caller - DSL method name, for error messages
+ * @returns {Promise<{flightSelect: object, freshHotelSearch: object}>}
+ */
+async function settledParallelCalls(recorder, caller) {
+  if (!recorder || !Array.isArray(recorder.calls)) {
+    throw new Error(`[ParallelSearch.${caller}] No parallel search recording. Run "I start recording the parallel hotel search requests" before adding the flight.`);
+  }
+  await recorder.whenSettled();
+  const flightSelect = recorder.calls.find((call) => call.kind === "FlightSelect");
+  if (!flightSelect || flightSelect.end === null) {
+    throw new Error(`[ParallelSearch.${caller}] No completed FlightSelect request was recorded.`);
+  }
+  const freshHotelSearch = recorder.calls.find((call) => call.kind === "hotelsearch" && !call.sentCacheKey);
+  if (!freshHotelSearch || freshHotelSearch.end === null) {
+    throw new Error(`[ParallelSearch.${caller}] No completed fresh /hotelsearch (without a cache key) was recorded after adding the flight.`);
+  }
+  return { flightSelect, freshHotelSearch };
+}
 
 /**
  * Shared flow for the two edited-parallel-car searches: fills a round-trip flight WITHOUT submitting,

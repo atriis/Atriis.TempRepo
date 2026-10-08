@@ -67,3 +67,23 @@ Then("the car pick-up and drop-off dates should match the entered dates", async 
     expectedDropoffDate: this.parallelSearch.carDropoffDate,
   });
 });
+
+// ========================================
+// PARALLEL HOTEL SEARCH ALONGSIDE FLIGHTSELECT (AB#85879)
+// ========================================
+
+When("I start recording the parallel hotel search requests", async function () {
+  logger.info("Recording FlightSelect and /hotelsearch requests for the parallel hotel search");
+  this.parallelHotelSearchRecorder = ParallelSearch.startRecordingParallelHotelSearch(this.page);
+});
+
+Then("the parallel hotel search should start together with FlightSelect", async function () {
+  logger.info("Verifying the parallel hotel search started together with FlightSelect");
+  await ParallelSearch.verifyHotelSearchStartedWithFlightSelect(this.parallelHotelSearchRecorder);
+});
+
+
+Then("hotel results should reuse the parallel hotel search cache key", async function () {
+  logger.info("Verifying hotel results reused the parallel hotel search cache key");
+  await ParallelSearch.verifyHotelResultsReusedParallelCacheKey(this.parallelHotelSearchRecorder);
+});
