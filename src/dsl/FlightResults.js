@@ -944,6 +944,22 @@ function isFreeSeatText(text) {
   return /free[\w\s]*seat/i.test(String(text || ''));
 }
 
+// AB#62878 flight card leg shapes, keyed by airline mix and stop count.
+const FLIGHT_CARD_LEG_SHAPES = ['direct', 'same airline 1 stop', 'multiple carriers 1 stop', 'same airline 2 stops', 'multiple carriers 2 stops'];
+
+function flightCardLegStops(leg) {
+  if (leg.isDirect) return 0;
+  const match = /^(\d+)/.exec(leg.stopsLabel || leg.stopsText || '');
+  return match ? Number(match[1]) : NaN;
+}
+
+function flightCardLegShape(leg) {
+  const stops = flightCardLegStops(leg);
+  if (stops === 0) return 'direct';
+  const airlines = leg.isMultiCarrier ? 'multiple carriers' : 'same airline';
+  return stops >= 2 ? `${airlines} 2 stops` : `${airlines} 1 stop`;
+}
+
 /**
  * FlightResults DSL
  *
@@ -10128,6 +10144,111 @@ async verifyFareComponentTextColorInPricingOptions(page, expectedColor, index = 
       charsScanned: text.length,
     });
     return { charsScanned: text.length };
+  },
+
+  /**
+   * Ticks one option of the results "Stops" filter (e.g. "2 stops") and waits for the list to settle.
+   * @param {import('playwright').Page} page
+   * @param {string} label - Option label as shown in the filter.
+   */
+  async filterByStops(page, label) {
+    if (!page) throw new Error('page is required');
+    if (!label || typeof label !== 'string') throw new Error('label must be a non-empty string');
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    await flightResultsPage.waitForFlightResults();
+    await flightResultsPage.applyStopsFilter(label);
+    await flightResultsPage.waitForFlightResults();
+    await page.waitForTimeout(1500);
+    return { applied: label };
+  },
+
+  /**
+   * AB#62878: every visible desktop flight card leg lists ALL its flight numbers, joined by " / ", in
+   * flight order, and the Figma stops line ("1 Stop MUC 1h15m", "2 Stops MUC | BRU"). Two-airline legs
+   * keep the connection icon and "Multiple Carriers". A number never wraps inside itself; separators,
+   * the stops divider and the decorative icon are hidden from screen readers. Pricing-options legs are
+   * left out on purpose: that surface keeps the legacy line (out of scope).
+   *
+   * @param {import('playwright').Page} page
+   * @param {object} [options]
+   * @param {string|null} [options.scope=null] - Container selector (e.g. '.flight-quote-card'); null = whole page.
+   * @param {string} [options.surface='results'] - Label used in log lines and errors.
+   * @returns {Promise<{legs: object[], shapes: Record<string, number>}>}
+   */
+  async verifyFlightCardLegsShowAllFlightNumbers(page, { scope = null, surface = 'results' } = {}) {
+    if (!page) throw new Error('page is required');
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    await page.locator(scope ? `${scope} .flight-info` : '.flight-info').first().waitFor({ state: 'visible', timeout: 120000 });
+    await page.waitForTimeout(1500);
+
+    const legs = (await flightResultsPage.readFlightCardLegs(scope)).filter((leg) => !leg.isPricingOptions);
+    if (!legs.length) throw new Error(`[FlightResults.verifyFlightCardLegsShowAllFlightNumbers] ${surface}: no flight card legs found`);
+
+    const problems = [];
+    legs.forEach((leg, index) => {
+      const id = `${surface} leg ${index + 1} ${leg.route} [${leg.numbersText}]`;
+      if (!leg.hasConnectingNumbersLine) {
+        problems.push(`${id}: legacy numbers line (first number only) is rendered`);
+        return;
+      }
+      const joined = leg.flightNumbers.join(' / ');
+      if (leg.numbersText !== joined) problems.push(`${id}: numbers read "${leg.numbersText}", expected "${joined}"`);
+      if (leg.numbersText.includes(',')) problems.push(`${id}: numbers are joined by a comma`);
+      if (leg.numbersSpokenText !== leg.flightNumbers.join(' ')) problems.push(`${id}: screen-reader text "${leg.numbersSpokenText}"`);
+      if (leg.linesPerNumber.some((lines) => lines !== 1)) problems.push(`${id}: a flight number wraps inside itself`);
+      const separators = leg.separatorsAriaHidden;
+      if (separators.slice(0, -1).some((value) => value !== 'true') || separators[separators.length - 1] !== null) {
+        problems.push(`${id}: separators ${JSON.stringify(separators)} (every number but the last needs an aria-hidden " /")`);
+      }
+      if (leg.isMultiCarrier) {
+        if (!/multiple carriers/i.test(leg.carrierName)) problems.push(`${id}: connection icon without "Multiple Carriers"`);
+        if (leg.multiCarrierIconAriaHidden !== 'true') problems.push(`${id}: connection icon is not aria-hidden`);
+      }
+      if (leg.isDirect) {
+        if (leg.flightNumbers.length !== 1) problems.push(`${id}: direct leg shows ${leg.flightNumbers.length} numbers`);
+        return;
+      }
+      if (!leg.hasConnectingStopsLine) {
+        problems.push(`${id}: legacy stops line "${leg.stopsText}"`);
+        return;
+      }
+      const stops = flightCardLegStops(leg);
+      if (stops === 1) {
+        if (!/^1 Stop [A-Z]{3} \d+h\d+m$/.test(leg.stopsSpokenText || '')) problems.push(`${id}: one-stop line "${leg.stopsSpokenText}"`);
+        if (leg.flightNumbers.length < 2) problems.push(`${id}: 1 stop but ${leg.flightNumbers.length} number(s)`);
+      } else if (stops >= 2) {
+        if (!/^\d+ Stops [A-Z]{3} [A-Z]{3}$/.test(leg.stopsSpokenText || '')) problems.push(`${id}: multi-stop line "${leg.stopsSpokenText}"`);
+        if (leg.stopsDividerAriaHidden !== 'true' || leg.stopsDividerWidth === '0px') problems.push(`${id}: stops divider missing or not aria-hidden`);
+        if (leg.flightNumbers.length < 3) problems.push(`${id}: ${stops} stops but ${leg.flightNumbers.length} number(s)`);
+      }
+    });
+
+    const shapes = legs.reduce((acc, leg) => {
+      const shape = flightCardLegShape(leg);
+      acc[shape] = (acc[shape] || 0) + 1;
+      return acc;
+    }, {});
+    logger.info(`[FlightResults.verifyFlightCardLegsShowAllFlightNumbers] ${surface}: ${legs.length} legs`, {
+      shapes,
+      samples: legs.filter((leg) => leg.flightNumbers.length > 1).slice(0, 4).map((leg) => `${leg.carrierName} | ${leg.numbersText} | ${leg.stopsText}`),
+    });
+    if (problems.length) {
+      throw new Error(`[FlightResults.verifyFlightCardLegsShowAllFlightNumbers] ${surface}: ${problems.length} problem(s):\n${problems.slice(0, 15).join('\n')}`);
+    }
+    return { legs, shapes };
+  },
+
+  /**
+   * Fails unless the checked legs include the given shape, so a route that stopped offering e.g. a
+   * same-airline connection cannot pass vacuously.
+   * @param {Record<string, number>} shapes - The `shapes` returned by verifyFlightCardLegsShowAllFlightNumbers.
+   * @param {string} shape - One of FLIGHT_CARD_LEG_SHAPES.
+   */
+  verifyFlightCardLegShapePresent(shapes, shape) {
+    if (!shapes) throw new Error('No flight card legs were checked yet. Run a "... should show all its flight numbers" step first.');
+    if (!FLIGHT_CARD_LEG_SHAPES.includes(shape)) throw new Error(`Unknown leg shape "${shape}"; use one of ${FLIGHT_CARD_LEG_SHAPES.join(', ')}`);
+    if (!shapes[shape]) throw new Error(`No "${shape}" leg among the checked flight cards: ${JSON.stringify(shapes)}`);
+    return { count: shapes[shape] };
   },
 }
 

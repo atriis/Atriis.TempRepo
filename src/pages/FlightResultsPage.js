@@ -6428,6 +6428,87 @@ async clickSelectForFareWithBaggagePricingOptions(baggageText) {
     }
   }
 
+  /**
+   * Ticks one option of the results "Stops" filter by its label (e.g. "2 stops"). Same approach as
+   * applyNoStopsFilter: click the visible box, then wait for Element Plus to stamp is-checked.
+   * Throws when the route offers no such option, so a missing shape reads as test data, not a pass.
+   *
+   * @param {string} label - Option label as shown, e.g. "1 stop" or "2 stops".
+   * @param {number} timeout - Max wait time in ms (default: 30000)
+   */
+  async applyStopsFilter(label, timeout = 30000) {
+    const group = this.page.locator(SELECTORS.STOPS_FILTER).first();
+    await group.waitFor({ state: 'visible', timeout });
+    const escaped = label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const pattern = new RegExp(`^\\s*${escaped}\\b`, 'i');
+    const option = group.locator(SELECTORS.FILTER_CHECKBOX_LABEL).filter({ hasText: pattern }).first();
+    if (!(await option.count())) {
+      const offered = await group.locator(SELECTORS.FILTER_CHECKBOX_LABEL).allInnerTexts();
+      throw new Error(`Stops filter has no "${label}" option on this route; offered: ${JSON.stringify(offered.map((t) => t.split('\n')[0].trim()))}`);
+    }
+    await option.scrollIntoViewIfNeeded();
+    await option.locator(SELECTORS.CHECKBOX_VISIBLE_BOX).first().click({ force: true });
+    await group
+      .locator(`${SELECTORS.FILTER_CHECKBOX_LABEL}.${SELECTORS.CHECKBOX_CHECKED_CLASS}`)
+      .filter({ hasText: pattern })
+      .first()
+      .waitFor({ state: 'attached', timeout });
+  }
+
+  /**
+   * Reads every visible flight card leg (the flight-preview-segment root, `.flight-info`) under the
+   * given containers: carrier line, flight numbers, stops line and the accessibility attributes the
+   * connecting-flight-numbers card (AB#62878) relies on. Pricing-options legs are flagged by
+   * `isPricingOptions` so callers can leave them out (that surface keeps the legacy line).
+   *
+   * @param {string|null} scopeSelector - Container(s) to read from; null reads the whole page.
+   * @returns {Promise<Array<object>>} One entry per visible leg, in page order.
+   */
+  async readFlightCardLegs(scopeSelector = null) {
+    return this.page.evaluate((scope) => {
+      const collapse = (text) => (text || '').replace(/\s+/g, ' ').trim();
+      const spokenText = (el) => {
+        if (!el) return null;
+        const clone = el.cloneNode(true);
+        clone.querySelectorAll('[aria-hidden="true"]').forEach((node) => node.remove());
+        return collapse(clone.textContent);
+      };
+      const isVisible = (el) => !!el && el.getClientRects().length > 0 && getComputedStyle(el).visibility !== 'hidden';
+      const roots = scope ? [...document.querySelectorAll(scope)].filter(isVisible) : [document];
+      const legs = [...new Set(roots.flatMap((root) => [...root.querySelectorAll('.flight-info')]))].filter(isVisible);
+      return legs.map((leg) => {
+        const numbersLine = leg.querySelector('p.flight-numbers');
+        const numberEls = numbersLine ? [...numbersLine.querySelectorAll('.flight-number')] : [];
+        const legacyNumbers = leg.querySelector('.carrier-name ~ p:not(.flight-operator)');
+        const icon = leg.querySelector('.multi-carrier-img');
+        const stopsLine = leg.querySelector('p.stops-line');
+        const divider = stopsLine ? stopsLine.querySelector('.stops-divider') : null;
+        return {
+          isPricingOptions: leg.classList.contains('pricing-format'),
+          carrierName: collapse(leg.querySelector('.carrier-name')?.textContent),
+          isMultiCarrier: !!icon,
+          multiCarrierIconAriaHidden: icon ? icon.getAttribute('aria-hidden') : null,
+          hasConnectingNumbersLine: !!numbersLine,
+          numbersText: numbersLine ? collapse(numbersLine.textContent) : collapse(legacyNumbers?.textContent),
+          numbersSpokenText: spokenText(numbersLine),
+          flightNumbers: numberEls.map((el) => collapse(el.textContent).replace(/\s*\/$/, '')),
+          // A nested separator span gives a number two client rects on ONE line, so count distinct line tops.
+          linesPerNumber: numberEls.map((el) => new Set([...el.getClientRects()].map((r) => Math.round(r.top))).size),
+          numbersLineCount: new Set(numberEls.map((el) => Math.round(el.getBoundingClientRect().top))).size,
+          separatorsAriaHidden: numberEls.map((el) => el.querySelector('.flight-number-separator')?.getAttribute('aria-hidden') ?? null),
+          isDirect: !!leg.querySelector('.direct-flight'),
+          stopsText: collapse(leg.querySelector('.flight-stops')?.textContent),
+          hasConnectingStopsLine: !!stopsLine,
+          stopsSpokenText: spokenText(stopsLine),
+          stopsLabel: collapse(stopsLine?.querySelector('.red')?.textContent),
+          stopsDividerAriaHidden: divider ? divider.getAttribute('aria-hidden') : null,
+          stopsDividerWidth: divider ? getComputedStyle(divider).borderLeftWidth : null,
+          route: [...leg.querySelectorAll('.loc-code')].map((el) => collapse(el.textContent)).join('-'),
+        };
+      });
+    }, scopeSelector);
+  }
+
   // Starts waiting for the flightSearch API response (call BEFORE triggering the search).
   // Matches the exact path so /flightSearchDefault is not picked up by mistake.
   // Read the body with readJson (from @utils/networkInterceptor).

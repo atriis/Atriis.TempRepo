@@ -1922,3 +1922,26 @@ Then("the long layover should be flagged on the connection it belongs to", async
   const result = await FlightResults.verifyLongLayoverFlaggedOnItsConnection(this.page);
   logger.info("Long layover badge verified", result);
 });
+
+// AB#62878 / TC 86409 - connecting flights show every flight number on the desktop flight card.
+When("I filter results by the {string} stops option", async function (label) {
+  logger.info("Filtering results by stops option", { label });
+  await FlightResults.filterByStops(this.page, label);
+});
+
+Then("every flight result leg should show all its flight numbers", async function () {
+  logger.info("Verifying every flight result leg shows all its flight numbers");
+  const { shapes } = await FlightResults.verifyFlightCardLegsShowAllFlightNumbers(this.page, { surface: "results" });
+  this.flightCardLegShapes = shapes;
+});
+
+Then("the cart flight quote should show all its flight numbers", async function () {
+  logger.info("Verifying the cart flight quote shows all its flight numbers");
+  const { shapes } = await FlightResults.verifyFlightCardLegsShowAllFlightNumbers(this.page, { scope: ".flight-quote-card", surface: "cart" });
+  this.flightCardLegShapes = shapes;
+});
+
+Then("the checked flight legs should include a {string} leg", async function (shape) {
+  const result = FlightResults.verifyFlightCardLegShapePresent(this.flightCardLegShapes, shape);
+  logger.info("Flight card leg shape present", { shape, ...result });
+});
