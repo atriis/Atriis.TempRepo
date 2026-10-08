@@ -34,4 +34,3 @@ Feature: 45750 Sabre - Separate tickets - SegmentSelect Number="1" is not being 
     And I hold the trip
     When I wait until "EnhancedAirBookRQ" requests have been sent for the trip
     Then the "EnhancedAirBookRQ" requests should select segment 1 and segment 2 in different tickets
-    And I successfully cancel the trip
