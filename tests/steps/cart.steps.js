@@ -1772,6 +1772,16 @@ When("I share the contact details with the airline if requested using email {str
   await Cart.shareContactDetailsWithAirlineInCart(this.page, email);
 });
 
+// For a traveller with no phone on the profile when the airline marks the phone required (BA NDC):
+// the email-only step above cannot save the panel then. The phone is typed only if the panel has none.
+When(
+  "I share the contact details with the airline if requested using email {string} and phone {string} {string} {string}",
+  async function (email, dialCode, areaCode, number) {
+    logger.info("Sharing contact details with the airline in cart, with a phone", { email, dialCode, areaCode });
+    await Cart.shareContactDetailsWithAirlineInCart(this.page, email, { dialCode, areaCode, number });
+  },
+);
+
 // Use with "I hold quote {int}" when the cart holds more than one flight quote (Separated Tickets):
 // each quote has its own consent row, and the unscoped step above only ever answers the first one.
 When("I share the contact details with the airline for quote {int} if requested using email {string}", async function (position, email) {

@@ -14352,9 +14352,11 @@ const Cart = {
    * the stored contact left it empty — one contact is enough for the form to save.
    * @param {import('playwright').Page} page
    * @param {string} email - Used only when the panel has no email yet
+   * @param {{ dialCode: string, areaCode: string, number: string }|null} [phone] - Typed only when the
+   *   panel has no phone number yet; needed when the airline marks the phone required (BA NDC, #69676)
    * @returns {Promise<{ answered: boolean }>}
    */
-  async shareContactDetailsWithAirlineInCart(page, email) {
+  async shareContactDetailsWithAirlineInCart(page, email, phone = null) {
     if (!page) throw new Error('page is required');
     if (!email || typeof email !== 'string') {
       throw new Error('[Cart.shareContactDetailsWithAirlineInCart] email must be a non-empty string, got: ' + typeof email);
@@ -14381,9 +14383,18 @@ const Cart = {
       await cartPage.fillFlightContactConsentEmail(email);
     }
 
+    let usedStoredPhone = null;
+    if (phone) {
+      usedStoredPhone = Boolean(await cartPage.getFlightContactConsentPhoneNumberValue());
+      if (!usedStoredPhone) {
+        await cartPage.fillFlightContactConsentPhone(phone.dialCode, phone.areaCode, phone.number);
+      }
+    }
+
     await cartPage.saveFlightContactConsent();
     logger.info('Contact details for the airline saved in the cart', {
       mandatory: checkbox.disabled,
+      usedStoredPhone,
       usedStoredEmail: Boolean(storedEmail),
     });
     return { answered: true };

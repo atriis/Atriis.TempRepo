@@ -1738,6 +1738,11 @@ const SELECTORS = {
     '.flight-contact-sharing-consent:visible .btns > button.btn--primary',
   // Green check_circle extras-layout.vue renders on the collapsed row once the validation is OK.
   FLIGHT_CONTACT_CONSENT_SUCCESS_ICON: '.flight-contact-sharing-consent:visible .extra .success-icon.green',
+  // "Traveller phone" of the open consent panel: the same app-phone-input.vue widget ground transport
+  // uses — the dial code is a popover-backed <button>, only the area code and number are inputs.
+  FLIGHT_CONTACT_CONSENT_PHONE_COUNTRY_BTN: '.flight-contact-sharing-consent:visible .app-phone-input__country',
+  FLIGHT_CONTACT_CONSENT_PHONE_AREA: '.flight-contact-sharing-consent:visible .app-phone-input__area',
+  FLIGHT_CONTACT_CONSENT_PHONE_NUMBER: '.flight-contact-sharing-consent:visible .app-phone-input__number',
   // "Please add the required extras" notice — extras-collapse.vue renders it as the first <p> of
   // `.extras-container`, gated on isQuoteSelected (quote.status === Selected), and its created()
   // hook opens the accordion for exactly that state, so a pending Amtrak quote shows it without a
@@ -6569,6 +6574,59 @@ class CartPage {
     const input = (scope ?? this.page).locator(SELECTORS.FLIGHT_CONTACT_CONSENT_EMAIL_INPUT).first();
     await input.waitFor({ state: 'visible', timeout });
     await input.fill(email);
+  }
+
+  /**
+   * Reads the phone number input (without dial or area code) of the open consent panel.
+   * @param {number} timeout
+   * @param {import('playwright').Locator|null} [scope] - Limit to one quote card (Separated Tickets carts hold one consent row per quote)
+   * @returns {Promise<string>}
+   */
+  async getFlightContactConsentPhoneNumberValue(timeout = 15000, scope = null) {
+    const input = (scope ?? this.page).locator(SELECTORS.FLIGHT_CONTACT_CONSENT_PHONE_NUMBER).first();
+    await input.waitFor({ state: 'visible', timeout });
+    return ((await input.inputValue()) || '').trim();
+  }
+
+  /**
+   * Fills the "Traveller phone" of the open consent panel. The airline panel marks the phone as
+   * required, so a traveller whose profile has no phone cannot save the consent without it.
+   *
+   * The dial-code list is an el-popover teleported to <body>, so it is not scoped to the quote card.
+   * @param {string} dialCode - Country dial code without the plus, e.g. "44"
+   * @param {string} areaCode
+   * @param {string} number
+   * @param {number} timeout
+   * @param {import('playwright').Locator|null} [scope] - Limit to one quote card (Separated Tickets carts hold one consent row per quote)
+   */
+  async fillFlightContactConsentPhone(dialCode, areaCode, number, timeout = 15000, scope = null) {
+    const root = scope ?? this.page;
+    try {
+      const countryBtn = root.locator(SELECTORS.FLIGHT_CONTACT_CONSENT_PHONE_COUNTRY_BTN).first();
+      await countryBtn.waitFor({ state: 'visible', timeout });
+      await countryBtn.click();
+
+      const searchInput = this.page.locator(SELECTORS.PHONE_INPUT_POPOVER_SEARCH).first();
+      await searchInput.waitFor({ state: 'visible', timeout });
+      await searchInput.fill(String(dialCode));
+
+      // Filter on the rendered "(+44)" text: the search box also matches country names and ISO codes.
+      const option = this.page
+        .locator(SELECTORS.PHONE_INPUT_POPOVER_OPTION)
+        .filter({ hasText: `+${dialCode}` })
+        .first();
+      await option.waitFor({ state: 'visible', timeout });
+      await option.click();
+
+      await root.locator(SELECTORS.FLIGHT_CONTACT_CONSENT_PHONE_AREA).first().fill(String(areaCode));
+      await root.locator(SELECTORS.FLIGHT_CONTACT_CONSENT_PHONE_NUMBER).first().fill(String(number));
+    } catch (err) {
+      throw new Error(
+        `[CartPage.fillFlightContactConsentPhone] Could not fill the airline contact phone ` +
+        `"+${dialCode} ${areaCode} ${number}" (country button: ${SELECTORS.FLIGHT_CONTACT_CONSENT_PHONE_COUNTRY_BTN}). ` +
+        `The "Contact details for the airline" panel must already be open. Original: ${err.message}`,
+      );
+    }
   }
 
   /**
