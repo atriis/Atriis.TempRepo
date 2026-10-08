@@ -986,6 +986,48 @@ const Homepage = {
     logger.info(`No "${expectedCtaLabel}" button on the ${config.label}`, { userId });
     return { count: 0, label: expectedCtaLabel, userId };
   },
+
+  /**
+   * Closes every document expiry warning on the current page, for scenarios whose traveller has
+   * expired documents but that are not about them: the stack is fixed to the right edge and covers
+   * the trip search page's buttons (e.g. jskrl@jskrl.com's five passport/visa warnings).
+   *
+   * The stack loads after a traveller is selected, so this first waits for a warning to appear;
+   * none appearing is fine. Dismissal only lasts for this page (document-expiry-alerts.ts keeps the
+   * dismissed keys in component state).
+   *
+   * @param {import('playwright').Page} page
+   * @param {number} [appearTimeout=15000] - how long to wait for the first warning
+   * @returns {Promise<number>} how many warnings were closed
+   */
+  async dismissDocumentExpiryAlerts(page, appearTimeout = 15000) {
+    if (!page) throw new Error("[Homepage.dismissDocumentExpiryAlerts] page is required");
+
+    const homePage = getPageObject(page, HomePage);
+    if (!(await homePage.waitForAnyDocumentExpiryAlert(appearTimeout))) {
+      logger.info("No document expiry warnings to dismiss");
+      return 0;
+    }
+
+    const initialCount = await homePage.getDocumentExpiryAlertCount();
+    for (let dismissed = 0; dismissed < initialCount; dismissed += 1) {
+      const before = await homePage.getDocumentExpiryAlertCount();
+      if (before === 0) break;
+      await homePage.clickFirstDocumentExpiryAlertDismiss();
+      await homePage.waitForDocumentExpiryAlertCount(before - 1, 5000);
+    }
+
+    const remaining = await homePage.getDocumentExpiryAlertCount();
+    if (remaining !== 0) {
+      throw new Error(
+        `[Homepage.dismissDocumentExpiryAlerts] ${remaining} of ${initialCount} document expiry warnings ` +
+          `are still shown after closing each one. The close icon did not remove its card.`,
+      );
+    }
+
+    logger.info("Dismissed document expiry warnings", { count: initialCount });
+    return initialCount;
+  },
 };
 
 module.exports = Homepage;

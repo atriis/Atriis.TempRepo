@@ -25,3 +25,14 @@ Then("I should see the DB order not completed error message", async function () 
   logger.info("Validating DB order not completed error message");
   await DbRail.verifyOrderNotCompletedErrorMessage(this.page);
 });
+
+When("I select DB Rail in the search form", async function () {
+  logger.info("Selecting DB Rail in the search form");
+  await DbRail.selectDbRailInSearchForm(this.page);
+});
+
+// Punch-out only: opens the Deutsche Bahn window and closes it again, so nothing is booked.
+When("I continue to Deutsche Bahn from the search form", async function () {
+  logger.info("Punching out to Deutsche Bahn from the search form");
+  await DbRail.punchOutFromSearchForm(this.page);
+});

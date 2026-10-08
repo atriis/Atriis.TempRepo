@@ -520,6 +520,13 @@ When(
   },
 );
 
+// For scenarios that are NOT about the warnings: the stack covers the search page's buttons when the
+// traveller has expired documents. Passes when no warning appears.
+When("I dismiss the document expiry warnings", async function () {
+  logger.info("Dismissing the document expiry warnings");
+  await Homepage.dismissDocumentExpiryAlerts(this.page);
+});
+
 // Where the CTA LANDS is asserted by "the user profile of {string} should open in a new tab on the
 // passports and visas section", which lives in profile.steps.js — it drives the profile screen and
 // belongs with the rest of that screen's steps.

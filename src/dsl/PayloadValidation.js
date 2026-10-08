@@ -227,13 +227,27 @@ function extractLeadingJsonDocument(payload) {
   return null;
 }
 
+// Deutsche Bahn's REST calls (certifyURL, url, ppanCreditCard) are logged as
+// 'Headers: {...} Content: {...}' - the headers document FIRST, then the body. Reading the leading
+// document there would return the headers, so every assertion would miss the body. Returns the
+// parsed body, or null when the payload is not in that shape.
+function extractHeadersContentBody(payload) {
+  if (typeof payload !== "string" || !/^\s*Headers:\s*\{/.test(payload)) return null;
+
+  const contentMarker = payload.search(/\}\s*Content:\s*[{[]/);
+  if (contentMarker === -1) return null;
+
+  const body = payload.slice(contentMarker + 1).replace(/^\s*Content:\s*/, "");
+  return extractLeadingJsonDocument(body);
+}
+
 // Every assertion that parses a CAPTURED payload goes through this, so a supplier that appends
 // diagnostics to the body stays fully assertable. Returns null when there is no JSON to read.
 function tryParseCapturedJson(payload) {
   try {
     return JSON.parse(payload);
   } catch {
-    return extractLeadingJsonDocument(payload);
+    return extractHeadersContentBody(payload) ?? extractLeadingJsonDocument(payload);
   }
 }
 

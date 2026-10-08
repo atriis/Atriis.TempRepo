@@ -1,6 +1,7 @@
 const { getPageObject } = require("@utils/pageObjectCache");
 const { CartPage } = require("@pages/CartPage");
 const { DbRailPage } = require("@pages/DbRailPage");
+const { SearchPage } = require("@pages/SearchPage");
 const logger = require("@utils/logger").child("DbRail");
 
 /**
@@ -16,6 +17,10 @@ const logger = require("@utils/logger").child("DbRail");
 // `rail.value` ("DB Rail") rather than the localised product label, matched loosely so a
 // spacing/casing change in the app does not break the flow.
 const DB_RAIL_CAROUSEL_ITEM = /DB\s*Rail/i;
+
+// Option label in the new-trip search page's Rail dropdown (trip-index.vue railTypesOptions,
+// locale products.dbRail).
+const DB_RAIL_SEARCH_OPTION = 'DB Rail';
 
 // Pause between the punch-out click and the order-retrieval click, mirroring the 6s sleep the
 // original Testim recording of this flow needs (see continueAndConfirmOrderRetrieval).
@@ -37,6 +42,68 @@ const ORDER_NOT_COMPLETED_FRAGMENTS = [
   /We['’]re having trouble finding your Deutsche Bahn order\./i,
   /Please check that you['’]ve completed all steps on the Deutsche Bahn site and try again\./i,
 ];
+
+/**
+ * Clicks "Continue" and waits for the punch-out to resolve, retrying once when the backend
+ * rejects it (see PUNCH_OUT_ATTEMPTS). Shared by the trip-overview drawer and the new-trip search
+ * page, which render the same form behind different buttons.
+ *
+ * @param {import('playwright').Page} page
+ * @param {DbRailPage} dbRailPage
+ * @param {{clickContinue: Function, waitForOutcome: Function, caller: string}} surface
+ * @returns {Promise<import('playwright').Page|null>} the Deutsche Bahn tab, left open for the caller
+ */
+async function punchOutWithRetry(page, dbRailPage, { clickContinue, waitForOutcome, caller }) {
+  let punchOutTab = null;
+
+  try {
+    for (let attempt = 1; attempt <= PUNCH_OUT_ATTEMPTS; attempt += 1) {
+      // db-rail-search-inputs.ts calls window.open before it knows whether the punch-out will
+      // succeed, so a popup fires on the rejection path too (the app closes it itself there).
+      const popupPromise = page.context().waitForEvent('page', { timeout: 30000 }).catch(() => null);
+      await clickContinue();
+      punchOutTab = await popupPromise;
+
+      // Second stage only appears once the punch-out returned a Deutsche Bahn URL, so this
+      // doubles as the wait for the punch-out call itself. When staging instead answers
+      // canProceedToPunchOut=false, the form stays in stage one and shows a warning dialog
+      // with the backend's error — detected here instead of timing out on the second-stage button.
+      const { punchOutError } = await waitForOutcome();
+
+      if (!punchOutError) return punchOutTab; // punch-out accepted — the form is in its second stage
+
+      // The app already closed the popup on this path; guard-close ours anyway.
+      if (punchOutTab) {
+        await punchOutTab.close().catch(() => {});
+        punchOutTab = null;
+      }
+
+      if (attempt === PUNCH_OUT_ATTEMPTS) {
+        throw new Error(
+          `The staging backend refused the Deutsche Bahn punch-out on all ` +
+          `${PUNCH_OUT_ATTEMPTS} attempts (canProceedToPunchOut=false): "${punchOutError}". ` +
+          `This is an app/staging-side rejection answered by POST /DBRail before any booking ` +
+          `window could open — not an automation timing issue.`
+        );
+      }
+
+      logger.warn(
+        `[DbRail.${caller}] Punch-out rejected by staging ` +
+        `("${punchOutError}") — retrying once after ${PUNCH_OUT_REJECTION_RETRY_PAUSE_MS}ms`
+      );
+      await dbRailPage.closeMessageDialog();
+      await page.waitForTimeout(PUNCH_OUT_REJECTION_RETRY_PAUSE_MS);
+    }
+  } catch (err) {
+    if (punchOutTab) {
+      await punchOutTab.close().catch(() => {});
+      await page.bringToFront().catch(() => {});
+    }
+    throw err;
+  }
+
+  return punchOutTab;
+}
 
 const DbRail = {
   /**
@@ -111,43 +178,11 @@ const DbRail = {
     let punchOutTab = null;
 
     try {
-      for (let attempt = 1; attempt <= PUNCH_OUT_ATTEMPTS; attempt += 1) {
-        // db-rail-search-inputs.ts calls window.open before it knows whether the punch-out will
-        // succeed, so a popup fires on the rejection path too (the app closes it itself there).
-        const popupPromise = page.context().waitForEvent('page', { timeout: 30000 }).catch(() => null);
-        await dbRailPage.clickContinue();
-        punchOutTab = await popupPromise;
-
-        // Second stage only appears once the punch-out returned a Deutsche Bahn URL, so this
-        // doubles as the wait for the punch-out call itself. When staging instead answers
-        // canProceedToPunchOut=false, the drawer stays in stage one and shows a warning dialog
-        // with the backend's error — detected here instead of timing out on "Go to trip".
-        const { punchOutError } = await dbRailPage.waitForSecondStageOrPunchOutError();
-
-        if (!punchOutError) break; // punch-out accepted — the drawer is in its second stage
-
-        // The app already closed the popup on this path; guard-close ours anyway.
-        if (punchOutTab) {
-          await punchOutTab.close().catch(() => {});
-          punchOutTab = null;
-        }
-
-        if (attempt === PUNCH_OUT_ATTEMPTS) {
-          throw new Error(
-            `The staging backend refused the Deutsche Bahn punch-out on all ` +
-            `${PUNCH_OUT_ATTEMPTS} attempts (canProceedToPunchOut=false): "${punchOutError}". ` +
-            `This is an app/staging-side rejection answered by POST /DBRail before any booking ` +
-            `window could open — not an automation timing issue.`
-          );
-        }
-
-        logger.warn(
-          `[DbRail.continueAndConfirmOrderRetrieval] Punch-out rejected by staging ` +
-          `("${punchOutError}") — retrying once after ${PUNCH_OUT_REJECTION_RETRY_PAUSE_MS}ms`
-        );
-        await dbRailPage.closeMessageDialog();
-        await page.waitForTimeout(PUNCH_OUT_REJECTION_RETRY_PAUSE_MS);
-      }
+      punchOutTab = await punchOutWithRetry(page, dbRailPage, {
+        clickContinue: () => dbRailPage.clickContinue(),
+        waitForOutcome: () => dbRailPage.waitForSecondStageOrPunchOutError(),
+        caller: 'continueAndConfirmOrderRetrieval',
+      });
 
       // The original Testim recording of this flow sleeps 6s between "Continue" and "Go to trip",
       // and the flow only works with that pause: the button renders as soon as the punch-out URL
@@ -172,6 +207,54 @@ const DbRail = {
         `flow (punch out, then retrieve the order). The drawer must be open on the DB form and the ` +
         `traveller must be eligible to book Deutsche Bahn for the punch-out to return a booking ` +
         `URL. Original: ${err.message}`
+      );
+    }
+  },
+
+  /**
+   * Opens the DB Rail form in the new-trip search page: Rail tab, then "DB Rail" in its dropdown.
+   *
+   * @param {import('playwright').Page} page
+   * @returns {Promise<void>}
+   */
+  async selectDbRailInSearchForm(page) {
+    if (!page) throw new Error('[DbRail.selectDbRailInSearchForm] "page" is required.');
+    logger.debug('[DbRail.selectDbRailInSearchForm] Selecting DB Rail in the search page Rail tab');
+
+    const searchPage = getPageObject(page, SearchPage);
+    const dbRailPage = getPageObject(page, DbRailPage);
+    await searchPage.clickRailTab();
+    await searchPage.selectRailTypeOption(DB_RAIL_SEARCH_OPTION);
+    await dbRailPage.waitForSearchForm();
+  },
+
+  /**
+   * Punches out to Deutsche Bahn from the new-trip search page and stops there: nothing is booked
+   * and the order is not retrieved. The punch-out is what sends the certifyURL request (traveller,
+   * payment card and AirPlus zusatzdaten) to Deutsche Bahn, so it is logged once the page reaches
+   * its second stage ("Go to cart").
+   *
+   * @param {import('playwright').Page} page
+   * @returns {Promise<void>}
+   */
+  async punchOutFromSearchForm(page) {
+    if (!page) throw new Error('[DbRail.punchOutFromSearchForm] "page" is required.');
+    logger.debug('[DbRail.punchOutFromSearchForm] Punching out to Deutsche Bahn from the search page');
+
+    const dbRailPage = getPageObject(page, DbRailPage);
+    try {
+      const punchOutTab = await punchOutWithRetry(page, dbRailPage, {
+        clickContinue: () => dbRailPage.clickSearchContinue(),
+        waitForOutcome: () => dbRailPage.waitForSearchSecondStageOrPunchOutError(),
+        caller: 'punchOutFromSearchForm',
+      });
+      if (punchOutTab) await punchOutTab.close();
+      await page.bringToFront();
+    } catch (err) {
+      throw new Error(
+        `[DbRail.punchOutFromSearchForm] Could not punch out to Deutsche Bahn from the search page. ` +
+        `DB Rail must be selected in the Rail tab and an eligible traveller (corporate with a BMIS ` +
+        `number) added. Original: ${err.message}`
       );
     }
   },

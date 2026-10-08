@@ -81,6 +81,9 @@ const SELECTORS = {
   DOCUMENT_EXPIRY_ALERT_TITLE: ".alert-title",
   DOCUMENT_EXPIRY_ALERT_MESSAGE: ".alert-message",
   DOCUMENT_EXPIRY_ALERT_CTA: ".alert-cta",
+  // The card's close icon (a role="button" span). The testid suffix is on main only; .close-icon is
+  // on both builds.
+  DOCUMENT_EXPIRY_ALERT_DISMISS: ".close-icon",
 };
 
 /**
@@ -638,6 +641,52 @@ class HomePage {
       .locator(`${SELECTORS.DOCUMENT_EXPIRY_ALERT} ${SELECTORS.DOCUMENT_EXPIRY_ALERT_TITLE}`)
       .allTextContents();
     return titles.map((title) => title.replace(/\s+/g, " ").trim()).filter(Boolean);
+  }
+
+  /**
+   * Waits for the first document expiry warning to render. The stack loads asynchronously after a
+   * traveller is selected, so a missing warning is only known once this wait has run.
+   *
+   * @param {number} [timeout=15000]
+   * @returns {Promise<boolean>} whether a warning rendered within the timeout
+   */
+  async waitForAnyDocumentExpiryAlert(timeout = 15000) {
+    try {
+      await this.page.locator(SELECTORS.DOCUMENT_EXPIRY_ALERT).first().waitFor({ state: "visible", timeout });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Number of document expiry warnings currently rendered.
+   * @returns {Promise<number>}
+   */
+  async getDocumentExpiryAlertCount() {
+    return this.page.locator(SELECTORS.DOCUMENT_EXPIRY_ALERT).count();
+  }
+
+  /**
+   * Clicks the close icon of the first document expiry warning in the stack.
+   *
+   * @param {number} [timeout=10000]
+   * @returns {Promise<void>}
+   */
+  async clickFirstDocumentExpiryAlertDismiss(timeout = 10000) {
+    const dismiss = this.page
+      .locator(SELECTORS.DOCUMENT_EXPIRY_ALERT)
+      .first()
+      .locator(SELECTORS.DOCUMENT_EXPIRY_ALERT_DISMISS);
+    try {
+      await dismiss.click({ timeout });
+    } catch (err) {
+      throw new Error(
+        `[HomePage.clickFirstDocumentExpiryAlertDismiss] Could not click the close icon ` +
+          `(${SELECTORS.DOCUMENT_EXPIRY_ALERT} ${SELECTORS.DOCUMENT_EXPIRY_ALERT_DISMISS}) of the first ` +
+          `document expiry warning within ${timeout}ms. Original: ${err.message}`,
+      );
+    }
   }
 
   /**
