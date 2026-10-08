@@ -318,6 +318,137 @@ const LegacyGtp = {
       );
     }
   },
+  /**
+   * Records every seat save the agent's tab posts (api/QuotesService/SaveSeatSelection): the seats
+   * the browser sent and what the server answered per seat. Call before saving.
+   *
+   * @param {import('@playwright/test').Page} page - The legacy GTP tab
+   * @returns {Array<{status: number, sent: object[], answered: object[]}>} Live list, filled as saves complete
+   */
+  startRecordingSeatSaves(page) {
+    if (!page) throw new Error('[LegacyGtp.startRecordingSeatSaves] "page" is required.');
+    const saves = [];
+    page.on("response", async (response) => {
+      if (!/\/api\/QuotesService\/SaveSeatSelection/i.test(response.url())) return;
+      let request = null;
+      let body = null;
+      try { request = response.request().postDataJSON(); } catch { /* no JSON body */ }
+      try { body = await response.json(); } catch { /* non-JSON answer */ }
+      saves.push({
+        status: response.status(),
+        sent: ((request && request.Seats) || []).map((seat) => ({
+          seatNumber: seat.SeatNumber,
+          segmentNumber: String(seat.SegmentNumber),
+          flightNumber: seat.FlightNumber,
+          carrier: seat.Carrier,
+        })),
+        // The answer is grouped per passenger: [[seat, seat], ...]
+        answered: (Array.isArray(body) ? body.flat() : []).filter(Boolean).map((seat) => ({
+          seat: seat.Seat,
+          segmentNumber: String(seat.SegmentNumber),
+          isSuccess: seat.IsSuccess,
+          errorMsg: seat.ErrorMsg,
+        })),
+      });
+    });
+    logger.debug("Recording legacy GTP seat saves");
+    return saves;
+  },
+
+  /**
+   * Opens a flight quote's seat popup and picks ONE seat number that every flight of the quote
+   * offers, on every flight — the "same seat on both legs" shape of ADO 84961.
+   *
+   * @param {import('@playwright/test').Page} page - The legacy GTP tab, on the trip cart
+   * @param {number} quoteIndex - 0-based position of the flight quote in the cart
+   * @returns {Promise<{seat: string, flights: string[]}>}
+   */
+  async pickSameSeatOnEveryFlight(page, quoteIndex = 0) {
+    if (!page) throw new Error('[LegacyGtp.pickSameSeatOnEveryFlight] "page" is required.');
+    const legacyGtpPage = getPageObject(page, LegacyGtpPage);
+    try {
+      await legacyGtpPage.waitForSeatingTab();
+      await legacyGtpPage.clickSeatingTab(quoteIndex);
+      await legacyGtpPage.waitForSeatMap();
+
+      const flightCount = await legacyGtpPage.getSeatPopupFlightCount();
+      if (flightCount < 2) {
+        throw new Error(`the seat popup lists ${flightCount} flight(s); the same-seat check needs at least two`);
+      }
+
+      const maps = [];
+      for (let i = 0; i < flightCount; i++) {
+        if (i > 0) {
+          await legacyGtpPage.clickSeatPopupFlight(i);
+          await legacyGtpPage.waitForSeatMap();
+        }
+        maps.push(await legacyGtpPage.getCurrentSeatMap());
+      }
+
+      const seat = maps[0].seats.find(
+        (number) => maps.every((map) => map.seats.includes(number) && !map.selected.includes(number))
+      );
+      if (!seat) {
+        throw new Error(
+          `no seat number is offered on every flight (${maps.map((m) => `${m.flight}: ${m.seats.length} seats`).join(", ")})`
+        );
+      }
+
+      for (let i = 0; i < flightCount; i++) {
+        await legacyGtpPage.clickSeatPopupFlight(i);
+        await legacyGtpPage.waitForSeatMap();
+        await legacyGtpPage.clickSeat(seat);
+      }
+
+      const flights = maps.map((m) => m.flight);
+      logger.info("Agent picked the same seat on every flight", { seat, flights });
+      return { seat, flights };
+    } catch (err) {
+      throw new Error(
+        `[LegacyGtp.pickSameSeatOnEveryFlight] Could not pick the same seat on every flight of flight quote ` +
+        `#${quoteIndex + 1}: ${err.message}`
+      );
+    }
+  },
+
+  /**
+   * Clicks the seat popup's Save and waits for the save to come back.
+   *
+   * @param {import('@playwright/test').Page} page - The legacy GTP tab, seat popup open
+   * @param {Array} saves - The recorder returned by startRecordingSeatSaves
+   * @returns {Promise<object>} The recorded save
+   */
+  async saveSeats(page, saves, { timeout = 120000 } = {}) {
+    if (!page) throw new Error('[LegacyGtp.saveSeats] "page" is required.');
+    if (!Array.isArray(saves)) {
+      throw new Error('[LegacyGtp.saveSeats] No seat-save recorder. Start recording the seat saves before saving.');
+    }
+    const legacyGtpPage = getPageObject(page, LegacyGtpPage);
+    const before = saves.length;
+    await legacyGtpPage.clickSeatPopupSave();
+    const started = Date.now();
+    while (saves.length === before) {
+      if (Date.now() - started > timeout) {
+        throw new Error(`[LegacyGtp.saveSeats] No SaveSeatSelection response within ${timeout}ms of clicking Save.`);
+      }
+      await page.waitForTimeout(1000);
+    }
+    return saves[saves.length - 1];
+  },
+
+  /**
+   * Reloads the trip cart and returns every flight quote's Seating tab text.
+   *
+   * @param {import('@playwright/test').Page} page - The legacy GTP tab
+   * @returns {Promise<string[]>}
+   */
+  async getSeatingStatusesAfterReload(page) {
+    if (!page) throw new Error('[LegacyGtp.getSeatingStatusesAfterReload] "page" is required.');
+    const legacyGtpPage = getPageObject(page, LegacyGtpPage);
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await legacyGtpPage.waitForSeatingTab();
+    return legacyGtpPage.getSeatingTabTexts();
+  },
 };
 
 module.exports = LegacyGtp;
