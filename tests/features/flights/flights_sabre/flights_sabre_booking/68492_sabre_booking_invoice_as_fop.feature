@@ -12,12 +12,14 @@ Feature: 68492 Sabre - Booking is successful when using Invoice as FOP
   So that the booking completes successfully with TMC billing
 
   Scenario: Sabre flight booking succeeds with Invoice as FOP
-    Given I am logged in as "timmorris@sabreinvoice.com" booking a new trip
-    And I have added a random guest traveler
+    Given I am logged in as "brunasabre@froschbrunaautomationinvoice.com" booking a new trip
+    And I have added myself as the traveler
     When I search for a one way flight from "SYD" to "MEL"
     And flight results should be available
     And I filter airline results by "Qantas" checkbox
-    And I add the first flight to cart
+    When I select the first flight result in new flight flow
+    And I select the outbound first option from pricing options new flight flow
+    And I add to cart from pricing options new flight flow
     Then the booking status should be "Pending booking"
     Then the payment type should be "Paid by TMC"
     When I proceed to checkout
