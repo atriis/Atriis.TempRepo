@@ -1,14 +1,14 @@
 # Bug: ADO #85754 - [Hotel] [GoGlobal] Room page requests every offer's price breakdown twice on load
 # Opening a Go Global hotel's rooms sends a PRICE_BREAKDOWN_REQUEST for every offer before any room is
-# clicked, and sends each one twice (prod trip 28026008: 192 requests for 96 codes; dev trip 3905852:
-# 154 for 77). Cause: IGTPHotelRuleEngine.ProcessRoomResults builds each batch as a lazy
-# batch.Select(req => Task.Run(...)) and enumerates it twice (tasks.AddRange + Task.WhenAll).
+# clicked. Before the fix each one was sent twice (prod trip 28026008: 192 requests for 96 codes; dev trip
+# 3905852: 154 for 77), because IGTPHotelRuleEngine.ProcessRoomResults enumerated a lazy
+# batch.Select(req => Task.Run(...)) twice. Fixed by TMC2 PR 27090 (materialised batch).
+# Verified on atriis-dev.app build 7.10.9630 (2026-10-08): Paris trip 3925020 14 requests / 14 codes,
+# Zurich trip 3925097 117 / 117.
 # Expected: every HotelSearchCode is requested at most once.
-# Paris, not Zurich: Zurich returns ~77 offers (154 requests) and downloading them all overruns the
-# 120 s step timeout before the assertion runs; Paris returns a handful and still shows the duplicates.
-# EXPECTED TO FAIL until 85754 is fixed - parked in hotels_blocked so the suite stays green.
-# Once fixed, move it to hotels_non_booking/ as 85798_*.feature and drop @bug.
-# If the fix stops pre-fetching breakdowns on load altogether, the anchor step below never sees a
+# Paris, not Zurich: Zurich returns ~80-120 offers and reading every request body overruns the step
+# timeout (and the Internal API rate limit, HTTP 429) before the assertion runs.
+# If a later change stops pre-fetching breakdowns on load altogether, the anchor step below never sees a
 # PRICE_BREAKDOWN_REQUEST; switch the scenario to clicking Price details on one room first.
 
 # ADO Test Case ID: 85798
