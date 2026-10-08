@@ -108,6 +108,8 @@ const DRAWER_SEPARATOR = /^[^A-Za-z0-9]+/;
 // "Fri, 16 Oct 26" / "Friday, 16 October 2026" / "16 Oct" — weekday and year both optional, month
 // either abbreviated or full, year either 2- or 4-digit.
 const DRAWER_DATE = /^(?:([A-Za-z]{3,9})\.?,?\s*)?(\d{1,2})\s+([A-Za-z]{3,9})\.?,?\s*(\d{2,4})?$/;
+// US-locale accounts put the month first: "Mon, Nov 09, 26".
+const DRAWER_DATE_MONTH_FIRST = /^(?:([A-Za-z]{3,9})\.?,?\s*)?([A-Za-z]{3,9})\.?\s+(\d{1,2}),?\s*(\d{2,4})?$/;
 
 /**
  * Parses a rendered date — "Fri, 16 Oct 26", "Friday, 16 October 2026", "16 Oct" — into its parts.
@@ -128,12 +130,14 @@ function parseFlightDate(text) {
     return null;
   }
 
-  const dateMatch = text.trim().match(DRAWER_DATE);
-  if (!dateMatch) {
+  const dayFirst = text.trim().match(DRAWER_DATE);
+  const monthFirst = dayFirst ? null : text.trim().match(DRAWER_DATE_MONTH_FIRST);
+  if (!dayFirst && !monthFirst) {
     return null;
   }
 
-  const [, weekday, day, monthToken, year] = dateMatch;
+  const [, weekday, day, monthToken, year] = dayFirst
+    || [monthFirst[0], monthFirst[1], monthFirst[3], monthFirst[2], monthFirst[4]];
   const month = MONTH_NAMES.findIndex(
     (name) => name.toLowerCase() === monthToken.toLowerCase()
       || name.slice(0, 3).toLowerCase() === monthToken.toLowerCase()
@@ -244,6 +248,56 @@ function parseDrawerTimeDate(text) {
   }
 
   return { time: timeMatch[1].replace(/\s+/g, ' ').trim(), ...parsedDate };
+}
+
+/**
+ * A local time and parsed date as one comparable number, or null when either cannot be read.
+ * Local times are only comparable at the same airport, which is exactly where one flight's arrival
+ * meets the next flight's departure.
+ *
+ * @param {string} time - "HH:mm" or "h:mm AM/PM"
+ * @param {{day: number, month: number, year: number|null}|null} date
+ * @returns {number|null}
+ */
+function toFlightInstant(time, date) {
+  if (!date || date.year === null) {
+    return null;
+  }
+  try {
+    return Date.UTC(date.year, date.month, date.day) + parseTimeToMinutes(time) * 60000;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Fails when any flight departs before the flight listed above it has landed, or when a time
+ * cannot be read (an unreadable line must not let the order check pass silently).
+ *
+ * @param {Array<{departure: {text: string, instant: number|null}, arrival: {text: string, instant: number|null}}>} flights
+ * @param {string} surface - Where the flights were read, for the failure message
+ */
+function assertFlightsInTravelOrder(flights, surface) {
+  expect(flights.length, `The ${surface} showed ${flights.length} flight(s); an order check needs at least 2.`)
+    .toBeGreaterThanOrEqual(2);
+
+  const problems = [];
+  flights.forEach((flight, index) => {
+    [flight.departure, flight.arrival].forEach((end) => {
+      if (end.instant === null) {
+        problems.push(`could not read the time and date "${end.text}"`);
+      }
+    });
+    const previous = flights[index - 1];
+    if (previous && previous.arrival.instant !== null && flight.departure.instant !== null
+      && flight.departure.instant < previous.arrival.instant) {
+      problems.push(
+        `flight ${index + 1} departs "${flight.departure.text}" before flight ${index} lands "${previous.arrival.text}"`
+      );
+    }
+  });
+
+  expect(problems, `The ${surface} flights are not in travel order: ${problems.join('; ')}.`).toEqual([]);
 }
 
 // A results-card time carries a next-day marker when that end of the leg falls on a later date
@@ -3966,6 +4020,29 @@ async verifyFareComponentTextColorInPricingOptions(page, expectedColor, index = 
 
     const flightResultsPage = getPageObject(page, FlightResultsPage);
     const result = await flightResultsPage.adjustLimitLayoverDurationFilterFromMidpoint();
+
+    await flightResultsPage.waitForFlightResults();
+
+    return result;
+  },
+
+  /**
+   * Narrows one Times filter slider so it starts at or just after a clock time — e.g. only flights
+   * leaving Hong Kong from 21:00. Picks flights by schedule instead of by flight number, which
+   * changes from date to date.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} sliderTitle - e.g. "Depart from Hong Kong"
+   * @param {string} startTime - "HH:mm"
+   * @returns {Promise<{rangeText: string}>}
+   */
+  async setTimeFilterStart(page, sliderTitle, startTime) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    const result = await flightResultsPage.setTimeFilterStart(sliderTitle, parseTimeToMinutes(startTime));
 
     await flightResultsPage.waitForFlightResults();
 
@@ -8981,6 +9058,70 @@ async verifyFareComponentTextColorInPricingOptions(page, expectedColor, index = 
     ).toEqual([]);
 
     return { compared: expectedLegs.length, legs };
+  },
+
+  /**
+   * Verifies the cart's flight rows run in travel order: no row departs before the row above it
+   * has landed (ADO 42070 showed LAX-LAS above the HKG-LAX flight that feeds it).
+   *
+   * @param {import('playwright').Page} page
+   * @returns {Promise<{checked: number}>}
+   */
+  async verifyCartFlightsInChronologicalOrder(page) {
+    if (!page) {
+      throw new Error('[FlightResults.verifyCartFlightsInChronologicalOrder] "page" is required.');
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+    const rows = await cartPage.getFlightQuoteRowTimeDates();
+
+    const toPoint = (end) => ({
+      text: `${end.code} ${end.time} ${end.date}`,
+      instant: toFlightInstant(splitResultsDayOffset(end.time).time, parseFlightDate(end.date)),
+    });
+    const flights = rows.map((row) => ({ departure: toPoint(row.departure), arrival: toPoint(row.arrival) }));
+
+    logger.info('Checking the cart flight rows are in travel order', { flights: flights.map((f) => `${f.departure.text} -> ${f.arrival.text}`) });
+    assertFlightsInTravelOrder(flights, 'cart');
+
+    return { checked: flights.length };
+  },
+
+  /**
+   * Verifies the open flight details drawer lists its flights in travel order: each flight departs
+   * after the one above it has landed.
+   *
+   * @param {import('playwright').Page} page
+   * @returns {Promise<{checked: number}>}
+   */
+  async verifyFlightDetailsInChronologicalOrder(page) {
+    if (!page) {
+      throw new Error('[FlightResults.verifyFlightDetailsInChronologicalOrder] "page" is required.');
+    }
+
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    const lines = await flightResultsPage.getFlightDetailsAllTimeDates();
+
+    if (lines.length % 2 !== 0) {
+      throw new Error(
+        `[FlightResults.verifyFlightDetailsInChronologicalOrder] The drawer showed ${lines.length} time lines; ` +
+        `each flight should show a departure and an arrival. Lines: ${lines.join(' | ')}.`
+      );
+    }
+
+    const toPoint = (text) => {
+      const parsed = parseDrawerTimeDate(text);
+      return { text, instant: parsed ? toFlightInstant(parsed.time, parsed) : null };
+    };
+    const flights = [];
+    for (let index = 0; index < lines.length; index += 2) {
+      flights.push({ departure: toPoint(lines[index]), arrival: toPoint(lines[index + 1]) });
+    }
+
+    logger.info('Checking the flight details flights are in travel order', { flights: flights.map((f) => `${f.departure.text} -> ${f.arrival.text}`) });
+    assertFlightsInTravelOrder(flights, 'flight details');
+
+    return { checked: flights.length };
   },
 
   /**

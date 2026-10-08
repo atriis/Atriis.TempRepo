@@ -346,6 +346,14 @@ When("I search for a multi-city by-schedule flight with legs {string}", async fu
   await searchMultiCity(this, legList, "bySchedule");
 });
 
+// Equal offsets put two legs on the same date, e.g. a connection booked as its own leg.
+When("I search for a multi-city flight with legs {string} departing in {string} days", async function (legList, offsetList) {
+  const legs = parseMultiCityLegs(legList);
+  const dayOffsets = String(offsetList).split(",").map((offset) => Number(offset.trim()));
+  logger.info('Searching for multi-city flight with explicit leg day offsets', { legs, dayOffsets });
+  await FlightSearch.searchFlightMultiCity(this.page, legs, { dayOffsets });
+});
+
 When("I search for a multi-city flight with legs {string} and {string} and {string} with a longer stay after the first leg", async function (leg1, leg2, leg3) {
   const legs = [leg1, leg2, leg3].map(parseLeg);
   logger.info('Searching for multi-city flight with a longer stay after the first leg', { legs });

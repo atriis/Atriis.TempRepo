@@ -257,6 +257,7 @@ const SELECTORS = {
   FLIGHT_SEGMENT_CARRIER_NAME: '.carrier-container .carrier-name',
   FLIGHT_SEGMENT_FLIGHT_NUMBER_TEXT: '.carrier-container .carrier-name + p',
   FLIGHT_SEGMENT_TIME: '.flight-time',
+  FLIGHT_SEGMENT_DATE: '.flight-date',
   FLIGHT_QUOTE_LOCATION_CODE: '.loc-code',
 
   // Trip actions dropdown selectors
@@ -9298,6 +9299,45 @@ class CartPage {
 
     if (!summaries.length) {
       throw new Error('Could not extract any visible flight segment details from the quote card');
+    }
+
+    return summaries;
+  }
+
+  /**
+   * Reads each row of the first flight quote card top to bottom: where and when it departs and
+   * arrives. Kept apart from getVisibleFlightQuoteSegmentSummaries because that one feeds a strict
+   * toEqual against the results card, which cannot grow fields.
+   *
+   * @returns {Promise<Array<{departure: {code: string, time: string, date: string},
+   *   arrival: {code: string, time: string, date: string}}>>} Raw text; parsing is the DSL's job.
+   */
+  async getFlightQuoteRowTimeDates({ timeout = 15000 } = {}) {
+    const rows = this.page.locator(SELECTORS.FLIGHT_QUOTE_CARD).first().locator(SELECTORS.FLIGHT_QUOTE_SEGMENT);
+    await rows.first().waitFor({ state: 'visible', timeout });
+
+    const clean = async (locator) => ((await locator.innerText()) ?? '').replace(/\s+/g, ' ').trim();
+    const rowCount = await rows.count();
+    const summaries = [];
+
+    for (let index = 0; index < rowCount; index += 1) {
+      const row = rows.nth(index);
+      const times = row.locator(SELECTORS.FLIGHT_SEGMENT_TIME);
+      const dates = row.locator(SELECTORS.FLIGHT_SEGMENT_DATE);
+      const codes = row.locator(SELECTORS.FLIGHT_QUOTE_LOCATION_CODE);
+
+      if ((await times.count()) < 2 || (await dates.count()) < 2 || (await codes.count()) < 2) {
+        throw new Error(
+          `[CartPage.getFlightQuoteRowTimeDates] Row ${index + 1} of ${rowCount} does not show a departure ` +
+          `and an arrival time, date and airport (${SELECTORS.FLIGHT_SEGMENT_TIME} / ${SELECTORS.FLIGHT_SEGMENT_DATE} / ` +
+          `${SELECTORS.FLIGHT_QUOTE_LOCATION_CODE}). The cart row markup has likely changed.`
+        );
+      }
+
+      summaries.push({
+        departure: { code: await clean(codes.first()), time: await clean(times.first()), date: await clean(dates.first()) },
+        arrival: { code: await clean(codes.last()), time: await clean(times.last()), date: await clean(dates.last()) },
+      });
     }
 
     return summaries;

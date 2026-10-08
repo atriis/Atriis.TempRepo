@@ -744,6 +744,16 @@ Then("the flight details dates should match the results dates", async function (
   logger.info("Flight details dates match the results card dates", result);
 });
 
+Then("the cart flights should be displayed in travel order", async function () {
+  const result = await FlightResults.verifyCartFlightsInChronologicalOrder(this.page);
+  logger.info("Cart flights are in travel order", result);
+});
+
+Then("the flight details flights should be displayed in travel order", async function () {
+  const result = await FlightResults.verifyFlightDetailsInChronologicalOrder(this.page);
+  logger.info("Flight details flights are in travel order", result);
+});
+
 Then("the flight details departure and arrival times should match the results times", async function () {
   // Either capture step will do: the leg shape is a superset of the segment shape for the two
   // fields this compares, so a scenario is free to store whichever it also needs elsewhere.
@@ -820,6 +830,11 @@ When("I scroll to the Flight Duration filter for {string}", async function (loca
 When('I adjust the Limit Layover Duration filter from the half timepoint of the longest point', async function () {
   logger.info('Adjusting Limit Layover Duration filter from midpoint of longest range');
   await FlightResults.adjustLimitLayoverDurationFilterFromMidpoint(this.page);
+});
+
+When('I set the {string} time filter to start at {string}', async function (sliderTitle, startTime) {
+  const result = await FlightResults.setTimeFilterStart(this.page, sliderTitle, startTime);
+  logger.info('Times filter narrowed', { sliderTitle, startTime, ...result });
 });
 
 Then('the Limit Layover Duration filter should be displayed', async function () {

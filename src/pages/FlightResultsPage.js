@@ -613,6 +613,33 @@ class FlightResultsPage {
   }
 
   /**
+   * Reads every time-and-date line of the flight details drawer top to bottom, across all legs:
+   * departure, arrival, departure, arrival... one pair per flight. Unlike getFlightDetailsLegTimeDates
+   * it keeps the connection lines, which is where an out-of-order flight shows.
+   *
+   * @param {number} timeout - Max wait for the first leg wrapper to become visible
+   * @returns {Promise<string[]>} Raw "HH:mm · EEE, dd MMM yy" strings.
+   */
+  async getFlightDetailsAllTimeDates(timeout = 30000) {
+    const lines = this.page
+      .locator(SELECTORS.FLIGHT_DETAILS_VISIBLE_DRAWER)
+      .locator(SELECTORS.FLIGHT_DETAILS_LEG_WRAPPER)
+      .locator(SELECTORS.FLIGHT_DETAILS_LEG_TIME_DATE);
+
+    try {
+      await lines.first().waitFor({ state: 'visible', timeout });
+    } catch (error) {
+      throw new Error(
+        '[FlightResultsPage.getFlightDetailsAllTimeDates] No time-and-date line ' +
+        `(${SELECTORS.FLIGHT_DETAILS_LEG_TIME_DATE}) appeared in the flight details drawer within ` +
+        `${timeout}ms. The drawer likely never opened. Original: ${error.message}`
+      );
+    }
+
+    return (await lines.allInnerTexts()).map((text) => text.replace(/\s+/g, ' ').trim());
+  }
+
+  /**
    * The open flight details panel. Found by its own root, because every drawer in the app carries
    * the .flight-details-drawer class and only this one holds the panel.
    *
@@ -3394,6 +3421,87 @@ async clickSelectForFareWithBaggagePricingOptions(baggageText) {
       originalRangeText: summary.rangeText,
       targetStartMinutes,
     };
+  }
+
+  /**
+   * Moves the lower handle of one Times filter slider (e.g. "Depart from Hong Kong") until its
+   * range starts at or just after the target clock time.
+   *
+   * The slider has no keyboard step worth using (its values are timestamps in ms), so this drags:
+   * one jump to the proportional position, then small nudges right until the label reaches the
+   * target. Nudges stay small so the start lands just past the target, not past the flights wanted.
+   *
+   * @param {string} title - The slider title as shown, e.g. "Depart from Hong Kong"
+   * @param {number} targetStartMinutes - Minutes since midnight the range must start at or after
+   * @returns {Promise<{rangeText: string}>} The label once the handle has settled
+   */
+  async setTimeFilterStart(title, targetStartMinutes) {
+    const section = this.page
+      .locator(SELECTORS.TIME_SLIDER_SECTION)
+      .filter({ has: this.page.locator('.filter-title', { hasText: title }) })
+      .first();
+    const label = section.locator(SELECTORS.TIME_SLIDER_RANGE_LABEL).first();
+    const runway = section.locator(SELECTORS.TIME_SLIDER_RUNWAY).first();
+    const lowerHandle = section.locator(SELECTORS.TIME_SLIDER_HANDLE).first();
+
+    try {
+      await section.scrollIntoViewIfNeeded({ timeout: 10000 });
+      await lowerHandle.waitFor({ state: 'visible', timeout: 10000 });
+    } catch (error) {
+      throw new Error(
+        `[FlightResultsPage.setTimeFilterStart] No Times filter slider titled "${title}" is visible. ` +
+        `Check the city name and that the "Departure time" tab is selected. Original: ${error.message}`
+      );
+    }
+
+    const readRange = async () => {
+      const text = ((await label.innerText()) ?? '').replace(/\s+/g, ' ').trim();
+      const match = text.match(/^(\d{1,2}):(\d{2})\s*-\s*(\d{1,2}):(\d{2})$/);
+      if (!match) {
+        throw new Error(`[FlightResultsPage.setTimeFilterStart] Could not read the "${title}" range label "${text}".`);
+      }
+      return { text, start: Number(match[1]) * 60 + Number(match[2]), end: Number(match[3]) * 60 + Number(match[4]) };
+    };
+
+    const dragHandleTo = async (targetX) => {
+      const handleBox = await lowerHandle.boundingBox();
+      const y = handleBox.y + handleBox.height / 2;
+      await this.page.mouse.move(handleBox.x + handleBox.width / 2, y);
+      await this.page.mouse.down();
+      await this.page.mouse.move(targetX, y, { steps: 8 });
+      await this.page.mouse.up();
+    };
+
+    const initial = await readRange();
+    if (targetStartMinutes > initial.end) {
+      throw new Error(
+        `[FlightResultsPage.setTimeFilterStart] "${title}" only runs ${initial.text}; nothing departs at or ` +
+        `after the requested start.`
+      );
+    }
+    if (targetStartMinutes <= initial.start) {
+      return { rangeText: initial.text };
+    }
+
+    const runwayBox = await runway.boundingBox();
+    const ratio = (targetStartMinutes - initial.start) / (initial.end - initial.start);
+    await dragHandleTo(runwayBox.x + runwayBox.width * ratio);
+
+    let range = await readRange();
+    for (let nudge = 0; range.start < targetStartMinutes && nudge < 20; nudge += 1) {
+      const handleBox = await lowerHandle.boundingBox();
+      await dragHandleTo(handleBox.x + handleBox.width / 2 + 2);
+      range = await readRange();
+    }
+
+    if (range.start < targetStartMinutes) {
+      throw new Error(
+        `[FlightResultsPage.setTimeFilterStart] The "${title}" slider stopped at ${range.text} and never ` +
+        `reached the requested start after 20 nudges.`
+      );
+    }
+
+    return { rangeText: range.text };
   }
 
   /**
