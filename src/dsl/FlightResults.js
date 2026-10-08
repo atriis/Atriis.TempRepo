@@ -694,6 +694,107 @@ function first(values) {
   return Array.isArray(values) && values.length > 0 ? values[0] : null;
 }
 
+// ADO 68132 - the change and cancellation fees a Galileo search shows come from the penalties on
+// each LowFareSearchRsp AirPricingSolution. The price offer email renders each departure window as
+// one of these terms (PriceOfferEmailSummeryV3.html): the -2 / -1 / -3 / 0 sentinels, or an amount.
+const FEE_TERM = {
+  NOT_ALLOWED: 'Non-Refundable / Non-Changeable',
+  NO_CHARGE: 'No Charge',
+  FEES_APPLY: 'Fees Apply',
+  NOT_SPECIFIED: 'Not Specified',
+};
+
+// A window the response cannot decide: the product keeps whatever the search grid guessed there.
+const UNDECIDED = null;
+
+/** Canonical form of a fee amount, so the response and the email compare as one string. */
+function feeAmountTerm(amount, currencySymbol) {
+  return `${Number(amount).toFixed(2)} ${currencySymbol}`;
+}
+
+/** "GBP60.00" -> "60.00 £", the way the email prints it (symbol + N2). */
+function galileoMoneyToFeeTerm(money) {
+  const code = money.slice(0, 3);
+  let symbol;
+  try {
+    symbol = getCurrencySymbolFromCode(code);
+  } catch {
+    symbol = code;
+  }
+  return feeAmountTerm(parseFloat(money.slice(3)), symbol);
+}
+
+/** Which departure windows a Travelport penalty covers, from its single PenaltyApplies scope. */
+function galileoPenaltyWindows(penaltyApplies) {
+  return {
+    before: penaltyApplies === 'Anytime' || penaltyApplies === 'BeforeDeparture',
+    after: penaltyApplies === 'Anytime' || penaltyApplies === 'AfterDeparture',
+  };
+}
+
+/**
+ * What a published penalty means, or undefined when it publishes neither an amount nor a
+ * percentage. A percentage other than 0 or 100 is UNDECIDED: the product multiplies it by
+ * TotalPrice, which Travelport sends with its currency ("USD269.00") and so never parses.
+ */
+function galileoPenaltyTerm(penalty) {
+  const amount = first(penalty.Amount);
+  if (amount) return galileoMoneyToFeeTerm(amount);
+
+  const percentage = parseFloat(first(penalty.Percentage));
+  if (Number.isNaN(percentage)) return undefined;
+  if (percentage === 100) return FEE_TERM.NOT_ALLOWED;
+  if (percentage === 0) return FEE_TERM.NO_CHARGE;
+  return UNDECIDED;
+}
+
+/** One designator per flight ("KL962"), the way the email prints it. */
+function flightDesignator(segment) {
+  return `${segment.Carrier}${segment.FlightNumber}`;
+}
+
+/** "1234.5" -> "1,234.50", the N2 form a total is printed in. */
+function formatN2(amount) {
+  return Number(amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+/** Reads one window's term off the email: a sentinel word, or "<symbol><amount>". */
+function readFeeTermFromEmail(text) {
+  const value = (text || '').trim();
+  if (/^Non-(Refundable|Changeable)/i.test(value)) return FEE_TERM.NOT_ALLOWED;
+  if (/^No Charge/i.test(value)) return FEE_TERM.NO_CHARGE;
+  if (/^(Cancellation|Change) Fees Apply/i.test(value)) return FEE_TERM.FEES_APPLY;
+  if (/^Not Specified/i.test(value)) return FEE_TERM.NOT_SPECIFIED;
+
+  const money = value.match(/^([^\d\s]{1,4})\s*([\d,]+\.\d{2})/);
+  if (money) return feeAmountTerm(money[2].replace(/,/g, ''), money[1]);
+
+  throw new Error(`[FlightResults] "${value.slice(0, 60)}" is not a fee term the price offer email renders.`);
+}
+
+/**
+ * Reads one policy ("Cancellation" or "Changes") of a shared flight offer into its two departure
+ * windows. Equal windows are printed once under "Anytime"; otherwise "Before Departure:" and
+ * "After Departure:" each carry their own term.
+ */
+function readPolicyWindowsFromEmail(offerText, policy) {
+  const anytime = offerText.match(new RegExp(`\\b${policy} Anytime\\s+(.*)$`, 'i'));
+  if (anytime) {
+    const term = readFeeTermFromEmail(anytime[1]);
+    return { before: term, after: term };
+  }
+
+  const before = offerText.match(new RegExp(`\\b${policy} Before Departure:\\s*(.*)$`, 'i'));
+  const after = offerText.match(new RegExp(`\\b${policy} After Departure:\\s*(.*)$`, 'i'));
+  if (!before && !after) {
+    throw new Error(`[FlightResults] The shared offer shows no "${policy}" terms: "${offerText.slice(0, 300)}"`);
+  }
+  return {
+    before: before ? readFeeTermFromEmail(before[1]) : UNDECIDED,
+    after: after ? readFeeTermFromEmail(after[1]) : UNDECIDED,
+  };
+}
+
 /**
  * The single value a set holds, or undefined when it holds none or several. Several means the
  * offers carrying a brand disagree, and nothing can be concluded about what fed the card.
@@ -9541,6 +9642,259 @@ async verifyFareComponentTextColorInPricingOptions(page, expectedColor, index = 
       charsScanned: text.length,
     });
     return { charsScanned: text.length };
+  },
+
+  /**
+   * ADO 68132: the change and cancellation fees a Galileo fare should show, per departure window,
+   * derived from the penalties Travelport returned for it in LowFareSearchRsp.
+   *
+   * Mirrors the search-side SetPenalty of UAPIGalileoFlightSearchEngine, which is what fills these
+   * fees for a search result: the before-departure windows start as "not allowed", a penalty
+   * writes the windows its PenaltyApplies covers and marks the other one "not specified", and a
+   * fare whose cancellation published no amount after departure falls back to
+   * FareRulesFilter/Refundability. The brand-attribute overrides of the pricing path never apply
+   * here - LowFareSearchRsp carries brands as bare stubs without OptionalServices.
+   *
+   * @param {object} pricingInfo - an AirPricingInfo tree read by collectXmlBlockTreesPerCall
+   * @returns {{changes: {before: string|null, after: string|null}, cancellation: {before: string|null, after: string|null}}}
+   *   each window a FEE_TERM, an amount term ("60.00 £"), or null when the response cannot decide it
+   */
+  deriveGalileoLowFareSearchFeeTerms(pricingInfo) {
+    const changes = { before: FEE_TERM.NOT_ALLOWED, after: UNDECIDED };
+    const changePenalties = pricingInfo.ChangePenalty || [];
+    if (changePenalties.length > 0) {
+      // A no-show forfeiture is not the fare's change condition when anything else was published.
+      const penalty = changePenalties.find((p) => p.NoShow !== 'true') || changePenalties[0];
+      const covers = galileoPenaltyWindows(penalty.PenaltyApplies);
+      if (!covers.after) changes.after = FEE_TERM.NOT_SPECIFIED;
+      if (!covers.before) changes.before = FEE_TERM.NOT_SPECIFIED;
+      const term = galileoPenaltyTerm(penalty);
+      if (term !== undefined) {
+        if (covers.after) changes.after = term;
+        if (covers.before) changes.before = term;
+      }
+    }
+
+    const cancellation = { before: FEE_TERM.NOT_ALLOWED, after: UNDECIDED };
+    let cancellationCurrencySet = false;
+    const cancelPenalty = (pricingInfo.CancelPenalty || [])[0];
+    if (cancelPenalty) {
+      const covers = galileoPenaltyWindows(cancelPenalty.PenaltyApplies);
+      if (!covers.after) cancellation.after = FEE_TERM.NOT_SPECIFIED;
+      if (!covers.before) cancellation.before = FEE_TERM.NOT_SPECIFIED;
+      const term = galileoPenaltyTerm(cancelPenalty);
+      if (term !== undefined) {
+        if (covers.after) cancellation.after = term;
+        if (covers.before) cancellation.before = term;
+      }
+      // Only an after-departure amount records a currency, and only a currency stops the fallback.
+      cancellationCurrencySet = covers.after && Boolean(first(cancelPenalty.Amount));
+    }
+
+    const refundability = first((pricingInfo.Refundability || []).map((r) => r.Value));
+    if (!cancellationCurrencySet && /^NonRefundable$/i.test(refundability || '')) {
+      cancellation.before = FEE_TERM.NOT_ALLOWED;
+      cancellation.after = FEE_TERM.NOT_ALLOWED;
+    }
+
+    return { changes, cancellation };
+  },
+
+  /**
+   * ADO 68132: reads every fare of the trip's Galileo search responses - its flights, its total and
+   * the fee terms its penalties call for (see deriveGalileoLowFareSearchFeeTerms).
+   *
+   * Per call, because segment keys are only unique within the response that issued them. Responses
+   * that carry no fare (Travelport answers "UNABLE TO FARE QUOTE" to some of a search's calls) add
+   * nothing.
+   *
+   * @param {object} world - Cucumber world (carries the trip id)
+   * @param {string} requestType - the logged search response type, e.g. "LowFareSearchRsp"
+   * @returns {Promise<{fares: Array<{call: number, flights: string[], totalPrice: string, terms: object}>, designators: Set<string>}>}
+   */
+  async captureGalileoLowFareSearchFares(world, requestType) {
+    if (!world) {
+      throw new Error('[FlightResults.captureGalileoLowFareSearchFares] world is required');
+    }
+
+    const penaltySpec = { attributes: ['PenaltyApplies', 'NoShow'], fields: ['Amount', 'Percentage'] };
+    const { perCall } = await PayloadValidation.collectXmlBlockTreesPerCall(
+      world,
+      requestType,
+      {
+        AirSegment: { attributes: ['Key', 'Carrier', 'FlightNumber'] },
+        AirPricingSolution: {
+          attributes: ['TotalPrice'],
+          blocks: {
+            AirSegmentRef: { attributes: ['Key'] },
+            AirPricingInfo: {
+              blocks: {
+                ChangePenalty: penaltySpec,
+                CancelPenalty: penaltySpec,
+                Refundability: { attributes: ['Value'] },
+              },
+            },
+          },
+        },
+      },
+      { source: 'response', purpose: 'read the fares and penalties Galileo returned' }
+    );
+
+    const fares = [];
+    const designators = new Set();
+    perCall.forEach((call, callIndex) => {
+      const segmentByKey = new Map(call.AirSegment.map((segment) => [segment.Key, segment]));
+      call.AirSegment.forEach((segment) => designators.add(flightDesignator(segment)));
+
+      for (const solution of call.AirPricingSolution) {
+        const pricingInfo = solution.AirPricingInfo[0];
+        if (!pricingInfo) continue;
+        const flights = solution.AirSegmentRef
+          .map((ref) => segmentByKey.get(ref.Key))
+          .filter(Boolean)
+          .map(flightDesignator);
+        fares.push({
+          call: callIndex + 1,
+          flights: [...new Set(flights)].sort(),
+          totalPrice: solution.TotalPrice,
+          terms: FlightResults.deriveGalileoLowFareSearchFeeTerms(pricingInfo),
+        });
+      }
+    });
+
+    if (fares.length === 0) {
+      throw new Error(
+        `[FlightResults.captureGalileoLowFareSearchFares] None of the ${perCall.length} "${requestType}" responses ` +
+        'logged for the trip carried an AirPricingSolution, so there is nothing to compare the shared quotes with.'
+      );
+    }
+
+    logger.info('[GalileoShareFees] Read Galileo search fares', {
+      calls: perCall.length,
+      fares: fares.length,
+      flights: [...designators],
+    });
+
+    return { fares, designators };
+  },
+
+  /**
+   * ADO 68132: the change and cancellation fees of every flight offer in the share-quote email
+   * must be the ones Galileo returned for that fare in its search response.
+   *
+   * Each shared offer is paired with its fares by the flights it lists, then narrowed by its total
+   * when the total is printed. A window is only judged when every paired fare decides it the same
+   * way - when they disagree, or the response leaves it to the search grid, there is no telling
+   * which fed the email, and the window is logged as skipped rather than guessed.
+   *
+   * @param {import('playwright').Page} page - with the share dialog open on the price offer
+   * @param {object} world - Cucumber world (carries the trip id)
+   * @param {string} requestType - the logged search response type, e.g. "LowFareSearchRsp"
+   * @param {number} expectedOfferCount - how many quotes were shared
+   * @returns {Promise<{offers: number, assertions: number}>}
+   */
+  async verifySharedQuoteFeesMatchGalileoSearch(page, world, requestType, expectedOfferCount) {
+    if (!page) throw new Error('[FlightResults.verifySharedQuoteFeesMatchGalileoSearch] page is required');
+
+    const cartPage = getPageObject(page, CartPage);
+    const previewText = await cartPage.getSharePreviewTextContent();
+    // "Flight Offer # 1 ... Flight Offer # 2 ...": split keeps each number followed by its text.
+    const parts = previewText.split(/Flight Offer\s*#\s*(\d+)/i);
+    const offers = [];
+    for (let i = 1; i < parts.length; i += 2) {
+      offers.push({ number: Number(parts[i]), text: parts[i + 1] || '' });
+    }
+
+    if (offers.length !== expectedOfferCount) {
+      throw new Error(
+        `[FlightResults.verifySharedQuoteFeesMatchGalileoSearch] Expected ${expectedOfferCount} flight offers in the ` +
+        `share email preview, found ${offers.length}. Preview: "${previewText.slice(0, 500)}"`
+      );
+    }
+
+    const { fares, designators } = await FlightResults.captureGalileoLowFareSearchFares(world, requestType);
+
+    const mismatches = [];
+    const skipped = [];
+    let assertions = 0;
+
+    for (const offer of offers) {
+      const label = `Flight Offer #${offer.number}`;
+      const offerFlights = [...designators]
+        .filter((designator) => new RegExp(`\\b${designator}\\b`).test(offer.text))
+        .sort();
+      const sameFlights = fares.filter((fare) => fare.flights.join() === offerFlights.join());
+      if (offerFlights.length === 0 || sameFlights.length === 0) {
+        throw new Error(
+          `[FlightResults.verifySharedQuoteFeesMatchGalileoSearch] ${label} (flights: ${offerFlights.join(', ') || 'none'}) ` +
+          `matches no fare in the "${requestType}" responses. Offer: "${offer.text.slice(0, 300)}"`
+        );
+      }
+      const samePrice = sameFlights.filter((fare) => offer.text.includes(formatN2(fare.totalPrice.slice(3))));
+      const paired = samePrice.length > 0 ? samePrice : sameFlights;
+
+      const shown = {
+        cancellation: readPolicyWindowsFromEmail(offer.text, 'Cancellation'),
+        changes: readPolicyWindowsFromEmail(offer.text, 'Changes'),
+      };
+
+      let offerAssertions = 0;
+      for (const policy of ['cancellation', 'changes']) {
+        for (const window of ['before', 'after']) {
+          const where = `${label} ${offerFlights.join('/')} ${policy} ${window} departure`;
+          const expected = [...new Set(paired.map((fare) => fare.terms[policy][window]))];
+          const actual = shown[policy][window];
+
+          if (expected.length !== 1 || expected[0] === UNDECIDED) {
+            skipped.push(`${where}: the paired fares decide it as ${JSON.stringify(expected)}`);
+            continue;
+          }
+          if (actual === UNDECIDED) {
+            skipped.push(`${where}: the email does not print this window`);
+            continue;
+          }
+
+          offerAssertions += 1;
+          if (actual !== expected[0]) {
+            mismatches.push(`${where}: email shows "${actual}", Galileo returned "${expected[0]}"`);
+          }
+        }
+      }
+
+      if (offerAssertions === 0) {
+        throw new Error(
+          `[FlightResults.verifySharedQuoteFeesMatchGalileoSearch] No fee of ${label} could be judged against ` +
+          `"${requestType}", so nothing was proven for it. Skipped: ${skipped.join(' | ')}`
+        );
+      }
+      assertions += offerAssertions;
+
+      logger.info('[GalileoShareFees] Shared offer read', {
+        offer: label,
+        flights: offerFlights,
+        pairedFares: paired.map((fare) => `call ${fare.call} ${fare.totalPrice}`),
+        shown,
+      });
+    }
+
+    if (skipped.length > 0) {
+      logger.warn('[GalileoShareFees] Fee windows not judged', { skipped });
+    }
+
+    // Thrown rather than asserted with expect(): under cucumber, a Playwright expect() drops its message.
+    if (mismatches.length > 0) {
+      throw new Error(
+        '[FlightResults.verifySharedQuoteFeesMatchGalileoSearch] The shared quotes must show the change and ' +
+        `cancellation fees Galileo returned, but ${mismatches.length} did not:\n${mismatches.join('\n')}`
+      );
+    }
+
+    logger.info('[GalileoShareFees] Shared quote fees match the Galileo search response', {
+      offers: offers.length,
+      assertions,
+    });
+
+    return { offers: offers.length, assertions };
   },
 }
 

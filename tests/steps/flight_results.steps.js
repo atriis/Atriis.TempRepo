@@ -583,6 +583,17 @@ Then('I wait to see {string} field in share dialog', async function (fieldLabel)
   await FlightResults.waitForFieldInShareDialog(this.page, fieldLabel);
 });
 
+// ADO 68132 - the shared quotes' fees against the Galileo search response they came from.
+Then(
+  'the change and cancellation fees of the {int} shared quotes should match the Galileo {string} response',
+  { timeout: 300000 },
+  async function (expectedOfferCount, requestType) {
+    logger.info('Cross-checking shared quote fees against the Galileo search response', { expectedOfferCount, requestType });
+    const result = await FlightResults.verifySharedQuoteFeesMatchGalileoSearch(this.page, this, requestType, expectedOfferCount);
+    logger.info('Shared quote fees verified against the Galileo search response', result);
+  }
+);
+
 When('I click to share two quotes from results page and verify safety text is NOT displayed', async function () {
   const hiddenSafetyText = 'Safety information and travel restriction are available for this trip, please Click here for details';
 
