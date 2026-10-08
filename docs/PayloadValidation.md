@@ -186,6 +186,19 @@ Then the captured "response" payload for request type "TravelItineraryAddInfoRQ"
 
 ---
 
+### 2.7.1. `storeCapturedXmlAttributeValue(...)` and `expectCapturedXmlAttributeOnEveryElement(...)`
+
+- **Purpose:** The XML counterpart of the JSON path steps — carry a supplier-generated value from one XML payload to an assertion on another (path steps parse JSON only).
+- **`storeCapturedXmlAttributeValue(page, world, source, requestType, elementTag, filterAttribute, filterValue, attributeName, variableName)`:** finds the first `<elementTag>` whose own `filterAttribute` equals `filterValue` and stores its `attributeName` on `world[variableName]`, usable later as `{variableName}`. Throws if no such element exists or it lacks the attribute.
+- **`expectCapturedXmlAttributeOnEveryElement(page, world, source, requestType, elementTag, attributeName, expectedValue)`:** passes only when every `<elementTag>` carries `attributeName="expectedValue"` (a missing attribute fails). Throws when no element exists.
+- Attributes are read from the element's opening tag only, namespace prefixes ignored.
+- **Usage:**
+  - `When I store the XML attribute "{attributeName}" of the first "{elementTag}" element whose "{filterAttribute}" is "{filterValue}" in the captured "{source}" payload for request type "{requestType}" as "{variableName}"`
+  - `Then in the captured "{source}" payload for request type "{requestType}", every "{elementTag}" element should have XML attribute "{attributeName}" equal to "{expectedValue}"`
+- **Example:** test 58320 stores the `currency` of the Ypsilon `SeatMap` `seatPrice` with `currencyType="default"`, then asserts every `specialServices` in the `Booking` request carries it.
+
+---
+
 ### 2.8. `expectCapturedPayloadContainsXmlBlock(page, world, source, requestType, expectedXmlBlock)`
 
 - **Purpose:** Assert that all key-value pairs in an XML block exist in the captured payload.
@@ -600,6 +613,8 @@ All step definitions are in `tests/steps/payload_validation.steps.js`. Here is t
 | `Then in the captured "{source}" payload for request type "{requestType}", path "{path}" should exist` | `expectCapturedPayloadPathExists()` | Assert JSON path exists |
 | `Then in the captured "{source}" payload for request type "{requestType}", path "{path}" should contain "{expectedValue}"` | `expectCapturedPayloadPathContains()` | Assert JSON path contains substring |
 | `Then in the captured "{source}" payload for request type "{requestType}", path "{path}" should not contain "{expectedValue}"` | `expectCapturedPayloadPathNotContains()` | Assert JSON path does not contain substring |
+| `When I store the XML attribute "{attributeName}" of the first "{elementTag}" element whose "{filterAttribute}" is "{filterValue}" in the captured "{source}" payload for request type "{requestType}" as "{variableName}"` | `storeCapturedXmlAttributeValue()` | Keep an XML attribute on the World as `{variableName}` (§2.7.1) |
+| `Then in the captured "{source}" payload for request type "{requestType}", every "{elementTag}" element should have XML attribute "{attributeName}" equal to "{expectedValue}"` | `expectCapturedXmlAttributeOnEveryElement()` | Assert an XML attribute on every occurrence of an element (§2.7.1) |
 | `When I capture the number of "{requestType}" requests sent for the trip` | `captureRequestCount()` | Store the current request count as the baseline (§2.10.3) |
 | `Then no additional "{requestType}" requests should have been sent after "{anchorRequestType}"` | `expectRequestCountUnchanged()` | Assert the count did not grow since the baseline (§2.10.4) |
 | `Then exactly {int} "{requestType}" requests should have been sent` | `expectRequestCountEquals()` | Assert the absolute number of requests sent for the trip (§2.10.5) |

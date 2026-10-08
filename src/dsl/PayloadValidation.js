@@ -1679,6 +1679,68 @@ const PayloadValidation = {
     return world[variableName];
   },
 
+  // XML twin of storeCapturedPayloadPathValue: path steps parse JSON only, so XML suppliers
+  // (Ypsilon) had no way to carry a run-time value from one payload to another. Picks the first
+  // <elementTag> whose own filterAttribute equals filterValue — e.g. the seatPrice priced in the
+  // supplier's "default" currency, not the agency/display one sitting next to it.
+  async storeCapturedXmlAttributeValue(page, world, source, requestType, elementTag, filterAttribute, filterValue, attributeName, variableName) {
+    if (!page) {
+      throw new Error("page is required");
+    }
+
+    if (!variableName || typeof variableName !== "string") {
+      throw new Error("variableName must be a non-empty string");
+    }
+
+    const payloadRecord = this.getCapturedPayload(world, source, requestType);
+    const elements = extractXmlBlocksByTag(payloadRecord.payload, elementTag);
+    const match = elements
+      .map((element) => readXmlAttributes(element, [filterAttribute, attributeName]))
+      .find((attributes) => attributes[filterAttribute] === filterValue);
+
+    if (!match) {
+      throw new Error(
+        `No <${elementTag}> with ${filterAttribute}="${filterValue}" in captured ${source} payload for request type "${requestType}" (${elements.length} <${elementTag}> element(s) found)`
+      );
+    }
+
+    if (!match[attributeName]) {
+      throw new Error(
+        `The first <${elementTag}> with ${filterAttribute}="${filterValue}" in captured ${source} payload for request type "${requestType}" has no ${attributeName} attribute`
+      );
+    }
+
+    world[variableName] = match[attributeName];
+    return world[variableName];
+  },
+
+  // Every occurrence must match, not just one: a multi-passenger payload carries one element per
+  // passenger, and a single wrong one is exactly the defect a "contains" check would hide.
+  async expectCapturedXmlAttributeOnEveryElement(page, world, source, requestType, elementTag, attributeName, expectedValue) {
+    if (!page) {
+      throw new Error("page is required");
+    }
+
+    const payloadRecord = this.getCapturedPayload(world, source, requestType);
+    const actualValues = extractXmlBlocksByTag(payloadRecord.payload, elementTag)
+      .map((element) => readXmlAttributes(element, [attributeName])[attributeName]);
+
+    if (actualValues.length === 0) {
+      throw new Error(
+        `No <${elementTag}> element in captured ${source} payload for request type "${requestType}"`
+      );
+    }
+
+    const mismatches = actualValues.filter((value) => value !== expectedValue);
+    if (mismatches.length > 0) {
+      throw new Error(
+        `Expected ${attributeName}="${expectedValue}" on every <${elementTag}> in captured ${source} payload for request type "${requestType}", got: ${actualValues.map((value) => (value === null ? "(missing)" : `"${value}"`)).join(", ")}`
+      );
+    }
+
+    logger.info(`All ${actualValues.length} <${elementTag}> element(s) carry ${attributeName}="${expectedValue}"`);
+  },
+
   async expectCapturedPayloadPath(page, world, source, requestType, path, operator, expectedValue) {
     if (!page) {
       throw new Error("page is required");
