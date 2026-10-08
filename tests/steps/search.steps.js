@@ -4,6 +4,7 @@ const { Given, When, Then, setDefaultTimeout } = require("@cucumber/cucumber");
 const { Search } = require("@dsl");
 const { expect } = require("@playwright/test");
 const logger = require("@utils/logger").child("Search");
+const { toCtceEmail, toCtcmPhone } = require("@utils/text");
 
 setDefaultTimeout(120000);
 
@@ -82,6 +83,7 @@ Given("I have added a random guest traveler", async function () {
   this.guestTravelerCount = (this.guestTravelerCount ?? 0) + 1;
   this.selectedTravelerCount = result.selectedTravelerCount;
   this.lastAddedGuestName = `${result.guestData.firstName} ${result.guestData.lastName}`;
+  this.lastAddedGuestData = result.guestData;
 });
 
 Given("I have added a random guest traveler with phone type {string}", async function (phoneType) {
@@ -91,6 +93,26 @@ Given("I have added a random guest traveler with phone type {string}", async fun
   this.guestTravelerCount = (this.guestTravelerCount ?? 0) + 1;
   this.selectedTravelerCount = result.selectedTravelerCount;
   this.lastAddedGuestName = `${result.guestData.firstName} ${result.guestData.lastName}`;
+  this.lastAddedGuestData = result.guestData;
+});
+
+// Stored in CTCE/CTCM form so payload steps can match the airline contact SSRs via
+// {notedGuestCtceEmail} / {notedGuestCtcmPhone}.
+Given("I note the email and phone of the last added guest traveler", function () {
+  const guestData = this.lastAddedGuestData;
+  if (!guestData || !guestData.email || !guestData.phone) {
+    throw new Error(
+      `[Search.noteLastAddedGuestContact] No email/phone stored for the last added guest ` +
+      `(got email: "${guestData?.email}", phone: "${guestData?.phone}"). ` +
+      `Run "I have added a random guest traveler" earlier in the scenario.`
+    );
+  }
+  this.notedGuestCtceEmail = toCtceEmail(guestData.email);
+  this.notedGuestCtcmPhone = toCtcmPhone(guestData.phone);
+  logger.info("Noted last added guest contact", {
+    ctceEmail: this.notedGuestCtceEmail,
+    ctcmPhone: this.notedGuestCtcmPhone,
+  });
 });
 
 // Distinct from "I have added a random guest traveler": that one prefers the round add-traveler
