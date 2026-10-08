@@ -24,4 +24,4 @@ Feature: 73601 General - Meal plan translated to German in share itinerary
     Then the booking status should be "Pending booking"
     When I click the share itinerary button
     And I change the share language to "German"
-    Then "Speisepläne:" should be displayed in the share email preview
+    Then "Verpflegung:" should be displayed in the share email preview
