@@ -1,8 +1,9 @@
-# Test Name: 85792 Galileo NDC - TVP NDC search sends the CLID on every request and the agreement on a separate one
-# Status: Active
+# Test Name: ** Blocked - Galileo NDC returns no results for 277478 on dev *** 85792 Galileo NDC - TVP NDC search sends the CLID on every request and the agreement on a separate one
+# Status: Active (BLOCKED - no Galileo NDC content for 277478@277478.COM on dev)
 # Labels: Flights,Galileo,Galileo NDC,Travelport,Agreement,CLID,payload,search
 # Owner: Yael Alef
 # Created: 2026-10-01
+# Updated: 2026-10-08
 
 # ADO Test Case ID: 85792
 # ADO workitem ID: 85390 (User Story)
@@ -17,8 +18,15 @@
 # Test data (dev corporation of 277478@277478.COM): CLID TP ABC123, KL ABC123213123; agreement
 # 123456 on TP. The agreement request is sent only when TP is the preferred carrier; an open
 # search with no carrier sends only the CLID request (Bug 85781).
-@ado:85390 @tc:85792 @regression @flights @galileo @ndc @payload @agreement
-Feature: 85792 Galileo NDC - TVP NDC search with agreement and CLID
+#
+# BLOCKED since 2026-10-08: on dev, the LIS-OPO TP search for 277478@277478.COM returns
+# "No results found" in under a second with no TVP NDC request logged (trip 3925077). The same
+# search for tapCorp@tvpNdc.gdg reaches TVP NDC (trip 3925084), but that corporation has no CLID or
+# agreement, so it cannot stand in. Move back to flights_galileo_non_booking once 277478
+# returns Galileo NDC results again. The user is now preselected as the traveller, so the
+# scenario checks the preselected tag instead of clicking "Add me".
+@blocked @ado:85390 @tc:85792 @regression @flights @galileo @ndc @payload @agreement
+Feature: BLOCKED - 85792 Galileo NDC - TVP NDC search with agreement and CLID
 
   As a corporate traveller with a TAP agreement and NDC client IDs
   I want every TVP NDC search to carry the CLID and the agreement to go out on its own request
@@ -26,7 +34,7 @@ Feature: 85792 Galileo NDC - TVP NDC search with agreement and CLID
 
   Scenario: LIS-OPO with TAP sends a CLID-only request and an agreement request with the CLID
     Given I am logged in as "277478@277478.COM" booking a new trip
-    And I have added myself as the traveler
+    And the selected traveler should be "WILL NEVER" by default
     When I search for a round trip flight from "LIS" to "OPO" with preferred carrier "TP"
     And flight results should be available
 
