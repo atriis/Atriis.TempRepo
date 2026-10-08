@@ -673,6 +673,69 @@ When(
   }
 );
 
+When(
+  "I store the XML attribute {string} of the first {string} element whose {string} is {string} in the captured {string} payload for request type {string} as {string}",
+  async function (attributeName, elementTag, filterAttribute, filterValue, source, requestType, variableName) {
+    await runPayloadValidationStep(this, "storeCapturedXmlAttributeValue", {
+      source,
+      requestType,
+      elementTag,
+      attributeName,
+      variableName,
+    }, async () => {
+      const storedValue = await PayloadValidation.storeCapturedXmlAttributeValue(
+        this.page,
+        this,
+        source,
+        requestType,
+        elementTag,
+        filterAttribute,
+        filterValue,
+        attributeName,
+        variableName
+      );
+      logger.info("Stored captured XML attribute on the World", {
+        source,
+        requestType,
+        elementTag,
+        attributeName,
+        variableName,
+        storedValue,
+      });
+    });
+  }
+);
+
+Then(
+  "in the captured {string} payload for request type {string}, every {string} element should have XML attribute {string} equal to {string}",
+  async function (source, requestType, elementTag, attributeName, expectedValue) {
+    await runPayloadValidationStep(this, "expectCapturedXmlAttributeOnEveryElement", {
+      source,
+      requestType,
+      elementTag,
+      attributeName,
+    }, async () => {
+      const resolvedValue = resolveWorldPlaceholders(expectedValue, this);
+      logger.info("Validating XML attribute on every element", {
+        source,
+        requestType,
+        elementTag,
+        attributeName,
+        expectedValue: resolvedValue,
+      });
+      await PayloadValidation.expectCapturedXmlAttributeOnEveryElement(
+        this.page,
+        this,
+        source,
+        requestType,
+        elementTag,
+        attributeName,
+        resolvedValue
+      );
+    });
+  }
+);
+
 Then(
   "in the captured {string} payload for request type {string}, path {string} should contain {string}",
   async function (source, requestType, path, expectedValue) {
@@ -776,6 +839,32 @@ Then(
       logger.info("Validating the total request count", { requestType, expectedCount });
       await PayloadValidation.expectRequestCountEquals(this.page, this, requestType, expectedCount);
     });
+  }
+);
+
+async function expectRequestCountContaining(world, expectedCount, requestType, expectedTexts) {
+  await runPayloadValidationStep(world, "expectRequestCountContaining", {
+    requestType,
+    expectedTexts,
+    expectedCount,
+  }, async () => {
+    logger.info("Validating how many requests carry the text", { requestType, expectedTexts, expectedCount });
+    await PayloadValidation.expectRequestCountContaining(world.page, world, requestType, expectedTexts, expectedCount);
+  });
+}
+
+Then(
+  "exactly {int} {string} requests should contain {string}",
+  async function (expectedCount, requestType, expectedText) {
+    await expectRequestCountContaining(this, expectedCount, requestType, [expectedText]);
+  }
+);
+
+// Both texts in the SAME request - e.g. the RW upsell call that also carries FFH.
+Then(
+  "exactly {int} {string} requests should contain both {string} and {string}",
+  async function (expectedCount, requestType, firstText, secondText) {
+    await expectRequestCountContaining(this, expectedCount, requestType, [firstText, secondText]);
   }
 );
 

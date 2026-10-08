@@ -4,6 +4,7 @@
 # Owner: Bruna Santos
 # Created: 2025-10-24T02:11:37Z
 # Updated: 2025-10-24T05:13:35Z
+# Related: Bug #86348 - Multi-city fare rules show 2 tabs for a 3-leg search (MAD-BOG leg missing)
 
 @regression @provider:galileo @flights @fare_rules @multi_city @pricing_options @priority:high
 Feature: 69252 Galileo - Fare rules displayed in multi-city search
@@ -19,6 +20,7 @@ Feature: 69252 Galileo - Fare rules displayed in multi-city search
     And flight results should be available
     And I click to open fare rules
     Then I should see the fare rules note about strictest terms
+    And the fare rules leg tabs should be "LIS - MAD, MAD - BOG, BOG - LGW"
     When I click fare rules for the second flight leg
     Then I should see the fare rules note about strictest terms
     When I click fare rules for the third flight leg
@@ -27,6 +29,7 @@ Feature: 69252 Galileo - Fare rules displayed in multi-city search
     When I click to open flight details
     And I click to open fare rules from modal
     Then I should see the fare rules note about strictest terms
+    And the fare rules leg tabs should be "LIS - MAD, MAD - BOG, BOG - LGW"
     When I click fare rules for the second flight leg
     Then I should see the fare rules note about strictest terms
     When I click fare rules for the third flight leg
@@ -52,6 +55,7 @@ Feature: 69252 Galileo - Fare rules displayed in multi-city search
     Then the booking status should be "Pending booking"
     When I click to open fare rules
     Then I should see the fare rules note about strictest terms
+    And the fare rules leg tabs should be "LIS - MAD, MAD - BOG, BOG - LGW"
     When I click fare rules for the second flight leg
     Then I should see the fare rules note about strictest terms
     When I click fare rules for the third flight leg
@@ -60,6 +64,7 @@ Feature: 69252 Galileo - Fare rules displayed in multi-city search
     When I click to open flight details
     And I click to open fare rules in cart
     Then I should see the fare rules note about strictest terms
+    And the fare rules leg tabs should be "LIS - MAD, MAD - BOG, BOG - LGW"
     When I click fare rules for the second flight leg
     Then I should see the fare rules note about strictest terms
     When I click fare rules for the third flight leg
@@ -69,6 +74,7 @@ Feature: 69252 Galileo - Fare rules displayed in multi-city search
     When I click to open price breakdown in cart
     And I click to open fare rules in cart
     Then I should see the fare rules note about strictest terms
+    And the fare rules leg tabs should be "LIS - MAD, MAD - BOG, BOG - LGW"
     When I click fare rules for the second flight leg
     Then I should see the fare rules note about strictest terms
     When I click fare rules for the third flight leg

@@ -84,11 +84,11 @@ Feature: 82465 Evolvi - Dynamic profile field values are sent to Evolvi on corpo
     And I add an Evolvi one way to the trip
     And I fill mandatory Evolvi fields in cart
     And I proceed to checkout
+    And I wait for booking details in checkout
+    And I fill in the "Travel Type" reference field with "Business"
     And I capture the "response" payload for request type "TripReferenceField" from Storage
     Then the captured "response" payload for request type "TripReferenceField" should contain "Cost Centre"
     Then the captured "response" payload for request type "TripReferenceField" should contain "under test with automation"
-    And I wait for booking details in checkout
-    And I fill in the "Travel Type" reference field with "Business"
     When I complete the booking
     Then the booking status should be "Ticketing Complete"
     And I capture the "request" payload for request type "SaveReferenceField" from Storage

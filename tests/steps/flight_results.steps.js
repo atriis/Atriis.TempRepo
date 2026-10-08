@@ -92,6 +92,13 @@ When("I add the first flight to cart", async function () {
   await FlightResults.addFirstFlightToCart(this.page);
 });
 
+// Carrier codes per leg, outbound first, e.g. "EI, W6" for an Aer Lingus + Wizz Air multi-city.
+When("I add the first flight flown by {string} to cart", async function (carrierCodes) {
+  const codes = carrierCodes.split(",").map((code) => code.trim()).filter(Boolean);
+  logger.info("Adding first flight flown by carriers to cart", { codes });
+  await FlightResults.addFirstFlightToCartFlownBy(this.page, codes);
+});
+
 When("I store the first flight result details for later comparison", async function () {
   logger.info("Storing the first flight result details for later comparison");
   this.storedFlightSegmentDetails = await FlightResults.extractFirstFlightResultSegmentDetails(this.page);
@@ -743,6 +750,16 @@ Then("the flight details dates should match the results dates", async function (
   logger.info("Flight details dates match the results card dates", result);
 });
 
+Then("the cart flights should be displayed in travel order", async function () {
+  const result = await FlightResults.verifyCartFlightsInChronologicalOrder(this.page);
+  logger.info("Cart flights are in travel order", result);
+});
+
+Then("the flight details flights should be displayed in travel order", async function () {
+  const result = await FlightResults.verifyFlightDetailsInChronologicalOrder(this.page);
+  logger.info("Flight details flights are in travel order", result);
+});
+
 Then("the flight details departure and arrival times should match the results times", async function () {
   // Either capture step will do: the leg shape is a superset of the segment shape for the two
   // fields this compares, so a scenario is free to store whichever it also needs elsewhere.
@@ -775,6 +792,12 @@ When("I open seat map from results and verify it loads", async function () {
 Then("the seat map should be displayed in results", async function () {
   logger.info("Verifying the results seat drawer rendered a seat map");
   await FlightResults.verifySeatMapDisplayedInResults(this.page);
+});
+
+Then("the seat map drawer title should be {string}", async function (expectedTitle) {
+  logger.info("Verifying the results seat drawer title", { expectedTitle });
+  const result = await FlightResults.verifySeatMapDrawerTitle(this.page, expectedTitle);
+  logger.info("Results seat drawer title verified", result);
 });
 
 When("I close the seat map drawer in results", async function () {
@@ -813,6 +836,11 @@ When("I scroll to the Flight Duration filter for {string}", async function (loca
 When('I adjust the Limit Layover Duration filter from the half timepoint of the longest point', async function () {
   logger.info('Adjusting Limit Layover Duration filter from midpoint of longest range');
   await FlightResults.adjustLimitLayoverDurationFilterFromMidpoint(this.page);
+});
+
+When('I set the {string} time filter to start at {string}', async function (sliderTitle, startTime) {
+  const result = await FlightResults.setTimeFilterStart(this.page, sliderTitle, startTime);
+  logger.info('Times filter narrowed', { sliderTitle, startTime, ...result });
 });
 
 Then('the Limit Layover Duration filter should be displayed', async function () {
@@ -1147,6 +1175,28 @@ Then('no fare in pricing options should be listed more times than Fusion returne
   logger.info('No pricing options fare is listed more times than Fusion returned it', result);
 });
 
+// Reads the trip's request log, so it is skipped like every payload step when payload validation is off.
+Then('every fare in pricing options should show the baggage Fusion includes in it in CheckRouting', async function () {
+  if (!config.payloadValidation.enabled) {
+    logger.warn('PAYLOAD_VALIDATION_ENABLED=false', { step: 'verifyPricingOptionsBaggageMatchesFusionHoldBag' });
+    return;
+  }
+  logger.info('Comparing pricing options baggage with the Fusion CheckRouting HoldBag feature');
+  const result = await FlightResults.verifyPricingOptionsBaggageMatchesFusionHoldBag(this.page, this);
+  logger.info('Pricing options baggage matches the Fusion CheckRouting HoldBag feature', result);
+});
+
+// Reads the trip's request log, so it is skipped like every payload step when payload validation is off.
+Then('the flight details should show the baggage Fusion includes in the {string} fare from {string} in ProcessDetails', async function (brand, origin) {
+  if (!config.payloadValidation.enabled) {
+    logger.warn('PAYLOAD_VALIDATION_ENABLED=false', { step: 'verifyFlightDetailsBaggageMatchesFusionHoldBag', brand, origin });
+    return;
+  }
+  logger.info('Comparing flight details baggage with the Fusion ProcessDetails HoldBag feature', { brand, origin });
+  const result = await FlightResults.verifyFlightDetailsBaggageMatchesFusionHoldBag(this.page, this, brand, origin);
+  logger.info('Flight details baggage matches the Fusion ProcessDetails HoldBag feature', result);
+});
+
 Then('the {string} text should be displayed in pricing options', async function (expectedText) {
   logger.info('Verifying text is displayed in pricing options', { expectedText });
   await FlightResults.verifyPricingOptionsHeaderContains(this.page, expectedText);
@@ -1265,6 +1315,30 @@ Then("the branded fares chargeable items should be listed only under additional 
 Then("the branded fares drawer should show each attribute only once", async function () {
   logger.info("Verifying the branded fares drawer shows each attribute only once");
   await FlightResults.verifyBrandedFaresAttributesListedOnce(this.page);
+});
+
+When("I open branded fares for the {string} fare from pricing options", async function (brandName) {
+  logger.info("Opening branded fares for a named fare from pricing options", { brandName });
+  await FlightResults.openBrandedFaresForBrandFromPricingOptions(this.page, brandName);
+});
+
+When("I open branded fares for the {string} brand from flight details", async function (brandName) {
+  logger.info("Opening branded fares for a named brand from flight details", { brandName });
+  await FlightResults.openBrandedFaresForBrandFromFlightDetails(this.page, brandName);
+});
+
+// Classic Sabre brands. Run "I note the time before new payload requests are sent" right before
+// opening the brand, so only the calls that opening fired are compared. With payload validation
+// off, the drawer is still required to show a feature list titled with the brand.
+Then("the branded fares drawer should show the {string} features Sabre filed for that brand", async function (brandName) {
+  if (!config.payloadValidation.enabled) {
+    logger.warn("PAYLOAD_VALIDATION_ENABLED=false - checking the drawer without the Sabre responses", { step: "verifyBrandedFaresMatchSabreBrandFeatures" });
+  }
+  logger.info("Comparing the branded fares drawer with the Sabre brand features", { brandName });
+  const result = await FlightResults.verifyBrandedFaresMatchSabreBrandFeatures(this.page, this, brandName, {
+    compareWithSabre: config.payloadValidation.enabled,
+  });
+  logger.info("Branded fares drawer matches the Sabre brand features", result);
 });
 
 Then("the carrier name in more details should be {string}", async function (expectedName) {

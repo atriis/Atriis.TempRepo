@@ -14,6 +14,8 @@
 # (claraaguiar's profile has been switched between GBP and EUR on dev).
 # The breakdown is read straight after add to trip - the quote expires in about 30 minutes and the
 # Price Breakdown link is then disabled.
+# A second scenario covers test case step 7: a flight manual quote (no fee) keeps its breakdown at
+# the base fare, with no markup added.
 
 @ado:86277
 @regression @flights @ndc @lufthansa @management-fee @price-breakdown @priority:high
@@ -31,5 +33,18 @@ Feature: 86277 Lufthansa NDC - Cross-currency fixed fee - Price Breakdown adds u
     Then the booking status should be "Pending booking"
     When I click to open price breakdown in cart
     Then the flight price breakdown should match the totals for the selected travelers
+    And I close price breakdown modal
+    Then I successfully cancel the trip
+
+  # Test case step 7: a manual quote has no GtpMarkupCurrency, so the fee read-back must leave it
+  # alone - the breakdown shows the 10.00 base fare the manual quote step enters, with no markup.
+  Scenario: Flight manual quote - Price equals Subtotal equals Total with no markup added
+    Given I am logged in as "claraaguiar@ndclhclara.com" booking a new trip
+    And I have added myself as the traveler
+    When I add a flight manual quote from "LCY" to "FRA"
+    Then the booking status should be "On hold"
+    When I click to open price breakdown in cart
+    Then the flight price breakdown should match the totals for the selected travelers
+    And the flight price breakdown total should be 10.00
     And I close price breakdown modal
     Then I successfully cancel the trip

@@ -108,6 +108,8 @@ const DRAWER_SEPARATOR = /^[^A-Za-z0-9]+/;
 // "Fri, 16 Oct 26" / "Friday, 16 October 2026" / "16 Oct" — weekday and year both optional, month
 // either abbreviated or full, year either 2- or 4-digit.
 const DRAWER_DATE = /^(?:([A-Za-z]{3,9})\.?,?\s*)?(\d{1,2})\s+([A-Za-z]{3,9})\.?,?\s*(\d{2,4})?$/;
+// US-locale accounts put the month first: "Mon, Nov 09, 26".
+const DRAWER_DATE_MONTH_FIRST = /^(?:([A-Za-z]{3,9})\.?,?\s*)?([A-Za-z]{3,9})\.?\s+(\d{1,2}),?\s*(\d{2,4})?$/;
 
 /**
  * Parses a rendered date — "Fri, 16 Oct 26", "Friday, 16 October 2026", "16 Oct" — into its parts.
@@ -128,12 +130,14 @@ function parseFlightDate(text) {
     return null;
   }
 
-  const dateMatch = text.trim().match(DRAWER_DATE);
-  if (!dateMatch) {
+  const dayFirst = text.trim().match(DRAWER_DATE);
+  const monthFirst = dayFirst ? null : text.trim().match(DRAWER_DATE_MONTH_FIRST);
+  if (!dayFirst && !monthFirst) {
     return null;
   }
 
-  const [, weekday, day, monthToken, year] = dateMatch;
+  const [, weekday, day, monthToken, year] = dayFirst
+    || [monthFirst[0], monthFirst[1], monthFirst[3], monthFirst[2], monthFirst[4]];
   const month = MONTH_NAMES.findIndex(
     (name) => name.toLowerCase() === monthToken.toLowerCase()
       || name.slice(0, 3).toLowerCase() === monthToken.toLowerCase()
@@ -157,6 +161,62 @@ function parseFlightDate(text) {
     year: resolvedYear,
     weekday: weekday ?? null,
   };
+}
+
+// What to read out of a Fusion CheckRouting / ProcessDetails response to find the bags a fare
+// includes: each <Router> names the leg it searched (<RequestedLocations><Origin><Code>), and its
+// <Feature Type="HoldBag"> lists <Option Value="price"> entries described by <Condition Type Value/>.
+const FUSION_HOLD_BAG_SPEC = {
+  Router: {
+    blocks: {
+      RequestedLocations: { blocks: { Origin: { fields: ['Code'] } } },
+      Feature: {
+        attributes: ['Type'],
+        blocks: { Option: { attributes: ['Value'], blocks: { Condition: { attributes: ['Type', 'Value'] } } } },
+      },
+    },
+  },
+};
+
+/**
+ * Lists the baggage labels the UI should show for a fare's included bags, read from the free
+ * (Value 0.00) HoldBag options Fusion filed for that fare. Following the display rule in ADO
+ * test case 71005: one bag reads "1PC 20KG", more than one reads "2PC (35KG Total)", because
+ * MaxWeight is the total of all pieces.
+ *
+ * Only options for the leg's origin and, when given, the operator and the fare's segment count are kept.
+ * SupplierClass carries one brand per segment ("Regular fare,Regular fare" on a connection), and
+ * brand names are compared ignoring case (Fusion "IndiGo UpFront", UI "Indigo Upfront").
+ * A label list rather than one label: ProcessDetails can file the same brand twice with
+ * different allowances (Stretch 1x30 Kg and 2x30 Kg), and either is a correct reading.
+ *
+ * @param {Array<{Router: object[]}>} perCall - from PayloadValidation.collectXmlBlockTreesPerCall with FUSION_HOLD_BAG_SPEC
+ * @param {{brand: string, origin: string, segments?: number, operatorCode?: string}} fare
+ * @returns {string[]} distinct expected labels, upper case
+ */
+function fusionIncludedBagLabels(perCall, { brand, origin, segments, operatorCode }) {
+  const same = (a, b) => String(a || '').trim().toLowerCase() === String(b || '').trim().toLowerCase();
+  const labels = new Set();
+  for (const call of perCall) {
+    for (const router of call.Router) {
+      const routerOrigins = router.RequestedLocations.flatMap((locations) => locations.Origin.flatMap((o) => o.Code));
+      if (!routerOrigins.some((code) => same(code, origin))) continue;
+      for (const feature of router.Feature.filter((f) => f.Type === 'HoldBag')) {
+        for (const option of feature.Option) {
+          if (Number(option.Value) !== 0) continue;
+          const conditions = Object.fromEntries(option.Condition.map((c) => [c.Type, c.Value]));
+          const classes = String(conditions.SupplierClass || '').split(',');
+          if ((segments && classes.length !== segments) || !classes.every((name) => same(name, brand))) continue;
+          if (operatorCode && !String(conditions.OperatorCode || '').split(',').some((code) => same(code, operatorCode))) continue;
+          const quantity = Number(conditions.MaxQuantity);
+          const weight = String(conditions.MaxWeight || '').replace(/\s+/g, '').toUpperCase();
+          if (!quantity || !weight) continue;
+          labels.add(quantity > 1 ? `${quantity}PC (${weight} TOTAL)` : `${quantity}PC ${weight}`);
+        }
+      }
+    }
+  }
+  return [...labels];
 }
 
 /**
@@ -188,6 +248,56 @@ function parseDrawerTimeDate(text) {
   }
 
   return { time: timeMatch[1].replace(/\s+/g, ' ').trim(), ...parsedDate };
+}
+
+/**
+ * A local time and parsed date as one comparable number, or null when either cannot be read.
+ * Local times are only comparable at the same airport, which is exactly where one flight's arrival
+ * meets the next flight's departure.
+ *
+ * @param {string} time - "HH:mm" or "h:mm AM/PM"
+ * @param {{day: number, month: number, year: number|null}|null} date
+ * @returns {number|null}
+ */
+function toFlightInstant(time, date) {
+  if (!date || date.year === null) {
+    return null;
+  }
+  try {
+    return Date.UTC(date.year, date.month, date.day) + parseTimeToMinutes(time) * 60000;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Fails when any flight departs before the flight listed above it has landed, or when a time
+ * cannot be read (an unreadable line must not let the order check pass silently).
+ *
+ * @param {Array<{departure: {text: string, instant: number|null}, arrival: {text: string, instant: number|null}}>} flights
+ * @param {string} surface - Where the flights were read, for the failure message
+ */
+function assertFlightsInTravelOrder(flights, surface) {
+  expect(flights.length, `The ${surface} showed ${flights.length} flight(s); an order check needs at least 2.`)
+    .toBeGreaterThanOrEqual(2);
+
+  const problems = [];
+  flights.forEach((flight, index) => {
+    [flight.departure, flight.arrival].forEach((end) => {
+      if (end.instant === null) {
+        problems.push(`could not read the time and date "${end.text}"`);
+      }
+    });
+    const previous = flights[index - 1];
+    if (previous && previous.arrival.instant !== null && flight.departure.instant !== null
+      && flight.departure.instant < previous.arrival.instant) {
+      problems.push(
+        `flight ${index + 1} departs "${flight.departure.text}" before flight ${index} lands "${previous.arrival.text}"`
+      );
+    }
+  });
+
+  expect(problems, `The ${surface} flights are not in travel order: ${problems.join('; ')}.`).toEqual([]);
 }
 
 // A results-card time carries a next-day marker when that end of the leg falls on a later date
@@ -674,6 +784,71 @@ function expectedAttributesForBrand(brands, brandName) {
     }
   }
   return expected;
+}
+
+// Classic Sabre files brand features in the RevalidateItinerary response (an OTA_AirLowFareSearchRS):
+// one <BrandFeatures> list of <BrandFeature Id Application ServiceGroup CommercialName/>, and per
+// fare component the ids that apply to its brand as <BrandFeatureRef FeatureId/>. Opening a brand
+// fires one call per agreement variant; FlightBrandindDetailsV3 is logged once they have returned.
+const SABRE_REVALIDATE_REQUEST_TYPE = 'RevalidateItinerary*';
+const SABRE_BRAND_DETAILS_REQUEST_TYPE = 'FlightBrandindDetailsV3*';
+
+// What TMC2 shows of a Sabre brand feature (BrandFeatureServiceGroups): Free and Chargeable
+// features only - Not offered (N) is dropped - in these service groups, under these headings.
+const SABRE_SHOWN_APPLICATIONS = { F: 'free', C: 'chargeable' };
+const SABRE_SERVICE_GROUP_NAMES = {
+  BF: 'Branded Fare',
+  BG: 'Baggage',
+  FF: 'Frequent Flyer',
+  GT: 'Ground Transportation',
+  IE: 'In-flight entertainment, including meals, drinks, and internet access etc.',
+  LG: 'Lounge Access',
+  ML: 'Meal/Beverage',
+  SA: 'Pre-reserved seat assignments',
+  TS: 'Travel Services',
+  UP: 'Upgrades',
+};
+
+function readXmlTagAttributes(tag) {
+  const attributes = {};
+  for (const [, name, value] of tag.matchAll(/([\w:]+)="([^"]*)"/g)) attributes[name] = value;
+  return attributes;
+}
+
+/** "branded fare|free|changeable ticket" - one shown line, compared without case or punctuation. */
+function sabreBrandFeatureKey(group, section, name) {
+  return `${attributeKey(group)}|${section}|${attributeKey(name)}`;
+}
+
+/**
+ * Every fare component of one Sabre RevalidateItinerary response, with the brand features its
+ * BrandFeatureRef ids resolve to, reduced to what the drawer should show. Ids are numbered per
+ * response, so they are only ever resolved against the list of the response they came from.
+ */
+function collectSabreBrandFareComponents(xml) {
+  const features = new Map();
+  for (const [tag] of String(xml || '').matchAll(/<(?:\w+:)?BrandFeature\s[^>]*>/g)) {
+    const attributes = readXmlTagAttributes(tag);
+    if (attributes.Id) features.set(attributes.Id, attributes);
+  }
+
+  const components = [];
+  for (const [, openAttributes, body] of String(xml || '').matchAll(/<(?:\w+:)?FareComponent\s([^>]*[^/])>([\s\S]*?)<\/(?:\w+:)?FareComponent>/g)) {
+    const attributes = readXmlTagAttributes(openAttributes);
+    const ids = [...body.matchAll(/<(?:\w+:)?BrandFeatureRef\s[^>]*FeatureId="(\d+)"/g)].map((m) => m[1]);
+    if (ids.length === 0) continue;
+
+    const shown = new Map();
+    for (const id of ids) {
+      const feature = features.get(id);
+      const section = feature && SABRE_SHOWN_APPLICATIONS[feature.Application];
+      const group = feature && SABRE_SERVICE_GROUP_NAMES[feature.ServiceGroup];
+      if (!section || !group) continue;
+      shown.set(sabreBrandFeatureKey(group, section, feature.CommercialName), `${group} / ${section}: ${feature.CommercialName}`);
+    }
+    components.push({ brandName: attributes.BrandName || '', brandId: attributes.BrandID || '', shown });
+  }
+  return components;
 }
 
 // The Amadeus NDC offer message that carries what the airline filed per brand. The trip logs it in
@@ -2132,6 +2307,46 @@ const FlightResults = {
     await cartPage.waitForPendingBookingText();
 
     return { added: true };
+  },
+
+  /**
+   * Adds the first result whose legs are flown by the given carriers, in leg order, to the cart.
+   *
+   * A card prints each flight as carrier code + number ("EI402", "W62346"), so the match is on
+   * those codes rather than on airline names: "Wizz Air" would also match Wizz Air Malta (W4).
+   *
+   * @param {import('playwright').Page} page
+   * @param {string[]} carrierCodes - one per leg, outbound first, e.g. ["EI", "W6"]
+   */
+  async addFirstFlightToCartFlownBy(page, carrierCodes) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+    if (!Array.isArray(carrierCodes) || carrierCodes.length === 0) {
+      throw new Error('[FlightResults.addFirstFlightToCartFlownBy] carrierCodes must be a non-empty array');
+    }
+
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    const cartPage = getPageObject(page, CartPage);
+    await flightResultsPage.waitForFlightResults();
+
+    const pattern = new RegExp(carrierCodes.map((code) => `\\b${code}\\d{1,4}\\b`).join('.*'));
+    const cards = flightResultsPage.getFlightResultCards();
+    const count = await cards.count();
+    for (let i = 0; i < count; i++) {
+      const text = (await cards.nth(i).innerText()).replace(/\s+/g, ' ');
+      if (pattern.test(text)) {
+        logger.info('Adding flight result to cart', { carrierCodes, resultIndex: i });
+        await flightResultsPage.getAddToTripButtonInResultCard(cards.nth(i)).first().click();
+        await Results.clickProceedConflictQuoteModal(page);
+        await cartPage.waitForPendingBookingText();
+        return { added: true, resultIndex: i };
+      }
+    }
+
+    throw new Error(
+      `[FlightResults.addFirstFlightToCartFlownBy] None of the ${count} results is flown by ${carrierCodes.join(' then ')}.`
+    );
   },
 
   async extractFirstFlightResultSegmentDetails(page) {
@@ -3608,6 +3823,30 @@ const FlightResults = {
     return actualMessage;
   },
 
+  /**
+   * Verifies the title of the results seat drawer. ADO 35605: the drawer opened from the
+   * results card's "Seats" button must be titled "Seats availability".
+   *
+   * @param {import('playwright').Page} page - Playwright page instance
+   * @param {string} expectedTitle - Exact expected title
+   * @returns {Promise<{title: string}>}
+   */
+  async verifySeatMapDrawerTitle(page, expectedTitle) {
+    if (!page) throw new Error('page is required');
+    if (typeof expectedTitle !== 'string' || !expectedTitle.trim()) {
+      throw new Error(`expectedTitle must be a non-empty string, got: ${typeof expectedTitle}`);
+    }
+
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    const title = await flightResultsPage.getSeatMapDrawerTitle();
+
+    if (title !== expectedTitle.trim()) {
+      throw new Error(`The results seat drawer is titled "${title}", expected "${expectedTitle}".`);
+    }
+
+    return { title };
+  },
+
 async clickToOpenFareRulesFromResultsModal(page) {
   if (!page) {
     throw new Error('page is required');
@@ -3894,6 +4133,29 @@ async verifyFareComponentTextColorInPricingOptions(page, expectedColor, index = 
 
     const flightResultsPage = getPageObject(page, FlightResultsPage);
     const result = await flightResultsPage.adjustLimitLayoverDurationFilterFromMidpoint();
+
+    await flightResultsPage.waitForFlightResults();
+
+    return result;
+  },
+
+  /**
+   * Narrows one Times filter slider so it starts at or just after a clock time — e.g. only flights
+   * leaving Hong Kong from 21:00. Picks flights by schedule instead of by flight number, which
+   * changes from date to date.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} sliderTitle - e.g. "Depart from Hong Kong"
+   * @param {string} startTime - "HH:mm"
+   * @returns {Promise<{rangeText: string}>}
+   */
+  async setTimeFilterStart(page, sliderTitle, startTime) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    const result = await flightResultsPage.setTimeFilterStart(sliderTitle, parseTimeToMinutes(startTime));
 
     await flightResultsPage.waitForFlightResults();
 
@@ -4857,6 +5119,149 @@ async verifyFareComponentTextColorInPricingOptions(page, expectedColor, index = 
     ).toEqual([]);
 
     return { brandName: sections.brandName, chargeableChecked: chargeable.length };
+  },
+
+  /**
+   * Opens the branded fares drawer of the fare card named `brandName` in the pricing options drawer.
+   * @param {import('playwright').Page} page
+   * @param {string} brandName - e.g. "CHOICE"
+   */
+  async openBrandedFaresForBrandFromPricingOptions(page, brandName) {
+    if (!page) throw new Error('[FlightResults.openBrandedFaresForBrandFromPricingOptions] "page" is required, got: ' + typeof page);
+    if (!brandName || typeof brandName !== 'string') {
+      throw new Error('[FlightResults.openBrandedFaresForBrandFromPricingOptions] "brandName" must be a non-empty string, got: ' + typeof brandName);
+    }
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    await flightResultsPage.clickBrandNameInPricingOptionsByName(brandName);
+    await flightResultsPage.waitForBrandedFaresDrawer();
+  },
+
+  /**
+   * Opens the branded fares drawer of the brand named `brandName` from an open flight details
+   * drawer (results or cart). On a round trip each leg's brand has its own button.
+   * @param {import('playwright').Page} page
+   * @param {string} brandName - e.g. "BASIC"
+   */
+  async openBrandedFaresForBrandFromFlightDetails(page, brandName) {
+    if (!page) throw new Error('[FlightResults.openBrandedFaresForBrandFromFlightDetails] "page" is required, got: ' + typeof page);
+    if (!brandName || typeof brandName !== 'string') {
+      throw new Error('[FlightResults.openBrandedFaresForBrandFromFlightDetails] "brandName" must be a non-empty string, got: ' + typeof brandName);
+    }
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    await flightResultsPage.clickBrandNameButtonInDetailsByName(brandName);
+    await flightResultsPage.waitForBrandedFaresDrawer();
+  },
+
+  /**
+   * Verifies the open branded fares drawer shows `brandName` with exactly the features Sabre filed
+   * for that brand: per service group, the Free and Chargeable lines of the brand's BrandFeatureRef
+   * ids in a RevalidateItinerary response.
+   *
+   * The responses read are the ones logged since "I note the time before new payload requests are
+   * sent", i.e. the calls opening this brand fired. A brand is filed once per fare component and
+   * per agreement variant, so the drawer passes when it equals any one filing of that brand; a
+   * drawer that shows another brand's features (bug 82085) or none (bug 86388) equals none of them.
+   * When the opening fired no call that files the brand, every RevalidateItinerary of the trip is
+   * read instead.
+   *
+   * With `compareWithSabre: false` (payload validation switched off) the logs are not read: the
+   * drawer must still show a feature list titled `brandName`.
+   *
+   * @param {import('playwright').Page} page
+   * @param {object} world - Cucumber world holding payloadRequestsNotBefore
+   * @param {string} brandName - e.g. "CHOICE"
+   * @param {{compareWithSabre?: boolean}} [options]
+   * @returns {Promise<{brandName: string, linesChecked: number, filingsCompared: number}>}
+   */
+  async verifyBrandedFaresMatchSabreBrandFeatures(page, world, brandName, { compareWithSabre = true } = {}) {
+    const caller = '[FlightResults.verifyBrandedFaresMatchSabreBrandFeatures]';
+    if (!page) throw new Error(`${caller} "page" is required, got: ${typeof page}`);
+    if (!world || typeof world !== 'object') throw new Error(`${caller} "world" must be the Cucumber world, got: ${typeof world}`);
+    if (!brandName || typeof brandName !== 'string') throw new Error(`${caller} "brandName" must be a non-empty string, got: ${typeof brandName}`);
+
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    const drawer = await flightResultsPage.getBrandFeatureGroups();
+
+    const wanted = normalizeBrandName(brandName);
+    if (!compareWithSabre) {
+      if (drawer.unavailable) {
+        throw new Error(`${caller} The branded fares drawer for "${brandName}" shows "Brand information is currently unavailable".`);
+      }
+      expect(normalizeBrandName(drawer.brandName), `${caller} The branded fares drawer opened for "${brandName}" is titled "${drawer.brandName}"`).toBe(wanted);
+      const linesChecked = drawer.groups.reduce((n, g) => n + g.free.length + g.chargeable.length, 0);
+      expect(linesChecked, `${caller} The branded fares drawer for "${brandName}" lists no features`).toBeGreaterThan(0);
+      return { brandName, linesChecked, filingsCompared: 0 };
+    }
+
+    const filingsIn = (calls) => calls.flatMap((call) => collectSabreBrandFareComponents(call.payload)
+      .filter((c) => normalizeBrandName(c.brandName) === wanted || normalizeBrandName(c.brandId) === wanted)
+      .map((c) => ({ ...c, rowKey: call.metadata?.rowKey, requestType: call.metadata?.requestType })));
+
+    let filings = filingsIn(await PayloadValidation.collectPayloadsSentSince(
+      world, 'response', SABRE_REVALIDATE_REQUEST_TYPE, world.payloadRequestsNotBefore,
+      { anchorRequestType: SABRE_BRAND_DETAILS_REQUEST_TYPE },
+    ));
+    let scope = 'the calls opening the brand fired';
+    if (filings.length === 0) {
+      logger.warn('No RevalidateItinerary sent since the noted time files this brand; reading the whole trip', { brandName });
+      filings = filingsIn(await PayloadValidation.collectPayloadsSentSince(
+        world, 'response', SABRE_REVALIDATE_REQUEST_TYPE, new Date(0),
+      ));
+      scope = 'every RevalidateItinerary of the trip';
+    }
+
+    if (drawer.unavailable) {
+      throw new Error(
+        `${caller} The branded fares drawer for "${brandName}" shows "Brand information is currently unavailable", ` +
+        `but Sabre filed the brand's features in ${filings.length} fare component(s) of ${scope}` +
+        `${filings[0] ? ` (e.g. ${filings[0].requestType}: ${[...filings[0].shown.values()].join('; ')})` : ''}.`
+      );
+    }
+
+    expect(
+      normalizeBrandName(drawer.brandName),
+      `${caller} The branded fares drawer opened for "${brandName}" is titled "${drawer.brandName}"`
+    ).toBe(wanted);
+
+    if (filings.length === 0) {
+      throw new Error(
+        `${caller} No RevalidateItinerary response of the trip files a fare component branded "${brandName}" with ` +
+        `brand features, so the drawer cannot be compared. Check that the trip is a classic Sabre one and the brand name is right.`
+      );
+    }
+
+    const shownLines = new Map();
+    for (const { group, free, chargeable } of drawer.groups) {
+      for (const name of free) shownLines.set(sabreBrandFeatureKey(group, 'free', name), `${group} / free: ${name}`);
+      for (const name of chargeable) shownLines.set(sabreBrandFeatureKey(group, 'chargeable', name), `${group} / chargeable: ${name}`);
+    }
+
+    const diffs = filings.map((filing) => ({
+      filing,
+      missing: [...filing.shown].filter(([key]) => !shownLines.has(key)).map(([, line]) => line),
+      extra: [...shownLines].filter(([key]) => !filing.shown.has(key)).map(([, line]) => line),
+    }));
+    const match = diffs.find((d) => d.missing.length === 0 && d.extra.length === 0);
+
+    logger.info('Compared the branded fares drawer with the Sabre brand features', {
+      brandName,
+      drawerLines: shownLines.size,
+      filingsCompared: filings.length,
+      scope,
+      matchedRowKey: match?.filing.rowKey || null,
+    });
+
+    if (!match) {
+      const closest = diffs.reduce((best, d) => (d.missing.length + d.extra.length < best.missing.length + best.extra.length ? d : best));
+      throw new Error(
+        `${caller} The branded fares drawer for "${brandName}" matches none of the ${filings.length} filing(s) of the ` +
+        `brand in ${scope}. Closest is ${closest.filing.requestType} (row ${closest.filing.rowKey}):\n` +
+        `- filed by Sabre but not shown: ${closest.missing.join('; ') || '(none)'}\n` +
+        `- shown but not filed for this brand: ${closest.extra.join('; ') || '(none)'}`
+      );
+    }
+
+    return { brandName, linesChecked: shownLines.size, filingsCompared: filings.length };
   },
 
   /**
@@ -6644,6 +7049,124 @@ async verifyFareComponentTextColorInPricingOptions(page, expectedColor, index = 
     }
 
     return { flight: designators, fares, supplierCounts };
+  },
+
+  /**
+   * Asserts every fare on the open leg of the classic Pricing Options drawer shows the bags Fusion
+   * includes in it, as filed in the CheckRouting HoldBag feature (ADO test case 71005).
+   *
+   * The expected label is built from the free HoldBag options for the fare's brand, the opened
+   * flight's operator and origin, so the check follows the supplier when an airline changes its
+   * allowance instead of pinning today's weights. See fusionIncludedBagLabels for the matching rule.
+   *
+   * @param {import('playwright').Page} page
+   * @param {object} world - Cucumber world carrying the trip id
+   * @returns {Promise<{flight: object, fares: Array<{name: string, baggage: string, expected: string[]}>}>}
+   */
+  async verifyPricingOptionsBaggageMatchesFusionHoldBag(page, world) {
+    if (!page) {
+      throw new Error('[FlightResults.verifyPricingOptionsBaggageMatchesFusionHoldBag] "page" is required.');
+    }
+    if (!world) {
+      throw new Error('[FlightResults.verifyPricingOptionsBaggageMatchesFusionHoldBag] "world" is required to read the trip\'s CheckRouting responses.');
+    }
+
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    await flightResultsPage.waitForPricingOptionsDrawerLeg();
+    const fares = await flightResultsPage.getPricingOptionsLegFares();
+    const flight = await flightResultsPage.getPricingOptionsPreviewFlight();
+    const operatorCode = String(flight.flightNumbers[0] || '').replace(/\s+/g, '').slice(0, 2).toUpperCase();
+    if (!/^[A-Z0-9]{2}$/.test(operatorCode) || !flight.origin) {
+      throw new Error(`[FlightResults.verifyPricingOptionsBaggageMatchesFusionHoldBag] Cannot read the flight number and origin of the opened flight: ${JSON.stringify(flight)}.`);
+    }
+
+    const { perCall } = await PayloadValidation.collectXmlBlockTreesPerCall(
+      world,
+      'CheckRouting',
+      FUSION_HOLD_BAG_SPEC,
+      { source: 'response', purpose: 'read the bags Fusion includes in each fare in the pricing options drawer' },
+    );
+
+    const compared = fares.map((fare) => ({
+      ...fare,
+      expected: fusionIncludedBagLabels(perCall, {
+        brand: fare.name,
+        origin: flight.origin,
+        segments: flight.flightNumbers.length,
+        operatorCode,
+      }),
+    }));
+    logger.info('[FusionHoldBag] Pricing options baggage vs the CheckRouting HoldBag feature', {
+      flight,
+      checkRoutingCalls: perCall.length,
+      compared,
+    });
+
+    if (compared.length === 0) {
+      throw new Error(`No fare is listed in the pricing options drawer for ${flight.flightNumbers.join('/')} ${flight.origin}-${flight.destination}.`);
+    }
+    const normalize = (text) => String(text || '').replace(/\s+/g, ' ').trim().toUpperCase();
+    const withoutHoldBag = compared.filter((fare) => fare.expected.length === 0);
+    const mismatched = compared.filter((fare) => fare.expected.length > 0
+      && !fare.expected.some((label) => normalize(fare.baggage).includes(label)));
+
+    // Thrown rather than expect(value, message): this repo's Playwright drops expect's message.
+    if (withoutHoldBag.length > 0 || mismatched.length > 0) {
+      throw new Error(
+        `Pricing options baggage for ${flight.flightNumbers.join('/')} ${flight.origin}-${flight.destination} does not match ` +
+        `the bags Fusion includes in the ${perCall.length} CheckRouting response(s). ` +
+        `Fares with no free HoldBag option for their brand: ${JSON.stringify(withoutHoldBag.map((fare) => fare.name))}. ` +
+        `Fares showing other baggage: ${JSON.stringify(mismatched.map(({ name, baggage, expected }) => ({ name, baggage, expected })))}.`,
+      );
+    }
+
+    return { flight, fares: compared };
+  },
+
+  /**
+   * Asserts the open flight details drawer in the cart shows the bags Fusion includes in the
+   * booked fare, as filed in the ProcessDetails HoldBag feature (ADO test case 71005). ProcessDetails
+   * prices only the selected flight, so the brand and the leg's origin are enough to find its bags.
+   *
+   * @param {import('playwright').Page} page
+   * @param {object} world - Cucumber world carrying the trip id
+   * @param {string} brand - fare name as shown in pricing options, e.g. "Regular Fare"
+   * @param {string} origin - departure airport of the leg, e.g. "DEL"
+   * @returns {Promise<{expected: string[]}>}
+   */
+  async verifyFlightDetailsBaggageMatchesFusionHoldBag(page, world, brand, origin) {
+    if (!page) {
+      throw new Error('[FlightResults.verifyFlightDetailsBaggageMatchesFusionHoldBag] "page" is required.');
+    }
+    if (!world) {
+      throw new Error('[FlightResults.verifyFlightDetailsBaggageMatchesFusionHoldBag] "world" is required to read the trip\'s ProcessDetails responses.');
+    }
+    if (!brand || !origin) {
+      throw new Error(`[FlightResults.verifyFlightDetailsBaggageMatchesFusionHoldBag] "brand" and "origin" are required, got: ${brand}, ${origin}`);
+    }
+
+    const { perCall } = await PayloadValidation.collectXmlBlockTreesPerCall(
+      world,
+      'ProcessDetails',
+      FUSION_HOLD_BAG_SPEC,
+      { source: 'response', purpose: `read the bags Fusion includes in the ${brand} fare from ${origin}` },
+    );
+    const expected = fusionIncludedBagLabels(perCall, { brand, origin });
+    if (expected.length === 0) {
+      throw new Error(`No free HoldBag option for the "${brand}" fare from ${origin} in the ${perCall.length} ProcessDetails response(s), so there is nothing to compare flight details against.`);
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+    let drawerText = '';
+    await expect(async () => {
+      drawerText = String(await cartPage.getFlightDetailsDrawerText()).replace(/\s+/g, ' ').toUpperCase();
+      if (!expected.some((label) => drawerText.includes(label))) {
+        throw new Error(`Flight details should show one of ${JSON.stringify(expected)} for the "${brand}" fare from ${origin}. Drawer text: ${drawerText.slice(0, 600)}`);
+      }
+    }).toPass({ timeout: 15000 });
+
+    logger.info('[FusionHoldBag] Flight details baggage matches the ProcessDetails HoldBag feature', { brand, origin, expected, processDetailsCalls: perCall.length });
+    return { expected };
   },
 
   /**
@@ -8791,6 +9314,70 @@ async verifyFareComponentTextColorInPricingOptions(page, expectedColor, index = 
     ).toEqual([]);
 
     return { compared: expectedLegs.length, legs };
+  },
+
+  /**
+   * Verifies the cart's flight rows run in travel order: no row departs before the row above it
+   * has landed (ADO 42070 showed LAX-LAS above the HKG-LAX flight that feeds it).
+   *
+   * @param {import('playwright').Page} page
+   * @returns {Promise<{checked: number}>}
+   */
+  async verifyCartFlightsInChronologicalOrder(page) {
+    if (!page) {
+      throw new Error('[FlightResults.verifyCartFlightsInChronologicalOrder] "page" is required.');
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+    const rows = await cartPage.getFlightQuoteRowTimeDates();
+
+    const toPoint = (end) => ({
+      text: `${end.code} ${end.time} ${end.date}`,
+      instant: toFlightInstant(splitResultsDayOffset(end.time).time, parseFlightDate(end.date)),
+    });
+    const flights = rows.map((row) => ({ departure: toPoint(row.departure), arrival: toPoint(row.arrival) }));
+
+    logger.info('Checking the cart flight rows are in travel order', { flights: flights.map((f) => `${f.departure.text} -> ${f.arrival.text}`) });
+    assertFlightsInTravelOrder(flights, 'cart');
+
+    return { checked: flights.length };
+  },
+
+  /**
+   * Verifies the open flight details drawer lists its flights in travel order: each flight departs
+   * after the one above it has landed.
+   *
+   * @param {import('playwright').Page} page
+   * @returns {Promise<{checked: number}>}
+   */
+  async verifyFlightDetailsInChronologicalOrder(page) {
+    if (!page) {
+      throw new Error('[FlightResults.verifyFlightDetailsInChronologicalOrder] "page" is required.');
+    }
+
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    const lines = await flightResultsPage.getFlightDetailsAllTimeDates();
+
+    if (lines.length % 2 !== 0) {
+      throw new Error(
+        `[FlightResults.verifyFlightDetailsInChronologicalOrder] The drawer showed ${lines.length} time lines; ` +
+        `each flight should show a departure and an arrival. Lines: ${lines.join(' | ')}.`
+      );
+    }
+
+    const toPoint = (text) => {
+      const parsed = parseDrawerTimeDate(text);
+      return { text, instant: parsed ? toFlightInstant(parsed.time, parsed) : null };
+    };
+    const flights = [];
+    for (let index = 0; index < lines.length; index += 2) {
+      flights.push({ departure: toPoint(lines[index]), arrival: toPoint(lines[index + 1]) });
+    }
+
+    logger.info('Checking the flight details flights are in travel order', { flights: flights.map((f) => `${f.departure.text} -> ${f.arrival.text}`) });
+    assertFlightsInTravelOrder(flights, 'flight details');
+
+    return { checked: flights.length };
   },
 
   /**

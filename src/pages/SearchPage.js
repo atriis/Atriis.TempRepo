@@ -1821,6 +1821,30 @@ class SearchPage {
     await this.page.click(SELECTORS.GENERAL_RAIL_TAB);
   }
 
+  /**
+   * Picks a rail supplier from the Rail tab's nested dropdown (trip-index.vue railTypesOptions),
+   * e.g. "UK Rail" or "DB Rail". The dropdown opens when the Rail tab is clicked.
+   *
+   * @param {string} railTypeLabel - the option's visible label
+   * @param {number} [timeout=10000]
+   */
+  async selectRailTypeOption(railTypeLabel, timeout = 10000) {
+    if (!railTypeLabel || typeof railTypeLabel !== 'string') {
+      throw new Error(
+        `[SearchPage.selectRailTypeOption] "railTypeLabel" must be a non-empty string, got: ${typeof railTypeLabel}`
+      );
+    }
+    try {
+      await this.page.getByRole('option', { name: railTypeLabel, exact: true }).click({ timeout });
+    } catch (err) {
+      throw new Error(
+        `[SearchPage.selectRailTypeOption] Could not pick "${railTypeLabel}" from the Rail tab dropdown ` +
+        `within ${timeout}ms. Likely causes: the dropdown did not open on the Rail tab click, or the ` +
+        `user has no access to this rail product. Original: ${err.message}`
+      );
+    }
+  }
+
   // "Pick-up Date" field (used by Cars and Ground Transport)
 
   /**

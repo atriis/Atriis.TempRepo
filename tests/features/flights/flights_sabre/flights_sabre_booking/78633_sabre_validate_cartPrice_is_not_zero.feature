@@ -12,7 +12,7 @@ Feature: 78633 Sabre - Validate cart price is not zero
   So that the price after hold is valid and any price change is genuine
 
   Scenario: Sabre hold flight EWR to LHR validates price change modal and hold status
-    Given I am logged in as "priceNot0@corp.frosch" booking a new trip
+    Given I am logged in as "brunasabre@froschbrunaautomation.com" booking a new trip
     And I have added a random guest traveler with phone type "Mobile"
     When I search for a one way flight from "EWR" to "LHR"
     And flight results should be available

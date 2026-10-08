@@ -104,6 +104,20 @@ const SELECTORS = {
   JQUERY_DIALOG_TITLE: ".ui-dialog:visible .ui-dialog-title",
   // Closes the re-search overlay and returns to the requested-trip view.
   BACK_TO_TRIP_BUTTON: "#ss",
+
+  // ===== Trip cart — seat selection (post-booking) =====
+  // A flight quote's "Seating (No Seats)" / "Seating (Pending)" / "Seating (Succeeded)" validation
+  // tab. The label and its status are one text node in one element, so the innermost element whose
+  // text starts with "Seating (" is the tab itself (one per flight quote, in cart order).
+  SEATING_TAB:
+    'xpath=//*[starts-with(normalize-space(.),"Seating (") and not(*[starts-with(normalize-space(.),"Seating (")])]',
+  // The seat map is an <img> with an image map: one <area> per selectable seat, each bound
+  // (ng-repeat "seatMetadata in selectedFlight.seatMapMetadata.Seats") to its seat's metadata.
+  SEAT_MAP_AREA: 'map[name="seatmap"] area',
+  // The popup's left-hand list of the quote's flights ("BRU → ATH", "ATH → BRU").
+  SEAT_POPUP_FLIGHT_BUTTON: '[data-ng-click="onFlightClicked(flight)"]',
+  // The popup's "Save" (onSaveClicked(false)); "Save and close" is a separate button.
+  SEAT_POPUP_SAVE_BUTTON: 'button[data-ng-click="onSaveClicked(false)"]',
 };
 
 class LegacyGtpPage {
@@ -676,6 +690,125 @@ class LegacyGtpPage {
       throw new Error(
         `[LegacyGtpPage.clickBackToTrip] Could not click the back-to-trip control ` +
         `(${SELECTORS.BACK_TO_TRIP_BUTTON}) after adding to cart. Original: ${err.message}`
+      );
+    }
+  }
+  // ===== Trip cart — seat selection (post-booking) =====
+
+  /** Waits for the trip cart to render its flight quotes' Seating tabs. */
+  async waitForSeatingTab({ timeout = 60000 } = {}) {
+    try {
+      await this.page.locator(SELECTORS.SEATING_TAB).first().waitFor({ state: "visible", timeout });
+    } catch (err) {
+      throw new Error(
+        `[LegacyGtpPage.waitForSeatingTab] No flight quote "Seating (...)" tab appeared on the trip cart ` +
+        `within ${timeout}ms — the trip may hold no flight, or the cart did not load. Original: ${err.message}`
+      );
+    }
+  }
+
+  /** @returns {Promise<string[]>} Every flight quote's Seating tab text, in cart order. */
+  async getSeatingTabTexts() {
+    const texts = await this.page.locator(SELECTORS.SEATING_TAB).allInnerTexts();
+    return texts.map((t) => t.trim());
+  }
+
+  /** Opens the seat popup of the flight quote at a 0-based cart position. */
+  async clickSeatingTab(index) {
+    try {
+      await this.page.locator(SELECTORS.SEATING_TAB).nth(index).click({ timeout: 15000 });
+    } catch (err) {
+      throw new Error(
+        `[LegacyGtpPage.clickSeatingTab] Could not click the Seating tab of flight quote #${index + 1}. ` +
+        `Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Waits for the CURRENT flight's seat map to offer seats. Supplier seat maps take up to ~30s.
+   * A map with no <area> means the supplier returned no selectable seat.
+   */
+  async waitForSeatMap({ timeout = 150000 } = {}) {
+    try {
+      await this.page.waitForFunction(
+        (selector) => document.querySelectorAll(selector).length > 0,
+        SELECTORS.SEAT_MAP_AREA,
+        { timeout }
+      );
+    } catch (err) {
+      throw new Error(
+        `[LegacyGtpPage.waitForSeatMap] The seat popup showed no selectable seat (${SELECTORS.SEAT_MAP_AREA}) ` +
+        `within ${timeout}ms — the supplier returned an empty seat map or none at all. Original: ${err.message}`
+      );
+    }
+  }
+
+  /** @returns {Promise<number>} How many flights the open seat popup lists. */
+  async getSeatPopupFlightCount() {
+    return this.page.locator(`${SELECTORS.SEAT_POPUP_FLIGHT_BUTTON}:visible`).count();
+  }
+
+  /** Switches the open seat popup to the flight at a 0-based position. */
+  async clickSeatPopupFlight(index) {
+    try {
+      await this.page.locator(`${SELECTORS.SEAT_POPUP_FLIGHT_BUTTON}:visible`).nth(index).click({ timeout: 15000 });
+    } catch (err) {
+      throw new Error(
+        `[LegacyGtpPage.clickSeatPopupFlight] Could not switch the seat popup to flight #${index + 1}. ` +
+        `Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Reads the flight the seat popup currently shows and the seat numbers its map offers.
+   * The seat numbers are not in the DOM (the map is an image), so they come from the AngularJS
+   * scope each <area> is bound to.
+   *
+   * @returns {Promise<{flight: string, seats: string[], selected: string[]}>}
+   */
+  async getCurrentSeatMap() {
+    return this.page.evaluate((selector) => {
+      const area = document.querySelector(selector);
+      const flight = window.angular.element(area).scope().selectedFlight;
+      const f = flight.flight || {};
+      return {
+        flight: `${f.Carrier}${f.FlightNumber} ${f.OriginAirportCode}-${f.DestinationAirportCode}`,
+        seats: flight.seatMapMetadata.Seats.map((m) => m.Number),
+        selected: (flight.selectedSeatMetadata || []).filter(Boolean).map((m) => m.Number),
+      };
+    }, SELECTORS.SEAT_MAP_AREA);
+  }
+
+  /** Clicks a seat by its number on the current flight's seat map. */
+  async clickSeat(seatNumber) {
+    const clicked = await this.page.evaluate(
+      ({ selector, seat }) => {
+        const area = [...document.querySelectorAll(selector)].find(
+          (a) => window.angular.element(a).scope().seatMetadata.Number === seat
+        );
+        if (!area) return false;
+        area.click();
+        return true;
+      },
+      { selector: SELECTORS.SEAT_MAP_AREA, seat: seatNumber }
+    );
+    if (!clicked) {
+      throw new Error(`[LegacyGtpPage.clickSeat] Seat "${seatNumber}" is not offered on the current flight's seat map.`);
+    }
+  }
+
+  /** Clicks the seat popup's "Save" (not "Save and close"). */
+  async clickSeatPopupSave() {
+    try {
+      const button = this.page.locator(`${SELECTORS.SEAT_POPUP_SAVE_BUTTON}:visible`).first();
+      await button.waitFor({ state: "visible", timeout: 15000 });
+      await button.click({ timeout: 15000 });
+    } catch (err) {
+      throw new Error(
+        `[LegacyGtpPage.clickSeatPopupSave] Could not click the seat popup's Save button — it stays disabled ` +
+        `until a seat differs from the saved ones. Original: ${err.message}`
       );
     }
   }

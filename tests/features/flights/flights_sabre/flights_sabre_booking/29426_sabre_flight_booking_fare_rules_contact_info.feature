@@ -14,7 +14,7 @@ Feature: 29426 Sabre - Flight booking with fare rules and contact info verificat
   Scenario: Sabre flight booking with fare rules in results, cart and checkout plus contact info
     Given I am logged in as "brunasabre@clubcorp.com" booking a new trip
     And I have added myself as the traveler
-    When I search for a one way flight from "JFK" to "DFW"
+    When I search for a one way flight from "LAS" to "SAN"
     And I click to open fare rules
     Then I should see the fare rules note about strictest terms
     And I close fare rules window

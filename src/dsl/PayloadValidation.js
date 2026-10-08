@@ -227,13 +227,27 @@ function extractLeadingJsonDocument(payload) {
   return null;
 }
 
+// Deutsche Bahn's REST calls (certifyURL, url, ppanCreditCard) are logged as
+// 'Headers: {...} Content: {...}' - the headers document FIRST, then the body. Reading the leading
+// document there would return the headers, so every assertion would miss the body. Returns the
+// parsed body, or null when the payload is not in that shape.
+function extractHeadersContentBody(payload) {
+  if (typeof payload !== "string" || !/^\s*Headers:\s*\{/.test(payload)) return null;
+
+  const contentMarker = payload.search(/\}\s*Content:\s*[{[]/);
+  if (contentMarker === -1) return null;
+
+  const body = payload.slice(contentMarker + 1).replace(/^\s*Content:\s*/, "");
+  return extractLeadingJsonDocument(body);
+}
+
 // Every assertion that parses a CAPTURED payload goes through this, so a supplier that appends
 // diagnostics to the body stays fully assertable. Returns null when there is no JSON to read.
 function tryParseCapturedJson(payload) {
   try {
     return JSON.parse(payload);
   } catch {
-    return extractLeadingJsonDocument(payload);
+    return extractHeadersContentBody(payload) ?? extractLeadingJsonDocument(payload);
   }
 }
 
@@ -1679,6 +1693,68 @@ const PayloadValidation = {
     return world[variableName];
   },
 
+  // XML twin of storeCapturedPayloadPathValue: path steps parse JSON only, so XML suppliers
+  // (Ypsilon) had no way to carry a run-time value from one payload to another. Picks the first
+  // <elementTag> whose own filterAttribute equals filterValue — e.g. the seatPrice priced in the
+  // supplier's "default" currency, not the agency/display one sitting next to it.
+  async storeCapturedXmlAttributeValue(page, world, source, requestType, elementTag, filterAttribute, filterValue, attributeName, variableName) {
+    if (!page) {
+      throw new Error("page is required");
+    }
+
+    if (!variableName || typeof variableName !== "string") {
+      throw new Error("variableName must be a non-empty string");
+    }
+
+    const payloadRecord = this.getCapturedPayload(world, source, requestType);
+    const elements = extractXmlBlocksByTag(payloadRecord.payload, elementTag);
+    const match = elements
+      .map((element) => readXmlAttributes(element, [filterAttribute, attributeName]))
+      .find((attributes) => attributes[filterAttribute] === filterValue);
+
+    if (!match) {
+      throw new Error(
+        `No <${elementTag}> with ${filterAttribute}="${filterValue}" in captured ${source} payload for request type "${requestType}" (${elements.length} <${elementTag}> element(s) found)`
+      );
+    }
+
+    if (!match[attributeName]) {
+      throw new Error(
+        `The first <${elementTag}> with ${filterAttribute}="${filterValue}" in captured ${source} payload for request type "${requestType}" has no ${attributeName} attribute`
+      );
+    }
+
+    world[variableName] = match[attributeName];
+    return world[variableName];
+  },
+
+  // Every occurrence must match, not just one: a multi-passenger payload carries one element per
+  // passenger, and a single wrong one is exactly the defect a "contains" check would hide.
+  async expectCapturedXmlAttributeOnEveryElement(page, world, source, requestType, elementTag, attributeName, expectedValue) {
+    if (!page) {
+      throw new Error("page is required");
+    }
+
+    const payloadRecord = this.getCapturedPayload(world, source, requestType);
+    const actualValues = extractXmlBlocksByTag(payloadRecord.payload, elementTag)
+      .map((element) => readXmlAttributes(element, [attributeName])[attributeName]);
+
+    if (actualValues.length === 0) {
+      throw new Error(
+        `No <${elementTag}> element in captured ${source} payload for request type "${requestType}"`
+      );
+    }
+
+    const mismatches = actualValues.filter((value) => value !== expectedValue);
+    if (mismatches.length > 0) {
+      throw new Error(
+        `Expected ${attributeName}="${expectedValue}" on every <${elementTag}> in captured ${source} payload for request type "${requestType}", got: ${actualValues.map((value) => (value === null ? "(missing)" : `"${value}"`)).join(", ")}`
+      );
+    }
+
+    logger.info(`All ${actualValues.length} <${elementTag}> element(s) carry ${attributeName}="${expectedValue}"`);
+  },
+
   async expectCapturedPayloadPath(page, world, source, requestType, path, operator, expectedValue) {
     if (!page) {
       throw new Error("page is required");
@@ -2513,6 +2589,90 @@ const PayloadValidation = {
   },
 
   /**
+   * Downloads every payload of a type logged for the trip at or after `notBefore`, newest first.
+   * Use it when one UI action fans out into several calls of the same type and the check needs
+   * all of them, but none of the calls earlier steps already sent.
+   *
+   * The calls a click fires are published to the log one by one, so reading as soon as the first
+   * one lands can miss the rest. Pass `anchorRequestType` - a call the same action sends after the
+   * fan-out has returned - to wait for it before reading. An anchor that never arrives is logged
+   * and the read goes ahead, so an action that skips the anchor still gets checked.
+   *
+   * Generic plumbing only, like collectXmlBlockTreesPerCall: the product DSL owns the meaning.
+   *
+   * @param {object} world
+   * @param {string} source - "request" or "response"
+   * @param {string} requestType - e.g. "RevalidateItinerary*"
+   * @param {Date} notBefore - moment noted before the action, e.g. world.payloadRequestsNotBefore
+   * @param {{anchorRequestType?: string}} [options]
+   * @returns {Promise<Array<{payload: string, metadata: object}>>} empty when no call was logged
+   */
+  async collectPayloadsSentSince(world, source, requestType, notBefore, options = {}) {
+    assertWorld(world);
+    if (!(notBefore instanceof Date) || Number.isNaN(notBefore.getTime())) {
+      throw new Error(
+        `[PayloadValidation.collectPayloadsSentSince] no valid start time was noted, got: ${notBefore}. ` +
+        `Run "I note the time before new payload requests are sent" before the action.`
+      );
+    }
+
+    const normalizedSource = normalizeSource(source);
+    const normalizedRequestType = normalizeRequestType(requestType);
+    const identifiers = getScenarioIdentifiers(world);
+    if (!identifiers.tripId) {
+      throw new Error(`[PayloadValidation.collectPayloadsSentSince] Cannot read "${normalizedRequestType}" payloads: no trip id is available on the world context.`);
+    }
+    const lookup = { tripId: identifiers.tripId, transactionId: identifiers.transactionId, sid: identifiers.sid, notBefore };
+
+    if (options.anchorRequestType) {
+      try {
+        await fetchPayloadFromStorage({ ...lookup, source: "request", requestType: normalizeRequestType(options.anchorRequestType), listOnly: true });
+      } catch (error) {
+        logger.warn("The anchor call was not logged after the noted time; reading the payloads anyway", {
+          anchorRequestType: options.anchorRequestType,
+          notBefore: notBefore.toISOString(),
+          error: error.message,
+        });
+      }
+    }
+
+    let result;
+    try {
+      result = await fetchPayloadFromStorage({
+        ...lookup,
+        source: normalizedSource,
+        requestType: normalizedRequestType,
+        returnAllMatches: true,
+        maxMatches: MAX_REQUESTS_TO_INSPECT,
+        timeoutMs: INSPECT_ALL_TIMEOUT_MS,
+      });
+    } catch (error) {
+      logger.warn("No payload of this type was logged after the noted time", {
+        requestType: normalizedRequestType,
+        notBefore: notBefore.toISOString(),
+        error: error.message,
+      });
+      return [];
+    }
+
+    if (result.metadata.totalMatches > result.metadata.returnedMatches) {
+      throw new Error(
+        `[PayloadValidation.collectPayloadsSentSince] only ${result.metadata.returnedMatches} of ` +
+        `${result.metadata.totalMatches} "${normalizedRequestType}" payloads were downloaded. ` +
+        `Raise MAX_REQUESTS_TO_INSPECT so every payload is inspected.`
+      );
+    }
+
+    logger.info("Collected payloads sent since the noted time", {
+      requestType: normalizedRequestType,
+      source: normalizedSource,
+      notBefore: notBefore.toISOString(),
+      calls: result.matches.length,
+    });
+    return result.matches;
+  },
+
+  /**
    * Counts occurrences of a named parameter in each request of a type logged for the trip - e.g.
    * how many `<rateCategory>` entries each `Fare_GetFareFamilyDescription` call carries. Generic
    * plumbing only: no product meaning is attached to the count here, that belongs in the product
@@ -2937,6 +3097,66 @@ const PayloadValidation = {
       actualCount,
       `Expected exactly ${expected} "${normalizedRequestType}" request(s) to have been sent for this trip, ` +
       `but ${actualCount} were logged.`
+    ).toBe(expected);
+  },
+
+  /**
+   * Asserts how many requests of a type carry ALL of the given texts - e.g. that of the
+   * Fare_PriceUpsellWithoutPNR calls an agreement search makes, exactly one is the RW call cloned
+   * with FFH. Several texts so a scenario can pin them to the SAME call, which two separate counts
+   * cannot.
+   *
+   * Plain substrings, not a parameter lookup: what tells the calls apart is a value
+   * (<pricingOptionKey>FFH</pricingOptionKey>), and every call carries the same key name.
+   *
+   * The total is settled first, so calls the flow sends in parallel are all counted.
+   */
+  async expectRequestCountContaining(page, world, requestType, expectedTexts, expectedCount) {
+    if (!page) {
+      throw new Error("page is required");
+    }
+
+    assertWorld(world);
+    const normalizedRequestType = normalizeRequestType(requestType);
+
+    const texts = [].concat(expectedTexts);
+    if (texts.length === 0 || texts.some((text) => !text || typeof text !== "string")) {
+      throw new Error("expectedTexts must be one or more non-empty strings");
+    }
+
+    const expected = Number(expectedCount);
+    if (!Number.isInteger(expected) || expected < 0) {
+      throw new Error(`expectedCount must be a non-negative integer, got: ${expectedCount}`);
+    }
+
+    await settleRequestCount(
+      () => this.getRequestCount(world, normalizedRequestType),
+      { requestType: normalizedRequestType }
+    );
+
+    const description = texts.map((text) => `"${text}"`).join(" and ");
+    const result = await fetchAllRequestsForTrip(
+      world,
+      normalizedRequestType,
+      `count the requests carrying ${description}`
+    );
+
+    const matching = result.matches.filter((match) => {
+      const payload = String(match.payload || "");
+      return texts.every((text) => payload.includes(text));
+    });
+
+    logger.info(`Counted "${normalizedRequestType}" requests carrying the text`, {
+      expectedTexts: texts,
+      requests: result.matches.length,
+      matching: matching.length,
+      expected,
+    });
+
+    expect(
+      matching.length,
+      `Expected exactly ${expected} of the ${result.matches.length} "${normalizedRequestType}" request(s) ` +
+      `to contain ${description}, but ${matching.length} did.`
     ).toBe(expected);
   },
 

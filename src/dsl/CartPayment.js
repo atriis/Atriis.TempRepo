@@ -153,6 +153,24 @@ class CartPayment {
   }
 
   /**
+   * Verifies that every payment method in the FOP panel is a credit card and none is Invoice.
+   * A credit card is identified by its masked number line ("**** **** **** NNNN"), which the app
+   * omits for Invoice and virtual cards.
+   * @param {import('@playwright/test').Page} page
+   * @returns {Promise<void>}
+   */
+  static async verifyOnlyCreditCardsInFopPanel(page) {
+    if (!page) throw new Error("page is required");
+    const paymentPage = getPageObject(page, CartPaymentPage);
+    const cardTexts = await paymentPage.getFopPanelCardTexts();
+    logger.info("Payment methods in FOP panel", { cardTexts });
+    const invoices = cardTexts.filter(text => /^(Default - )?Invoice\b/i.test(text));
+    expect(invoices, `Expected no Invoice payment method in the FOP panel, found: ${JSON.stringify(cardTexts)}`).toEqual([]);
+    const nonCards = cardTexts.filter(text => !/\*{4} \*{4} \*{4} \d+/.test(text));
+    expect(nonCards, `Expected only credit cards in the FOP panel, found non-card entries: ${JSON.stringify(nonCards)}`).toEqual([]);
+  }
+
+  /**
    * Validates the count of visible payment cards in the FOP panel.
    * @param {import('@playwright/test').Page} page - Playwright page instance
    * @param {number} expectedCount - Expected number of visible cards

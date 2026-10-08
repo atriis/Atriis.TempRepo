@@ -3566,6 +3566,38 @@ const Cart = {
   },
 
   /**
+   * Verifies the value shown next to "CC Charge" in the open flight price breakdown.
+   * Before ticketing an airline that charges per card type shows "TBD" there.
+   * @param {import('playwright').Page} page
+   * @param {string} expectedValue
+   */
+  async verifyPriceBreakdownCcChargeValue(page, expectedValue) {
+    if (!page) throw new Error('page is required');
+    if (!expectedValue || typeof expectedValue !== 'string') {
+      throw new Error(`expectedValue must be a non-empty string, got: ${typeof expectedValue}`);
+    }
+    const cartPage = getPageObject(page, CartPage);
+    const valueText = await cartPage.getFlightPriceBreakdownCcChargeValueText();
+    logger.info('CC Charge value in price breakdown', { valueText, expectedValue });
+    expect(valueText, `CC Charge in price breakdown should be "${expectedValue}"`).toBe(expectedValue);
+    return valueText;
+  },
+
+  /**
+   * Hovers the CC Charge info icon and returns the lines of the tooltip it opens.
+   * @param {import('playwright').Page} page
+   * @returns {Promise<string[]>}
+   */
+  async hoverPriceBreakdownCcChargeInfo(page) {
+    if (!page) throw new Error('page is required');
+    const cartPage = getPageObject(page, CartPage);
+    await cartPage.hoverFlightPriceBreakdownCcChargeInfoIcon();
+    const items = await cartPage.getVisibleTooltipItems();
+    logger.info('CC Charge tooltip lines', { items });
+    return items;
+  },
+
+  /**
    * Puts a trip on hold and returns the new status.
    * 
    * Flow:
@@ -12907,6 +12939,76 @@ const Cart = {
   },
 
   /**
+   * Verifies that every traveler row in the cart flight-details drawer has its own
+   * non-empty ticket number, so no traveler was given another traveler's ticket.
+   *
+   * @param {import('playwright').Page} page
+   * @param {number} expectedTravelerCount
+   * @returns {Promise<Array<{ travelerName: string, ticketNumber: string }>>}
+   */
+  async verifyDistinctTicketNumberPerTravelerInFlightDetails(page, expectedTravelerCount) {
+    if (!page) throw new Error('page is required');
+    if (!Number.isInteger(expectedTravelerCount) || expectedTravelerCount < 1) {
+      throw new Error('expectedTravelerCount must be a positive integer, got: ' + expectedTravelerCount);
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+    const travelerTickets = await cartPage.getPostTicketingTravelerTickets();
+    const summary = travelerTickets.map((row) => `${row.travelerName}: ${row.ticketNumber}`).join(', ');
+
+    expect(
+      travelerTickets.length,
+      `Expected ${expectedTravelerCount} traveler rows in flight details, got ${travelerTickets.length}: ${summary}`,
+    ).toBe(expectedTravelerCount);
+
+    for (const row of travelerTickets) {
+      expect(
+        row.ticketNumber.length,
+        `Expected a ticket number for traveler "${row.travelerName}" in flight details, got an empty value`,
+      ).toBeGreaterThan(0);
+    }
+
+    const distinctTicketNumbers = new Set(travelerTickets.map((row) => row.ticketNumber));
+    expect(
+      distinctTicketNumbers.size,
+      `Expected a different ticket number for each traveler in flight details, got: ${summary}`,
+    ).toBe(travelerTickets.length);
+
+    return travelerTickets;
+  },
+
+  /**
+   * Returns the ticket number shown in the cart flight-details drawer for the one
+   * traveler whose name cell contains the given text.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} travelerNameText - Text unique to one traveler's name, e.g. "Götz"
+   * @returns {Promise<string>}
+   */
+  async getFlightDetailsTicketNumberForTraveler(page, travelerNameText) {
+    if (!page) throw new Error('page is required');
+    if (typeof travelerNameText !== 'string' || !travelerNameText.trim()) {
+      throw new Error('travelerNameText must be a non-empty string, got: ' + typeof travelerNameText);
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+    const travelerTickets = await cartPage.getPostTicketingTravelerTickets();
+    const matches = travelerTickets.filter((row) => row.travelerName.includes(travelerNameText.trim()));
+    const names = travelerTickets.map((row) => row.travelerName).join(', ');
+
+    expect(
+      matches.length,
+      `Expected exactly one traveler named like "${travelerNameText}" in flight details, found ${matches.length} among: ${names}`,
+    ).toBe(1);
+    expect(
+      matches[0].ticketNumber.length,
+      `Expected a ticket number for traveler "${matches[0].travelerName}" in flight details, got an empty value`,
+    ).toBeGreaterThan(0);
+
+    return matches[0].ticketNumber;
+  },
+
+  /**
    * Verifies that ticket numbers are visible (presence only) in the cart
    * flight-details drawer for the expected number of travelers. Use when the
    * issuing airline prefix is irrelevant — for example, GDS+NDC mixed flows
@@ -14341,9 +14443,11 @@ const Cart = {
    * the stored contact left it empty — one contact is enough for the form to save.
    * @param {import('playwright').Page} page
    * @param {string} email - Used only when the panel has no email yet
+   * @param {{ dialCode: string, areaCode: string, number: string }|null} [phone] - Typed only when the
+   *   panel has no phone number yet; needed when the airline marks the phone required (BA NDC, #69676)
    * @returns {Promise<{ answered: boolean }>}
    */
-  async shareContactDetailsWithAirlineInCart(page, email) {
+  async shareContactDetailsWithAirlineInCart(page, email, phone = null) {
     if (!page) throw new Error('page is required');
     if (!email || typeof email !== 'string') {
       throw new Error('[Cart.shareContactDetailsWithAirlineInCart] email must be a non-empty string, got: ' + typeof email);
@@ -14370,9 +14474,18 @@ const Cart = {
       await cartPage.fillFlightContactConsentEmail(email);
     }
 
+    let usedStoredPhone = null;
+    if (phone) {
+      usedStoredPhone = Boolean(await cartPage.getFlightContactConsentPhoneNumberValue());
+      if (!usedStoredPhone) {
+        await cartPage.fillFlightContactConsentPhone(phone.dialCode, phone.areaCode, phone.number);
+      }
+    }
+
     await cartPage.saveFlightContactConsent();
     logger.info('Contact details for the airline saved in the cart', {
       mandatory: checkbox.disabled,
+      usedStoredPhone,
       usedStoredEmail: Boolean(storedEmail),
     });
     return { answered: true };
@@ -18008,6 +18121,46 @@ const Cart = {
 
     logger.info('[Cart.verifyTripLockedMessage] Locked-trip banner matches the expected message', { message: actual });
     return { message: actual };
+  },
+
+  /**
+   * Reads the contact SSRs (CTCE, CTCM, CTCR) sent to Travelport in every request of a type logged
+   * for the trip. uAPI carries an SSR as attributes of its own tag (<SSR Type="CTCR" FreeText="REFUSED"/>),
+   * so each type stays paired with its own freetext.
+   * Guards ADO 58677: with "Don't share the contact details with airlines" checked, Galileo must send
+   * CTCR REFUSED and no CTCE/CTCM.
+   *
+   * @param {object} world - Cucumber world holding the trip id
+   * @param {string} requestType - e.g. "UniversalRecordModifyReq"
+   * @returns {Promise<{ssrs: Array<{type: string, freetext: string|null, carrier: string|null}>}>}
+   */
+  async collectUapiContactSsrs(world, requestType) {
+    if (!world || typeof world !== 'object') {
+      throw new Error('[Cart.collectUapiContactSsrs] "world" must be the Cucumber world, got: ' + typeof world);
+    }
+    if (!requestType || typeof requestType !== 'string') {
+      throw new Error('[Cart.collectUapiContactSsrs] "requestType" must be a non-empty string, got: ' + typeof requestType);
+    }
+
+    const { perCall } = await PayloadValidation.collectXmlBlockAttributesPerCall(
+      world,
+      requestType,
+      { SSR: ['Type', 'FreeText', 'Carrier'] },
+      { source: 'request', purpose: 'read the contact SSRs sent to Travelport' }
+    );
+
+    const ssrs = perCall
+      .flatMap((byTag) => byTag.SSR)
+      .filter((ssr) => /^CTC[EMR]$/i.test(ssr.Type || ''))
+      .map((ssr) => ({ type: ssr.Type.toUpperCase(), freetext: ssr.FreeText, carrier: ssr.Carrier }));
+
+    logger.info('[Cart.collectUapiContactSsrs] Contact SSRs sent', {
+      requestType,
+      calls: perCall.length,
+      contactSsrs: ssrs.map((ssr) => `${ssr.type}/${ssr.carrier}: ${ssr.freetext}`),
+    });
+
+    return { ssrs };
   },
 
 };

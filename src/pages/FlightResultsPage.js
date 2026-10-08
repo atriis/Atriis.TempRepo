@@ -370,6 +370,12 @@ const SELECTORS = {
   BRANDED_FARES_INCLUDED_ITEMS: '.brand-services .included .service-item',
   BRANDED_FARES_ADDITIONAL_CHARGE_ITEMS: '.brand-services .additional-charge .service-item',
   BRANDED_FARES_NOT_INCLUDED_ITEMS: '.brand-services .not-included .service-item',
+  // Classic Sabre brands render a feature list instead of Brand Info tabs (branded-fares.vue,
+  // brandFeatures branch): one block per service group with an <h6> name, then "Free" and
+  // "Chargeable" headings, each followed by its <li class="service-item"> lines.
+  BRANDED_FARES_FEATURE_GROUP: "[aria-label='Branded fares'] div.service-item-title",
+  BRANDED_FARES_FEATURE_ITEM: "[aria-label='Branded fares'] li.service-item",
+  BRANDED_FARES_FEATURE_BRAND_NAME: "[aria-label='Branded fares'] h4.brand-name",
 
   // Carrier name in flight details drawer
   CARRIER_NAME_IN_DETAILS: '.flight-details-top-bar .carrier-name',
@@ -610,6 +616,33 @@ class FlightResultsPage {
     }
 
     return summaries;
+  }
+
+  /**
+   * Reads every time-and-date line of the flight details drawer top to bottom, across all legs:
+   * departure, arrival, departure, arrival... one pair per flight. Unlike getFlightDetailsLegTimeDates
+   * it keeps the connection lines, which is where an out-of-order flight shows.
+   *
+   * @param {number} timeout - Max wait for the first leg wrapper to become visible
+   * @returns {Promise<string[]>} Raw "HH:mm · EEE, dd MMM yy" strings.
+   */
+  async getFlightDetailsAllTimeDates(timeout = 30000) {
+    const lines = this.page
+      .locator(SELECTORS.FLIGHT_DETAILS_VISIBLE_DRAWER)
+      .locator(SELECTORS.FLIGHT_DETAILS_LEG_WRAPPER)
+      .locator(SELECTORS.FLIGHT_DETAILS_LEG_TIME_DATE);
+
+    try {
+      await lines.first().waitFor({ state: 'visible', timeout });
+    } catch (error) {
+      throw new Error(
+        '[FlightResultsPage.getFlightDetailsAllTimeDates] No time-and-date line ' +
+        `(${SELECTORS.FLIGHT_DETAILS_LEG_TIME_DATE}) appeared in the flight details drawer within ` +
+        `${timeout}ms. The drawer likely never opened. Original: ${error.message}`
+      );
+    }
+
+    return (await lines.allInnerTexts()).map((text) => text.replace(/\s+/g, ' ').trim());
   }
 
   /**
@@ -2920,6 +2953,17 @@ class FlightResultsPage {
     return (await message.textContent()).trim();
   }
 
+  /**
+   * Gets the title of the results seat drawer (the el-drawer header, "Seats availability" on desktop).
+   * @param {number} timeout - Max wait time in ms (default: 30000)
+   * @returns {Promise<string>}
+   */
+  async getSeatMapDrawerTitle(timeout = 30000) {
+    const title = this.page.locator(SELECTORS.SEAT_MAP_DRAWER).locator(SELECTORS.FD_PANEL_TITLE).first();
+    await title.waitFor({ state: 'visible', timeout });
+    return ((await title.innerText()) ?? '').replace(/\s+/g, ' ').trim();
+  }
+
 async clickAddToTripButtonPricingOptionsModal() {
   if (await this.isBySchedulePricingPageVisible()) {
     await this.clickAddToTripButtonBySchedulePricingPage();
@@ -3425,6 +3469,87 @@ async clickSelectForFareWithBaggagePricingOptions(baggageText) {
       originalRangeText: summary.rangeText,
       targetStartMinutes,
     };
+  }
+
+  /**
+   * Moves the lower handle of one Times filter slider (e.g. "Depart from Hong Kong") until its
+   * range starts at or just after the target clock time.
+   *
+   * The slider has no keyboard step worth using (its values are timestamps in ms), so this drags:
+   * one jump to the proportional position, then small nudges right until the label reaches the
+   * target. Nudges stay small so the start lands just past the target, not past the flights wanted.
+   *
+   * @param {string} title - The slider title as shown, e.g. "Depart from Hong Kong"
+   * @param {number} targetStartMinutes - Minutes since midnight the range must start at or after
+   * @returns {Promise<{rangeText: string}>} The label once the handle has settled
+   */
+  async setTimeFilterStart(title, targetStartMinutes) {
+    const section = this.page
+      .locator(SELECTORS.TIME_SLIDER_SECTION)
+      .filter({ has: this.page.locator('.filter-title', { hasText: title }) })
+      .first();
+    const label = section.locator(SELECTORS.TIME_SLIDER_RANGE_LABEL).first();
+    const runway = section.locator(SELECTORS.TIME_SLIDER_RUNWAY).first();
+    const lowerHandle = section.locator(SELECTORS.TIME_SLIDER_HANDLE).first();
+
+    try {
+      await section.scrollIntoViewIfNeeded({ timeout: 10000 });
+      await lowerHandle.waitFor({ state: 'visible', timeout: 10000 });
+    } catch (error) {
+      throw new Error(
+        `[FlightResultsPage.setTimeFilterStart] No Times filter slider titled "${title}" is visible. ` +
+        `Check the city name and that the "Departure time" tab is selected. Original: ${error.message}`
+      );
+    }
+
+    const readRange = async () => {
+      const text = ((await label.innerText()) ?? '').replace(/\s+/g, ' ').trim();
+      const match = text.match(/^(\d{1,2}):(\d{2})\s*-\s*(\d{1,2}):(\d{2})$/);
+      if (!match) {
+        throw new Error(`[FlightResultsPage.setTimeFilterStart] Could not read the "${title}" range label "${text}".`);
+      }
+      return { text, start: Number(match[1]) * 60 + Number(match[2]), end: Number(match[3]) * 60 + Number(match[4]) };
+    };
+
+    const dragHandleTo = async (targetX) => {
+      const handleBox = await lowerHandle.boundingBox();
+      const y = handleBox.y + handleBox.height / 2;
+      await this.page.mouse.move(handleBox.x + handleBox.width / 2, y);
+      await this.page.mouse.down();
+      await this.page.mouse.move(targetX, y, { steps: 8 });
+      await this.page.mouse.up();
+    };
+
+    const initial = await readRange();
+    if (targetStartMinutes > initial.end) {
+      throw new Error(
+        `[FlightResultsPage.setTimeFilterStart] "${title}" only runs ${initial.text}; nothing departs at or ` +
+        `after the requested start.`
+      );
+    }
+    if (targetStartMinutes <= initial.start) {
+      return { rangeText: initial.text };
+    }
+
+    const runwayBox = await runway.boundingBox();
+    const ratio = (targetStartMinutes - initial.start) / (initial.end - initial.start);
+    await dragHandleTo(runwayBox.x + runwayBox.width * ratio);
+
+    let range = await readRange();
+    for (let nudge = 0; range.start < targetStartMinutes && nudge < 20; nudge += 1) {
+      const handleBox = await lowerHandle.boundingBox();
+      await dragHandleTo(handleBox.x + handleBox.width / 2 + 2);
+      range = await readRange();
+    }
+
+    if (range.start < targetStartMinutes) {
+      throw new Error(
+        `[FlightResultsPage.setTimeFilterStart] The "${title}" slider stopped at ${range.text} and never ` +
+        `reached the requested start after 20 nudges.`
+      );
+    }
+
+    return { rangeText: range.text };
   }
 
   /**
@@ -4065,6 +4190,106 @@ async clickSelectForFareWithBaggagePricingOptions(baggageText) {
     const brandBtn = this.page.locator(SELECTORS.BRAND_NAME_IN_PRICING_OPTIONS).first();
     await brandBtn.waitFor({ state: 'visible', timeout: 60000 });
     await brandBtn.click();
+  }
+
+  /**
+   * Clicks the brand name of the fare card whose brand is exactly `brandName` in the pricing
+   * options drawer. Exact, because Southwest's "CHOICE" is a prefix of "CHOICE PREFERRED".
+   * @param {string} brandName - Brand name as displayed on the card (case-insensitive)
+   * @param {number} timeout - Max wait time in ms (default: 60000)
+   */
+  async clickBrandNameInPricingOptionsByName(brandName, timeout = 60000) {
+    const exactName = new RegExp(`^\\s*${escapeRegExp(brandName)}\\s*$`, 'i');
+    const brandLink = this.page.locator(SELECTORS.BRAND_NAME_IN_PRICING_OPTIONS)
+      .filter({ hasText: exactName })
+      .filter({ visible: true })
+      .first();
+    try {
+      await brandLink.waitFor({ state: 'visible', timeout });
+    } catch (err) {
+      const shown = await this.page.locator(SELECTORS.BRAND_NAME_IN_PRICING_OPTIONS).allInnerTexts().catch(() => []);
+      throw new Error(
+        `[FlightResultsPage.clickBrandNameInPricingOptionsByName] No fare card named "${brandName}" in the pricing ` +
+        `options drawer within ${timeout}ms. Brands shown: ${shown.map((t) => t.trim()).join(', ') || '(none)'}. ` +
+        `Original: ${err.message}`
+      );
+    }
+    await brandLink.click();
+  }
+
+  /**
+   * Clicks the brand button named exactly `brandName` in the flight details bottom bar. A round
+   * trip shows one button per leg's brand, so the brand picks the leg.
+   * @param {string} brandName - Brand name as displayed on the button (case-insensitive)
+   * @param {number} timeout - Max wait time in ms (default: 30000)
+   */
+  async clickBrandNameButtonInDetailsByName(brandName, timeout = 30000) {
+    const exactName = new RegExp(`^\\s*${escapeRegExp(brandName)}\\s*$`, 'i');
+    const btn = this.page.locator(SELECTORS.BRAND_NAME_BUTTON_IN_DETAILS)
+      .filter({ hasText: exactName })
+      .filter({ visible: true })
+      .first();
+    try {
+      await btn.waitFor({ state: 'visible', timeout });
+    } catch (err) {
+      const shown = await this.page.locator(SELECTORS.BRAND_NAME_BUTTON_IN_DETAILS).allInnerTexts().catch(() => []);
+      throw new Error(
+        `[FlightResultsPage.clickBrandNameButtonInDetailsByName] No "${brandName}" brand button in the flight ` +
+        `details drawer within ${timeout}ms. Brand buttons shown: ${shown.map((t) => t.trim()).join(', ') || '(none)'}. ` +
+        `Original: ${err.message}`
+      );
+    }
+    await btn.click();
+  }
+
+  /**
+   * Reads a classic Sabre brand's feature list from the branded fares drawer: the brand heading
+   * and, per service group, the lines listed under "Free" and under "Chargeable".
+   * Returns `unavailable: true` instead of throwing when the drawer shows "Brand information is
+   * currently unavailable", so the caller can fail with what the supplier filed for the brand.
+   * @param {number} timeout - Max wait time in ms for the brand content to load (default: 45000)
+   * @returns {Promise<{unavailable: boolean, brandName: string, groups: Array<{group: string, free: string[], chargeable: string[]}>}>}
+   */
+  async getBrandFeatureGroups(timeout = 45000) {
+    const firstItem = this.page.locator(SELECTORS.BRANDED_FARES_FEATURE_ITEM).first();
+    const unavailable = this.page.locator(SELECTORS.BRANDED_FARES_UNAVAILABLE_MESSAGE).first();
+
+    // The drawer shell opens before the brand call returns; the feature list or the unavailable
+    // message replaces the skeleton.
+    try {
+      await firstItem.or(unavailable).first().waitFor({ state: 'visible', timeout });
+    } catch (err) {
+      throw new Error(
+        `[FlightResultsPage.getBrandFeatureGroups] The branded fares drawer showed neither a brand feature ` +
+        `list nor the unavailable message within ${timeout}ms. The brand call may still be loading or the ` +
+        `drawer did not open. Original: ${err.message}`
+      );
+    }
+
+    if (await unavailable.isVisible()) {
+      return { unavailable: true, brandName: '', groups: [] };
+    }
+
+    const brandName = ((await this.page.locator(SELECTORS.BRANDED_FARES_FEATURE_BRAND_NAME).first().innerText()) || '').trim();
+    // The group <div> and the Free/Chargeable <span> share the class service-item-title, so the
+    // groups are the blocks with their own <h6>, and the lines are walked in document order.
+    const groups = await this.page.locator(SELECTORS.BRANDED_FARES_FEATURE_GROUP).evaluateAll((blocks) => blocks
+      .filter((block) => block.tagName === 'DIV' && block.querySelector(':scope > h6'))
+      .map((block) => {
+        const group = { group: (block.querySelector(':scope > h6').innerText || '').trim(), free: [], chargeable: [] };
+        let section = null;
+        for (const child of block.children) {
+          const text = (child.innerText || '').trim();
+          if (child.tagName === 'SPAN') {
+            section = /charg/i.test(text) ? 'chargeable' : /free/i.test(text) ? 'free' : null;
+          } else if (child.tagName === 'LI' && section && text) {
+            group[section].push(text);
+          }
+        }
+        return group;
+      }));
+
+    return { unavailable: false, brandName, groups };
   }
 
   /**
@@ -4710,6 +4935,30 @@ async clickSelectForFareWithBaggagePricingOptions(baggageText) {
     } catch {
       return false;
     }
+  }
+
+  /**
+   * Reads, for every fare row in the pricing options drawer, whether it carries the agreement icon.
+   *
+   * Waits for a visible amount first: the drawer renders skeleton rows before its fares, and a scan
+   * of those would report every fare as icon-less.
+   *
+   * @param {number} timeout - Max wait time in ms (default: 60000)
+   * @returns {Promise<boolean[]>} one entry per fare row, in display order
+   */
+  async getPricingOptionsAgreementIconPresence(timeout = 60000) {
+    const overlay = this.getPricingOptionsOverlay();
+    await overlay.waitFor({ state: "visible", timeout });
+    await overlay.locator(SELECTORS.PRICING_OPTIONS_AMOUNT_VALUE).first().waitFor({ state: "visible", timeout });
+
+    const options = overlay.locator(SELECTORS.PRICING_OPTIONS_ITEM);
+    const count = await options.count();
+    const presence = [];
+    for (let i = 0; i < count; i++) {
+      const icon = options.nth(i).locator(SELECTORS.AGREEMENT_ICON).first();
+      presence.push((await icon.count()) > 0 && await icon.isVisible());
+    }
+    return presence;
   }
 
   /**

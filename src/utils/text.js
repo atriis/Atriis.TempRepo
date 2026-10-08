@@ -149,6 +149,33 @@ function sortAlphabetically(values) {
   return [...values].sort((a, b) => a.localeCompare(b, "en", { sensitivity: "base" }));
 }
 
+/**
+ * SSR free text cannot carry "@", so the airline contact SSR (CTCE) sends the email with "//".
+ *
+ * @param {string} email - Plain email address
+ * @returns {string} The email as it appears in a CTCE SSR
+ */
+function toCtceEmail(email) {
+  if (typeof email !== "string" || !email.includes("@")) {
+    throw new Error(`[text.toCtceEmail] Expected an email address, got: "${email}"`);
+  }
+  return email.replace("@", "//");
+}
+
+/**
+ * SSR free text cannot carry separators, so the airline contact SSR (CTCM) sends the phone as bare digits.
+ *
+ * @param {string} phone - Phone number in any format
+ * @returns {string} The phone as it appears in a CTCM SSR
+ */
+function toCtcmPhone(phone) {
+  const digits = String(phone ?? "").replace(/\D/g, "");
+  if (!digits) {
+    throw new Error(`[text.toCtcmPhone] Expected a phone number, got: "${phone}"`);
+  }
+  return digits;
+}
+
 // escapeRegExp is an alias for escapeRegex (used by page objects)
 const escapeRegExp = escapeRegex;
 
@@ -163,4 +190,6 @@ module.exports = {
   caseInsensitiveContains,
   extractDateTokens,
   sortAlphabetically,
+  toCtceEmail,
+  toCtcmPhone,
 };

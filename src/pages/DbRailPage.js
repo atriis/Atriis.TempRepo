@@ -38,6 +38,14 @@ const SELECTORS = {
   DB_RAIL_MESSAGE_DIALOG_TEXT: '.app-dialog.db-rail-dialog-message:visible .message-text p',
   // The dialog's footer Close button (app-btn → native <button>).
   DB_RAIL_MESSAGE_DIALOG_CLOSE_BUTTON: '.app-dialog.db-rail-dialog-message:visible button:has-text("Close")',
+
+  // The same form mounted by trip-index.vue in the new-trip search page's Rail tab (pane-rails).
+  // Its buttons live in the page's shared trip-search-control, not in the form: stage one labels
+  // the search button `btn.continue`; once the punch-out returns a Deutsche Bahn URL
+  // (DBRailSecondStage) it is relabelled "New booking" and a second button, "Go to cart", is added.
+  DB_RAIL_SEARCH_FORM: '.trip-index #pane-rails .db-rail-search-inputs',
+  DB_RAIL_SEARCH_CONTINUE_BUTTON: '.trip-index .trip-search-control button.search-btn:has-text("Continue")',
+  DB_RAIL_SEARCH_GO_TO_CART_BUTTON: '.trip-index .trip-search-control button.search-btn:has-text("Go to cart")',
 };
 
 /**
@@ -131,34 +139,108 @@ class DbRailPage {
    * @returns {Promise<{punchOutError: string|null}>}
    */
   async waitForSecondStageOrPunchOutError({ timeout = 60000 } = {}) {
-    const goToTrip = this.page.locator(SELECTORS.DB_RAIL_DRAWER_GO_TO_TRIP_BUTTON).first();
+    return this.waitForPunchOutOutcome(
+      SELECTORS.DB_RAIL_DRAWER_GO_TO_TRIP_BUTTON,
+      'Go to trip',
+      'waitForSecondStageOrPunchOutError',
+      timeout
+    );
+  }
+
+  /**
+   * Search-page counterpart of waitForSecondStageOrPunchOutError: the second stage there is
+   * signalled by the "Go to cart" button.
+   *
+   * @param {number} [timeout=60000]
+   * @returns {Promise<{punchOutError: string|null}>}
+   */
+  async waitForSearchSecondStageOrPunchOutError({ timeout = 60000 } = {}) {
+    return this.waitForPunchOutOutcome(
+      SELECTORS.DB_RAIL_SEARCH_GO_TO_CART_BUTTON,
+      'Go to cart',
+      'waitForSearchSecondStageOrPunchOutError',
+      timeout
+    );
+  }
+
+  /**
+   * Shared wait behind both punch-out surfaces: resolves on the second-stage button or on the
+   * rejection dialog, whichever renders first.
+   *
+   * @param {string} secondStageSelector
+   * @param {string} secondStageLabel - for the error message
+   * @param {string} caller - for the error message
+   * @param {number} timeout
+   * @returns {Promise<{punchOutError: string|null}>}
+   */
+  async waitForPunchOutOutcome(secondStageSelector, secondStageLabel, caller, timeout) {
+    const secondStage = this.page.locator(secondStageSelector).first();
     const errorDialog = this.page.locator(SELECTORS.DB_RAIL_MESSAGE_DIALOG).first();
     // Comma union: resolves as soon as EITHER outcome renders.
     const outcome = this.page
-      .locator(`${SELECTORS.DB_RAIL_DRAWER_GO_TO_TRIP_BUTTON}, ${SELECTORS.DB_RAIL_MESSAGE_DIALOG}`)
+      .locator(`${secondStageSelector}, ${SELECTORS.DB_RAIL_MESSAGE_DIALOG}`)
       .first();
 
     try {
       await outcome.waitFor({ state: 'visible', timeout });
     } catch (err) {
       throw new Error(
-        `[DbRailPage.waitForSecondStageOrPunchOutError] The Deutsche Bahn punch-out did not ` +
-        `resolve within ${timeout}ms — neither the second-stage "Go to trip" button ` +
-        `(${SELECTORS.DB_RAIL_DRAWER_GO_TO_TRIP_BUTTON}) nor the rejection warning dialog ` +
+        `[DbRailPage.${caller}] The Deutsche Bahn punch-out did not ` +
+        `resolve within ${timeout}ms — neither the second-stage "${secondStageLabel}" button ` +
+        `(${secondStageSelector}) nor the rejection warning dialog ` +
         `(${SELECTORS.DB_RAIL_MESSAGE_DIALOG}) appeared. Likely cause: the /DBRail punch-out call ` +
         `never answered (DB service down or network stall). Original: ${err.message}`
       );
     }
 
     // A visible dialog at THIS stage can only be the punch-out rejection: the no-order-found
-    // dialog only appears after "Go to trip" is clicked.
+    // dialog only appears after the second-stage button is clicked.
     if (await errorDialog.isVisible().catch(() => false)) {
       const text = await this.getMessageDialogText({ timeout: 5000 }).catch(() => '');
       return { punchOutError: text || '(the warning dialog rendered no message text)' };
     }
 
-    await goToTrip.waitFor({ state: 'visible', timeout: 5000 });
+    await secondStage.waitFor({ state: 'visible', timeout: 5000 });
     return { punchOutError: null };
+  }
+
+  /**
+   * Waits for the DB Rail form in the new-trip search page's Rail tab.
+   *
+   * @param {number} [timeout=15000]
+   * @returns {Promise<void>}
+   */
+  async waitForSearchForm({ timeout = 15000 } = {}) {
+    try {
+      await this.page.locator(SELECTORS.DB_RAIL_SEARCH_FORM).waitFor({ state: 'visible', timeout });
+    } catch (err) {
+      throw new Error(
+        `[DbRailPage.waitForSearchForm] The Deutsche Bahn form did not render in the search page's ` +
+        `Rail tab (${SELECTORS.DB_RAIL_SEARCH_FORM}) within ${timeout}ms. Likely causes: DB Rail was ` +
+        `not picked in the Rail dropdown, or the trip is a pre-trip request (the Rail tab is hidden). ` +
+        `Original: ${err.message}`
+      );
+    }
+  }
+
+  /**
+   * Clicks the search page's stage-one "Continue" button, which starts the Deutsche Bahn punch-out.
+   *
+   * @param {number} [timeout=15000]
+   * @returns {Promise<void>}
+   */
+  async clickSearchContinue({ timeout = 15000 } = {}) {
+    const button = this.page.locator(SELECTORS.DB_RAIL_SEARCH_CONTINUE_BUTTON).first();
+    try {
+      await button.click({ timeout });
+    } catch (err) {
+      throw new Error(
+        `[DbRailPage.clickSearchContinue] Could not click the Deutsche Bahn "Continue" button on the ` +
+        `search page (${SELECTORS.DB_RAIL_SEARCH_CONTINUE_BUTTON}) within ${timeout}ms. Likely ` +
+        `causes: no eligible traveller was added, an overlay (e.g. a document expiry warning) covers ` +
+        `the button, or the flow is already past stage one. Original: ${err.message}`
+      );
+    }
   }
 
   /**

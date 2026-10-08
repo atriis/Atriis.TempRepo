@@ -249,6 +249,11 @@ const SELECTORS = {
   FLIGHT_PRICE_BREAKDOWN_SUBTOTAL_ROW: '.rate-information .amounts .subtotal',
   FLIGHT_PRICE_BREAKDOWN_SUBTOTAL_PASSENGERS: '.passengers',
   FLIGHT_PRICE_BREAKDOWN_TOTAL: '.summary-and-actions .amount',
+  // The optional-services row reuses the .cc-charge class, so callers filter by the 'CC Charge' label.
+  FLIGHT_PRICE_BREAKDOWN_CC_CHARGE_ROW: '.rate-information .cc-charge',
+  FLIGHT_PRICE_BREAKDOWN_INFO_ICON: '.info-icon',
+  // Element Plus teleports tooltips to <body>; only the open one has aria-hidden="false".
+  VISIBLE_TOOLTIP_ITEM: '.el-popper.el-tooltip[aria-hidden="false"] li',
   FLIGHT_CO2_TOOLTIP_TRIGGER_IN_CART: '.flight-quote-card .co2-emissions-label .info-icon',
   // Scoped by the flight card drawer's class: AB#84760 retitled it "Flight Details", so aria-label 'More details' no longer matches.
   FLIGHT_CO2_TOOLTIP_TRIGGER_IN_MORE_DETAILS: '.app-drawer.flight-details-drawer .co2-emissions-label .info-icon',
@@ -258,6 +263,7 @@ const SELECTORS = {
   FLIGHT_SEGMENT_CARRIER_NAME: '.carrier-container .carrier-name',
   FLIGHT_SEGMENT_FLIGHT_NUMBER_TEXT: '.carrier-container .carrier-name + p',
   FLIGHT_SEGMENT_TIME: '.flight-time',
+  FLIGHT_SEGMENT_DATE: '.flight-date',
   FLIGHT_QUOTE_LOCATION_CODE: '.loc-code',
 
   // Trip actions dropdown selectors
@@ -384,6 +390,9 @@ const SELECTORS = {
   POST_TICKETING_TABLE: '.flight-post-ticketing-details .post-ticketing-table',
   POST_TICKETING_TICKET_NUMBER_TEXT: 'tbody tr td:nth-child(2) .mr-1:visible',
   POST_TICKETING_FIRST_SEAT_BUTTON: '.flight-post-ticketing-details .post-ticketing-table tbody tr:first-child td:nth-child(5) .add-seats-btn',
+  POST_TICKETING_TRAVELER_ROWS: 'tbody tr',
+  POST_TICKETING_ROW_TRAVELER_NAME_TEXT: 'td:nth-child(1) .mr-1',
+  POST_TICKETING_ROW_TICKET_NUMBER_TEXT: 'td:nth-child(2) .mr-1',
   MORE_DETAILS_HOTEL_BUTTON: ".more-details",
   MORE_DETAILS_CAR_BUTTON: ".more-details.is-flex",
   // Daily rate under the price on a car cart line item (car-quote-card.vue -> app-price
@@ -1736,6 +1745,11 @@ const SELECTORS = {
     '.flight-contact-sharing-consent:visible .btns > button.btn--primary',
   // Green check_circle extras-layout.vue renders on the collapsed row once the validation is OK.
   FLIGHT_CONTACT_CONSENT_SUCCESS_ICON: '.flight-contact-sharing-consent:visible .extra .success-icon.green',
+  // "Traveller phone" of the open consent panel: the same app-phone-input.vue widget ground transport
+  // uses — the dial code is a popover-backed <button>, only the area code and number are inputs.
+  FLIGHT_CONTACT_CONSENT_PHONE_COUNTRY_BTN: '.flight-contact-sharing-consent:visible .app-phone-input__country',
+  FLIGHT_CONTACT_CONSENT_PHONE_AREA: '.flight-contact-sharing-consent:visible .app-phone-input__area',
+  FLIGHT_CONTACT_CONSENT_PHONE_NUMBER: '.flight-contact-sharing-consent:visible .app-phone-input__number',
   // "Please add the required extras" notice — extras-collapse.vue renders it as the first <p> of
   // `.extras-container`, gated on isQuoteSelected (quote.status === Selected), and its created()
   // hook opens the accordion for exactly that state, so a pending Amtrak quote shows it without a
@@ -5218,6 +5232,55 @@ class CartPage {
     return parseAmountText(await amount.textContent(), `${label} amount`);
   }
 
+  /**
+   * Gets the CC Charge row of the open flight price breakdown drawer.
+   * Before ticketing the row shows the text "TBD" instead of an amount.
+   *
+   * @returns {import('playwright').Locator}
+   */
+  getFlightPriceBreakdownCcChargeRow() {
+    return this.page.locator(SELECTORS.FLIGHT_PRICE_BREAKDOWN_DRAWER).first()
+      .locator(SELECTORS.FLIGHT_PRICE_BREAKDOWN_CC_CHARGE_ROW)
+      .filter({ hasText: 'CC Charge' })
+      .first();
+  }
+
+  /**
+   * Gets the value shown next to the CC Charge label (e.g. "TBD" or "€1.60").
+   *
+   * @param {{ timeout?: number }} options
+   * @returns {Promise<string>}
+   */
+  async getFlightPriceBreakdownCcChargeValueText({ timeout = 10000 } = {}) {
+    const row = this.getFlightPriceBreakdownCcChargeRow();
+    await row.waitFor({ state: 'visible', timeout });
+    const rowText = (await row.innerText()).replace(/\s+/g, ' ').trim();
+    return rowText.replace(/^CC Charge/i, '').replace(/\binfo\b/gi, '').replace(/\s+/g, ' ').trim();
+  }
+
+  /**
+   * Hovers the info icon next to the CC Charge label, which opens the list of charges per card type.
+   *
+   * @param {{ timeout?: number }} options
+   */
+  async hoverFlightPriceBreakdownCcChargeInfoIcon({ timeout = 10000 } = {}) {
+    const icon = this.getFlightPriceBreakdownCcChargeRow().locator(SELECTORS.FLIGHT_PRICE_BREAKDOWN_INFO_ICON).first();
+    await icon.waitFor({ state: 'visible', timeout });
+    await icon.hover();
+  }
+
+  /**
+   * Gets the list items of the tooltip that is currently open.
+   *
+   * @param {{ timeout?: number }} options
+   * @returns {Promise<string[]>}
+   */
+  async getVisibleTooltipItems({ timeout = 10000 } = {}) {
+    const items = this.page.locator(SELECTORS.VISIBLE_TOOLTIP_ITEM);
+    await items.first().waitFor({ state: 'visible', timeout });
+    return (await items.allInnerTexts()).map((text) => text.replace(/\s+/g, ' ').trim()).filter(Boolean);
+  }
+
   async isPriceBreakdownRowVisible(label, timeout = 10000) {
     const drawer = this.page.locator(SELECTORS.FLIGHT_PRICE_BREAKDOWN_DRAWER).first();
     const row = drawer.locator(SELECTORS.FLIGHT_PRICE_BREAKDOWN_RATE_ROW).filter({ hasText: label }).first();
@@ -6601,6 +6664,59 @@ class CartPage {
     const input = (scope ?? this.page).locator(SELECTORS.FLIGHT_CONTACT_CONSENT_EMAIL_INPUT).first();
     await input.waitFor({ state: 'visible', timeout });
     await input.fill(email);
+  }
+
+  /**
+   * Reads the phone number input (without dial or area code) of the open consent panel.
+   * @param {number} timeout
+   * @param {import('playwright').Locator|null} [scope] - Limit to one quote card (Separated Tickets carts hold one consent row per quote)
+   * @returns {Promise<string>}
+   */
+  async getFlightContactConsentPhoneNumberValue(timeout = 15000, scope = null) {
+    const input = (scope ?? this.page).locator(SELECTORS.FLIGHT_CONTACT_CONSENT_PHONE_NUMBER).first();
+    await input.waitFor({ state: 'visible', timeout });
+    return ((await input.inputValue()) || '').trim();
+  }
+
+  /**
+   * Fills the "Traveller phone" of the open consent panel. The airline panel marks the phone as
+   * required, so a traveller whose profile has no phone cannot save the consent without it.
+   *
+   * The dial-code list is an el-popover teleported to <body>, so it is not scoped to the quote card.
+   * @param {string} dialCode - Country dial code without the plus, e.g. "44"
+   * @param {string} areaCode
+   * @param {string} number
+   * @param {number} timeout
+   * @param {import('playwright').Locator|null} [scope] - Limit to one quote card (Separated Tickets carts hold one consent row per quote)
+   */
+  async fillFlightContactConsentPhone(dialCode, areaCode, number, timeout = 15000, scope = null) {
+    const root = scope ?? this.page;
+    try {
+      const countryBtn = root.locator(SELECTORS.FLIGHT_CONTACT_CONSENT_PHONE_COUNTRY_BTN).first();
+      await countryBtn.waitFor({ state: 'visible', timeout });
+      await countryBtn.click();
+
+      const searchInput = this.page.locator(SELECTORS.PHONE_INPUT_POPOVER_SEARCH).first();
+      await searchInput.waitFor({ state: 'visible', timeout });
+      await searchInput.fill(String(dialCode));
+
+      // Filter on the rendered "(+44)" text: the search box also matches country names and ISO codes.
+      const option = this.page
+        .locator(SELECTORS.PHONE_INPUT_POPOVER_OPTION)
+        .filter({ hasText: `+${dialCode}` })
+        .first();
+      await option.waitFor({ state: 'visible', timeout });
+      await option.click();
+
+      await root.locator(SELECTORS.FLIGHT_CONTACT_CONSENT_PHONE_AREA).first().fill(String(areaCode));
+      await root.locator(SELECTORS.FLIGHT_CONTACT_CONSENT_PHONE_NUMBER).first().fill(String(number));
+    } catch (err) {
+      throw new Error(
+        `[CartPage.fillFlightContactConsentPhone] Could not fill the airline contact phone ` +
+        `"+${dialCode} ${areaCode} ${number}" (country button: ${SELECTORS.FLIGHT_CONTACT_CONSENT_PHONE_COUNTRY_BTN}). ` +
+        `The "Contact details for the airline" panel must already be open. Original: ${err.message}`,
+      );
+    }
   }
 
   /**
@@ -9272,6 +9388,45 @@ class CartPage {
 
     if (!summaries.length) {
       throw new Error('Could not extract any visible flight segment details from the quote card');
+    }
+
+    return summaries;
+  }
+
+  /**
+   * Reads each row of the first flight quote card top to bottom: where and when it departs and
+   * arrives. Kept apart from getVisibleFlightQuoteSegmentSummaries because that one feeds a strict
+   * toEqual against the results card, which cannot grow fields.
+   *
+   * @returns {Promise<Array<{departure: {code: string, time: string, date: string},
+   *   arrival: {code: string, time: string, date: string}}>>} Raw text; parsing is the DSL's job.
+   */
+  async getFlightQuoteRowTimeDates({ timeout = 15000 } = {}) {
+    const rows = this.page.locator(SELECTORS.FLIGHT_QUOTE_CARD).first().locator(SELECTORS.FLIGHT_QUOTE_SEGMENT);
+    await rows.first().waitFor({ state: 'visible', timeout });
+
+    const clean = async (locator) => ((await locator.innerText()) ?? '').replace(/\s+/g, ' ').trim();
+    const rowCount = await rows.count();
+    const summaries = [];
+
+    for (let index = 0; index < rowCount; index += 1) {
+      const row = rows.nth(index);
+      const times = row.locator(SELECTORS.FLIGHT_SEGMENT_TIME);
+      const dates = row.locator(SELECTORS.FLIGHT_SEGMENT_DATE);
+      const codes = row.locator(SELECTORS.FLIGHT_QUOTE_LOCATION_CODE);
+
+      if ((await times.count()) < 2 || (await dates.count()) < 2 || (await codes.count()) < 2) {
+        throw new Error(
+          `[CartPage.getFlightQuoteRowTimeDates] Row ${index + 1} of ${rowCount} does not show a departure ` +
+          `and an arrival time, date and airport (${SELECTORS.FLIGHT_SEGMENT_TIME} / ${SELECTORS.FLIGHT_SEGMENT_DATE} / ` +
+          `${SELECTORS.FLIGHT_QUOTE_LOCATION_CODE}). The cart row markup has likely changed.`
+        );
+      }
+
+      summaries.push({
+        departure: { code: await clean(codes.first()), time: await clean(times.first()), date: await clean(dates.first()) },
+        arrival: { code: await clean(codes.last()), time: await clean(times.last()), date: await clean(dates.last()) },
+      });
     }
 
     return summaries;
@@ -12806,6 +12961,31 @@ class CartPage {
     await ticketNumbers.first().waitFor({ state: 'visible', timeout });
     const values = await ticketNumbers.allInnerTexts();
     return values.map((value) => value.replace(/\s+/g, ' ').trim()).filter(Boolean);
+  }
+
+  /**
+   * Gets each traveler row of the first post-ticketing table as its name cell and ticket number.
+   * The name cell also carries the traveler type, e.g. "Sönja Götz (Adult)".
+   * @param {{ timeout?: number }} options
+   * @returns {Promise<Array<{ travelerName: string, ticketNumber: string }>>}
+   */
+  async getPostTicketingTravelerTickets({ timeout = 15000 } = {}) {
+    const firstTable = this.page.locator(SELECTORS.POST_TICKETING_TABLE).first();
+    await firstTable.waitFor({ state: 'visible', timeout });
+
+    const rows = firstTable.locator(SELECTORS.POST_TICKETING_TRAVELER_ROWS);
+    await rows.first().waitFor({ state: 'visible', timeout });
+
+    const travelerTickets = [];
+    for (const row of await rows.all()) {
+      const travelerName = await row.locator(SELECTORS.POST_TICKETING_ROW_TRAVELER_NAME_TEXT).first().innerText();
+      const ticketNumber = await row.locator(SELECTORS.POST_TICKETING_ROW_TICKET_NUMBER_TEXT).first().innerText();
+      travelerTickets.push({
+        travelerName: travelerName.replace(/\s+/g, ' ').trim(),
+        ticketNumber: ticketNumber.replace(/\s+/g, ' ').trim(),
+      });
+    }
+    return travelerTickets;
   }
 
   /**

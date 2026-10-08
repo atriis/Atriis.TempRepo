@@ -214,6 +214,30 @@ const Checkout = {
   },
 
   /**
+   * Books, completes the Fusion 3DS verification in a new tab (the modal's "click here" fallback),
+   * then opens the trip cart. Use where the supplier page refuses to load inside OBT's iframe.
+   * @param {import('playwright').Page} page
+   * @returns {Promise<{finalized: boolean, tripId: string, verificationUrl: string, returnUrl: string}>}
+   */
+  async bookAndFinalizeWithFusionCardVerificationInNewTab(page) {
+    if (!page) throw new Error('page is required');
+
+    const checkoutPage = getPageObject(page, CheckoutPage);
+    const cartPage = getPageObject(page, CartPage);
+
+    await Checkout.bookTripWithoutNavigatingToTripOverview(page);
+    const verification = await checkoutPage.completeFusionCardVerificationInNewTab();
+
+    const tripUrl = new URL(page.url());
+    tripUrl.pathname = `/trips/${verification.tripId}/cart`;
+    tripUrl.search = '';
+    await page.goto(tripUrl.href, { waitUntil: 'domcontentloaded' });
+    await cartPage.waitForTripOverviewTitle();
+
+    return { finalized: true, ...verification };
+  },
+
+  /**
    * Finalizes Ypsilon flight booking with 3DS SCA verification,
    * then navigates to the trip overview page.
    * The 3DS challenge is rendered in an iframe where the test code is entered.
@@ -501,6 +525,39 @@ const Checkout = {
     const checkoutPage = getPageObject(page, CheckoutPage);
     await checkoutPage.waitForBookingDetailsText();
     await checkoutPage.clickContactDetailsCheckbox();
+  },
+
+  /**
+   * Leaves the "Don't share the contact details with airlines" checkbox checked, so the booking
+   * sends the airline a refusal (CTCR REFUSED) instead of the contact (CTCE/CTCM). Its default
+   * follows the profile's isRefusedToSharePersonalData and is assigned after an async load, so a
+   * blind click can turn it off - this drives to the goal state, the phone fields becoming
+   * disabled, the mirror of shareContactDetailsWithAirlines.
+   *
+   * @param {import('playwright').Page} page
+   */
+  async refuseContactDetailsToAirlines(page) {
+    if (!page) throw new Error('page is required');
+
+    const checkoutPage = getPageObject(page, CheckoutPage);
+    await checkoutPage.waitForCheckoutContentLoaded();
+
+    for (let attempt = 1; attempt <= CONTACT_PHONE_EDIT_ATTEMPTS; attempt++) {
+      if (!(await checkoutPage.isContactDetailsCheckboxChecked())) {
+        logger.debug('"Don\'t share the contact details" is unchecked - checking it', { attempt });
+        await checkoutPage.clickContactDetailsCheckbox();
+      }
+
+      if (await checkoutPage.isContactPhoneDisabledWithin(CONTACT_SHARING_SETTLE_TIMEOUT)
+        && await checkoutPage.isContactDetailsCheckboxChecked()) {
+        return;
+      }
+    }
+
+    throw new Error(
+      `[Checkout.refuseContactDetailsToAirlines] "Don't share the contact details with airlines" ` +
+      `was still unchecked after ${CONTACT_PHONE_EDIT_ATTEMPTS} attempts - the booking would send the contact instead of CTCR`
+    );
   },
 
   /**

@@ -1,6 +1,6 @@
 require("module-alias/register");
 
-const { When, setDefaultTimeout } = require("@cucumber/cucumber");
+const { When, Then, setDefaultTimeout } = require("@cucumber/cucumber");
 const { LegacyGtp } = require("@dsl");
 const logger = require("@utils/logger").child("LegacyGtp");
 
@@ -77,4 +77,73 @@ When("I add a refundable hotel to the trip as the agent through \"Search Online\
     hotelIndex: result.hotelIndex,
     cancellationPolicy: result.cancellationPolicy,
   });
+});
+
+// ===== Post-booking seat selection as the agent (ADO 84961) =====
+
+When("I start recording the seat saves in legacy GTP", function () {
+  this.legacyGtpSeatSaves = LegacyGtp.startRecordingSeatSaves(requireLegacyGtpPage(this));
+});
+
+// Seat maps load per flight and suppliers can take ~30s each, hence the longer step timeout.
+When(
+  "I pick the same seat on every flight of flight quote {int} in legacy GTP",
+  { timeout: 420000 },
+  async function (position) {
+    this.legacyGtpSeatPick = await LegacyGtp.pickSameSeatOnEveryFlight(requireLegacyGtpPage(this), position - 1);
+    logger.info("Same seat picked on every flight in legacy GTP", this.legacyGtpSeatPick);
+  }
+);
+
+When("I save the seats in legacy GTP", { timeout: 180000 }, async function () {
+  this.legacyGtpLastSeatSave = await LegacyGtp.saveSeats(requireLegacyGtpPage(this), this.legacyGtpSeatSaves);
+  logger.info("Legacy GTP seat save answered", this.legacyGtpLastSeatSave);
+});
+
+/**
+ * Returns the last recorded legacy GTP seat save, failing when no save was recorded.
+ * @param {object} world - Cucumber World (`this`)
+ */
+function requireLastSeatSave(world) {
+  if (!world.legacyGtpLastSeatSave) {
+    throw new Error('No legacy GTP seat save recorded. Run "I save the seats in legacy GTP" first.');
+  }
+  return world.legacyGtpLastSeatSave;
+}
+
+// The 84961 oracle: each flight's seat must go out on its OWN booked segment. Before the fix the
+// return tab resolved to the outbound leg, so both seats carried one segment number and the
+// engine's duplicate key abandoned the whole save.
+Then("the legacy GTP seat save should send the picked seat on a different segment for every flight", function () {
+  const save = requireLastSeatSave(this);
+  const { seat, flights } = this.legacyGtpSeatPick || {};
+  const sent = save.sent.filter((s) => s.seatNumber === seat);
+  const segments = new Set(sent.map((s) => s.segmentNumber));
+  if (sent.length !== flights.length || segments.size !== flights.length) {
+    throw new Error(
+      `Expected seat ${seat} once per flight (${flights.join(", ")}) on ${flights.length} different segments, ` +
+      `but the browser sent: ${JSON.stringify(save.sent)}`
+    );
+  }
+});
+
+Then("the legacy GTP seat save should succeed for every flight", function () {
+  const save = requireLastSeatSave(this);
+  const { seat, flights } = this.legacyGtpSeatPick || {};
+  const answered = save.answered.filter((s) => s.seat === seat);
+  const failed = save.answered.filter((s) => !s.isSuccess || (s.errorMsg && s.errorMsg !== ""));
+  if (save.status !== 200 || answered.length !== flights.length || failed.length > 0) {
+    throw new Error(
+      `Expected HTTP 200 and a successful seat ${seat} for each of ${flights.length} flights, got HTTP ` +
+      `${save.status} with: ${JSON.stringify(save.answered)}`
+    );
+  }
+});
+
+Then("after a reload the legacy GTP seating of flight quote {int} should not be {string}", async function (position, status) {
+  const texts = await LegacyGtp.getSeatingStatusesAfterReload(requireLegacyGtpPage(this));
+  const text = texts[position - 1];
+  if (!text || text.includes(status)) {
+    throw new Error(`Flight quote #${position} Seating tab reads "${text}" after reload (tabs: ${JSON.stringify(texts)}).`);
+  }
 });

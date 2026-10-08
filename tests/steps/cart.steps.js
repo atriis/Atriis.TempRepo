@@ -1139,6 +1139,25 @@ Then("I successfully cancel the trip", async function () {
   expect(result.messageVisible, "Cancellation confirmation message should be visible").toBe(true);
 });
 
+// Guards ADO 58677: when the traveller refuses to share their contact details with airlines, the
+// Travelport booking enters a CTCR "REFUSED" SSR and none of the contact itself (CTCE email, CTCM mobile).
+Then(
+  "the {string} request should send the contact refusal as CTCR and no CTCE or CTCM",
+  async function (requestType) {
+    const { ssrs } = await Cart.collectUapiContactSsrs(this, requestType);
+    const sent = ssrs.map((ssr) => `${ssr.type}: ${ssr.freetext}`);
+
+    const ctcr = ssrs.filter((ssr) => ssr.type === "CTCR");
+    expect(ctcr.length, `No CTCR SSR in any "${requestType}" request for the trip - sent: [${sent.join(", ")}]`).toBeGreaterThan(0);
+    for (const ssr of ctcr) {
+      expect((ssr.freetext || "").toUpperCase(), `CTCR should carry "REFUSED"`).toBe("REFUSED");
+    }
+
+    const contact = ssrs.filter((ssr) => ssr.type === "CTCE" || ssr.type === "CTCM");
+    expect(contact.map((ssr) => `${ssr.type}: ${ssr.freetext}`), "No CTCE/CTCM may be sent when the contact is refused").toEqual([]);
+  }
+);
+
 Then("I successfully cancel the trip with 60 seconds wait", async function () {
   logger.info("Cancelling the trip successfully after a 60-second wait");
   const result = await Cart.cancelTripStrictWithWait(this.page, 60000);
@@ -1717,6 +1736,18 @@ Then('the flight price breakdown should match the totals for the selected travel
   logger.info('Flight price breakdown totals verified', result);
 });
 
+// Pins the breakdown footer to an exact amount, e.g. a manual quote's base fare, so an added markup
+// fails the step even when the breakdown lines still add up to the cart total (test 86277).
+Then('the flight price breakdown total should be {float}', async function (expectedTotal) {
+  logger.info('Verifying flight price breakdown total', { expectedTotal });
+  const cartPage = getPageObject(this.page, CartPage);
+  const breakdownTotal = await cartPage.getFlightPriceBreakdownTotal();
+  expect(
+    Math.abs(breakdownTotal - expectedTotal),
+    `Breakdown footer total (${breakdownTotal}) should be ${expectedTotal}`,
+  ).toBeLessThanOrEqual(0.01);
+});
+
 Then("passport details are displayed as {string}", async function (expectedText) {
   logger.info("Asserting passport details are displayed", { expectedText });
   const actualText = await Cart.getPassportDetailsText(this.page, 0);
@@ -1759,6 +1790,16 @@ When("I share the contact details with the airline if requested using email {str
   logger.info("Sharing contact details with the airline in cart", { email });
   await Cart.shareContactDetailsWithAirlineInCart(this.page, email);
 });
+
+// For a traveller with no phone on the profile when the airline marks the phone required (BA NDC):
+// the email-only step above cannot save the panel then. The phone is typed only if the panel has none.
+When(
+  "I share the contact details with the airline if requested using email {string} and phone {string} {string} {string}",
+  async function (email, dialCode, areaCode, number) {
+    logger.info("Sharing contact details with the airline in cart, with a phone", { email, dialCode, areaCode });
+    await Cart.shareContactDetailsWithAirlineInCart(this.page, email, { dialCode, areaCode, number });
+  },
+);
 
 // Use with "I hold quote {int}" when the cart holds more than one flight quote (Separated Tickets):
 // each quote has its own consent row, and the unscoped step above only ever answers the first one.
@@ -3902,6 +3943,29 @@ Then("ticket numbers should be visible in flight details", async function () {
   logger.info("Ticket numbers visible in flight details", { ticketNumbers });
 });
 
+Then("each of the {int} travelers in flight details should have a different ticket number", async function (travelerCount) {
+  logger.info("Verifying each traveler has a different ticket number in flight details", { travelerCount });
+  const travelerTickets = await Cart.verifyDistinctTicketNumberPerTravelerInFlightDetails(this.page, travelerCount);
+  logger.info("Each traveler has a different ticket number in flight details", { travelerTickets });
+});
+
+When("I remember the flight details ticket number of the traveler named {string} as {string}", async function (travelerNameText, alias) {
+  logger.info("Remembering the flight details ticket number of a traveler", { travelerNameText, alias });
+  this[alias] = await Cart.getFlightDetailsTicketNumberForTraveler(this.page, travelerNameText);
+  logger.info("Flight details ticket number remembered", { travelerNameText, alias, ticketNumber: this[alias] });
+});
+
+// Flight details shows first and last name only, so the random guest is found by the last name
+// kept on the World when the guest was added.
+When("I remember the flight details ticket number of the random guest traveler as {string}", async function (alias) {
+  if (!this.guestLastName) {
+    throw new Error("No guest last name on the World. Add the guest with 'I have added a random guest traveler ...' first.");
+  }
+  logger.info("Remembering the flight details ticket number of the random guest", { guestLastName: this.guestLastName, alias });
+  this[alias] = await Cart.getFlightDetailsTicketNumberForTraveler(this.page, this.guestLastName);
+  logger.info("Flight details ticket number remembered", { guestLastName: this.guestLastName, alias, ticketNumber: this[alias] });
+});
+
 Then("seat selection should be available from flight details", async function () {
   logger.info("Verifying seat selection is available from post-ticketing flight details");
   await Cart.verifySeatSelectionAvailableFromFlightDetails(this.page);
@@ -4053,6 +4117,26 @@ Then('the change and cancellation fees in the price breakdown should match the c
 Then('{string} should be visible in price breakdown', async function (label) {
   logger.info('Verifying row is visible in price breakdown', { label });
   await Cart.verifyPriceBreakdownRowVisible(this.page, label);
+});
+
+// #48241 — before ticketing, an airline that charges per card type shows "TBD" as the CC Charge.
+Then('the CC Charge in price breakdown should be {string}', async function (expectedValue) {
+  logger.info('Verifying CC Charge value in price breakdown', { expectedValue });
+  await Cart.verifyPriceBreakdownCcChargeValue(this.page, expectedValue);
+});
+
+When('I hover over the CC Charge info icon in price breakdown', async function () {
+  logger.info('Hovering CC Charge info icon in price breakdown');
+  this.ccChargeTooltipItems = await Cart.hoverPriceBreakdownCcChargeInfo(this.page);
+});
+
+Then('the CC Charge tooltip should contain {string}', function (expectedText) {
+  if (!Array.isArray(this.ccChargeTooltipItems)) {
+    throw new Error("No CC Charge tooltip captured. Run 'When I hover over the CC Charge info icon in price breakdown' first.");
+  }
+  logger.info('Verifying CC Charge tooltip line', { expectedText, items: this.ccChargeTooltipItems });
+  const match = this.ccChargeTooltipItems.find((item) => item.toLowerCase().includes(expectedText.toLowerCase()));
+  expect(match, `CC Charge tooltip should contain "${expectedText}". Lines: ${JSON.stringify(this.ccChargeTooltipItems)}`).toBeTruthy();
 });
 
 Then('{string} amount should match a currency format', async function (label) {

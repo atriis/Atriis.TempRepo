@@ -12,9 +12,9 @@ Feature: 66143 Sabre - Flight by schedule booking
   So that I can select specific segments and complete the booking
 
   Scenario: Sabre flight by schedule booking is successful
-    Given I am logged in as "brunasabre@clubcorp.com" booking a new trip
-    And I have added a random guest traveler
-    When I search for a flight by schedule from "LAX" to "DFW"
+    Given I am logged in as "brunasabre@froschbrunaautomation.com" booking a new trip
+    And I have added myself as the traveler
+    When I search for a flight by schedule from "LAS" to "SAN"
     And flight results should be available
     When I select flight segments by schedule
     And I wait for "Your Selection" text to be visible
