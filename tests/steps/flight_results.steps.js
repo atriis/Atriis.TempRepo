@@ -92,6 +92,13 @@ When("I add the first flight to cart", async function () {
   await FlightResults.addFirstFlightToCart(this.page);
 });
 
+// Carrier codes per leg, outbound first, e.g. "EI, W6" for an Aer Lingus + Wizz Air multi-city.
+When("I add the first flight flown by {string} to cart", async function (carrierCodes) {
+  const codes = carrierCodes.split(",").map((code) => code.trim()).filter(Boolean);
+  logger.info("Adding first flight flown by carriers to cart", { codes });
+  await FlightResults.addFirstFlightToCartFlownBy(this.page, codes);
+});
+
 When("I store the first flight result details for later comparison", async function () {
   logger.info("Storing the first flight result details for later comparison");
   this.storedFlightSegmentDetails = await FlightResults.extractFirstFlightResultSegmentDetails(this.page);

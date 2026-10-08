@@ -42,6 +42,7 @@ module.exports = {
   RoomLevelResults: require("./RoomLevelResults"),
   Search: require("./Search"),
   TravelRequest: require("./TravelRequest"),
+  TripApi: require("./TripApi"),
   Trips: require("./Trips"),
   UKParkingCart: require("./UKParkingCart"),
   UKParkingResults: require("./UKParkingResults"),

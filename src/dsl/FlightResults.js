@@ -2190,6 +2190,46 @@ const FlightResults = {
     return { added: true };
   },
 
+  /**
+   * Adds the first result whose legs are flown by the given carriers, in leg order, to the cart.
+   *
+   * A card prints each flight as carrier code + number ("EI402", "W62346"), so the match is on
+   * those codes rather than on airline names: "Wizz Air" would also match Wizz Air Malta (W4).
+   *
+   * @param {import('playwright').Page} page
+   * @param {string[]} carrierCodes - one per leg, outbound first, e.g. ["EI", "W6"]
+   */
+  async addFirstFlightToCartFlownBy(page, carrierCodes) {
+    if (!page) {
+      throw new Error('page is required');
+    }
+    if (!Array.isArray(carrierCodes) || carrierCodes.length === 0) {
+      throw new Error('[FlightResults.addFirstFlightToCartFlownBy] carrierCodes must be a non-empty array');
+    }
+
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    const cartPage = getPageObject(page, CartPage);
+    await flightResultsPage.waitForFlightResults();
+
+    const pattern = new RegExp(carrierCodes.map((code) => `\\b${code}\\d{1,4}\\b`).join('.*'));
+    const cards = flightResultsPage.getFlightResultCards();
+    const count = await cards.count();
+    for (let i = 0; i < count; i++) {
+      const text = (await cards.nth(i).innerText()).replace(/\s+/g, ' ');
+      if (pattern.test(text)) {
+        logger.info('Adding flight result to cart', { carrierCodes, resultIndex: i });
+        await flightResultsPage.getAddToTripButtonInResultCard(cards.nth(i)).first().click();
+        await Results.clickProceedConflictQuoteModal(page);
+        await cartPage.waitForPendingBookingText();
+        return { added: true, resultIndex: i };
+      }
+    }
+
+    throw new Error(
+      `[FlightResults.addFirstFlightToCartFlownBy] None of the ${count} results is flown by ${carrierCodes.join(' then ')}.`
+    );
+  },
+
   async extractFirstFlightResultSegmentDetails(page) {
     if (!page) {
       throw new Error('page is required');
