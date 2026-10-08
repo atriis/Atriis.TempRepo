@@ -11,7 +11,7 @@ Feature: 78890 - Separate PNR created when adding flight to a non-Hold booking
   So that the new flight is booked in a separate PNR, not added to the existing one
 
   Scenario: Adding a second flight after booking creates a separate PNR
-    Given I am logged in as "newPnr@sabre.corp" booking a new trip
+    Given I am logged in as "newPnr@club.corp" booking a new trip
     And I have added a random guest traveler with phone type "Mobile"
     When I search for a one way flight from "FRA" to "WAW"
     And flight results should be available
@@ -22,7 +22,7 @@ Feature: 78890 - Separate PNR created when adding flight to a non-Hold booking
     And I complete the booking
     Then the last quote status should be "Finalising"
     When I click to add a flight to my trip from cart
-    And I search for a one way flight from "KRK" to "FRA"
+    And I search for a one way flight from "KRK" to "FRA" from the cart
     And flight results should be available
     And I filter results by "No stops" checkbox
     And I filter results by carrier "Lufthansa"

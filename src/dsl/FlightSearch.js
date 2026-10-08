@@ -121,6 +121,8 @@ const FlightSearch = {
    *   (default: from SEARCH_DEFAULTS, and trip-type dependent)
    * @param {number} [options.returnDaysFromNow] - Days from today for the return date
    *   (default: from SEARCH_DEFAULTS; ignored for a one-way search)
+   * @param {boolean} [options.fromCart] - The search drawer was opened from the cart, where
+   *   other .search-btn elements (car/hotel cross-sell) sit behind it
    */
   async searchFlight(
     page,
@@ -130,6 +132,7 @@ const FlightSearch = {
       tripType,
       departureDaysFromNow,
       returnDaysFromNow = SEARCH_DEFAULTS.FLIGHT.RETURN_DAYS_FROM_NOW,
+      fromCart = false,
     },
   ) {
     const { from, to } = resolveRoute(routeInput, flightRoutes.routes, "flight");
@@ -185,7 +188,11 @@ const FlightSearch = {
       await flightSearchPage.selectCompleteTrip();
     }
 
-    await searchPage.waitAndClickSearchButton();
+    if (fromCart) {
+      await searchPage.waitAndClickPrimarySearchButtonFromCart();
+    } else {
+      await searchPage.waitAndClickSearchButton();
+    }
 
     return { searched: true, from, to, tripType, searchType };
   },
@@ -513,12 +520,13 @@ const FlightSearch = {
   async searchFlightOneWay(
     page,
     routeInput = flightRoutes.defaultRoute,
-    { departureDaysFromNow } = {},
+    { departureDaysFromNow, fromCart } = {},
   ) {
     return await this.searchFlight(page, routeInput, {
       searchType: "completeTrip",
       tripType: "oneWay",
       departureDaysFromNow,
+      fromCart,
     });
   },
 

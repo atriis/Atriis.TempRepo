@@ -27,6 +27,11 @@ When("I search for a one way flight from {string} to {string}", async function (
   await FlightSearch.searchFlightOneWay(this.page, { from, to });
 });
 
+When("I search for a one way flight from {string} to {string} from the cart", async function (from, to) {
+  logger.info('Searching for one-way flight from the cart', { from, to });
+  await FlightSearch.searchFlightOneWay(this.page, { from, to }, { fromCart: true });
+});
+
 When("I search for a one way flight from {string} to {string} on a day that is not Friday or Saturday", async function (from, to) {
   logger.info('Searching for one-way flight avoiding Friday/Saturday departure', { from, to });
   await FlightSearch.searchOneWayAvoidingWeekdays(this.page, from, to, ["friday", "saturday"]);
