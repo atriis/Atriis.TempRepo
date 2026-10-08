@@ -655,6 +655,29 @@ class CheckoutPage {
   }
 
   /**
+   * Waits until the contact phone country button is disabled - the observable signal that the
+   * "Don't share the contact details with airlines" checkbox has actually been turned on.
+   * The counterpart of isContactPhoneEnabledWithin.
+   *
+   * @param {number} [timeout=10000]
+   * @returns {Promise<boolean>} true when the button became disabled within the timeout
+   */
+  async isContactPhoneDisabledWithin(timeout = 10000) {
+    const countryBtn = this.page.locator(SELECTORS.CONTACT_PHONE_COUNTRY_BTN).first();
+    const deadline = Date.now() + timeout;
+    try {
+      await countryBtn.waitFor({ state: 'visible', timeout });
+    } catch {
+      return false;
+    }
+    while (Date.now() < deadline) {
+      if (await countryBtn.isDisabled().catch(() => false)) return true;
+      await this.page.waitForTimeout(250);
+    }
+    return false;
+  }
+
+  /**
    * Checks whether the contact details sharing checkbox is checked.
    * @returns {Promise<boolean>}
    */

@@ -504,6 +504,39 @@ const Checkout = {
   },
 
   /**
+   * Leaves the "Don't share the contact details with airlines" checkbox checked, so the booking
+   * sends the airline a refusal (CTCR REFUSED) instead of the contact (CTCE/CTCM). Its default
+   * follows the profile's isRefusedToSharePersonalData and is assigned after an async load, so a
+   * blind click can turn it off - this drives to the goal state, the phone fields becoming
+   * disabled, the mirror of shareContactDetailsWithAirlines.
+   *
+   * @param {import('playwright').Page} page
+   */
+  async refuseContactDetailsToAirlines(page) {
+    if (!page) throw new Error('page is required');
+
+    const checkoutPage = getPageObject(page, CheckoutPage);
+    await checkoutPage.waitForCheckoutContentLoaded();
+
+    for (let attempt = 1; attempt <= CONTACT_PHONE_EDIT_ATTEMPTS; attempt++) {
+      if (!(await checkoutPage.isContactDetailsCheckboxChecked())) {
+        logger.debug('"Don\'t share the contact details" is unchecked - checking it', { attempt });
+        await checkoutPage.clickContactDetailsCheckbox();
+      }
+
+      if (await checkoutPage.isContactPhoneDisabledWithin(CONTACT_SHARING_SETTLE_TIMEOUT)
+        && await checkoutPage.isContactDetailsCheckboxChecked()) {
+        return;
+      }
+    }
+
+    throw new Error(
+      `[Checkout.refuseContactDetailsToAirlines] "Don't share the contact details with airlines" ` +
+      `was still unchecked after ${CONTACT_PHONE_EDIT_ATTEMPTS} attempts - the booking would send the contact instead of CTCR`
+    );
+  },
+
+  /**
    * Verifies the checkout trip summary total matches the expected cart total.
    *
    * @param {import('playwright').Page} page

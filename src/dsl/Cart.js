@@ -18032,6 +18032,46 @@ const Cart = {
     return { message: actual };
   },
 
+  /**
+   * Reads the contact SSRs (CTCE, CTCM, CTCR) sent to Travelport in every request of a type logged
+   * for the trip. uAPI carries an SSR as attributes of its own tag (<SSR Type="CTCR" FreeText="REFUSED"/>),
+   * so each type stays paired with its own freetext.
+   * Guards ADO 58677: with "Don't share the contact details with airlines" checked, Galileo must send
+   * CTCR REFUSED and no CTCE/CTCM.
+   *
+   * @param {object} world - Cucumber world holding the trip id
+   * @param {string} requestType - e.g. "UniversalRecordModifyReq"
+   * @returns {Promise<{ssrs: Array<{type: string, freetext: string|null, carrier: string|null}>}>}
+   */
+  async collectUapiContactSsrs(world, requestType) {
+    if (!world || typeof world !== 'object') {
+      throw new Error('[Cart.collectUapiContactSsrs] "world" must be the Cucumber world, got: ' + typeof world);
+    }
+    if (!requestType || typeof requestType !== 'string') {
+      throw new Error('[Cart.collectUapiContactSsrs] "requestType" must be a non-empty string, got: ' + typeof requestType);
+    }
+
+    const { perCall } = await PayloadValidation.collectXmlBlockAttributesPerCall(
+      world,
+      requestType,
+      { SSR: ['Type', 'FreeText', 'Carrier'] },
+      { source: 'request', purpose: 'read the contact SSRs sent to Travelport' }
+    );
+
+    const ssrs = perCall
+      .flatMap((byTag) => byTag.SSR)
+      .filter((ssr) => /^CTC[EMR]$/i.test(ssr.Type || ''))
+      .map((ssr) => ({ type: ssr.Type.toUpperCase(), freetext: ssr.FreeText, carrier: ssr.Carrier }));
+
+    logger.info('[Cart.collectUapiContactSsrs] Contact SSRs sent', {
+      requestType,
+      calls: perCall.length,
+      contactSsrs: ssrs.map((ssr) => `${ssr.type}/${ssr.carrier}: ${ssr.freetext}`),
+    });
+
+    return { ssrs };
+  },
+
 };
 
 

@@ -1139,6 +1139,25 @@ Then("I successfully cancel the trip", async function () {
   expect(result.messageVisible, "Cancellation confirmation message should be visible").toBe(true);
 });
 
+// Guards ADO 58677: when the traveller refuses to share their contact details with airlines, the
+// Travelport booking enters a CTCR "REFUSED" SSR and none of the contact itself (CTCE email, CTCM mobile).
+Then(
+  "the {string} request should send the contact refusal as CTCR and no CTCE or CTCM",
+  async function (requestType) {
+    const { ssrs } = await Cart.collectUapiContactSsrs(this, requestType);
+    const sent = ssrs.map((ssr) => `${ssr.type}: ${ssr.freetext}`);
+
+    const ctcr = ssrs.filter((ssr) => ssr.type === "CTCR");
+    expect(ctcr.length, `No CTCR SSR in any "${requestType}" request for the trip - sent: [${sent.join(", ")}]`).toBeGreaterThan(0);
+    for (const ssr of ctcr) {
+      expect((ssr.freetext || "").toUpperCase(), `CTCR should carry "REFUSED"`).toBe("REFUSED");
+    }
+
+    const contact = ssrs.filter((ssr) => ssr.type === "CTCE" || ssr.type === "CTCM");
+    expect(contact.map((ssr) => `${ssr.type}: ${ssr.freetext}`), "No CTCE/CTCM may be sent when the contact is refused").toEqual([]);
+  }
+);
+
 Then("I successfully cancel the trip with 60 seconds wait", async function () {
   logger.info("Cancelling the trip successfully after a 60-second wait");
   const result = await Cart.cancelTripStrictWithWait(this.page, 60000);
