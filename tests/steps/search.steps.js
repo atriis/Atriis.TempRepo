@@ -308,6 +308,8 @@ Given("I have added a random guest traveler with middle name {string}", async fu
   expect(result.added, "Guest traveler should be added").toBe(true);
   this.guestTravelerCount = (this.guestTravelerCount ?? 0) + 1;
   this.selectedTravelerCount = result.selectedTravelerCount;
+  this.guestFirstName = result.guestData.firstName;
+  this.guestLastName = result.guestData.lastName;
 });
 
 // The names are typed padded, but kept on the World trimmed (`guestFirstName` / `guestLastName`) so a

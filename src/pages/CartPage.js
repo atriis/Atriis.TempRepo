@@ -383,6 +383,9 @@ const SELECTORS = {
   POST_TICKETING_TABLE: '.flight-post-ticketing-details .post-ticketing-table',
   POST_TICKETING_TICKET_NUMBER_TEXT: 'tbody tr td:nth-child(2) .mr-1:visible',
   POST_TICKETING_FIRST_SEAT_BUTTON: '.flight-post-ticketing-details .post-ticketing-table tbody tr:first-child td:nth-child(5) .add-seats-btn',
+  POST_TICKETING_TRAVELER_ROWS: 'tbody tr',
+  POST_TICKETING_ROW_TRAVELER_NAME_TEXT: 'td:nth-child(1) .mr-1',
+  POST_TICKETING_ROW_TICKET_NUMBER_TEXT: 'td:nth-child(2) .mr-1',
   MORE_DETAILS_HOTEL_BUTTON: ".more-details",
   MORE_DETAILS_CAR_BUTTON: ".more-details.is-flex",
   // Daily rate under the price on a car cart line item (car-quote-card.vue -> app-price
@@ -12771,6 +12774,31 @@ class CartPage {
     await ticketNumbers.first().waitFor({ state: 'visible', timeout });
     const values = await ticketNumbers.allInnerTexts();
     return values.map((value) => value.replace(/\s+/g, ' ').trim()).filter(Boolean);
+  }
+
+  /**
+   * Gets each traveler row of the first post-ticketing table as its name cell and ticket number.
+   * The name cell also carries the traveler type, e.g. "Sönja Götz (Adult)".
+   * @param {{ timeout?: number }} options
+   * @returns {Promise<Array<{ travelerName: string, ticketNumber: string }>>}
+   */
+  async getPostTicketingTravelerTickets({ timeout = 15000 } = {}) {
+    const firstTable = this.page.locator(SELECTORS.POST_TICKETING_TABLE).first();
+    await firstTable.waitFor({ state: 'visible', timeout });
+
+    const rows = firstTable.locator(SELECTORS.POST_TICKETING_TRAVELER_ROWS);
+    await rows.first().waitFor({ state: 'visible', timeout });
+
+    const travelerTickets = [];
+    for (const row of await rows.all()) {
+      const travelerName = await row.locator(SELECTORS.POST_TICKETING_ROW_TRAVELER_NAME_TEXT).first().innerText();
+      const ticketNumber = await row.locator(SELECTORS.POST_TICKETING_ROW_TICKET_NUMBER_TEXT).first().innerText();
+      travelerTickets.push({
+        travelerName: travelerName.replace(/\s+/g, ' ').trim(),
+        ticketNumber: ticketNumber.replace(/\s+/g, ' ').trim(),
+      });
+    }
+    return travelerTickets;
   }
 
   /**

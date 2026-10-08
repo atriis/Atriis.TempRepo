@@ -3914,6 +3914,29 @@ Then("ticket numbers should be visible in flight details", async function () {
   logger.info("Ticket numbers visible in flight details", { ticketNumbers });
 });
 
+Then("each of the {int} travelers in flight details should have a different ticket number", async function (travelerCount) {
+  logger.info("Verifying each traveler has a different ticket number in flight details", { travelerCount });
+  const travelerTickets = await Cart.verifyDistinctTicketNumberPerTravelerInFlightDetails(this.page, travelerCount);
+  logger.info("Each traveler has a different ticket number in flight details", { travelerTickets });
+});
+
+When("I remember the flight details ticket number of the traveler named {string} as {string}", async function (travelerNameText, alias) {
+  logger.info("Remembering the flight details ticket number of a traveler", { travelerNameText, alias });
+  this[alias] = await Cart.getFlightDetailsTicketNumberForTraveler(this.page, travelerNameText);
+  logger.info("Flight details ticket number remembered", { travelerNameText, alias, ticketNumber: this[alias] });
+});
+
+// Flight details shows first and last name only, so the random guest is found by the last name
+// kept on the World when the guest was added.
+When("I remember the flight details ticket number of the random guest traveler as {string}", async function (alias) {
+  if (!this.guestLastName) {
+    throw new Error("No guest last name on the World. Add the guest with 'I have added a random guest traveler ...' first.");
+  }
+  logger.info("Remembering the flight details ticket number of the random guest", { guestLastName: this.guestLastName, alias });
+  this[alias] = await Cart.getFlightDetailsTicketNumberForTraveler(this.page, this.guestLastName);
+  logger.info("Flight details ticket number remembered", { guestLastName: this.guestLastName, alias, ticketNumber: this[alias] });
+});
+
 Then("seat selection should be available from flight details", async function () {
   logger.info("Verifying seat selection is available from post-ticketing flight details");
   await Cart.verifySeatSelectionAvailableFromFlightDetails(this.page);

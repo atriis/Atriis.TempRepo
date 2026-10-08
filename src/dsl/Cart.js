@@ -12848,6 +12848,76 @@ const Cart = {
   },
 
   /**
+   * Verifies that every traveler row in the cart flight-details drawer has its own
+   * non-empty ticket number, so no traveler was given another traveler's ticket.
+   *
+   * @param {import('playwright').Page} page
+   * @param {number} expectedTravelerCount
+   * @returns {Promise<Array<{ travelerName: string, ticketNumber: string }>>}
+   */
+  async verifyDistinctTicketNumberPerTravelerInFlightDetails(page, expectedTravelerCount) {
+    if (!page) throw new Error('page is required');
+    if (!Number.isInteger(expectedTravelerCount) || expectedTravelerCount < 1) {
+      throw new Error('expectedTravelerCount must be a positive integer, got: ' + expectedTravelerCount);
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+    const travelerTickets = await cartPage.getPostTicketingTravelerTickets();
+    const summary = travelerTickets.map((row) => `${row.travelerName}: ${row.ticketNumber}`).join(', ');
+
+    expect(
+      travelerTickets.length,
+      `Expected ${expectedTravelerCount} traveler rows in flight details, got ${travelerTickets.length}: ${summary}`,
+    ).toBe(expectedTravelerCount);
+
+    for (const row of travelerTickets) {
+      expect(
+        row.ticketNumber.length,
+        `Expected a ticket number for traveler "${row.travelerName}" in flight details, got an empty value`,
+      ).toBeGreaterThan(0);
+    }
+
+    const distinctTicketNumbers = new Set(travelerTickets.map((row) => row.ticketNumber));
+    expect(
+      distinctTicketNumbers.size,
+      `Expected a different ticket number for each traveler in flight details, got: ${summary}`,
+    ).toBe(travelerTickets.length);
+
+    return travelerTickets;
+  },
+
+  /**
+   * Returns the ticket number shown in the cart flight-details drawer for the one
+   * traveler whose name cell contains the given text.
+   *
+   * @param {import('playwright').Page} page
+   * @param {string} travelerNameText - Text unique to one traveler's name, e.g. "Götz"
+   * @returns {Promise<string>}
+   */
+  async getFlightDetailsTicketNumberForTraveler(page, travelerNameText) {
+    if (!page) throw new Error('page is required');
+    if (typeof travelerNameText !== 'string' || !travelerNameText.trim()) {
+      throw new Error('travelerNameText must be a non-empty string, got: ' + typeof travelerNameText);
+    }
+
+    const cartPage = getPageObject(page, CartPage);
+    const travelerTickets = await cartPage.getPostTicketingTravelerTickets();
+    const matches = travelerTickets.filter((row) => row.travelerName.includes(travelerNameText.trim()));
+    const names = travelerTickets.map((row) => row.travelerName).join(', ');
+
+    expect(
+      matches.length,
+      `Expected exactly one traveler named like "${travelerNameText}" in flight details, found ${matches.length} among: ${names}`,
+    ).toBe(1);
+    expect(
+      matches[0].ticketNumber.length,
+      `Expected a ticket number for traveler "${matches[0].travelerName}" in flight details, got an empty value`,
+    ).toBeGreaterThan(0);
+
+    return matches[0].ticketNumber;
+  },
+
+  /**
    * Verifies that ticket numbers are visible (presence only) in the cart
    * flight-details drawer for the expected number of travelers. Use when the
    * issuing airline prefix is irrelevant — for example, GDS+NDC mixed flows
