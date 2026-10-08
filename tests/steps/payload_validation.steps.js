@@ -746,6 +746,32 @@ When("I wait until {string} requests have been sent for the trip", async functio
   });
 });
 
+// For a call a background worker sends minutes after the action, while the scenario still needs
+// to assert on it and clean up afterwards (e.g. the Galileo passive of ADO 61170, sent ~4 minutes
+// after the hold - cancelling before it would stop it from ever being sent).
+const MAX_BACKGROUND_WAIT_MINUTES = 15;
+When(
+  "I wait up to {int} minutes until {string} requests have been sent for the trip",
+  { timeout: (MAX_BACKGROUND_WAIT_MINUTES + 1) * 60 * 1000 },
+  async function (minutes, requestType) {
+    if (minutes < 1 || minutes > MAX_BACKGROUND_WAIT_MINUTES) {
+      throw new Error(`minutes must be between 1 and ${MAX_BACKGROUND_WAIT_MINUTES}, got: ${minutes}`);
+    }
+    await runPayloadValidationStep(this, "waitForRequestType", { requestType, minutes }, async () => {
+      logger.info("Waiting for a background request to appear in the trip log", {
+        requestType,
+        minutes,
+        ...getScenarioIdentifiers(this),
+      });
+      const count = await PayloadValidation.waitForRequestType(this, requestType, {
+        timeoutMs: minutes * 60 * 1000,
+        pollIntervalMs: 15000,
+      });
+      logger.info("Background request present in the trip log", { requestType, count });
+    });
+  },
+);
+
 When("I capture the number of {string} requests sent for the trip", async function (requestType) {
   await runPayloadValidationStep(this, "captureRequestCount", { requestType }, async () => {
     logger.info("Capturing baseline request count", { requestType, ...getScenarioIdentifiers(this) });

@@ -2261,12 +2261,19 @@ const PayloadValidation = {
   /**
    * Waits until at least one request of the given type has been logged for the trip.
    * Used to prove a stage of the flow reached the supplier before counting anything else.
+   *
+   * A call made by a background worker (e.g. the Galileo PassiveCreateReservationReq of ADO 61170,
+   * sent minutes after the hold) needs a longer timeout and a slower poll than the default anchor.
+   *
+   * @param {object} world - Cucumber world holding the trip id
+   * @param {string} requestType - request type as logged, "*" wildcard allowed
+   * @param {{timeoutMs?: number, pollIntervalMs?: number}} [options]
    */
-  async waitForRequestType(world, requestType) {
+  async waitForRequestType(world, requestType, { timeoutMs = ANCHOR_TIMEOUT_MS, pollIntervalMs = COUNT_POLL_INTERVAL_MS } = {}) {
     assertWorld(world);
     const normalizedRequestType = normalizeRequestType(requestType);
 
-    const deadline = Date.now() + ANCHOR_TIMEOUT_MS;
+    const deadline = Date.now() + timeoutMs;
     let lastError;
 
     while (Date.now() < deadline) {
@@ -2276,12 +2283,12 @@ const PayloadValidation = {
         return count;
       } catch (error) {
         lastError = error;
-        await sleep(COUNT_POLL_INTERVAL_MS);
+        await sleep(pollIntervalMs);
       }
     }
 
     throw new Error(
-      `Request type "${normalizedRequestType}" was never logged for this trip within ${ANCHOR_TIMEOUT_MS}ms. ` +
+      `Request type "${normalizedRequestType}" was never logged for this trip within ${timeoutMs}ms. ` +
       `Last error: ${lastError?.message || "n/a"}`
     );
   },

@@ -6940,6 +6940,33 @@ const Cart = {
   },
 
   /**
+   * Returns the record locator of the only PNR shown in the cart, without its "PNR " label
+   * (e.g. "PNR HNBF92" -> "HNBF92"), so it can be matched against a supplier payload.
+   *
+   * Fails when the cart shows more than one PNR: picking one of several would silently compare
+   * against the wrong product (ADO 61170 - the NDC flight card shows the airline PNR, not the
+   * Galileo PNR its passive segments are written to).
+   *
+   * @param {import('playwright').Page} page
+   * @returns {Promise<string>}
+   */
+  async extractOnlyQuotePnrCode(page) {
+    const pnrCodes = await this.extractVisibleQuotePnrCodes(page);
+    const distinctCodes = [...new Set(pnrCodes)];
+
+    if (distinctCodes.length !== 1) {
+      throw new Error(`Expected exactly one PNR in the cart, found ${distinctCodes.length}: ${distinctCodes.join(", ")}`);
+    }
+
+    const pnrCode = distinctCodes[0].replace(/^PNR\s*:?\s*/i, "").trim();
+    if (!/^[A-Z0-9]{5,8}$/.test(pnrCode)) {
+      throw new Error(`Could not read a record locator from the cart PNR "${distinctCodes[0]}"`);
+    }
+
+    return pnrCode;
+  },
+
+  /**
    * Verifies two flight quotes were merged into a single PNR.
    *
    * A merge is only visible as ONE quote card carrying a PNR. When it fails, the app leaves the two

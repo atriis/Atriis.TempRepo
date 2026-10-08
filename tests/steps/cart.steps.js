@@ -2056,6 +2056,15 @@ When("I store the first quote PNR code", async function () {
   logger.info("Stored first quote PNR code", { firstQuotePnrCode: this.storedFirstQuotePnrCode });
 });
 
+// Stores the bare record locator (no "PNR " label) of the only PNR in the cart, as world[key], so a
+// payload step can reference it as {key}. Use it while a single product is booked, e.g. the hotel
+// before a flight is added (ADO 61170).
+When("I store the only quote PNR code in the cart as {string}", async function (key) {
+  logger.info("Storing the only quote PNR code in the cart", { key });
+  this[key] = await Cart.extractOnlyQuotePnrCode(this.page);
+  logger.info("Stored the only quote PNR code in the cart", { key, pnrCode: this[key] });
+});
+
 When("I store the second quote PNR code", async function () {
   logger.info("Storing the second quote PNR code from cart");
   const pnrCodes = await Cart.extractVisibleQuotePnrCodes(this.page);
