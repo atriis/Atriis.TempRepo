@@ -4,9 +4,14 @@
 # Owner: Bruna Santos
 # Created: 2024-05-08T10:24:56Z
 # Updated: 2025-12-16T09:02:17Z
+#
+# Separate tickets price each ticket in its own Sabre EnhancedAirBookRQ, each selecting its own PNR
+# segments: <SegmentSelect Number="1"/> for one ticket and "2" for the next (or "1","2" then "3" when the
+# first ticket is a connection). The bug sent Number="1" for both.
+# Formerly checked by hand in the Logger; the payload step below replaces that manual part.
 
-@regression @flights @sabre @separate-tickets @by-schedule @hybrid
-Feature: 45750 HYBRID Sabre - Separate tickets - SegmentSelect Number="1" is not being sent twice
+@regression @flights @sabre @separate-tickets @by-schedule @ado:45750
+Feature: 45750 Sabre - Separate tickets - SegmentSelect Number="1" is not being sent twice
   As a corporate traveler
   I want to book separate ticket flights by schedule with different carriers
   So that the booking processes correctly without duplicate segment selection
@@ -27,4 +32,6 @@ Feature: 45750 HYBRID Sabre - Separate tickets - SegmentSelect Number="1" is not
     Then the booking status should be "Pending booking"
     And I accept Terms & Conditions
     And I hold the trip
-    Then I successfully cancel the trip
+    When I wait until "EnhancedAirBookRQ" requests have been sent for the trip
+    Then the "EnhancedAirBookRQ" requests should select segment 1 and segment 2 in different tickets
+    And I successfully cancel the trip

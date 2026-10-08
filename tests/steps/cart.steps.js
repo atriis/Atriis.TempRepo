@@ -1158,6 +1158,44 @@ Then(
   }
 );
 
+// Guards ADO 45750: separate tickets price each ticket in its own Sabre request, each selecting its own
+// PNR segments - Number="1" for one ticket and "2" for the next, or "1,2" then "3" when the first ticket
+// is a connection. The bug sent Number="1" for both. A retry of the same ticket in another class repeats
+// its selection word for word, so identical selections count once. The log returns calls newest first,
+// so which ticket came first is not asserted.
+Then(
+  "the {string} requests should select segment 1 and segment 2 in different tickets",
+  { timeout: 120000 },
+  async function (requestType) {
+    // The log publishes asynchronously: the second ticket's call can land a little after the first.
+    let tickets = [];
+    for (let attempt = 1; attempt <= 6; attempt++) {
+      const { selections } = await Cart.collectSabreSegmentSelects(this, requestType);
+      tickets = [...new Set(selections.map((numbers) => numbers.join(",")))];
+      if (tickets.length >= 2) break;
+      await new Promise((resolve) => setTimeout(resolve, 15000));
+    }
+
+    expect(tickets.length, `Expected one "${requestType}" selection per ticket, got [${tickets.join(" | ")}]`).toBeGreaterThanOrEqual(2);
+
+    const ticketsBySegment = new Map();
+    for (const ticket of tickets) {
+      for (const number of ticket.split(",")) {
+        ticketsBySegment.set(number, [...(ticketsBySegment.get(number) || []), ticket]);
+      }
+    }
+    const shared = [...ticketsBySegment.entries()].filter(([, owners]) => owners.length > 1);
+    expect(
+      shared.map(([number, owners]) => `Number="${number}" in [${owners.join(" | ")}]`),
+      "No segment may be selected by two different tickets"
+    ).toEqual([]);
+
+    const selected = [...ticketsBySegment.keys()];
+    expect(selected, `No ticket selected segment 1, got [${tickets.join(" | ")}]`).toContain("1");
+    expect(selected, `No ticket selected segment 2, got [${tickets.join(" | ")}]`).toContain("2");
+  }
+);
+
 Then("I successfully cancel the trip with 60 seconds wait", async function () {
   logger.info("Cancelling the trip successfully after a 60-second wait");
   const result = await Cart.cancelTripStrictWithWait(this.page, 60000);

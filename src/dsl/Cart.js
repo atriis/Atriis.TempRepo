@@ -18104,6 +18104,45 @@ const Cart = {
     return { ssrs };
   },
 
+  /**
+   * Reads the PNR segment numbers each Sabre request of a type logged for the trip asks to price
+   * (<SegmentSelect Number="n"/>), one list per call. Separate tickets price each ticket in its own
+   * EnhancedAirBookRQ, so the calls must select different segments. Calls selecting none - the
+   * first pass that only sells the segments - are left out.
+   * Guards ADO 45750: SegmentSelect Number="1" was sent for both tickets.
+   *
+   * @param {object} world - Cucumber world holding the trip id
+   * @param {string} requestType - e.g. "EnhancedAirBookRQ"
+   * @returns {Promise<{selections: string[][]}>}
+   */
+  async collectSabreSegmentSelects(world, requestType) {
+    if (!world || typeof world !== 'object') {
+      throw new Error('[Cart.collectSabreSegmentSelects] "world" must be the Cucumber world, got: ' + typeof world);
+    }
+    if (!requestType || typeof requestType !== 'string') {
+      throw new Error('[Cart.collectSabreSegmentSelects] "requestType" must be a non-empty string, got: ' + typeof requestType);
+    }
+
+    const { perCall } = await PayloadValidation.collectXmlBlockAttributesPerCall(
+      world,
+      requestType,
+      { SegmentSelect: ['Number'] },
+      { source: 'request', purpose: 'read the segments each Sabre pricing call selects' }
+    );
+
+    const selections = perCall
+      .map((byTag) => byTag.SegmentSelect.map((segment) => segment.Number).filter(Boolean))
+      .filter((numbers) => numbers.length > 0);
+
+    logger.info('[Cart.collectSabreSegmentSelects] Segments selected per call', {
+      requestType,
+      calls: perCall.length,
+      selections: selections.map((numbers) => numbers.join(',')),
+    });
+
+    return { selections };
+  },
+
 };
 
 
