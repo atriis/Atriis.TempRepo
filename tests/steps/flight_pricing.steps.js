@@ -2,6 +2,7 @@
 const { When, Then, setDefaultTimeout } = require("@cucumber/cucumber");
 const { expect } = require("@playwright/test");
 const { FlightPricing } = require("@dsl");
+const config = require("@config/config");
 const logger = require("@utils/logger").child("FlightPricing");
 
 setDefaultTimeout(120000);
@@ -115,6 +116,59 @@ Then('flight times on the pricing page should use the same format as the results
 When('I start intercepting the flight pricing response', function () {
   logger.info('Starting flightPricing API response capture');
   this.flightPricingResponsePromise = FlightPricing.startCapturingPricingResponse(this.page);
+});
+
+// ========================================
+// AMADEUS PRIVATE FARES (ADO 77019)
+// ========================================
+
+// Payload steps: they read the trip's pricing replies and take `world`. Above the default timeout
+// because the replies are downloaded one by one.
+const FARE_PRIVACY_STEP_TIMEOUT_MS = 240000;
+
+When("I capture whether each fare Amadeus priced in {string} is private from Storage", { timeout: FARE_PRIVACY_STEP_TIMEOUT_MS }, async function (requestType) {
+  if (!config.payloadValidation.enabled) {
+    logger.warn("PAYLOAD_VALIDATION_ENABLED=false", { step: "captureAmadeusFarePrivacy", requestType });
+    return;
+  }
+  logger.info("Capturing whether each priced Amadeus fare is private", {
+    requestType,
+    tripId: this.tripId || this.currentTripId || this.createdTripId || null,
+  });
+  const result = await FlightPricing.captureAmadeusFarePrivacy(this, requestType);
+  logger.info("Amadeus fare privacy captured", { private: result.private, published: result.published });
+});
+
+Then("Amadeus should have priced at least {int} private fare(s)", function (atLeast) {
+  if (!config.payloadValidation.enabled) {
+    logger.warn("PAYLOAD_VALIDATION_ENABLED=false", { step: "expectAmadeusPrivateFaresPriced", atLeast });
+    return;
+  }
+  logger.info("Validating Amadeus priced private fares", { atLeast });
+  const result = FlightPricing.expectAmadeusPrivateFaresPriced(this, atLeast);
+  logger.info("Amadeus private fares priced", result);
+});
+
+Then("every fare in the flight pricing response should be badged \"Agency Private Fare\" only when Amadeus priced it private", async function () {
+  if (!config.payloadValidation.enabled) {
+    logger.warn("PAYLOAD_VALIDATION_ENABLED=false", { step: "verifyPricingResponseBadgesPrivateFares" });
+    return;
+  }
+  logger.info("Comparing the flightPricing badges with the Amadeus pricing replies");
+  const result = await FlightPricing.verifyPricingResponseBadgesPrivateFares(
+    this, this.lastInterceptedResponsePromise ?? this.flightPricingResponsePromise,
+  );
+  logger.info("flightPricing badges match the Amadeus pricing replies", result);
+});
+
+Then("the pricing options should show the agreement icon on the private fares only", async function () {
+  if (!config.payloadValidation.enabled) {
+    logger.warn("PAYLOAD_VALIDATION_ENABLED=false", { step: "verifyPricingOptionsShowPrivateFareIcon" });
+    return;
+  }
+  logger.info("Validating the agreement icon marks the private fares in pricing options");
+  const result = await FlightPricing.verifyPricingOptionsShowPrivateFareIcon(this.page, this);
+  logger.info("Agreement icon marks the private fares", result);
 });
 
 // Side effect: stores the winning flightPricing response for the markup/select/cart steps.

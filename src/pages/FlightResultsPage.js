@@ -4682,6 +4682,30 @@ async clickSelectForFareWithBaggagePricingOptions(baggageText) {
   }
 
   /**
+   * Reads, for every fare row in the pricing options drawer, whether it carries the agreement icon.
+   *
+   * Waits for a visible amount first: the drawer renders skeleton rows before its fares, and a scan
+   * of those would report every fare as icon-less.
+   *
+   * @param {number} timeout - Max wait time in ms (default: 60000)
+   * @returns {Promise<boolean[]>} one entry per fare row, in display order
+   */
+  async getPricingOptionsAgreementIconPresence(timeout = 60000) {
+    const overlay = this.getPricingOptionsOverlay();
+    await overlay.waitFor({ state: "visible", timeout });
+    await overlay.locator(SELECTORS.PRICING_OPTIONS_AMOUNT_VALUE).first().waitFor({ state: "visible", timeout });
+
+    const options = overlay.locator(SELECTORS.PRICING_OPTIONS_ITEM);
+    const count = await options.count();
+    const presence = [];
+    for (let i = 0; i < count; i++) {
+      const icon = options.nth(i).locator(SELECTORS.AGREEMENT_ICON).first();
+      presence.push((await icon.count()) > 0 && await icon.isVisible());
+    }
+    return presence;
+  }
+
+  /**
    * Gets all carrier name texts from the flight results list.
    * @param {{ timeout?: number }} options
    * @returns {Promise<string[]>} Array of carrier name strings

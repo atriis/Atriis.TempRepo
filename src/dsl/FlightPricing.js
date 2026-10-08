@@ -4,8 +4,93 @@ const FlightPricingPage = require("@pages/FlightPricingPage");
 const FlightResultsPage = require("@pages/FlightResultsPage");
 const { CartPage } = require("@pages/CartPage");
 const Results = require("./Results");
+const PayloadValidation = require("./PayloadValidation");
 const { expect } = require("@playwright/test");
 const logger = require("@utils/logger").child("FlightPricing-DSL");
+
+// What TMC2 names an Amadeus private or negotiated fare in the flightPricing response.
+const AGENCY_PRIVATE_FARE = "Agency Private Fare";
+
+// The free text Amadeus carriers print on a private or negotiated fare. Same vocabulary as
+// AmadeusBase.IsAmadeusPrivateOrNegotiatedFare in TMC2.
+const PRIVATE_FARE_TEXT = /negotiated|CAT35|PRIVATE RATE|PRIVATE FARE/i;
+
+// Two amounts closer than this are the same fare: the reply prints two decimals, the response a float.
+const FARE_AMOUNT_TOLERANCE = 0.01;
+
+/**
+ * Classifies each fare of a Fare_InformativePricingWithoutPNR reply the way TMC2 does (#82699).
+ *
+ * Private when it carries priceTariffType "P", a negoFareGroup, or private-rate free text.
+ * Indicator 717 is deliberately ignored: Amadeus prints it next to published fares too, so it
+ * proves nothing on its own - which is why ADO 77019's original "717 and P" oracle was replaced.
+ *
+ * @param {Array<object>} perCall - from PayloadValidation.collectXmlBlockTreesPerCall
+ * @returns {Array<{amount: number, currency: string, isPrivate: boolean, reason: string}>}
+ */
+function classifyInformativePricingFares(perCall) {
+  const fares = [];
+  for (const call of perCall) {
+    for (const group of call.fareInfoGroup) {
+      // 712 is the total amount of the fare, the figure the flightPricing response calls wholePrice.
+      const total = group.otherMonetaryDetails.find((m) => m.typeQualifier[0] === "712");
+      if (!total || !total.amount[0]) continue;
+
+      const tariffType = (group.priceTariffType[0] || "").toUpperCase();
+      const privateText = group.freeText.find((text) => PRIVATE_FARE_TEXT.test(text));
+      let reason = "no private marker";
+      if (tariffType === "P") reason = "priceTariffType \"P\"";
+      else if (group.negoFareGroup.length > 0) reason = "negoFareGroup";
+      else if (privateText) reason = `free text "${privateText.trim()}"`;
+
+      fares.push({
+        amount: Number(total.amount[0]),
+        currency: total.currency[0] || "",
+        isPrivate: reason !== "no private marker",
+        reason: reason === "priceTariffType \"P\"" ? reason : `${reason} (priceTariffType "${tariffType}")`,
+      });
+    }
+  }
+  return fares;
+}
+
+/**
+ * Classifies each fare of a Fare_PriceUpsellWithoutPNR reply the way TMC2 does (#84086).
+ *
+ * The upsell reply carries no priceTariffType, so it is read from pricingInformation/fcmi: a digit
+ * is published, a letter is negotiated. A corporate ID, a TOU tour code or private-rate free text
+ * makes the fare private whatever fcmi says. A fare with no fcmi is left out - TMC2 cannot rule it
+ * published either, so nothing can be expected of it.
+ *
+ * @param {Array<object>} perCall - from PayloadValidation.collectXmlBlockTreesPerCall
+ * @returns {Array<{amount: number, currency: string, isPrivate: boolean, reason: string}>}
+ */
+function classifyPriceUpsellFares(perCall) {
+  const fares = [];
+  for (const call of perCall) {
+    for (const fare of call.fareList) {
+      const total = fare.fareDataSupInformation.find((d) => d.fareDataQualifier[0] === "712");
+      if (!total || !total.fareAmount[0]) continue;
+
+      const fcmi = fare.fcmi[0] || "";
+      const privateText = fare.errorFreeText.find((text) => PRIVATE_FARE_TEXT.test(text));
+      let reason = null;
+      if (fare.corporateID.some((id) => id && id.trim())) reason = "corporate ID";
+      else if (fare.attributeType.some((type) => (type || "").toUpperCase() === "TOU")) reason = "TOU tour code";
+      else if (privateText) reason = `free text "${privateText.trim()}"`;
+      else if (!fcmi) continue;
+      else reason = /^\d+$/.test(fcmi) ? null : `fcmi "${fcmi}"`;
+
+      fares.push({
+        amount: Number(total.fareAmount[0]),
+        currency: total.fareCurrency[0] || "",
+        isPrivate: reason !== null,
+        reason: reason || `fcmi "${fcmi}"`,
+      });
+    }
+  }
+  return fares;
+}
 
 /**
  * Finds the first pricing result whose validating/marketing/operating carrier
@@ -770,6 +855,241 @@ const FlightPricing = {
     return { field, actual };
   },
 
+  /**
+   * Reads every fare Amadeus priced for the trip in one pricing message and records whether TMC2
+   * should show it as private, adding to what earlier calls recorded. Guards ADO 77019.
+   *
+   * The message names the reader: InformativePricing replies say it with priceTariffType, upsell
+   * replies only with fcmi. See classifyInformativePricingFares and classifyPriceUpsellFares.
+   *
+   * @param {object} world
+   * @param {string} requestType - e.g. "*Fare_InformativePricingWithoutPNR*"
+   * @returns {Promise<{fares: Array<object>, private: number, published: number}>}
+   */
+  async captureAmadeusFarePrivacy(world, requestType) {
+    if (!world) throw new Error("[FlightPricing.captureAmadeusFarePrivacy] \"world\" is required.");
+    if (typeof requestType !== "string" || !requestType.trim()) {
+      throw new Error(
+        `[FlightPricing.captureAmadeusFarePrivacy] "requestType" must be a non-empty string, got: ${typeof requestType}`,
+      );
+    }
+
+    const readers = [
+      {
+        matches: /Fare_InformativePricingWithoutPNR/i,
+        blocks: {
+          fareInfoGroup: {
+            fields: ["priceTariffType", "freeText"],
+            blocks: {
+              negoFareGroup: {},
+              otherMonetaryDetails: { fields: ["typeQualifier", "amount", "currency"] },
+            },
+          },
+        },
+        classify: classifyInformativePricingFares,
+      },
+      {
+        matches: /Fare_PriceUpsellWithoutPNR/i,
+        blocks: {
+          fareList: {
+            fields: ["fcmi", "errorFreeText", "corporateID", "attributeType"],
+            blocks: { fareDataSupInformation: { fields: ["fareDataQualifier", "fareAmount", "fareCurrency"] } },
+          },
+        },
+        classify: classifyPriceUpsellFares,
+      },
+    ];
+    const reader = readers.find((candidate) => candidate.matches.test(requestType));
+    if (!reader) {
+      throw new Error(
+        `[FlightPricing.captureAmadeusFarePrivacy] No fare privacy reader knows the message "${requestType}". ` +
+        `Known: ${readers.map((candidate) => candidate.matches.source).join(", ")}.`,
+      );
+    }
+
+    const { perCall } = await PayloadValidation.collectXmlBlockTreesPerCall(world, requestType, reader.blocks, {
+      source: "response",
+      purpose: "read whether each priced fare is private or published",
+    });
+    const fares = reader.classify(perCall).map((fare) => ({ ...fare, requestType }));
+
+    world.capturedAmadeusFarePrivacy = [...(world.capturedAmadeusFarePrivacy || []), ...fares];
+
+    const privateCount = fares.filter((fare) => fare.isPrivate).length;
+    logger.info("Captured whether each Amadeus fare is private", {
+      requestType,
+      replies: perCall.length,
+      private: privateCount,
+      published: fares.length - privateCount,
+      fares: fares.map((fare) => `${fare.amount} ${fare.currency} ${fare.isPrivate ? "private" : "published"}: ${fare.reason}`),
+    });
+    return { fares, private: privateCount, published: fares.length - privateCount };
+  },
+
+  /**
+   * Asserts the pricing replies held at least this many private fares, so the badge checks that
+   * follow cannot pass on a search where the carrier filed nothing private.
+   *
+   * @param {object} world - Must carry capturedAmadeusFarePrivacy
+   * @param {number} atLeast
+   */
+  expectAmadeusPrivateFaresPriced(world, atLeast) {
+    const fares = requireCapturedFarePrivacy(world, "expectAmadeusPrivateFaresPriced");
+    const privateFares = fares.filter((fare) => fare.isPrivate);
+    expect(
+      privateFares.length,
+      `Expected Amadeus to price at least ${atLeast} private fare(s), found ${privateFares.length} among ` +
+      `${fares.length} priced fare(s): ${describeFares(fares)}. Without one, nothing below proves a private ` +
+      "fare is badged - check the carrier filter and the corporate's private fare setup.",
+    ).toBeGreaterThanOrEqual(atLeast);
+    return { private: privateFares.length, priced: fares.length };
+  },
+
+  /**
+   * Asserts each fare of the flightPricing response is badged "Agency Private Fare" exactly when
+   * the Amadeus reply that priced it says private. Guards ADO 77019.
+   *
+   * A response fare is tied to its reply by amount: wholePrice is the reply's 712 total, in the
+   * same currency. A fare no reply priced fails the check; one whose amount two replies priced
+   * differently cannot be judged and is reported but skipped.
+   *
+   * @param {object} world - Must carry capturedAmadeusFarePrivacy
+   * @param {Promise<import('@playwright/test').Response>} responsePromise - from startCapturingPricingResponse
+   * @returns {Promise<{private: number, published: number, ambiguous: number}>}
+   */
+  async verifyPricingResponseBadgesPrivateFares(world, responsePromise) {
+    const fares = requireCapturedFarePrivacy(world, "verifyPricingResponseBadgesPrivateFares");
+    if (!responsePromise) {
+      throw new Error("responsePromise is required — call startCapturingPricingResponse before the pricing action");
+    }
+    const body = await readJson(responsePromise);
+    const results = body && Array.isArray(body.results) ? body.results : Array.isArray(body) ? body : null;
+    if (!results || results.length === 0) {
+      throw new Error("flightPricing response body has no results array");
+    }
+
+    const unmatched = [];
+    const ambiguous = [];
+    const wrongBadge = [];
+    const expectedPrivacy = [];
+
+    for (const result of results) {
+      const amount = Number(result.wholePrice);
+      const label = `${amount.toFixed(2)} ${result.currency} (agreementCode: ${JSON.stringify(result.agreementCode)})`;
+      const pricedAs = fares.filter((fare) =>
+        fare.currency.toUpperCase() === String(result.currency || "").toUpperCase() &&
+        Math.abs(fare.amount - amount) < FARE_AMOUNT_TOLERANCE,
+      );
+      if (pricedAs.length === 0) {
+        unmatched.push(label);
+        continue;
+      }
+      const verdicts = new Set(pricedAs.map((fare) => fare.isPrivate));
+      if (verdicts.size > 1) {
+        ambiguous.push(label);
+        expectedPrivacy.push(null);
+        continue;
+      }
+      const isPrivate = pricedAs[0].isPrivate;
+      expectedPrivacy.push(isPrivate);
+      if ((result.agreementCode === AGENCY_PRIVATE_FARE) !== isPrivate) {
+        wrongBadge.push(`${label} - Amadeus priced it ${isPrivate ? "private" : "published"}: ${pricedAs[0].reason}`);
+      }
+    }
+
+    logger.info("Compared the flightPricing badges with the fares Amadeus priced", {
+      results: results.length,
+      unmatched: unmatched.length,
+      ambiguous,
+      wrongBadge: wrongBadge.length,
+    });
+
+    expect(
+      unmatched,
+      "These flightPricing fares match no fare in the captured Amadeus pricing replies, so their badge " +
+      `cannot be checked: ${unmatched.join("; ")}. Priced fares: ${describeFares(fares)}.`,
+    ).toEqual([]);
+    expect(
+      wrongBadge,
+      `These fares are badged against what Amadeus priced - "${AGENCY_PRIVATE_FARE}" belongs on a ` +
+      `private fare and only there: ${wrongBadge.join("; ")}.`,
+    ).toEqual([]);
+    expect(
+      expectedPrivacy.some((isPrivate) => isPrivate === true),
+      `No flightPricing fare could be tied to a private Amadeus fare (${ambiguous.length} ambiguous), ` +
+      "so the response proves nothing about how a private fare is badged.",
+    ).toBe(true);
+
+    world.expectedPricingOptionPrivacy = expectedPrivacy;
+    return {
+      private: expectedPrivacy.filter((isPrivate) => isPrivate === true).length,
+      published: expectedPrivacy.filter((isPrivate) => isPrivate === false).length,
+      ambiguous: ambiguous.length,
+    };
+  },
+
+  /**
+   * Asserts the pricing options drawer shows the agreement icon on as many fares as the response
+   * badged private, and on none of the others. Counts rather than pairs rows: the drawer sorts its
+   * fares itself, so its order says nothing about the response's.
+   *
+   * @param {import('playwright').Page} page
+   * @param {object} world - Must carry expectedPricingOptionPrivacy
+   * @returns {Promise<{withIcon: number, withoutIcon: number}>}
+   */
+  async verifyPricingOptionsShowPrivateFareIcon(page, world) {
+    if (!page) throw new Error("page is required");
+    const expectedPrivacy = world && world.expectedPricingOptionPrivacy;
+    if (!Array.isArray(expectedPrivacy)) {
+      throw new Error(
+        "[FlightPricing.verifyPricingOptionsShowPrivateFareIcon] No expected badges on the world. Run the step " +
+        "that checks the flightPricing badges against the Amadeus replies first.",
+      );
+    }
+    if (expectedPrivacy.includes(null)) {
+      logger.warn("Some fares could not be classified; comparing icon counts would be guesswork - checking only that private fares show the icon");
+    }
+
+    const flightResultsPage = getPageObject(page, FlightResultsPage);
+    const presence = await flightResultsPage.getPricingOptionsAgreementIconPresence();
+    const withIcon = presence.filter(Boolean).length;
+    const withoutIcon = presence.length - withIcon;
+    const expectedPrivate = expectedPrivacy.filter((isPrivate) => isPrivate === true).length;
+    const expectedPublished = expectedPrivacy.filter((isPrivate) => isPrivate === false).length;
+
+    logger.info("Agreement icons in the pricing options drawer", {
+      rows: presence.length, withIcon, withoutIcon, expectedPrivate, expectedPublished,
+    });
+
+    if (expectedPrivacy.includes(null)) {
+      expect(withIcon, "Every private fare should show the agreement icon in the pricing options").toBeGreaterThanOrEqual(expectedPrivate);
+    } else {
+      expect(
+        { withIcon, withoutIcon },
+        `The pricing options should show the agreement icon on the ${expectedPrivate} private fare(s) and ` +
+        `not on the ${expectedPublished} published one(s)`,
+      ).toEqual({ withIcon: expectedPrivate, withoutIcon: expectedPublished });
+    }
+    return { withIcon, withoutIcon };
+  },
+
 };
+
+function requireCapturedFarePrivacy(world, caller) {
+  const fares = world && world.capturedAmadeusFarePrivacy;
+  if (!Array.isArray(fares) || fares.length === 0) {
+    throw new Error(
+      `[FlightPricing.${caller}] No priced Amadeus fares were captured. Run the step that captures ` +
+      "whether each fare is private from the pricing replies first - or none of them priced anything.",
+    );
+  }
+  return fares;
+}
+
+function describeFares(fares) {
+  return fares
+    .map((fare) => `${fare.amount} ${fare.currency} ${fare.isPrivate ? "private" : "published"}`)
+    .join(", ");
+}
 
 module.exports = FlightPricing;
