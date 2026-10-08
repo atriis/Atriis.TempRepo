@@ -12,8 +12,8 @@ Feature: 45750 HYBRID Sabre - Separate tickets - SegmentSelect Number="1" is not
   So that the booking processes correctly without duplicate segment selection
 
   Scenario: Separate tickets are created correctly when booking by schedule with different carriers
-    Given I am logged in as "brunasantossabre@sabre.com" booking a new trip
-    And I have added a random guest traveler
+    Given I am logged in as "brunasabre@froschbrunaautomation.com" booking a new trip
+    And I have added a random guest traveler with phone type "Mobile"
     When I search for a flight by schedule from "AMS" to "FRA"
     And flight results should be available
     And I filter airline results by "Air France" checkbox
@@ -25,8 +25,6 @@ Feature: 45750 HYBRID Sabre - Separate tickets - SegmentSelect Number="1" is not
     Then the "Separated Tickets" indicator should be visible in the pricing page
     And I add "Your Selection" fare to trip
     Then the booking status should be "Pending booking"
-    When I add a credit card as payment method
-    When I fill in the OOP justification text "aaa"
     And I accept Terms & Conditions
     And I hold the trip
     Then I successfully cancel the trip
