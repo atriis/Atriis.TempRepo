@@ -15,9 +15,9 @@ Feature: 82774 Amadeus NDC - Multi-pax per-traveller price is the fare for one t
     Given I am logged in as "matteo.luca@ams.amadeus.ndc" booking a new trip
     And I have added myself as the traveler
     And I have added a random guest traveler
-    When I search for a round trip flight from "AMS" to "BER"
+    When I search for a round trip flight from "AMS" to "PAR"
     Then flight results should be available
-    When I filter results by carrier "KLM"
+    And I filter airline results by "KLM" checkbox
     Then the "NDC Direct Rate" indicator should be visible in results
 
     When I select the first flight result in new flight flow
