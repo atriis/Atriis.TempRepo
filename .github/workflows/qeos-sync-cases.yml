@@ -1,0 +1,24 @@
+name: QEOS sync test cases
+
+on:
+  push:
+    paths: ["tests/features/**"]
+  workflow_dispatch:
+    inputs:
+      first_sync:
+        description: "First sync only: allow archiving the old dashboard-imported cases"
+        type: boolean
+        default: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: pip install "qeos-collector @ git+https://github.com/carneiru/QA-Vision-Platform@collector-v0.4.1#subdirectory=collector"
+      - run: qeos-collector import-features "tests/features/**/*.feature" ${{ inputs.first_sync && '--allow-mass-archive' || '' }}
+        env:
+          QEOS_URL: ${{ vars.QEOS_URL }}
+          QEOS_API_KEY: ${{ secrets.QEOS_API_KEY }}
