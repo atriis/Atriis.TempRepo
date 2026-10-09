@@ -18,7 +18,7 @@ Feature: 69184 Galileo - Complete trip booking verifying fare rules
     When I search for a round trip flight from "LON" to "DOH"
     # Checkbox, not the search box: that one also matches a codeshare's "Operated by" label, and
     # those itineraries have no pricing options for the fare rules button to sit in.
-    And I filter airline results by "Etihad Airways" checkbox
+    And I filter airline results by "Qatar Airways" checkbox
     And I click to open fare rules
     Then I should see the fare rules note about strictest terms
     And I close fare rules window
