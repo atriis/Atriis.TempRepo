@@ -38,7 +38,7 @@ Feature: 84967 Amadeus NDC - brand card rules reflect the penalties the airline 
 
   @priority:high
   Scenario: Change and cancellation badges reflect the NDC penalties, per brand and per leg
-    Given I am logged in as "amsnewflowama@ra.com" booking a new trip
+    Given I am logged in as "matteo.luca@ams.amadeus.ndc" booking a new trip
     And I have added myself as the traveler
     When I search for a round trip flight from "BUD" to "BOS"
     Then flight results should be available
