@@ -202,7 +202,16 @@ jobs:
           pattern: '*-{results,report}'
           path: all-results
         continue-on-error: true
-
+        
+      - name: Upload results to QEOS
+        if: always() && vars.QEOS_URL != ''
+        uses: carneiru/QA-Vision-Platform/collector-action@collector-v0.4.1
+        with:
+          url: ${{ vars.QEOS_URL }}
+          patterns: all-results/**/cucumber-report.json
+        env:
+          QEOS_API_KEY: ${{ secrets.QEOS_API_KEY }}
+          
       # Every download step is continue-on-error, so without this the job would
       # sail on and blame the suites for the missing results. Record whether any
       # attempt actually landed, so Reconcile can tell "the suites produced
