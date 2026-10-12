@@ -697,7 +697,16 @@ jobs:
           pattern: 'rerun-{plan,*-report}'
           path: shard-reports
         continue-on-error: true
-
+        
+      - name: Upload results to QEOS
+        if: always() && vars.QEOS_URL != ''
+        uses: carneiru/QA-Vision-Platform/collector-action@collector-v0.4.1
+        with:
+          url: ${{ vars.QEOS_URL }}
+          patterns: shard-reports/**/cucumber-report.json
+        env:
+          QEOS_API_KEY: ${{ secrets.QEOS_API_KEY }}
+          
       - name: Back off before retrying the artifact download
         if: always() && steps.download-1.outcome == 'failure'
         shell: bash
