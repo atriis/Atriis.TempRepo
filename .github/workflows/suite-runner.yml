@@ -205,7 +205,7 @@ jobs:
         
       - name: Upload results to QEOS
         if: always() && vars.QEOS_URL != ''
-        uses: carneiru/QA-Vision-Platform/collector-action@collector-v0.5.1
+        uses: carneiru/QA-Vision-Platform/collector-action@collector-v0
         with:
           url: ${{ vars.QEOS_URL }}
           patterns: all-results/**/cucumber-report.json
