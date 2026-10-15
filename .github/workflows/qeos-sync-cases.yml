@@ -17,7 +17,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with: { python-version: "3.12" }
-      - run: pip install "qeos-collector @ git+https://github.com/carneiru/QA-Vision-Platform@collector-v0.4.1#subdirectory=collector"
+      - run: pip install "qeos-collector @ git+https://github.com/atriis/Atriis.QEOS@collector-v0#subdirectory=collector"
       - run: qeos-collector import-features "tests/features/**/*.feature" ${{ inputs.first_sync && '--allow-mass-archive' || '' }}
         env:
           QEOS_URL: ${{ vars.QEOS_URL }}
