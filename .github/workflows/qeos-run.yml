@@ -1,4 +1,4 @@
-# QEOS: run selected scenarios on demand (QA-Vision-Platform docs/superpowers/specs/2026-10-07-run-from-qa-vision-design.md).
+# QEOS: run selected scenarios on demand (Atriis.QEOS docs/superpowers/specs/2026-10-07-run-from-qa-vision-design.md).
 # Copy to .github/workflows/qeos-run.yml on the repository's DEFAULT branch (GitHub dispatches only
 # workflows found there) and qeos-run.mjs to .github/scripts/qeos-run.mjs. Both files must also
 # exist on the configured branch (Project Settings › Run from QEOS): that run reads them from there.
