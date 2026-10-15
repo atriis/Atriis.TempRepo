@@ -19,6 +19,7 @@ const { expectNumbersToBeEqualWithTolerance } = require("../assertions/numberAss
 const { parseAmountText } = require("@utils/dom");
 const { normalizeText, extractDateTokens, escapeRegex, stripWhitespaceAndLowercase, sortAlphabetically } = require("@utils/text");
 const { extractPdfText, countLetters, assertPdfTextIsReadable, containsAmount, findCurrencyAmounts } = require("@utils/pdf");
+const GalileoMiniRules = require("@utils/galileoMiniRules");
 const logger = require("@utils/logger").child("Cart-DSL");
 
 // Every translation the app ships for `validation.unReadMessages1` (Atriis.OBT/src/assets/locale/*.json)
@@ -3479,6 +3480,103 @@ const Cart = {
       beforeDepartureText,
       afterDepartureText,
     };
+  },
+
+  /**
+   * Verifies the change and cancellation fees, before and after departure, in the open flight price
+   * breakdown against the Galileo (1G) penalties of the fare that was added to the cart.
+   *
+   * The selected fare is read from the trip's SelectFlight request; its AirPricingSolution is found
+   * in the trip's LowFareSearchRsp responses, and the expected fees follow the backend parsing
+   * (src/utils/galileoMiniRules.js). Only for a fare added straight from the results: that path does
+   * not re-price, so the search penalties are what the cart shows.
+   *
+   * @param {import('playwright').Page} page
+   * @param {object} world - Cucumber world holding the trip id
+   * @returns {Promise<{penalties: object, expected: object, displayed: object}>}
+   */
+  async verifyGalileoMiniRuleFeesInPriceBreakdown(page, world) {
+    if (!page) throw new Error('page is required');
+    if (!world) throw new Error('world is required');
+
+    const { payloads: selectFlightRequests } = await PayloadValidation.collectPayloadsForTrip(world, 'SelectFlight', {
+      source: 'request',
+      purpose: 'read the fare added to the cart',
+    });
+    if (selectFlightRequests.length !== 1) {
+      throw new Error(
+        `[Cart.verifyGalileoMiniRuleFeesInPriceBreakdown] Expected exactly 1 SelectFlight request for the trip, ` +
+        `found ${selectFlightRequests.length}: the fare added to the cart cannot be identified.`
+      );
+    }
+    const selectedSegments = GalileoMiniRules.selectedSegmentsFromSelectFlight(selectFlightRequests[0]);
+
+    const { payloads: searchResponses } = await PayloadValidation.collectPayloadsForTrip(world, 'LowFareSearchRsp', {
+      source: 'response',
+      purpose: 'read the Galileo penalties of the fare added to the cart',
+    });
+    const { solutionKeys, penalties, expected } = GalileoMiniRules.expectedPriceBreakdownFees(searchResponses, selectedSegments);
+
+    const cartPage = getPageObject(page, CartPage);
+    const texts = await cartPage.getFlightPriceBreakdownChangeAndCancelFeeTexts();
+    const displayed = {
+      change: { before: GalileoMiniRules.readDisplayedFee(texts.change.before), after: GalileoMiniRules.readDisplayedFee(texts.change.after) },
+      cancel: { before: GalileoMiniRules.readDisplayedFee(texts.cancel.before), after: GalileoMiniRules.readDisplayedFee(texts.cancel.after) },
+    };
+
+    logger.info('Galileo penalties of the fare added to the cart', { solutionKeys, penalties });
+    logger.info('Mini rule fees shown in the price breakdown', { texts });
+
+    const mismatches = [];
+    for (const fee of ['change', 'cancel']) {
+      for (const when of ['before', 'after']) {
+        const want = expected[fee][when];
+        const got = displayed[fee][when];
+        const same = want.state === got.state && (want.state !== 'amount' || Math.abs(want.amount - got.amount) < 0.005);
+        if (!same) {
+          mismatches.push(
+            `${fee === 'change' ? 'Change' : 'Cancellation'} fee ${when} departure: expected "${want.text}", shown "${got.text}"`
+          );
+        }
+      }
+    }
+
+    if (mismatches.length > 0) {
+      throw new Error(
+        `[Cart.verifyGalileoMiniRuleFeesInPriceBreakdown] The price breakdown mini rules do not match the ` +
+        `Galileo penalties of the fare added to the cart:\n  - ${mismatches.join('\n  - ')}\n` +
+        `Penalties (LowFareSearchRsp, solution ${solutionKeys.join(', ')}):\n  ${penalties.change}\n  ${penalties.cancel}\n` +
+        `  Refundability: ${penalties.refundability}`
+      );
+    }
+
+    logger.info('Price breakdown mini rule fees match the Galileo penalties', { expected });
+    return { penalties, expected, displayed };
+  },
+
+  /**
+   * Verifies the Galileo fare added to the cart files the expected CancelPenalty percentage, so a
+   * scenario written for one kind of fare fails loudly when the supplier starts selling another.
+   *
+   * @param {{penalties: {cancel: string|null}}} verification - What verifyGalileoMiniRuleFeesInPriceBreakdown returned
+   * @param {number} expectedPercentage
+   */
+  verifyGalileoCancelPenaltyPercentage(verification, expectedPercentage) {
+    if (!verification?.penalties) {
+      throw new Error(
+        '[Cart.verifyGalileoCancelPenaltyPercentage] The Galileo penalties are not known. ' +
+        'Verify the price breakdown mini rules against the Galileo penalties first.'
+      );
+    }
+    const cancelPenalty = verification.penalties.cancel;
+    const match = String(cancelPenalty || '').match(/<(?:[\w.-]+:)?Percentage>([^<]*)</);
+    const percentage = match ? Number.parseFloat(match[1]) : null;
+    expect(
+      percentage,
+      `The fare added to the cart should file a ${expectedPercentage}% CancelPenalty, it files: ${cancelPenalty || 'no CancelPenalty'}`
+    ).toBe(expectedPercentage);
+    logger.info('Galileo CancelPenalty percentage verified', { cancelPenalty });
+    return { percentage, cancelPenalty };
   },
 
   async verifyPriceBreakdownRowVisible(page, label) {

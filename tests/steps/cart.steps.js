@@ -4099,6 +4099,30 @@ Then('the price breakdown should show subtotal and non-refundable cancellation b
   await Cart.verifyNonRefundableMiniRulesInPriceBreakdown(this.page);
 });
 
+// Reads the trip's SelectFlight request and LowFareSearchRsp responses from Storage. The timeout clears
+// the payload download budget for a full search response (~1 MB).
+Then('the price breakdown change and cancellation fees should match the Galileo penalties of the fare added to the cart', { timeout: 240000 }, async function () {
+  if (!config.payloadValidation.enabled) {
+    logger.warn('PAYLOAD_VALIDATION_ENABLED=false', { step: 'verifyGalileoMiniRuleFeesInPriceBreakdown' });
+    return;
+  }
+  logger.info('Verifying the price breakdown mini rules against the Galileo penalties of the fare added to the cart');
+  this.galileoMiniRules = await Cart.verifyGalileoMiniRuleFeesInPriceBreakdown(this.page, this);
+  this.attach(
+    `Galileo penalties (LowFareSearchRsp):\n${this.galileoMiniRules.penalties.change}\n` +
+    `${this.galileoMiniRules.penalties.cancel}\nRefundability: ${this.galileoMiniRules.penalties.refundability}`,
+    'text/plain'
+  );
+});
+
+Then('the Galileo fare added to the cart should file a {int}% cancel penalty', async function (percentage) {
+  if (!config.payloadValidation.enabled) {
+    logger.warn('PAYLOAD_VALIDATION_ENABLED=false', { step: 'verifyGalileoCancelPenaltyPercentage', percentage });
+    return;
+  }
+  Cart.verifyGalileoCancelPenaltyPercentage(this.galileoMiniRules, percentage);
+});
+
 Then('{string} should be visible in price breakdown', async function (label) {
   logger.info('Verifying row is visible in price breakdown', { label });
   await Cart.verifyPriceBreakdownRowVisible(this.page, label);
