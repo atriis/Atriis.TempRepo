@@ -697,16 +697,7 @@ jobs:
           pattern: 'rerun-{plan,*-report}'
           path: shard-reports
         continue-on-error: true
-        
-      - name: Upload results to QEOS
-        if: always() && vars.QEOS_URL != ''
-        uses: carneiru/QA-Vision-Platform/collector-action@collector-v0
-        with:
-          url: ${{ vars.QEOS_URL }}
-          patterns: shard-reports/**/cucumber-report.json
-        env:
-          QEOS_API_KEY: ${{ secrets.QEOS_API_KEY }}
-          
+                 
       - name: Back off before retrying the artifact download
         if: always() && steps.download-1.outcome == 'failure'
         shell: bash
@@ -734,6 +725,18 @@ jobs:
           pattern: 'rerun-{plan,*-report}'
           path: shard-reports
         continue-on-error: true
+        
+      # QEOS: uploads the results, so the run appears under Runs and on its test cases.
+      # Goes after the test step, in the job that runs cucumber-js.
+      # Needs the repository variable QEOS_URL (this QEOS address) and the repository secret QEOS_API_KEY  
+      - name: Upload results to QEOS
+        if: always() && vars.QEOS_URL != ''
+        uses: carneiru/QA-Vision-Platform/collector-action@collector-v0
+        with:
+          url: ${{ vars.QEOS_URL }}
+          patterns: shard-reports/**/cucumber-report.json
+        env:
+          QEOS_API_KEY: ${{ secrets.QEOS_API_KEY }}
 
       # The downloads are continue-on-error, so without this the aggregation below
       # would blame the shards for results it simply could not fetch.
