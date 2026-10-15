@@ -2108,6 +2108,48 @@ class FlightResultsPage {
   }
 
   /**
+   * Describes each pricing-option card on the current leg, in order: its brand name and whether it
+   * carries an agreement (a negotiated fare renders the agreement logo, .agreement-icon, in its header).
+   * Waits for a real price first, so the loading skeleton is never mistaken for "no agreement".
+   *
+   * @param {number} timeout - Max wait for the cards to render (default: 120000)
+   * @returns {Promise<Array<{brand: string, hasAgreement: boolean}>>}
+   */
+  async getPricingOptionCardAgreements(timeout = 120000) {
+    const overlay = this.getPricingOptionsOverlay();
+    const cards = overlay.locator(SELECTORS.PRICING_OPTIONS_CARD);
+    try {
+      await cards.first().locator(SELECTORS.PRICING_OPTIONS_CARD_PRICE).first().waitFor({ state: 'visible', timeout });
+    } catch (err) {
+      throw new Error(
+        `[FlightResultsPage.getPricingOptionCardAgreements] No priced fare card rendered in the pricing options ` +
+        `drawer (cards: ${SELECTORS.PRICING_OPTIONS_CARD}). Original: ${err.message}`
+      );
+    }
+
+    const count = await cards.count();
+    const result = [];
+    for (let i = 0; i < count; i += 1) {
+      const card = cards.nth(i);
+      result.push({
+        brand: ((await card.locator(SELECTORS.PRICING_OPTIONS_LEG_CARD_BRAND_NAME).first().textContent().catch(() => '')) ?? '').trim(),
+        hasAgreement: (await card.locator(SELECTORS.AGREEMENT_ICON).count()) > 0,
+      });
+    }
+    return result;
+  }
+
+  /**
+   * Counts the "Select" buttons on the current leg's cards, to prove they line up one-to-one with
+   * the cards before a card is chosen by its index.
+   */
+  async countPricingOptionSelectButtons() {
+    return this.getPricingOptionsOverlay()
+      .getByRole('button', { name: SELECTORS.PRICING_OPTIONS_SELECT_BUTTON_NAME, exact: true })
+      .count();
+  }
+
+  /**
    * Returns the displayed per-pax price of each pricing-option card on the current leg, in order.
    * Reads the main price only, not the leg-to-leg diff shown on later legs. Unparseable prices are null.
    * @returns {Promise<Array<number|null>>}

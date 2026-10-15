@@ -17,6 +17,8 @@ const SELECTORS = {
   SIGN_OUT_BUTTON: ".SignOut",
   // "Welcome on Board!" heading of the agent's my-bookings landing view — the post-login signal.
   WELCOME_LANDING: '[ng-show="mybookingsViewMode==MybookingsViewMode.Landing"] > :nth-child(2)',
+  // Agent link into the agency's GTP Admin Center: /AgencyAdministration/<agencyId>#/Agency/<agencyId>/...
+  AGENCY_ADMINISTRATION_LINK: 'a[href*="/AgencyAdministration/"]',
 
   // ===== Requested-trip view: per-product "Search Online" re-search links =====
   FLIGHT_RESEARCH_LINK: '[ng-click*="onFlightReSearchClicked"]',
@@ -209,6 +211,33 @@ class LegacyGtpPage {
         `[LegacyGtpPage.waitForWelcomeLanding] The legacy GTP landing view (${SELECTORS.WELCOME_LANDING}) ` +
         `did not appear within ${timeout}ms after login. The credentials may be wrong or the legacy ` +
         `front may be unreachable. Original: ${err.message}`
+      );
+    }
+  }
+
+  // ===== Agency administration entry (test 43181) =====
+
+  /**
+   * Reads the href of the agent's agency-administration link on the landing page. It is the only
+   * place the agent's own agency id is exposed, so the admin is entered through it rather than a
+   * hard-coded id.
+   *
+   * @returns {Promise<string>} e.g. "/AgencyAdministration/275295#/Agency/275295/AgencySettings"
+   */
+  async getAgencyAdministrationHref({ timeout = 30000 } = {}) {
+    const link = this.page.locator(SELECTORS.AGENCY_ADMINISTRATION_LINK).first();
+    try {
+      await link.waitFor({ state: "attached", timeout });
+      const href = await link.getAttribute("href");
+      if (!href) {
+        throw new Error("the link has no href");
+      }
+      return href;
+    } catch (err) {
+      throw new Error(
+        `[LegacyGtpPage.getAgencyAdministrationHref] The agency administration link ` +
+        `(${SELECTORS.AGENCY_ADMINISTRATION_LINK}) is not on the legacy GTP landing page. The agent may ` +
+        `lack administration rights. Original: ${err.message}`
       );
     }
   }

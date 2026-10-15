@@ -194,6 +194,29 @@ When("I capture the latest {string} payload for request type {string} sent since
   });
 });
 
+// For an action that sends one call per item on purpose (one MiniRule_GetFromPricing per separated
+// ticket), where the latest call alone would check only one of them.
+When("I capture every {string} payload for request type {string} sent since the noted time from Storage", async function (source, requestType) {
+  await runPayloadValidationStep(this, "capturePayloadsSentSince", { source, requestType }, async () => {
+    const identifiers = getScenarioIdentifiers(this);
+    logger.info("Capturing every payload sent since the noted time", {
+      source,
+      requestType,
+      notBefore: this.payloadRequestsNotBefore?.toISOString(),
+      ...identifiers,
+    });
+
+    const payloads = await PayloadValidation.capturePayloadsSentSince(
+      this,
+      source,
+      requestType,
+      this.payloadRequestsNotBefore,
+      identifiers
+    );
+    logger.info("Payloads sent since the noted time captured", { source, requestType, count: payloads.length });
+  });
+});
+
 // Captures the other half of the call captured just before — the response of that request, or the
 // request of that response. Use it when a trip sends the same request type several times and the
 // assertion must stay on ONE of them (e.g. one post-creation FQTV call per carrier): capture the

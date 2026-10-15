@@ -241,6 +241,9 @@ const SELECTORS = {
   FLIGHT_PRICE_BREAKDOWN_PASSENGER_NAME: '.passenger-name',
   FLIGHT_PRICE_BREAKDOWN_SUBTOTAL_LABEL: '.rate-information .amounts .subtotal > div > span:first-child',
   FLIGHT_PRICE_BREAKDOWN_CANCEL_FEE: '.change-cancel-fees .cancel-fee',
+  FLIGHT_PRICE_BREAKDOWN_CHANGE_FEE: '.change-cancel-fees .change-fee',
+  // "Validation carrier: XX" — the first line of each price breakdown segment (one segment per ticket)
+  FLIGHT_PRICE_BREAKDOWN_VALIDATING_CARRIER: ':scope > p:first-child',
   FLIGHT_PRICE_BREAKDOWN_CANCEL_FEE_BEFORE_DEPARTURE: '.fee-section-wrapper > div:first-child',
   FLIGHT_PRICE_BREAKDOWN_CANCEL_FEE_AFTER_DEPARTURE: '.fee-section-wrapper > .after-departure',
   FLIGHT_PRICE_BREAKDOWN_RATE_ROW: '.rate-information .amounts > div',
@@ -5088,6 +5091,70 @@ class CartPage {
       SELECTORS.FLIGHT_PRICE_BREAKDOWN_CANCEL_FEE_AFTER_DEPARTURE,
       { timeout },
     );
+  }
+
+  /**
+   * Reads the four mini-rule fee sections of the open flight price breakdown: the change fee and the
+   * cancellation fee, each before and after departure. Each text is what the section shows, e.g.
+   * "Before departure payments Change fee €160.00" or "After departure Non-refundable close".
+   *
+   * @param {object} [options]
+   * @param {import('@playwright/test').Locator} [options.segment] - The price breakdown segment to read (default: the first)
+   * @returns {Promise<{change: {before: string, after: string}, cancel: {before: string, after: string}}>}
+   */
+  async getFlightPriceBreakdownChangeAndCancelFeeTexts({ timeout = 10000, segment } = {}) {
+    segment = segment || this.page.locator(SELECTORS.FLIGHT_PRICE_BREAKDOWN_SEGMENT).first();
+    const read = async (feeSelector, sectionSelector) => {
+      const section = segment.locator(feeSelector).first().locator(sectionSelector).first();
+      try {
+        await section.waitFor({ state: 'visible', timeout });
+      } catch (err) {
+        throw new Error(
+          `[CartPage.getFlightPriceBreakdownChangeAndCancelFeeTexts] The price breakdown fee section ` +
+          `"${feeSelector} ${sectionSelector}" is not visible. Is the price breakdown open? Original: ${err.message}`
+        );
+      }
+      return (await section.innerText()).replace(/\s+/g, ' ').trim();
+    };
+    return {
+      change: {
+        before: await read(SELECTORS.FLIGHT_PRICE_BREAKDOWN_CHANGE_FEE, SELECTORS.FLIGHT_PRICE_BREAKDOWN_CANCEL_FEE_BEFORE_DEPARTURE),
+        after: await read(SELECTORS.FLIGHT_PRICE_BREAKDOWN_CHANGE_FEE, SELECTORS.FLIGHT_PRICE_BREAKDOWN_CANCEL_FEE_AFTER_DEPARTURE),
+      },
+      cancel: {
+        before: await read(SELECTORS.FLIGHT_PRICE_BREAKDOWN_CANCEL_FEE, SELECTORS.FLIGHT_PRICE_BREAKDOWN_CANCEL_FEE_BEFORE_DEPARTURE),
+        after: await read(SELECTORS.FLIGHT_PRICE_BREAKDOWN_CANCEL_FEE, SELECTORS.FLIGHT_PRICE_BREAKDOWN_CANCEL_FEE_AFTER_DEPARTURE),
+      },
+    };
+  }
+
+  /**
+   * Reads the mini-rule fee sections of every ticket in the open flight price breakdown. A separated
+   * tickets quote renders one segment per ticket, headed "Validation carrier: XX" (flight-price-breakdown.vue).
+   *
+   * @returns {Promise<Array<{validatingCarrier: string, change: {before: string, after: string}, cancel: {before: string, after: string}}>>}
+   */
+  async getFlightPriceBreakdownChangeAndCancelFeeTextsPerTicket({ timeout = 10000 } = {}) {
+    const segments = this.page.locator(SELECTORS.FLIGHT_PRICE_BREAKDOWN_SEGMENT);
+    try {
+      await segments.first().waitFor({ state: 'visible', timeout });
+    } catch (err) {
+      throw new Error(
+        `[CartPage.getFlightPriceBreakdownChangeAndCancelFeeTextsPerTicket] No price breakdown segment is visible. ` +
+        `Is the price breakdown open? Original: ${err.message}`
+      );
+    }
+
+    const tickets = [];
+    const count = await segments.count();
+    for (let i = 0; i < count; i++) {
+      const segment = segments.nth(i);
+      const heading = (await segment.locator(SELECTORS.FLIGHT_PRICE_BREAKDOWN_VALIDATING_CARRIER).first().innerText()).trim();
+      const validatingCarrier = (heading.match(/:\s*([A-Z0-9]{2})\b/) || [])[1] || '';
+      const fees = await this.getFlightPriceBreakdownChangeAndCancelFeeTexts({ timeout, segment });
+      tickets.push({ validatingCarrier, heading, ...fees });
+    }
+    return tickets;
   }
 
   /**
