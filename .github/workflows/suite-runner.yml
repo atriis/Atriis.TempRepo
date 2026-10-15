@@ -203,9 +203,12 @@ jobs:
           path: all-results
         continue-on-error: true
         
+      # QEOS: uploads the results, so the run appears under Runs and on its test cases.
+      # Goes after the test step, in the job that runs cucumber-js.
+      # Needs the repository variable QEOS_URL (this QEOS address) and the repository secret QEOS_API_KEY  
       - name: Upload results to QEOS
         if: always() && vars.QEOS_URL != ''
-        uses: carneiru/QA-Vision-Platform/collector-action@collector-v0
+        uses: atriis/Atriis.QEOS/collector-action@collector-v0
         with:
           url: ${{ vars.QEOS_URL }}
           patterns: all-results/**/cucumber-report.json
