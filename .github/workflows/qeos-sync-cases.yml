@@ -18,11 +18,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: atriis/Atriis.QEOS/collector-action@collector-v0
-        with:
-          url: ${{ vars.QEOS_URL }}
-          command: import-features
-          patterns: "tests/features/**/*.feature"
-          extra-args: ${{ inputs.first_sync && '--allow-mass-archive' || '' }}
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: pip install "qeos-collector @ git+https://github.com/atriis/Atriis.QEOS@collector-v0#subdirectory=collector"
+      - run: qeos-collector import-features "tests/features/**/*.feature" ${{ inputs.first_sync && '--allow-mass-archive' || '' }}
         env:
+          QEOS_URL: ${{ vars.QEOS_URL }}
           QEOS_API_KEY: ${{ secrets.QEOS_API_KEY }}
