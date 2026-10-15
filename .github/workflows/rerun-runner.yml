@@ -731,7 +731,7 @@ jobs:
       # Needs the repository variable QEOS_URL (this QEOS address) and the repository secret QEOS_API_KEY  
       - name: Upload results to QEOS
         if: always() && vars.QEOS_URL != ''
-        uses: carneiru/QA-Vision-Platform/collector-action@collector-v0
+        uses: atriis/Atriis.QEOS/collector-action@collector-v0
         with:
           url: ${{ vars.QEOS_URL }}
           patterns: shard-reports/**/cucumber-report.json
